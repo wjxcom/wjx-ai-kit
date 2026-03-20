@@ -204,7 +204,6 @@ const styles: Record<string, React.CSSProperties> = {
     fontWeight: 600,
     color: "#595959",
     margin: "0 0 12px",
-    paddingLeft: "4px",
     borderLeft: "3px solid #1890ff",
     paddingLeft: "10px",
   } as React.CSSProperties,

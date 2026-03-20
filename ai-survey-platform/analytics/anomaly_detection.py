@@ -301,7 +301,7 @@ def format_reports_to_markdown(reports: List[DetectionReport]) -> str:
     lines.append("| --- | ---: | --- |")
     for a in report.anomalies:
       # 对 reason 中的竖线进行转义
-      reason = str(a.reason).replace("|", "\|")
+      reason = str(a.reason).replace("|", r"\|")
       lines.append(f"| {a.respondent_id} | {a.score:.4f} | {reason} |")
     lines.append("")
 
