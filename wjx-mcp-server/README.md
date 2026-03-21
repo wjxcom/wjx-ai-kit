@@ -134,6 +134,15 @@ WJX_APP_ID=your_appid WJX_APP_KEY=your_appkey node dist/index.js
 | 9 | 比重题 |
 | 10 | 滑动条 |
 
+## 验证与后台可见性
+
+- 自动化测试或端到端验证在创建问卷后，常会调用 **`update_survey_status` 且 `state=3`（删除）** 做环境清理，因此你在问卷星后台「我的问卷」里**看不到**这些问卷是正常的。
+- 若需要**长期保留**验证问卷：创建后**不要**对同一 `vid` 调用删除；或使用单独的测试用 `appid` / 测试子账号。
+
+## 与 Paperclip / 资料范围
+
+- MCP Server 的维护**优先依赖**问卷星 **OpenAPI 文档与行为真源**（见 `docs/wjx-openapi-spec.md`、错误码、题目 JSON 样例），**不需要**向仓库导入问卷星整库业务代码。
+
 ## 生产特性
 
 - **请求签名**: SHA1 签名自动计算，30秒时间窗口
@@ -147,7 +156,7 @@ WJX_APP_ID=your_appid WJX_APP_KEY=your_appkey node dist/index.js
 ```bash
 npm install          # 安装依赖
 npm run build        # 编译
-npm test             # 运行全部测试（65 项）
+npm test             # 运行全部测试（单元 + 集成）
 npm run test:unit    # 仅运行单元测试
 npm run test:integration  # 仅运行集成测试
 ```
