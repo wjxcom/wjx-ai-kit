@@ -5,7 +5,7 @@
 ## 前置条件
 
 - Node.js >= 18
-- 问卷星 OpenAPI 开发凭据（`appid` 和 `appkey`，请联系问卷星客户顾问获取）
+- 问卷星 OpenAPI 开发凭据（`appid` 和 `appkey`，在后台 "API自动登录" 弹窗中获取，或联系客户顾问）
 
 ## 安装
 
@@ -17,71 +17,50 @@ npm run build
 
 ## 配置
 
-设置以下环境变量：
+复制 `.env.example` 为 `.env`，填入凭据：
+
+```bash
+cp .env.example .env
+```
 
 | 环境变量 | 必需 | 说明 |
 |----------|------|------|
-| `WJX_APPID` | 是 | 问卷星 OpenAPI 开发 ID |
-| `WJX_APPKEY` | 是 | 问卷星 OpenAPI 开发密钥 |
+| `WJX_APP_ID` | 是 | 问卷星 OpenAPI 开发 ID |
+| `WJX_APP_KEY` | 是 | 问卷星 OpenAPI 开发密钥 |
 
-```bash
-export WJX_APPID="your_appid"
-export WJX_APPKEY="your_appkey"
-```
+服务启动时会自动加载 `.env` 文件。
 
 ## 使用方法
-
-### 在 Claude Desktop 中使用
-
-编辑 Claude Desktop 配置文件 `claude_desktop_config.json`：
-
-- macOS: `~/Library/Application Support/Claude/claude_desktop_config.json`
-- Windows: `%APPDATA%\Claude\claude_desktop_config.json`
-
-```json
-{
-  "mcpServers": {
-    "wjx": {
-      "command": "node",
-      "args": ["path/to/wjx-mcp-server/dist/index.js"],
-      "env": {
-        "WJX_APPID": "your_appid",
-        "WJX_APPKEY": "your_appkey"
-      }
-    }
-  }
-}
-```
 
 ### 在 Claude Code 中使用
 
 ```bash
-claude mcp add wjx -- node path/to/wjx-mcp-server/dist/index.js
+claude mcp add wjx -- node /home/claw/wjxagents/wjx-mcp-server/dist/index.js
 ```
 
-或在 `.claude/settings.json` 中配置：
+### 在 Claude Desktop 中使用
+
+编辑配置文件：
 
 ```json
 {
   "mcpServers": {
     "wjx": {
       "command": "node",
-      "args": ["path/to/wjx-mcp-server/dist/index.js"],
+      "args": ["/home/claw/wjxagents/wjx-mcp-server/dist/index.js"],
       "env": {
-        "WJX_APPID": "your_appid",
-        "WJX_APPKEY": "your_appkey"
+        "WJX_APP_ID": "your_appid",
+        "WJX_APP_KEY": "your_appkey"
       }
     }
   }
 }
 ```
 
-### 在其他 MCP 客户端中使用
-
-本服务通过 stdio 传输协议通信，任何支持 MCP 的客户端均可接入。启动命令：
+### 直接运行
 
 ```bash
-WJX_APPID=your_appid WJX_APPKEY=your_appkey node dist/index.js
+WJX_APP_ID=your_appid WJX_APP_KEY=your_appkey node dist/index.js
 ```
 
 ## 支持的 Tools
@@ -90,35 +69,57 @@ WJX_APPID=your_appid WJX_APPKEY=your_appkey node dist/index.js
 
 创建一份新的问卷星问卷。
 
-**参数：**
-
 | 参数 | 类型 | 必需 | 说明 |
 |------|------|------|------|
 | `title` | string | 是 | 问卷名称 |
-| `atype` | number | 是 | 问卷类型（见下方类型表） |
+| `atype` | number | 是 | 问卷类型 |
 | `desc` | string | 是 | 问卷描述 |
 | `publish` | boolean | 否 | 是否立即发布，默认 `false` |
-| `questions` | array | 是 | 题目列表 |
+| `questions` | string | 是 | 题目列表的 JSON 字符串 |
 
-**问卷类型（`atype`）：**
+### `get_survey` — 获取问卷内容
 
-| 值 | 类型 |
-|----|------|
-| 0 | 问卷调查 |
-| 1 | 考试 / 测评 |
-| 2 | 投票 |
-
-**题目对象（`questions` 数组元素）通用属性：**
+根据问卷编号获取问卷详情。
 
 | 参数 | 类型 | 必需 | 说明 |
 |------|------|------|------|
-| `q_index` | number | 是 | 题目编号 |
-| `q_type` | number | 是 | 题目类型（见下方题型表） |
-| `q_title` | string | 是 | 问题标题 |
-| `is_requir` | boolean | 否 | 是否必填，默认 `true` |
-| `items` | array | 否 | 选项列表（选择题使用） |
+| `vid` | number | 是 | 问卷编号 |
+| `get_questions` | boolean | 否 | 是否获取题目信息，默认 `true` |
+| `get_items` | boolean | 否 | 是否获取选项信息，默认 `true` |
 
-**题目类型（`q_type`）：**
+### `list_surveys` — 获取问卷列表
+
+分页获取账户下的问卷列表。
+
+| 参数 | 类型 | 必需 | 说明 |
+|------|------|------|------|
+| `page_index` | number | 否 | 页码，默认 1 |
+| `page_size` | number | 否 | 每页数量（1-300），默认 10 |
+| `status` | number | 否 | 按状态筛选 |
+| `atype` | number | 否 | 按类型筛选 |
+| `name_like` | string | 否 | 按名称模糊搜索（最长10字符） |
+| `sort` | number | 否 | 排序规则（0-5） |
+
+### `update_survey_status` — 修改问卷状态
+
+修改问卷的发布状态。
+
+| 参数 | 类型 | 必需 | 说明 |
+|------|------|------|------|
+| `vid` | number | 是 | 问卷编号 |
+| `state` | number | 是 | 1=发布, 2=暂停, 3=删除 |
+
+## 问卷类型（`atype`）
+
+| 值 | 类型 |
+|----|------|
+| 1 | 调查 |
+| 2 | 测评 |
+| 3 | 投票 |
+| 6 | 考试 |
+| 7 | 表单 |
+
+## 题目类型（`q_type`）
 
 | 值 | 类型 |
 |----|------|
@@ -133,117 +134,23 @@ WJX_APPID=your_appid WJX_APPKEY=your_appkey node dist/index.js
 | 9 | 比重题 |
 | 10 | 滑动条 |
 
-**选项对象（`items` 数组元素）属性：**
+## 生产特性
 
-| 参数 | 类型 | 必需 | 说明 |
-|------|------|------|------|
-| `q_index` | number | 是 | 所属题目编号 |
-| `item_index` | number | 是 | 选项编号 |
-| `item_title` | string | 是 | 选项标题 |
-| `item_selected` | boolean | 否 | 是否默认选中 |
+- **请求签名**: SHA1 签名自动计算，30秒时间窗口
+- **TraceID**: 每次请求自动附带 32 位 GUID，方便排查
+- **请求超时**: 默认 15 秒，可配置
+- **自动重试**: 读取类接口遇到 5xx/429 错误自动重试（最多 2 次，指数退避）；写入类接口不重试
+- **`.env` 自动加载**: 无需额外依赖
 
-**返回值：**
+## 开发
 
-| 字段 | 类型 | 说明 |
-|------|------|------|
-| `vid` | number | 问卷编号 |
-| `sid` | string | 问卷短编号 |
-| `status` | number | 问卷状态 |
-| `pc_path` | string | PC 端问卷 URL 路径 |
-| `mobile_path` | string | 移动端问卷 URL 路径 |
-| `activity_domain` | string | 问卷访问域名 |
-
----
-
-### `get_survey` — 获取问卷内容
-
-根据问卷编号获取问卷详情，包括题目和选项信息。
-
-**参数：**
-
-| 参数 | 类型 | 必需 | 说明 |
-|------|------|------|------|
-| `vid` | number | 是 | 问卷编号 |
-| `get_questions` | boolean | 否 | 是否获取题目信息，默认 `true` |
-| `get_items` | boolean | 否 | 是否获取选项信息，默认 `true` |
-
-**返回值：**
-
-| 字段 | 类型 | 说明 |
-|------|------|------|
-| `vid` | number | 问卷编号 |
-| `title` | string | 问卷名称 |
-| `atype` | number | 问卷类型 |
-| `status` | number | 问卷状态 |
-| `answer_valid` | number | 有效答卷数 |
-| `answer_total` | number | 答卷总数 |
-| `questions` | array | 题目列表 |
-
-## 示例
-
-### 创建一份简单的满意度问卷
-
-配置好 MCP Server 后，直接在 Claude 对话中说：
-
-> 帮我创建一份客户满意度问卷，包含以下问题：
-> 1. 您对我们的服务整体满意吗？（单选：非常满意/满意/一般/不满意）
-> 2. 您最看重哪些方面？（多选：服务态度/响应速度/专业能力/价格）
-> 3. 您有什么建议？（填空题）
-
-Claude 将调用 `create_survey` Tool，传入参数大致如下：
-
-```json
-{
-  "title": "客户满意度调查",
-  "atype": 0,
-  "desc": "感谢您的反馈，帮助我们持续改进服务质量。",
-  "publish": false,
-  "questions": [
-    {
-      "q_index": 1,
-      "q_type": 3,
-      "q_title": "您对我们的服务整体满意吗？",
-      "is_requir": true,
-      "items": [
-        { "q_index": 1, "item_index": 1, "item_title": "非常满意" },
-        { "q_index": 1, "item_index": 2, "item_title": "满意" },
-        { "q_index": 1, "item_index": 3, "item_title": "一般" },
-        { "q_index": 1, "item_index": 4, "item_title": "不满意" }
-      ]
-    },
-    {
-      "q_index": 2,
-      "q_type": 4,
-      "q_title": "您最看重哪些方面？（可多选）",
-      "is_requir": true,
-      "items": [
-        { "q_index": 2, "item_index": 1, "item_title": "服务态度" },
-        { "q_index": 2, "item_index": 2, "item_title": "响应速度" },
-        { "q_index": 2, "item_index": 3, "item_title": "专业能力" },
-        { "q_index": 2, "item_index": 4, "item_title": "价格" }
-      ]
-    },
-    {
-      "q_index": 3,
-      "q_type": 5,
-      "q_title": "您有什么建议？",
-      "is_requir": false
-    }
-  ]
-}
+```bash
+npm install          # 安装依赖
+npm run build        # 编译
+npm test             # 运行全部测试（65 项）
+npm run test:unit    # 仅运行单元测试
+npm run test:integration  # 仅运行集成测试
 ```
-
-创建成功后会返回问卷编号和访问链接。
-
-## 认证机制
-
-本 MCP Server 内部自动处理问卷星 OpenAPI 的签名认证流程：
-
-1. 使用 `WJX_APPID` 和 `WJX_APPKEY` 生成请求签名
-2. 签名算法：将所有参数按 ASCII 排序后拼接参数值，末尾追加 `appkey`，计算 SHA1 哈希
-3. 每次请求自动附加 Unix 时间戳（`ts`），请求有效期 30 秒
-
-用户无需关心签名细节，配置好环境变量即可。
 
 ## 项目结构
 
@@ -251,26 +158,29 @@ Claude 将调用 `create_survey` Tool，传入参数大致如下：
 wjx-mcp-server/
 ├── docs/
 │   └── wjx-openapi-spec.md   # 问卷星 OpenAPI 接口文档
-├── src/                       # TypeScript 源码（开发中）
-│   └── index.ts               # MCP Server 入口
-├── dist/                      # 编译产物
+├── src/
+│   ├── index.ts               # MCP Server 入口 + 工具注册
+│   ├── sign.ts                # SHA1 签名算法
+│   └── wjx-client.ts         # WJX API 客户端（4 个接口）
+├── __tests__/                 # 单元测试
+├── tests/                     # 集成测试
+├── .env.example               # 环境变量模板
 ├── package.json
 ├── tsconfig.json
 └── README.md
 ```
 
-## 开发
+## 认证说明
 
-```bash
-# 安装依赖
-npm install
+- 签名算法：按 key 字母排序拼接 value，末尾追加 appkey，SHA1 哈希
+- traceid 参与签名但仅在 URL query 中传递，不放入 POST body
+- 30 秒有效期：每次请求包含 Unix 时间戳
 
-# 编译
-npm run build
-
-# 开发模式（如有配置）
-npm run dev
-```
+| 凭据 | 说明 |
+|------|------|
+| `appid` | OpenAPI 开发 ID（数字，如 `3642599`） |
+| `appkey` | 签名密钥（同 SSO 密钥） |
+| 推送密钥 | 仅用于 Webhook 回调验证，与 OpenAPI 无关 |
 
 ## 许可证
 

@@ -1,18 +1,22 @@
 {
   "name": "wjx-mcp-server",
   "version": "1.0.0",
-  "description": "MCP server for WJX OpenAPI survey creation",
+  "description": "问卷星 (Wenjuanxing) OpenAPI MCP Server — 创建、查询、管理问卷",
   "main": "dist/index.js",
+  "files": ["dist", "README.md", ".env.example"],
+  "engines": { "node": ">=20" },
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "start": "node dist/index.js",
-    "test": "npm run build && node --test tests/*.test.mjs"
+    "test": "npm run build && node --test __tests__/*.test.mjs tests/*.test.mjs",
+    "test:unit": "npm run build && node --test __tests__/*.test.mjs",
+    "test:integration": "npm run build && node --test tests/*.test.mjs"
   },
   "keywords": [
     "mcp",
     "wjx"
   ],
-  "author": "后端工程师",
+  "author": "wjxagents",
   "license": "ISC",
   "type": "module",
   "dependencies": {

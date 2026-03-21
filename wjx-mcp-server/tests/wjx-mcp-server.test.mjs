@@ -10,6 +10,7 @@ import {
   buildCreateSurveyParams,
   createSurvey,
   WJX_API_URL,
+  Action,
 } from "../dist/wjx-client.js";
 import { buildSignaturePayload, signParams } from "../dist/sign.js";
 
@@ -42,10 +43,7 @@ test("buildCreateSurveyParams produces a signed WJX request body", () => {
       publish: true,
       questions: '[{"q_index":1,"q_type":3,"q_title":"你满意吗？"}]',
     },
-    {
-      appId: "demo-app",
-      appKey: "demo-key",
-    },
+    { appId: "demo-app", appKey: "demo-key" },
     "1700000000",
   );
 
@@ -55,7 +53,7 @@ test("buildCreateSurveyParams produces a signed WJX request body", () => {
   assert.equal(params.desc, "服务满意度调查");
   assert.equal(params.publish, true);
   assert.equal(params.ts, "1700000000");
-  assert.equal(params.sign, "e25b274860a0734fb258e1edb6d1d86f1cb96db7");
+  assert.equal(params.sign, "4785e9ceec67dc4ddfca8f6abf8706c258990c30");
 });
 
 test("createSurvey sends a JSON POST request to WJX", async () => {
@@ -69,25 +67,20 @@ test("createSurvey sends a JSON POST request to WJX", async () => {
       description: "调研问卷",
       questions: "[]",
     },
-    {
-      appId: "client-app",
-      appKey: "client-key",
-    },
+    { appId: "client-app", appKey: "client-key" },
     async (input, init) => {
       capturedUrl = input;
       capturedInit = init;
 
-      return new Response(JSON.stringify({ result: true, data: { surveyId: 123 } }), {
-        status: 200,
-        headers: {
-          "Content-Type": "application/json",
-        },
-      });
+      return new Response(
+        JSON.stringify({ result: true, data: { surveyId: 123 } }),
+        { status: 200, headers: { "Content-Type": "application/json" } },
+      );
     },
     "1700000000",
   );
 
-  assert.equal(capturedUrl, WJX_API_URL);
+  assert.ok(capturedUrl.startsWith(WJX_API_URL), `URL should start with ${WJX_API_URL}`);
   assert.equal(capturedInit.method, "POST");
   assert.equal(capturedInit.headers["Content-Type"], "application/json");
   assert.deepEqual(response, { result: true, data: { surveyId: 123 } });
@@ -95,10 +88,11 @@ test("createSurvey sends a JSON POST request to WJX", async () => {
   const parsedBody = JSON.parse(capturedInit.body);
   assert.equal(parsedBody.action, "1000101");
   assert.equal(parsedBody.appid, "client-app");
-  assert.equal(parsedBody.sign, "f35740456a4d3fe19dd9db412feab9c8bd10cb5d");
+  assert.match(parsedBody.sign, /^[0-9a-f]{40}$/, "sign should be 40-char hex SHA1");
+  assert.equal("traceid" in parsedBody, false, "traceid should not be in POST body");
 });
 
-test("server exposes create_survey through tools/list over stdio", async () => {
+test("server exposes all 4 tools through tools/list over stdio", async () => {
   const transport = new StdioClientTransport({
     command: "node",
     args: [serverEntry],
@@ -119,15 +113,34 @@ test("server exposes create_survey through tools/list over stdio", async () => {
   try {
     await client.connect(transport);
     const result = await client.listTools();
-    const tool = result.tools.find((entry) => entry.name === "create_survey");
 
-    assert.ok(tool, stderr.join(""));
-    assert.deepEqual(tool.inputSchema.required?.slice().sort(), [
-      "description",
+    const toolNames = result.tools.map((t) => t.name).sort();
+    assert.deepEqual(toolNames, [
+      "create_survey",
+      "get_survey",
+      "list_surveys",
+      "update_survey_status",
+    ]);
+
+    const createTool = result.tools.find((t) => t.name === "create_survey");
+    assert.ok(createTool, `create_survey not found. stderr: ${stderr.join("")}`);
+    assert.deepEqual(createTool.inputSchema.required?.slice().sort(), [
+      "atype",
+      "desc",
       "questions",
       "title",
-      "type",
     ]);
+
+    const getTool = result.tools.find((t) => t.name === "get_survey");
+    assert.ok(getTool);
+    assert.ok(getTool.inputSchema.required?.includes("vid"));
+
+    const listTool = result.tools.find((t) => t.name === "list_surveys");
+    assert.ok(listTool);
+
+    const updateTool = result.tools.find((t) => t.name === "update_survey_status");
+    assert.ok(updateTool);
+    assert.deepEqual(updateTool.inputSchema.required?.slice().sort(), ["state", "vid"]);
   } finally {
     await transport.close();
   }

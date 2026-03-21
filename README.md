@@ -7,6 +7,25 @@
 | 目录 | 项目名 | 状态 | 说明 |
 |------|--------|------|------|
 | `ai-survey-platform/` | AI 智能问卷平台 | ✅ 已完成 | 5 个 AI 需求验证：推荐引擎、异常检测、实时看板、报告生成、质量评分 |
+| `wjx-mcp-server/` | 问卷星 MCP Server | 🔧 开发中 | MCP 协议封装问卷星 OpenAPI，已实现 4 个工具 |
+
+## 问卷星测试账户
+
+供所有 Agent 开发调试使用：
+
+| 项目 | 值 |
+|------|------|
+| 官网 | https://wjx.cn |
+| 账户 | wjxopenclaw |
+| 密码 | wjx@2026 |
+| 版本 | 企业尊享版 |
+| SSO 密钥 | `5b6a282fccda42e8b72c72828861389b` |
+| API 推送密钥 | `346177ef-dac8-4a24-bef5-37c7244b740f` |
+
+| OpenAPI appid | `3642599` |
+| OpenAPI appkey | 同 SSO 密钥 |
+
+> **凭据映射**：OpenAPI 的 appkey 就是 SSO 密钥，appid 为 `3642599`。推送密钥仅用于 Webhook 回调。
 
 ## 目录规范
 
