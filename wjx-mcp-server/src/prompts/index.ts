@@ -83,17 +83,17 @@ ${focus_areas ? `关注重点：${focus_areas}` : ""}
               ? `Please create a standard NPS survey for "${product_name}" using the create_survey tool.
 
 The survey should include:
-1. NPS Question: "How likely are you to recommend ${product_name} to a friend or colleague?" (Scale 0-10)
-2. Follow-up: "What is the primary reason for your score?" (Open text)
-3. Optional: "What could we improve?" (Open text)
+1. NPS Question: "How likely are you to recommend ${product_name} to a friend or colleague?" (Scale 0-10, use q_type=3, q_subtype=302 for 量表题, with 11 items indexed 0-10)
+2. Follow-up: "What is the primary reason for your score?" (Open text, q_type=5)
+3. Optional: "What could we improve?" (Open text, q_type=5)
 
 Use survey type 1 (survey) and output the create_survey tool call with properly formatted questions JSON.`
               : `请使用 create_survey 工具为「${product_name}」创建一份标准 NPS 问卷。
 
 问卷应包含：
-1. NPS 核心题：「您有多大可能向朋友或同事推荐${product_name}？」（0-10分量表）
-2. 跟进题：「您给出这个评分的主要原因是什么？」（填空题）
-3. 可选：「您觉得我们还可以在哪些方面改进？」（填空题）
+1. NPS 核心题：「您有多大可能向朋友或同事推荐${product_name}？」（0-10分量表，使用 q_type=3, q_subtype=302，items 数组包含 0-10 共 11 个选项）
+2. 跟进题：「您给出这个评分的主要原因是什么？」（填空题，q_type=5）
+3. 可选：「您觉得我们还可以在哪些方面改进？」（填空题，q_type=5）
 
 使用问卷类型 1（调查），输出 create_survey 工具调用，questions 参数为正确格式的 JSON。`,
           },

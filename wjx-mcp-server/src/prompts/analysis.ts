@@ -182,7 +182,7 @@ CSAT = 满意回答数 / 总回答数 x 100%
 请严格按以下步骤操作：
 
 **第一步：获取问卷结构**
-调用 get_survey 工具获取问卷 ${survey_id} 的题目结构。${question_index ? `确认第 ${question_index} 题为填空题/开放题。` : `识别所有填空题（题型 3）和多项填空题（题型 9）。`}
+调用 get_survey 工具获取问卷 ${survey_id} 的题目结构。${question_index ? `确认第 ${question_index} 题为填空题/开放题。` : `识别所有填空题（q_type=5）和多项填空题（q_type=6）。`}
 
 **第二步：获取答卷明细**
 调用 query_responses 工具获取所有答卷原始数据。
