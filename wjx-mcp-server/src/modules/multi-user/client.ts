@@ -21,8 +21,8 @@ export async function addSubAccount<T = unknown>(
     subuser: input.subuser,
     password: input.password,
   };
-  if (input.mobile) params.mobile = input.mobile;
-  if (input.email) params.email = input.email;
+  if (input.mobile !== undefined) params.mobile = input.mobile;
+  if (input.email !== undefined) params.email = input.email;
   if (input.role_id !== undefined) params.role_id = input.role_id;
 
   return callWjxApi<T>(params, { credentials, fetchImpl, timestamp, maxRetries: 0 });
@@ -39,9 +39,9 @@ export async function modifySubAccount<T = unknown>(
     username: input.username,
     subuser: input.subuser,
   };
-  if (input.password) params.password = input.password;
-  if (input.mobile) params.mobile = input.mobile;
-  if (input.email) params.email = input.email;
+  if (input.password !== undefined) params.password = input.password;
+  if (input.mobile !== undefined) params.mobile = input.mobile;
+  if (input.email !== undefined) params.email = input.email;
   if (input.role_id !== undefined) params.role_id = input.role_id;
 
   return callWjxApi<T>(params, { credentials, fetchImpl, timestamp, maxRetries: 0 });

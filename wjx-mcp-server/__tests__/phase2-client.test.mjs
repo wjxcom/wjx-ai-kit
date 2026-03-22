@@ -380,22 +380,18 @@ describe("get360Report", () => {
     assert.equal("taskid" in body, false, "taskid should not be in body when not provided");
   });
 
-  it("should retry on 500 (read operation, default maxRetries)", async () => {
+  it("should not retry on 500 (polling endpoint, maxRetries=0)", async () => {
     let callCount = 0;
     const fetch = async () => {
       callCount++;
-      if (callCount < 3) {
-        return new Response("err", { status: 500, statusText: "Error" });
-      }
-      return new Response(JSON.stringify({ result: true, data: {} }), {
-        status: 200,
-        headers: { "Content-Type": "application/json" },
-      });
+      return new Response("err", { status: 500, statusText: "Error" });
     };
 
-    const result = await get360Report({ vid: 1 }, credentials, fetch, "100");
-    assert.equal(callCount, 3, "should have retried twice before succeeding");
-    assert.deepEqual(result, { result: true, data: {} });
+    await assert.rejects(
+      () => get360Report({ vid: 1 }, credentials, fetch, "100"),
+      /500/,
+    );
+    assert.equal(callCount, 1, "should not retry on polling endpoint");
   });
 
   it("should return parsed API response", async () => {

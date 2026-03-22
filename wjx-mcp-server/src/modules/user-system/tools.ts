@@ -22,6 +22,10 @@ export function registerUserSystemTools(server: McpServer): void {
         users: z
           .string()
           .min(2)
+          .refine(
+            (s) => { try { return Array.isArray(JSON.parse(s)); } catch { return false; } },
+            "users 必须是合法的 JSON 数组",
+          )
           .describe(
             "参与者列表 JSON 字符串（数组），每项包含: uid(用户ID), uname(姓名), upass(密码), udept(部门), uextf(扩展字段)",
           ),
@@ -60,6 +64,10 @@ export function registerUserSystemTools(server: McpServer): void {
         users: z
           .string()
           .min(2)
+          .refine(
+            (s) => { try { return Array.isArray(JSON.parse(s)); } catch { return false; } },
+            "users 必须是合法的 JSON 数组",
+          )
           .describe(
             "参与者列表 JSON 字符串（数组），每项包含: uid(用户ID), uname(姓名), upass(密码), udept(部门), uextf(扩展字段)",
           ),
@@ -132,6 +140,12 @@ export function registerUserSystemTools(server: McpServer): void {
         usid: z.number().int().positive().describe("用户系统 ID"),
         page_index: z.number().int().positive().optional().describe("页码，从1开始"),
         page_size: z.number().int().min(1).max(100).optional().describe("每页数量（1-100）"),
+      },
+      annotations: {
+        destructiveHint: false,
+        idempotentHint: true,
+        openWorldHint: true,
+        title: "查询问卷用户绑定",
       },
     },
     async (args) => {

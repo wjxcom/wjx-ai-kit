@@ -29,16 +29,16 @@ export async function queryResponses<T = unknown>(
   if (input.page_size !== undefined) params.page_size = input.page_size;
   if (input.sort !== undefined) params.sort = input.sort;
   if (input.min_index !== undefined) params.min_index = input.min_index;
-  if (input.jid) params.jid = input.jid;
-  if (input.sojumpparm) params.sojumpparm = input.sojumpparm;
-  if (input.qid) params.qid = input.qid;
+  if (input.jid !== undefined) params.jid = input.jid;
+  if (input.sojumpparm !== undefined) params.sojumpparm = input.sojumpparm;
+  if (input.qid !== undefined) params.qid = input.qid;
   if (input.begin_time !== undefined) params.begin_time = input.begin_time;
   if (input.end_time !== undefined) params.end_time = input.end_time;
   if (input.file_view_expires !== undefined) params.file_view_expires = input.file_view_expires;
   if (input.query_note !== undefined) params.query_note = input.query_note;
   if (input.distinct_user !== undefined) params.distinct_user = input.distinct_user;
   if (input.distinct_sojumpparm !== undefined) params.distinct_sojumpparm = input.distinct_sojumpparm;
-  if (input.conds) params.conds = input.conds;
+  if (input.conds !== undefined) params.conds = input.conds;
 
   return callWjxApi<T>(params, { credentials, fetchImpl, timestamp });
 }
@@ -74,7 +74,7 @@ export async function downloadResponses<T = unknown>(
   if (input.begin_time !== undefined) params.begin_time = input.begin_time;
   if (input.end_time !== undefined) params.end_time = input.end_time;
   if (input.min_index !== undefined) params.min_index = input.min_index;
-  if (input.qid) params.qid = input.qid;
+  if (input.qid !== undefined) params.qid = input.qid;
   if (input.sort !== undefined) params.sort = input.sort;
   if (input.query_type !== undefined) params.query_type = input.query_type;
   if (input.suffix !== undefined) params.suffix = input.suffix;
@@ -95,13 +95,13 @@ export async function getReport<T = unknown>(
   };
   if (input.valid !== undefined) params.valid = input.valid;
   if (input.min_index !== undefined) params.min_index = input.min_index;
-  if (input.jid) params.jid = input.jid;
-  if (input.sojumpparm) params.sojumpparm = input.sojumpparm;
+  if (input.jid !== undefined) params.jid = input.jid;
+  if (input.sojumpparm !== undefined) params.sojumpparm = input.sojumpparm;
   if (input.begin_time !== undefined) params.begin_time = input.begin_time;
   if (input.end_time !== undefined) params.end_time = input.end_time;
   if (input.distinct_user !== undefined) params.distinct_user = input.distinct_user;
   if (input.distinct_sojumpparm !== undefined) params.distinct_sojumpparm = input.distinct_sojumpparm;
-  if (input.conds) params.conds = input.conds;
+  if (input.conds !== undefined) params.conds = input.conds;
 
   return callWjxApi<T>(params, { credentials, fetchImpl, timestamp });
 }
@@ -119,7 +119,7 @@ export async function submitResponse<T = unknown>(
     submitdata: input.submitdata,
   };
   if (input.udsid !== undefined) params.udsid = input.udsid;
-  if (input.sojumpparm) params.sojumpparm = input.sojumpparm;
+  if (input.sojumpparm !== undefined) params.sojumpparm = input.sojumpparm;
 
   return callWjxApi<T>(params, { credentials, fetchImpl, timestamp, maxRetries: 0 });
 }
@@ -188,7 +188,7 @@ export async function get360Report<T = unknown>(
   };
   if (input.taskid !== undefined) params.taskid = input.taskid;
 
-  return callWjxApi<T>(params, { credentials, fetchImpl, timestamp });
+  return callWjxApi<T>(params, { credentials, fetchImpl, timestamp, maxRetries: 0 });
 }
 
 export async function clearResponses<T = unknown>(

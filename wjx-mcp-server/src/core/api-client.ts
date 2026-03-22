@@ -144,7 +144,9 @@ async function _callApi<T = unknown>(
       }
 
       const isNetworkError =
-        error instanceof TypeError && error.message !== undefined;
+        error instanceof TypeError &&
+        typeof error.message === "string" &&
+        /fetch|network|connect|ECONNR|ETIMEDOUT|EAI_AGAIN/i.test(error.message);
       if (isNetworkError && attempt < maxRetries) {
         lastError = error as Error;
         continue;

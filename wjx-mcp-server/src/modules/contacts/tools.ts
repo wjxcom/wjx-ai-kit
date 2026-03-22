@@ -66,6 +66,10 @@ export function registerContactsTools(server: McpServer): void {
         members: z
           .string()
           .min(2)
+          .refine(
+            (s) => { try { return Array.isArray(JSON.parse(s)); } catch { return false; } },
+            "members 必须是合法的 JSON 数组",
+          )
           .describe(
             "成员列表 JSON 字符串（数组），每个对象包含 name、mobile、email、dept_id、ext 等字段",
           ),
@@ -105,6 +109,10 @@ export function registerContactsTools(server: McpServer): void {
         members: z
           .string()
           .min(2)
+          .refine(
+            (s) => { try { return Array.isArray(JSON.parse(s)); } catch { return false; } },
+            "members 必须是合法的 JSON 数组",
+          )
           .describe(
             "成员数据 JSON 字符串。更新：对象数组（含 id 及待改字段）；删除：成员 ID 数组",
           ),

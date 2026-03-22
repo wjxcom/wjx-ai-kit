@@ -125,7 +125,8 @@ describe("signParams", () => {
   });
 
   it("should match the known golden value from spec example", () => {
-    // This verifies the specific case from the backend engineer's test
+    // Pre-computed golden value: sorted keys are action, appid, publish(filtered as "false" is non-empty),
+    // title, ts → values "1000101" + "test-app" + "false" + "问卷标题" + "1700000000" + appKey "secret-key"
     const params = {
       title: "问卷标题",
       action: "1000101",
@@ -134,13 +135,7 @@ describe("signParams", () => {
       ts: "1700000000",
     };
     const sign = signParams(params, "secret-key");
-    // Verify it matches the expected hash
-    const payload = buildSignaturePayload(params, "secret-key");
-    const expected = createHash("sha1")
-      .update(payload, "utf8")
-      .digest("hex")
-      .toLowerCase();
-    assert.equal(sign, expected);
+    assert.equal(sign, "b3a551b74307086a5692ab96193190cd05af430c");
   });
 
   it("should handle Chinese characters in values", () => {

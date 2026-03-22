@@ -40,7 +40,7 @@ export function buildSsoSubaccountUrl(
   if (mobile) params.set("mobile", mobile);
   if (email) params.set("email", email);
   if (roleId) params.set("roleId", roleId);
-  if (input.url) params.set("url", input.url);
+  if (input.url !== undefined) params.set("url", input.url);
   if (input.admin !== undefined) params.set("admin", input.admin.toString());
 
   return `https://www.wjx.cn/zunxiang/login.aspx?${params.toString()}`;
@@ -67,13 +67,13 @@ export function buildSsoUserSystemUrl(
   params.set("uid", input.uid);
   params.set("ts", ts);
   params.set("sign", sign);
-  if (input.uname) params.set("uname", input.uname);
-  if (input.udept) params.set("udept", input.udept);
-  if (input.uextf) params.set("uextf", input.uextf);
-  if (input.upass) params.set("upass", input.upass);
+  if (input.uname !== undefined) params.set("uname", input.uname);
+  if (input.udept !== undefined) params.set("udept", input.udept);
+  if (input.uextf !== undefined) params.set("uextf", input.uextf);
+  if (input.upass !== undefined) params.set("upass", input.upass);
   if (input.is_login !== undefined) params.set("islogin", input.is_login.toString());
   if (input.activity !== undefined) params.set("activity", input.activity.toString());
-  if (input.return_url) params.set("returnurl", input.return_url);
+  if (input.return_url !== undefined) params.set("returnurl", input.return_url);
 
   return `https://www.wjx.cn/user/loginform.aspx?${params.toString()}`;
 }
@@ -117,10 +117,10 @@ export function buildSsoPartnerUrl(
 export function buildSurveyUrl(input: BuildSurveyUrlInput): string {
   if (input.mode === "create") {
     const params = new URLSearchParams();
-    if (input.name) params.set("name", input.name);
+    if (input.name !== undefined) params.set("name", input.name);
     if (input.qt !== undefined) params.set("qt", input.qt.toString());
     if (input.osa !== undefined) params.set("osa", input.osa.toString());
-    if (input.redirect_url) params.set("redirecturl", input.redirect_url);
+    if (input.redirect_url !== undefined) params.set("redirecturl", input.redirect_url);
 
     const qs = params.toString();
     const base = "https://www.wjx.cn/newwjx/mysojump/createblankNew.aspx";
@@ -136,7 +136,7 @@ export function buildSurveyUrl(input: BuildSurveyUrlInput): string {
   params.set("activity", input.activity.toString());
   if (input.editmode !== undefined) params.set("editmode", input.editmode.toString());
   if (input.runprotect !== undefined) params.set("runprotect", input.runprotect.toString());
-  if (input.redirect_url) params.set("redirecturl", input.redirect_url);
+  if (input.redirect_url !== undefined) params.set("redirecturl", input.redirect_url);
 
   return `https://www.wjx.cn/newwjx/design/editquestionnaire.aspx?${params.toString()}`;
 }

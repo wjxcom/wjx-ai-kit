@@ -16,6 +16,7 @@ export function buildSignaturePayload(
   appKey: string,
 ): string {
   const concatenatedValues = Object.keys(params)
+    .filter((key) => key !== "sign")
     .sort()
     .map((key) => normalizeSignableValue(params[key]))
     .filter((value) => value.length > 0)

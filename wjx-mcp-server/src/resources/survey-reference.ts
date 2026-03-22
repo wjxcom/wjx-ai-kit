@@ -1,5 +1,3 @@
-import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-
 export const SURVEY_TYPES: Record<number, string> = {
   0: "问卷调查",
   1: "问卷调查",

@@ -319,11 +319,16 @@ test("updateSurveySettings", async (t) => {
   });
 
   await t.test("should not retry on failure (write operation)", async () => {
-    const mock = mockFetch({}, { status: 500 });
+    let callCount = 0;
+    const impl = async () => {
+      callCount++;
+      return new Response("err", { status: 500, statusText: "Error" });
+    };
     await assert.rejects(
-      () => updateSurveySettings({ vid: 600 }, TEST_CREDENTIALS, mock.impl),
+      () => updateSurveySettings({ vid: 600 }, TEST_CREDENTIALS, impl),
       /500/,
     );
+    assert.equal(callCount, 1, "should not retry write operations");
   });
 });
 
@@ -358,11 +363,16 @@ test("deleteSurvey", async (t) => {
   });
 
   await t.test("should not retry (write operation)", async () => {
-    const mock = mockFetch({}, { status: 500 });
+    let callCount = 0;
+    const impl = async () => {
+      callCount++;
+      return new Response("err", { status: 500, statusText: "Error" });
+    };
     await assert.rejects(
-      () => deleteSurvey({ vid: 700, username: "admin" }, TEST_CREDENTIALS, mock.impl),
+      () => deleteSurvey({ vid: 700, username: "admin" }, TEST_CREDENTIALS, impl),
       /500/,
     );
+    assert.equal(callCount, 1, "should not retry write operations");
   });
 });
 
@@ -399,16 +409,21 @@ test("submitResponse", async (t) => {
   });
 
   await t.test("should not retry (write operation)", async () => {
-    const mock = mockFetch({}, { status: 500 });
+    let callCount = 0;
+    const impl = async () => {
+      callCount++;
+      return new Response("err", { status: 500, statusText: "Error" });
+    };
     await assert.rejects(
       () =>
         submitResponse(
           { vid: 800, inputcosttime: 30, submitdata: "1$1" },
           TEST_CREDENTIALS,
-          mock.impl,
+          impl,
         ),
       /500/,
     );
+    assert.equal(callCount, 1, "should not retry write operations");
   });
 });
 

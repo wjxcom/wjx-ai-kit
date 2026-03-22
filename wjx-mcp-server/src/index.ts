@@ -18,6 +18,11 @@ function loadEnvFile(): void {
       if (eqIdx === -1) continue;
       const key = trimmed.slice(0, eqIdx).trim();
       let value = trimmed.slice(eqIdx + 1).trim();
+      // Strip inline comments (unquoted values only)
+      if (value[0] !== '"' && value[0] !== "'") {
+        const commentIdx = value.indexOf(" #");
+        if (commentIdx !== -1) value = value.slice(0, commentIdx).trimEnd();
+      }
       // Strip surrounding quotes (single or double)
       if (
         value.length >= 2 &&
@@ -26,7 +31,7 @@ function loadEnvFile(): void {
       ) {
         value = value.slice(1, -1);
       }
-      if (!process.env[key]) {
+      if (!(key in process.env)) {
         process.env[key] = value;
       }
     }

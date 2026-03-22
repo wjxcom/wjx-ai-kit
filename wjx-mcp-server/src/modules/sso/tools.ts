@@ -31,6 +31,8 @@ export function registerSsoTools(server: McpServer): void {
         admin: z
           .number()
           .int()
+          .min(0)
+          .max(1)
           .optional()
           .describe("设为 1 时以主账号身份登录"),
       },

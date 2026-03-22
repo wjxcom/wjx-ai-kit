@@ -75,7 +75,7 @@ export interface GetWinnersInput {
 export interface ModifyResponseInput {
   vid: number;
   jid: number;
-  type: number;
+  type: 1;
   answers: string;
 }
 

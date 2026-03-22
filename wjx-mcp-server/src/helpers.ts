@@ -1,7 +1,8 @@
 export function toolResult(data: unknown, isError: boolean) {
   let text: string;
   try {
-    text = JSON.stringify(data, null, 2);
+    const json = JSON.stringify(data);
+    text = json ?? String(data);
   } catch {
     text = String(data);
   }
