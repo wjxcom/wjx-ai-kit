@@ -33,7 +33,9 @@ export function registerSurveyTools(server: McpServer): void {
         questions: z
           .string()
           .min(2)
-          .describe("题目列表的 JSON 字符串（question[] 序列化）"),
+          .describe(
+            "题目列表 JSON 字符串。每个题目必须包含 q_index（题号）和 q_type（题型编码：3=单选,4=多选,5=填空,6=多项填空,7=矩阵,8=文件上传,9=比重,10=滑动条,1=分页,2=段落）。选择题需包含 items 数组。示例：[{\"q_index\":1,\"q_type\":3,\"q_title\":\"您的性别\",\"items\":[{\"q_index\":1,\"item_index\":1,\"item_title\":\"男\"},{\"q_index\":1,\"item_index\":2,\"item_title\":\"女\"}]}]",
+          ),
       },
       annotations: {
         destructiveHint: false,
@@ -238,11 +240,26 @@ export function registerSurveyTools(server: McpServer): void {
         "修改问卷的设置，包括 API 限制、提交后跳转、数据推送、自定义参数、时间设置等。每个设置项为 JSON 字符串。",
       inputSchema: {
         vid: z.number().int().positive().describe("问卷编号"),
-        api_setting: z.string().optional().describe("API请求次数限制设置 JSON"),
-        after_submit_setting: z.string().optional().describe("作答后跳转设置 JSON"),
-        msg_setting: z.string().optional().describe("数据推送设置 JSON"),
-        sojumpparm_setting: z.string().optional().describe("自定义链接参数设置 JSON"),
-        time_setting: z.string().optional().describe("时间设置 JSON（开始/结束时间、每日时段、考试时间限制等）"),
+        api_setting: z.string().refine(
+          (s) => { try { JSON.parse(s); return true; } catch { return false; } },
+          "api_setting 必须是合法的 JSON 字符串",
+        ).optional().describe("API请求次数限制设置 JSON"),
+        after_submit_setting: z.string().refine(
+          (s) => { try { JSON.parse(s); return true; } catch { return false; } },
+          "after_submit_setting 必须是合法的 JSON 字符串",
+        ).optional().describe("作答后跳转设置 JSON"),
+        msg_setting: z.string().refine(
+          (s) => { try { JSON.parse(s); return true; } catch { return false; } },
+          "msg_setting 必须是合法的 JSON 字符串",
+        ).optional().describe("数据推送设置 JSON"),
+        sojumpparm_setting: z.string().refine(
+          (s) => { try { JSON.parse(s); return true; } catch { return false; } },
+          "sojumpparm_setting 必须是合法的 JSON 字符串",
+        ).optional().describe("自定义链接参数设置 JSON"),
+        time_setting: z.string().refine(
+          (s) => { try { JSON.parse(s); return true; } catch { return false; } },
+          "time_setting 必须是合法的 JSON 字符串",
+        ).optional().describe("时间设置 JSON（开始/结束时间、每日时段、考试时间限制等）"),
       },
       annotations: {
         destructiveHint: true,

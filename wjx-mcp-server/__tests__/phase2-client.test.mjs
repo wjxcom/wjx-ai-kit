@@ -163,7 +163,7 @@ describe("clearRecycleBin", () => {
 // ─── getWinners ─────────────────────────────────────────────────────
 
 describe("getWinners", () => {
-  it("should POST with action 1004001 and vid", async () => {
+  it("should POST with action 1001006 and vid", async () => {
     const fetch = mockFetch({ result: true, data: { winners: [] } });
     await getWinners({ vid: 12345 }, credentials, fetch, "1700000000");
 
@@ -171,7 +171,7 @@ describe("getWinners", () => {
     const body = JSON.parse(init.body);
     assert.equal(init.method, "POST");
     assert.equal(init.headers["Content-Type"], "application/json");
-    assert.equal(body.action, "1004001");
+    assert.equal(body.action, "1001006");
     assert.equal(body.vid, 12345);
     assert.equal(body.appid, "test-app");
   });

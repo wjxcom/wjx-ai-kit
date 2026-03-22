@@ -28,7 +28,7 @@ export const ANALYSIS_METHODS = {
   },
   CES: {
     name: "客户费力度 (Customer Effort Score)",
-    formula: "CES = 同意比例 - 不同意比例",
+    formula: "CES = 所有回答的平均分（1-7量表）",
     typical_scale: "1-7分",
     interpretation: "分数越低越好（客户越省力）",
     benchmarks: {
