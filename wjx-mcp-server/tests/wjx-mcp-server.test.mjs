@@ -92,7 +92,7 @@ test("createSurvey sends a JSON POST request to WJX", async () => {
   assert.equal("traceid" in parsedBody, false, "traceid should not be in POST body");
 });
 
-test("server exposes all 4 tools through tools/list over stdio", async () => {
+test("server exposes all 37 tools, 6 resources, and 9 prompts over stdio", async () => {
   const transport = new StdioClientTransport({
     command: "node",
     args: [serverEntry],
@@ -112,17 +112,51 @@ test("server exposes all 4 tools through tools/list over stdio", async () => {
 
   try {
     await client.connect(transport);
-    const result = await client.listTools();
 
-    const toolNames = result.tools.map((t) => t.name).sort();
+    // ─── Tools ─────────────────────────────────────────────────────
+    const toolsResult = await client.listTools();
+    const toolNames = toolsResult.tools.map((t) => t.name).sort();
     assert.deepEqual(toolNames, [
+      "add_contacts",
+      "add_participants",
+      "add_sub_account",
+      "build_survey_url",
+      "clear_recycle_bin",
+      "clear_responses",
       "create_survey",
+      "delete_participants",
+      "delete_sub_account",
+      "delete_survey",
+      "download_responses",
+      "get_360_report",
+      "get_file_links",
+      "get_question_tags",
+      "get_report",
       "get_survey",
+      "get_survey_settings",
+      "get_tag_details",
+      "get_winners",
       "list_surveys",
+      "manage_contacts",
+      "modify_participants",
+      "modify_response",
+      "modify_sub_account",
+      "query_contacts",
+      "query_responses",
+      "query_responses_realtime",
+      "query_sub_accounts",
+      "query_survey_binding",
+      "query_user_surveys",
+      "restore_sub_account",
+      "sso_partner_url",
+      "sso_subaccount_url",
+      "sso_user_system_url",
+      "submit_response",
+      "update_survey_settings",
       "update_survey_status",
     ]);
 
-    const createTool = result.tools.find((t) => t.name === "create_survey");
+    const createTool = toolsResult.tools.find((t) => t.name === "create_survey");
     assert.ok(createTool, `create_survey not found. stderr: ${stderr.join("")}`);
     assert.deepEqual(createTool.inputSchema.required?.slice().sort(), [
       "atype",
@@ -131,16 +165,84 @@ test("server exposes all 4 tools through tools/list over stdio", async () => {
       "title",
     ]);
 
-    const getTool = result.tools.find((t) => t.name === "get_survey");
+    const getTool = toolsResult.tools.find((t) => t.name === "get_survey");
     assert.ok(getTool);
     assert.ok(getTool.inputSchema.required?.includes("vid"));
 
-    const listTool = result.tools.find((t) => t.name === "list_surveys");
+    const listTool = toolsResult.tools.find((t) => t.name === "list_surveys");
     assert.ok(listTool);
 
-    const updateTool = result.tools.find((t) => t.name === "update_survey_status");
+    const updateTool = toolsResult.tools.find((t) => t.name === "update_survey_status");
     assert.ok(updateTool);
     assert.deepEqual(updateTool.inputSchema.required?.slice().sort(), ["state", "vid"]);
+
+    // ─── New tools checks ──────────────────────────────────────────
+    const queryTool = toolsResult.tools.find((t) => t.name === "query_responses");
+    assert.ok(queryTool);
+    assert.ok(queryTool.inputSchema.required?.includes("vid"));
+
+    const realtimeTool = toolsResult.tools.find((t) => t.name === "query_responses_realtime");
+    assert.ok(realtimeTool);
+    assert.ok(realtimeTool.inputSchema.required?.includes("vid"));
+
+    const downloadTool = toolsResult.tools.find((t) => t.name === "download_responses");
+    assert.ok(downloadTool);
+
+    const reportTool = toolsResult.tools.find((t) => t.name === "get_report");
+    assert.ok(reportTool);
+
+    const deleteTool = toolsResult.tools.find((t) => t.name === "delete_survey");
+    assert.ok(deleteTool);
+    assert.deepEqual(deleteTool.inputSchema.required?.slice().sort(), ["username", "vid"]);
+
+    const submitTool = toolsResult.tools.find((t) => t.name === "submit_response");
+    assert.ok(submitTool);
+    assert.deepEqual(submitTool.inputSchema.required?.slice().sort(), [
+      "inputcosttime",
+      "submitdata",
+      "vid",
+    ]);
+
+    // ─── Resources ─────────────────────────────────────────────────
+    const resourcesResult = await client.listResources();
+    const resourceUris = resourcesResult.resources.map((r) => r.uri).sort();
+    assert.deepEqual(resourceUris, [
+      "wjx://reference/analysis-methods",
+      "wjx://reference/question-types",
+      "wjx://reference/response-format",
+      "wjx://reference/survey-statuses",
+      "wjx://reference/survey-types",
+      "wjx://reference/user-roles",
+    ]);
+
+    // Verify a resource can be read
+    const typesResource = await client.readResource({ uri: "wjx://reference/survey-types" });
+    assert.ok(typesResource.contents.length > 0);
+    const parsed = JSON.parse(typesResource.contents[0].text);
+    assert.equal(parsed["1"], "问卷调查");
+
+    // ─── Prompts ───────────────────────────────────────────────────
+    const promptsResult = await client.listPrompts();
+    const promptNames = promptsResult.prompts.map((p) => p.name).sort();
+    assert.deepEqual(promptNames, [
+      "analyze-results",
+      "comparative-analysis",
+      "create-nps-survey",
+      "cross-tabulation",
+      "csat-analysis",
+      "design-survey",
+      "nps-analysis",
+      "sentiment-analysis",
+      "survey-health-check",
+    ]);
+
+    // Verify a prompt can be retrieved
+    const npsPrompt = await client.getPrompt({
+      name: "create-nps-survey",
+      arguments: { product_name: "TestProduct" },
+    });
+    assert.ok(npsPrompt.messages.length > 0);
+    assert.ok(npsPrompt.messages[0].content.text.includes("TestProduct"));
   } finally {
     await transport.close();
   }

@@ -153,8 +153,11 @@ describe("validateQuestionsJson", () => {
     assert.doesNotThrow(() => validateQuestionsJson("[]"));
   });
 
-  it("should accept valid JSON object", () => {
-    assert.doesNotThrow(() => validateQuestionsJson('{"key":"value"}'));
+  it("should reject valid JSON object (not an array)", () => {
+    assert.throws(
+      () => validateQuestionsJson('{"key":"value"}'),
+      /must be a JSON array/,
+    );
   });
 
   it("should throw on invalid JSON", () => {
