@@ -4,7 +4,7 @@
 
 ## 前置条件
 
-- Node.js >= 18
+- Node.js >= 20
 - 问卷星 OpenAPI 开发凭据（`appid` 和 `appkey`，在后台 "API自动登录" 弹窗中获取，或联系客户顾问）
 
 ## 安装
@@ -166,14 +166,28 @@ npm run test:integration  # 仅运行集成测试
 ```
 wjx-mcp-server/
 ├── docs/
-│   └── wjx-openapi-spec.md   # 问卷星 OpenAPI 接口文档
+│   └── wjx-openapi-spec.md       # 问卷星 OpenAPI 接口文档
 ├── src/
-│   ├── index.ts               # MCP Server 入口 + 工具注册
-│   ├── sign.ts                # SHA1 签名算法
-│   └── wjx-client.ts         # WJX API 客户端（4 个接口）
-├── __tests__/                 # 单元测试
-├── tests/                     # 集成测试
-├── .env.example               # 环境变量模板
+│   ├── index.ts                   # 入口：loadEnvFile() + main()
+│   ├── server.ts                  # createServer() + 模块注册
+│   ├── helpers.ts                 # toolResult(), toolError()
+│   ├── core/
+│   │   ├── api-client.ts          # callWjxApi(), 重试/签名/超时
+│   │   ├── sign.ts                # SHA1 签名算法
+│   │   ├── constants.ts           # Action codes, API URLs
+│   │   └── types.ts               # 公共类型定义
+│   ├── modules/
+│   │   ├── survey/                # 问卷管理 (10 tools)
+│   │   ├── response/              # 答卷数据 (10 tools)
+│   │   ├── user-system/           # 用户体系 (5 tools)
+│   │   ├── multi-user/            # 多用户管理 (5 tools)
+│   │   ├── contacts/              # 通讯录 (3 tools)
+│   │   └── sso/                   # SSO 免登录 (4 tools)
+│   ├── resources/                 # MCP Resources
+│   └── prompts/                   # MCP Prompts (含分析模板)
+├── __tests__/                     # 单元测试
+├── tests/                         # 集成测试
+├── .env.example                   # 环境变量模板
 ├── package.json
 ├── tsconfig.json
 └── README.md

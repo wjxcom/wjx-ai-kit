@@ -11,6 +11,7 @@
     "test": "npm run build && node --test __tests__/*.test.mjs tests/*.test.mjs",
     "test:unit": "npm run build && node --test __tests__/*.test.mjs",
     "test:integration": "npm run build && node --test tests/*.test.mjs",
+    "clean": "rm -rf dist",
     "prepublishOnly": "npm run build && npm test"
   },
   "keywords": [
