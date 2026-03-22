@@ -255,7 +255,10 @@ export function registerResponseTools(server: McpServer): void {
         "获取答卷中文件上传题的文件访问和下载链接（仅限混合云/私有化场景）。",
       inputSchema: {
         vid: z.number().int().positive().describe("问卷编号"),
-        file_keys: z.string().min(1).describe("文件键值列表 JSON 字符串，一次最多100个"),
+        file_keys: z.string().min(1).refine(
+          (s) => { try { JSON.parse(s); return true; } catch { return false; } },
+          "file_keys 必须是合法的 JSON 字符串",
+        ).describe("文件键值列表 JSON 字符串，一次最多100个"),
         file_view_expires: z.number().int().optional().describe("链接有效期（小时），默认1"),
       },
       annotations: {
@@ -327,7 +330,10 @@ export function registerResponseTools(server: McpServer): void {
         vid: z.number().int().positive().describe("问卷编号"),
         jid: z.number().int().positive().describe("答卷编号"),
         type: z.literal(1).describe("修改类型：1=修改分数（目前仅支持1）"),
-        answers: z.string().min(1).describe("分数修改 JSON 字符串，格式：{\"题号\":\"分数\"}"),
+        answers: z.string().min(1).refine(
+          (s) => { try { JSON.parse(s); return true; } catch { return false; } },
+          "answers 必须是合法的 JSON 字符串",
+        ).describe("分数修改 JSON 字符串，格式：{\"题号\":\"分数\"}"),
       },
       annotations: {
         destructiveHint: true,

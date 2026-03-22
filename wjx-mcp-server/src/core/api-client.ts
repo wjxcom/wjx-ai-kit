@@ -93,8 +93,8 @@ async function _callApi<T = unknown>(
       // Refresh timestamp on retry since WJX has a 30s window
       signableParams.ts = getUnixTimestamp();
       const freshFull = withSignature(signableParams, credentials.appKey) as Record<string, unknown>;
-      signed.ts = freshFull.ts;
-      signed.sign = freshFull.sign;
+      const { traceid: _tid2, ...freshSigned } = freshFull;
+      Object.assign(signed, freshSigned);
     }
 
     try {
@@ -125,7 +125,16 @@ async function _callApi<T = unknown>(
         );
       }
 
-      const result = (await response.json()) as WjxApiResponse<T>;
+      let result: WjxApiResponse<T>;
+      try {
+        result = (await response.json()) as WjxApiResponse<T>;
+      } catch (parseError) {
+        throw new Error(
+          `WJX API returned unparseable response for action=${action} traceid=${traceId}: ${
+            parseError instanceof Error ? parseError.message : String(parseError)
+          }`,
+        );
+      }
 
       if (result.result === false) {
         console.error(

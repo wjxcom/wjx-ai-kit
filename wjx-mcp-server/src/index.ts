@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { readFileSync, realpathSync } from "node:fs";
 import { resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -49,7 +49,19 @@ export async function main(): Promise<void> {
   await server.connect(transport);
 }
 
-if (import.meta.url === new URL(process.argv[1], "file:").href) {
+function isMainModule(): boolean {
+  try {
+    const scriptUrl = new URL(process.argv[1], "file:");
+    return (
+      realpathSync(fileURLToPath(scriptUrl)) ===
+      realpathSync(fileURLToPath(import.meta.url))
+    );
+  } catch {
+    return false;
+  }
+}
+
+if (isMainModule()) {
   void main().catch((error: unknown) => {
     const message =
       error instanceof Error ? error.stack ?? error.message : String(error);
