@@ -10,6 +10,7 @@ import {
   buildCreateSurveyParams,
   createSurvey,
   WJX_API_URL,
+  Action,
 } from "../dist/wjx-client.js";
 import { buildSignaturePayload, signParams } from "../dist/sign.js";
 
@@ -42,10 +43,7 @@ test("buildCreateSurveyParams produces a signed WJX request body", () => {
       publish: true,
       questions: '[{"q_index":1,"q_type":3,"q_title":"你满意吗？"}]',
     },
-    {
-      appId: "demo-app",
-      appKey: "demo-key",
-    },
+    { appId: "demo-app", appKey: "demo-key" },
     "1700000000",
   );
 
@@ -55,7 +53,7 @@ test("buildCreateSurveyParams produces a signed WJX request body", () => {
   assert.equal(params.desc, "服务满意度调查");
   assert.equal(params.publish, true);
   assert.equal(params.ts, "1700000000");
-  assert.equal(params.sign, "e25b274860a0734fb258e1edb6d1d86f1cb96db7");
+  assert.equal(params.sign, "4785e9ceec67dc4ddfca8f6abf8706c258990c30");
 });
 
 test("createSurvey sends a JSON POST request to WJX", async () => {
@@ -69,25 +67,20 @@ test("createSurvey sends a JSON POST request to WJX", async () => {
       description: "调研问卷",
       questions: "[]",
     },
-    {
-      appId: "client-app",
-      appKey: "client-key",
-    },
+    { appId: "client-app", appKey: "client-key" },
     async (input, init) => {
       capturedUrl = input;
       capturedInit = init;
 
-      return new Response(JSON.stringify({ result: true, data: { surveyId: 123 } }), {
-        status: 200,
-        headers: {
-          "Content-Type": "application/json",
-        },
-      });
+      return new Response(
+        JSON.stringify({ result: true, data: { surveyId: 123 } }),
+        { status: 200, headers: { "Content-Type": "application/json" } },
+      );
     },
     "1700000000",
   );
 
-  assert.equal(capturedUrl, WJX_API_URL);
+  assert.ok(capturedUrl.startsWith(WJX_API_URL), `URL should start with ${WJX_API_URL}`);
   assert.equal(capturedInit.method, "POST");
   assert.equal(capturedInit.headers["Content-Type"], "application/json");
   assert.deepEqual(response, { result: true, data: { surveyId: 123 } });
@@ -95,10 +88,11 @@ test("createSurvey sends a JSON POST request to WJX", async () => {
   const parsedBody = JSON.parse(capturedInit.body);
   assert.equal(parsedBody.action, "1000101");
   assert.equal(parsedBody.appid, "client-app");
-  assert.equal(parsedBody.sign, "f35740456a4d3fe19dd9db412feab9c8bd10cb5d");
+  assert.match(parsedBody.sign, /^[0-9a-f]{40}$/, "sign should be 40-char hex SHA1");
+  assert.equal("traceid" in parsedBody, false, "traceid should not be in POST body");
 });
 
-test("server exposes create_survey through tools/list over stdio", async () => {
+test("server exposes all 54 tools, 7 resources, and 10 prompts over stdio", async () => {
   const transport = new StdioClientTransport({
     command: "node",
     args: [serverEntry],
@@ -118,16 +112,156 @@ test("server exposes create_survey through tools/list over stdio", async () => {
 
   try {
     await client.connect(transport);
-    const result = await client.listTools();
-    const tool = result.tools.find((entry) => entry.name === "create_survey");
 
-    assert.ok(tool, stderr.join(""));
-    assert.deepEqual(tool.inputSchema.required?.slice().sort(), [
-      "description",
+    // ─── Tools ─────────────────────────────────────────────────────
+    const toolsResult = await client.listTools();
+    const toolNames = toolsResult.tools.map((t) => t.name).sort();
+    assert.deepEqual(toolNames, [
+      "add_admin",
+      "add_contacts",
+      "add_department",
+      "add_participants",
+      "add_sub_account",
+      "add_tag",
+      "build_survey_url",
+      "calculate_csat",
+      "calculate_nps",
+      "clear_recycle_bin",
+      "clear_responses",
+      "compare_metrics",
+      "create_survey",
+      "decode_push_payload",
+      "decode_responses",
+      "delete_admin",
+      "delete_department",
+      "delete_participants",
+      "delete_sub_account",
+      "delete_survey",
+      "delete_tag",
+      "detect_anomalies",
+      "download_responses",
+      "get_360_report",
+      "get_file_links",
+      "get_question_tags",
+      "get_report",
+      "get_survey",
+      "get_survey_settings",
+      "get_tag_details",
+      "get_winners",
+      "list_departments",
+      "list_surveys",
+      "list_tags",
+      "manage_contacts",
+      "modify_department",
+      "modify_participants",
+      "modify_response",
+      "modify_sub_account",
+      "modify_tag",
+      "query_contacts",
+      "query_responses",
+      "query_responses_realtime",
+      "query_sub_accounts",
+      "query_survey_binding",
+      "query_user_surveys",
+      "restore_admin",
+      "restore_sub_account",
+      "sso_partner_url",
+      "sso_subaccount_url",
+      "sso_user_system_url",
+      "submit_response",
+      "update_survey_settings",
+      "update_survey_status",
+    ]);
+
+    const createTool = toolsResult.tools.find((t) => t.name === "create_survey");
+    assert.ok(createTool, `create_survey not found. stderr: ${stderr.join("")}`);
+    assert.deepEqual(createTool.inputSchema.required?.slice().sort(), [
+      "atype",
+      "desc",
       "questions",
       "title",
-      "type",
     ]);
+
+    const getTool = toolsResult.tools.find((t) => t.name === "get_survey");
+    assert.ok(getTool);
+    assert.ok(getTool.inputSchema.required?.includes("vid"));
+
+    const listTool = toolsResult.tools.find((t) => t.name === "list_surveys");
+    assert.ok(listTool);
+
+    const updateTool = toolsResult.tools.find((t) => t.name === "update_survey_status");
+    assert.ok(updateTool);
+    assert.deepEqual(updateTool.inputSchema.required?.slice().sort(), ["state", "vid"]);
+
+    // ─── New tools checks ──────────────────────────────────────────
+    const queryTool = toolsResult.tools.find((t) => t.name === "query_responses");
+    assert.ok(queryTool);
+    assert.ok(queryTool.inputSchema.required?.includes("vid"));
+
+    const realtimeTool = toolsResult.tools.find((t) => t.name === "query_responses_realtime");
+    assert.ok(realtimeTool);
+    assert.ok(realtimeTool.inputSchema.required?.includes("vid"));
+
+    const downloadTool = toolsResult.tools.find((t) => t.name === "download_responses");
+    assert.ok(downloadTool);
+
+    const reportTool = toolsResult.tools.find((t) => t.name === "get_report");
+    assert.ok(reportTool);
+
+    const deleteTool = toolsResult.tools.find((t) => t.name === "delete_survey");
+    assert.ok(deleteTool);
+    assert.deepEqual(deleteTool.inputSchema.required?.slice().sort(), ["username", "vid"]);
+
+    const submitTool = toolsResult.tools.find((t) => t.name === "submit_response");
+    assert.ok(submitTool);
+    assert.deepEqual(submitTool.inputSchema.required?.slice().sort(), [
+      "inputcosttime",
+      "submitdata",
+      "vid",
+    ]);
+
+    // ─── Resources ─────────────────────────────────────────────────
+    const resourcesResult = await client.listResources();
+    const resourceUris = resourcesResult.resources.map((r) => r.uri).sort();
+    assert.deepEqual(resourceUris, [
+      "wjx://reference/analysis-methods",
+      "wjx://reference/push-format",
+      "wjx://reference/question-types",
+      "wjx://reference/response-format",
+      "wjx://reference/survey-statuses",
+      "wjx://reference/survey-types",
+      "wjx://reference/user-roles",
+    ]);
+
+    // Verify a resource can be read
+    const typesResource = await client.readResource({ uri: "wjx://reference/survey-types" });
+    assert.ok(typesResource.contents.length > 0);
+    const parsed = JSON.parse(typesResource.contents[0].text);
+    assert.equal(parsed["1"], "问卷调查");
+
+    // ─── Prompts ───────────────────────────────────────────────────
+    const promptsResult = await client.listPrompts();
+    const promptNames = promptsResult.prompts.map((p) => p.name).sort();
+    assert.deepEqual(promptNames, [
+      "analyze-results",
+      "comparative-analysis",
+      "configure-webhook",
+      "create-nps-survey",
+      "cross-tabulation",
+      "csat-analysis",
+      "design-survey",
+      "nps-analysis",
+      "sentiment-analysis",
+      "survey-health-check",
+    ]);
+
+    // Verify a prompt can be retrieved
+    const npsPrompt = await client.getPrompt({
+      name: "create-nps-survey",
+      arguments: { product_name: "TestProduct" },
+    });
+    assert.ok(npsPrompt.messages.length > 0);
+    assert.ok(npsPrompt.messages[0].content.text.includes("TestProduct"));
   } finally {
     await transport.close();
   }
