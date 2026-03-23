@@ -38,7 +38,7 @@ function mockFetch(responseBody, status = 200) {
 describe("addAdmin", () => {
   it("should POST with JSON content type", async () => {
     const fetch = mockFetch({ result: true, data: {} });
-    await addAdmin({ username: "user1", admin_name: "Alice" }, credentials, fetch, "1700000000");
+    await addAdmin({ corpid: "test-corp", users: '[{"admin_name":"Alice"}]' }, credentials, fetch, "1700000000");
 
     const { init } = fetch.captured();
     assert.equal(init.method, "POST");
@@ -47,51 +47,62 @@ describe("addAdmin", () => {
 
   it("should use ADD_ADMIN action code (1005004)", async () => {
     const fetch = mockFetch({ result: true, data: {} });
-    await addAdmin({ username: "user1", admin_name: "Alice" }, credentials, fetch, "1700000000");
+    await addAdmin({ corpid: "test-corp", users: '[{"admin_name":"Alice"}]' }, credentials, fetch, "1700000000");
 
     const body = JSON.parse(fetch.captured().init.body);
     assert.equal(body.action, Action.ADD_ADMIN);
     assert.equal(body.action, "1005004");
   });
 
-  it("should include username and admin_name in request body", async () => {
+  it("should include corpid and users in request body", async () => {
     const fetch = mockFetch({ result: true, data: {} });
-    await addAdmin({ username: "admin", admin_name: "Bob" }, credentials, fetch, "100");
+    const usersJson = '[{"admin_name":"Bob","mobile":"13800000000"}]';
+    await addAdmin({ corpid: "my-corp", users: usersJson }, credentials, fetch, "100");
 
     const body = JSON.parse(fetch.captured().init.body);
-    assert.equal(body.username, "admin");
-    assert.equal(body.admin_name, "Bob");
+    assert.equal(body.corpid, "my-corp");
+    assert.equal(body.users, usersJson);
   });
 
-  it("should include optional fields when provided", async () => {
+  it("should NOT include username in request body", async () => {
     const fetch = mockFetch({ result: true, data: {} });
-    await addAdmin(
-      { username: "user1", admin_name: "Alice", mobile: "13800000000", email: "a@b.com", role: "editor" },
-      credentials, fetch, "100",
-    );
+    await addAdmin({ corpid: "test-corp", users: '[{"admin_name":"Alice"}]' }, credentials, fetch, "100");
 
     const body = JSON.parse(fetch.captured().init.body);
-    assert.equal(body.mobile, "13800000000");
-    assert.equal(body.email, "a@b.com");
-    assert.equal(body.role, "editor");
-  });
-
-  it("should not include optional fields when not provided", async () => {
-    const fetch = mockFetch({ result: true, data: {} });
-    await addAdmin({ username: "user1", admin_name: "Alice" }, credentials, fetch, "100");
-
-    const body = JSON.parse(fetch.captured().init.body);
-    assert.equal("mobile" in body, false);
-    assert.equal("email" in body, false);
-    assert.equal("role" in body, false);
+    assert.equal("username" in body, false, "username should not appear in request body");
   });
 
   it("should include sign as 40-char hex SHA1", async () => {
     const fetch = mockFetch({ result: true, data: {} });
-    await addAdmin({ username: "user1", admin_name: "Alice" }, credentials, fetch, "100");
+    await addAdmin({ corpid: "test-corp", users: '[{"admin_name":"Alice"}]' }, credentials, fetch, "100");
 
     const body = JSON.parse(fetch.captured().init.body);
     assert.match(body.sign, /^[0-9a-f]{40}$/);
+  });
+
+  it("should NOT include traceid in POST body", async () => {
+    const fetch = mockFetch({ result: true, data: {} });
+    await addAdmin({ corpid: "test-corp", users: '[{"admin_name":"Alice"}]' }, credentials, fetch, "100");
+
+    const body = JSON.parse(fetch.captured().init.body);
+    assert.equal("traceid" in body, false, "traceid must not appear in POST body");
+  });
+
+  it("should NOT include appKey in request body", async () => {
+    const fetch = mockFetch({ result: true, data: {} });
+    await addAdmin({ corpid: "test-corp", users: '[{"admin_name":"Alice"}]' }, credentials, fetch, "100");
+
+    const body = JSON.parse(fetch.captured().init.body);
+    assert.equal("appKey" in body, false);
+    assert.equal("appkey" in body, false);
+  });
+
+  it("should use contacts.aspx endpoint", async () => {
+    const fetch = mockFetch({ result: true, data: {} });
+    await addAdmin({ corpid: "test-corp", users: '[{"admin_name":"Alice"}]' }, credentials, fetch, "100");
+
+    const url = fetch.captured().url;
+    assert.ok(url.includes("contacts.aspx"), "URL should use contacts.aspx endpoint");
   });
 
   it("should NOT retry on 500 (maxRetries=0 for write)", async () => {
@@ -102,7 +113,7 @@ describe("addAdmin", () => {
     };
 
     await assert.rejects(
-      () => addAdmin({ username: "user1", admin_name: "Alice" }, credentials, fetch, "100"),
+      () => addAdmin({ corpid: "test-corp", users: '[{"admin_name":"Alice"}]' }, credentials, fetch, "100"),
       /WJX API request failed with 500/,
     );
     assert.equal(callCount, 1);
@@ -111,18 +122,40 @@ describe("addAdmin", () => {
   it("should return parsed API response", async () => {
     const mockResponse = { result: true, data: { admin_id: 42 } };
     const result = await addAdmin(
-      { username: "user1", admin_name: "Alice" },
+      { corpid: "test-corp", users: '[{"admin_name":"Alice"}]' },
       credentials, mockFetch(mockResponse), "100",
     );
     assert.deepEqual(result, mockResponse);
   });
 
+  it("should throw on HTTP error status", async () => {
+    await assert.rejects(
+      () => addAdmin({ corpid: "test-corp", users: '[{"admin_name":"Alice"}]' }, credentials, mockFetch("err", 500), "100"),
+      /WJX API request failed with 500/,
+    );
+  });
+
   it("should include action in URL query string", async () => {
     const fetch = mockFetch({ result: true, data: {} });
-    await addAdmin({ username: "user1", admin_name: "Alice" }, credentials, fetch, "100");
+    await addAdmin({ corpid: "test-corp", users: '[{"admin_name":"Alice"}]' }, credentials, fetch, "100");
 
     const url = fetch.captured().url;
     assert.ok(url.includes("action=1005004"));
+  });
+
+  it("should fall back to WJX_CORP_ID env when corpid not provided", async () => {
+    const saved = process.env.WJX_CORP_ID;
+    process.env.WJX_CORP_ID = "env-corp";
+    try {
+      const fetch = mockFetch({ result: true, data: {} });
+      await addAdmin({ users: '[{"admin_name":"Alice"}]' }, credentials, fetch, "100");
+
+      const body = JSON.parse(fetch.captured().init.body);
+      assert.equal(body.corpid, "env-corp");
+    } finally {
+      if (saved !== undefined) process.env.WJX_CORP_ID = saved;
+      else delete process.env.WJX_CORP_ID;
+    }
   });
 });
 
@@ -131,7 +164,7 @@ describe("addAdmin", () => {
 describe("deleteAdmin", () => {
   it("should POST with JSON content type", async () => {
     const fetch = mockFetch({ result: true, data: {} });
-    await deleteAdmin({ username: "user1", admin_id: 1 }, credentials, fetch, "1700000000");
+    await deleteAdmin({ corpid: "test-corp", uids: "uid1,uid2" }, credentials, fetch, "1700000000");
 
     const { init } = fetch.captured();
     assert.equal(init.method, "POST");
@@ -140,28 +173,61 @@ describe("deleteAdmin", () => {
 
   it("should use DELETE_ADMIN action code (1005005)", async () => {
     const fetch = mockFetch({ result: true, data: {} });
-    await deleteAdmin({ username: "user1", admin_id: 1 }, credentials, fetch, "1700000000");
+    await deleteAdmin({ corpid: "test-corp", uids: "uid1" }, credentials, fetch, "1700000000");
 
     const body = JSON.parse(fetch.captured().init.body);
     assert.equal(body.action, Action.DELETE_ADMIN);
     assert.equal(body.action, "1005005");
   });
 
-  it("should include username and admin_id in request body", async () => {
+  it("should include corpid and uids in request body", async () => {
     const fetch = mockFetch({ result: true, data: {} });
-    await deleteAdmin({ username: "admin", admin_id: 99 }, credentials, fetch, "100");
+    await deleteAdmin({ corpid: "my-corp", uids: "uid1,uid2,uid3" }, credentials, fetch, "100");
 
     const body = JSON.parse(fetch.captured().init.body);
-    assert.equal(body.username, "admin");
-    assert.equal(body.admin_id, 99);
+    assert.equal(body.corpid, "my-corp");
+    assert.equal(body.uids, "uid1,uid2,uid3");
+  });
+
+  it("should NOT include username in request body", async () => {
+    const fetch = mockFetch({ result: true, data: {} });
+    await deleteAdmin({ corpid: "test-corp", uids: "uid1" }, credentials, fetch, "100");
+
+    const body = JSON.parse(fetch.captured().init.body);
+    assert.equal("username" in body, false, "username should not appear in request body");
   });
 
   it("should include sign as 40-char hex SHA1", async () => {
     const fetch = mockFetch({ result: true, data: {} });
-    await deleteAdmin({ username: "user1", admin_id: 1 }, credentials, fetch, "100");
+    await deleteAdmin({ corpid: "test-corp", uids: "uid1" }, credentials, fetch, "100");
 
     const body = JSON.parse(fetch.captured().init.body);
     assert.match(body.sign, /^[0-9a-f]{40}$/);
+  });
+
+  it("should NOT include traceid in POST body", async () => {
+    const fetch = mockFetch({ result: true, data: {} });
+    await deleteAdmin({ corpid: "test-corp", uids: "uid1" }, credentials, fetch, "100");
+
+    const body = JSON.parse(fetch.captured().init.body);
+    assert.equal("traceid" in body, false, "traceid must not appear in POST body");
+  });
+
+  it("should NOT include appKey in request body", async () => {
+    const fetch = mockFetch({ result: true, data: {} });
+    await deleteAdmin({ corpid: "test-corp", uids: "uid1" }, credentials, fetch, "100");
+
+    const body = JSON.parse(fetch.captured().init.body);
+    assert.equal("appKey" in body, false);
+    assert.equal("appkey" in body, false);
+  });
+
+  it("should use contacts.aspx endpoint", async () => {
+    const fetch = mockFetch({ result: true, data: {} });
+    await deleteAdmin({ corpid: "test-corp", uids: "uid1" }, credentials, fetch, "100");
+
+    const url = fetch.captured().url;
+    assert.ok(url.includes("contacts.aspx"), "URL should use contacts.aspx endpoint");
   });
 
   it("should NOT retry on 500 (maxRetries=0 for write)", async () => {
@@ -172,7 +238,7 @@ describe("deleteAdmin", () => {
     };
 
     await assert.rejects(
-      () => deleteAdmin({ username: "user1", admin_id: 1 }, credentials, fetch, "100"),
+      () => deleteAdmin({ corpid: "test-corp", uids: "uid1" }, credentials, fetch, "100"),
       /WJX API request failed with 500/,
     );
     assert.equal(callCount, 1);
@@ -181,7 +247,7 @@ describe("deleteAdmin", () => {
   it("should return parsed API response", async () => {
     const mockResponse = { result: true, data: {} };
     const result = await deleteAdmin(
-      { username: "user1", admin_id: 1 },
+      { corpid: "test-corp", uids: "uid1" },
       credentials, mockFetch(mockResponse), "100",
     );
     assert.deepEqual(result, mockResponse);
@@ -189,17 +255,32 @@ describe("deleteAdmin", () => {
 
   it("should throw on HTTP error status", async () => {
     await assert.rejects(
-      () => deleteAdmin({ username: "user1", admin_id: 1 }, credentials, mockFetch("err", 500), "100"),
+      () => deleteAdmin({ corpid: "test-corp", uids: "uid1" }, credentials, mockFetch("err", 500), "100"),
       /WJX API request failed with 500/,
     );
   });
 
   it("should include action in URL query string", async () => {
     const fetch = mockFetch({ result: true, data: {} });
-    await deleteAdmin({ username: "user1", admin_id: 1 }, credentials, fetch, "100");
+    await deleteAdmin({ corpid: "test-corp", uids: "uid1" }, credentials, fetch, "100");
 
     const url = fetch.captured().url;
     assert.ok(url.includes("action=1005005"));
+  });
+
+  it("should fall back to WJX_CORP_ID env when corpid not provided", async () => {
+    const saved = process.env.WJX_CORP_ID;
+    process.env.WJX_CORP_ID = "env-corp";
+    try {
+      const fetch = mockFetch({ result: true, data: {} });
+      await deleteAdmin({ uids: "uid1" }, credentials, fetch, "100");
+
+      const body = JSON.parse(fetch.captured().init.body);
+      assert.equal(body.corpid, "env-corp");
+    } finally {
+      if (saved !== undefined) process.env.WJX_CORP_ID = saved;
+      else delete process.env.WJX_CORP_ID;
+    }
   });
 });
 
@@ -208,7 +289,7 @@ describe("deleteAdmin", () => {
 describe("restoreAdmin", () => {
   it("should POST with JSON content type", async () => {
     const fetch = mockFetch({ result: true, data: {} });
-    await restoreAdmin({ username: "user1", admin_id: 1 }, credentials, fetch, "1700000000");
+    await restoreAdmin({ corpid: "test-corp", uids: "uid1" }, credentials, fetch, "1700000000");
 
     const { init } = fetch.captured();
     assert.equal(init.method, "POST");
@@ -217,28 +298,61 @@ describe("restoreAdmin", () => {
 
   it("should use RESTORE_ADMIN action code (1005006)", async () => {
     const fetch = mockFetch({ result: true, data: {} });
-    await restoreAdmin({ username: "user1", admin_id: 1 }, credentials, fetch, "1700000000");
+    await restoreAdmin({ corpid: "test-corp", uids: "uid1" }, credentials, fetch, "1700000000");
 
     const body = JSON.parse(fetch.captured().init.body);
     assert.equal(body.action, Action.RESTORE_ADMIN);
     assert.equal(body.action, "1005006");
   });
 
-  it("should include username and admin_id in request body", async () => {
+  it("should include corpid and uids in request body", async () => {
     const fetch = mockFetch({ result: true, data: {} });
-    await restoreAdmin({ username: "admin", admin_id: 5 }, credentials, fetch, "100");
+    await restoreAdmin({ corpid: "my-corp", uids: "uid5,uid6" }, credentials, fetch, "100");
 
     const body = JSON.parse(fetch.captured().init.body);
-    assert.equal(body.username, "admin");
-    assert.equal(body.admin_id, 5);
+    assert.equal(body.corpid, "my-corp");
+    assert.equal(body.uids, "uid5,uid6");
+  });
+
+  it("should NOT include username in request body", async () => {
+    const fetch = mockFetch({ result: true, data: {} });
+    await restoreAdmin({ corpid: "test-corp", uids: "uid1" }, credentials, fetch, "100");
+
+    const body = JSON.parse(fetch.captured().init.body);
+    assert.equal("username" in body, false, "username should not appear in request body");
   });
 
   it("should include sign as 40-char hex SHA1", async () => {
     const fetch = mockFetch({ result: true, data: {} });
-    await restoreAdmin({ username: "user1", admin_id: 1 }, credentials, fetch, "100");
+    await restoreAdmin({ corpid: "test-corp", uids: "uid1" }, credentials, fetch, "100");
 
     const body = JSON.parse(fetch.captured().init.body);
     assert.match(body.sign, /^[0-9a-f]{40}$/);
+  });
+
+  it("should NOT include traceid in POST body", async () => {
+    const fetch = mockFetch({ result: true, data: {} });
+    await restoreAdmin({ corpid: "test-corp", uids: "uid1" }, credentials, fetch, "100");
+
+    const body = JSON.parse(fetch.captured().init.body);
+    assert.equal("traceid" in body, false, "traceid must not appear in POST body");
+  });
+
+  it("should NOT include appKey in request body", async () => {
+    const fetch = mockFetch({ result: true, data: {} });
+    await restoreAdmin({ corpid: "test-corp", uids: "uid1" }, credentials, fetch, "100");
+
+    const body = JSON.parse(fetch.captured().init.body);
+    assert.equal("appKey" in body, false);
+    assert.equal("appkey" in body, false);
+  });
+
+  it("should use contacts.aspx endpoint", async () => {
+    const fetch = mockFetch({ result: true, data: {} });
+    await restoreAdmin({ corpid: "test-corp", uids: "uid1" }, credentials, fetch, "100");
+
+    const url = fetch.captured().url;
+    assert.ok(url.includes("contacts.aspx"), "URL should use contacts.aspx endpoint");
   });
 
   it("should NOT retry on 500 (maxRetries=0 for write)", async () => {
@@ -249,7 +363,7 @@ describe("restoreAdmin", () => {
     };
 
     await assert.rejects(
-      () => restoreAdmin({ username: "user1", admin_id: 1 }, credentials, fetch, "100"),
+      () => restoreAdmin({ corpid: "test-corp", uids: "uid1" }, credentials, fetch, "100"),
       /WJX API request failed with 500/,
     );
     assert.equal(callCount, 1);
@@ -258,27 +372,33 @@ describe("restoreAdmin", () => {
   it("should return parsed API response", async () => {
     const mockResponse = { result: true, data: {} };
     const result = await restoreAdmin(
-      { username: "user1", admin_id: 1 },
+      { corpid: "test-corp", uids: "uid1" },
       credentials, mockFetch(mockResponse), "100",
     );
     assert.deepEqual(result, mockResponse);
   });
 
-  it("should NOT include appKey in request body", async () => {
-    const fetch = mockFetch({ result: true, data: {} });
-    await restoreAdmin({ username: "user1", admin_id: 1 }, credentials, fetch, "100");
-
-    const body = JSON.parse(fetch.captured().init.body);
-    assert.equal("appKey" in body, false);
-    assert.equal("appkey" in body, false);
-  });
-
   it("should include action in URL query string", async () => {
     const fetch = mockFetch({ result: true, data: {} });
-    await restoreAdmin({ username: "user1", admin_id: 1 }, credentials, fetch, "100");
+    await restoreAdmin({ corpid: "test-corp", uids: "uid1" }, credentials, fetch, "100");
 
     const url = fetch.captured().url;
     assert.ok(url.includes("action=1005006"));
+  });
+
+  it("should fall back to WJX_CORP_ID env when corpid not provided", async () => {
+    const saved = process.env.WJX_CORP_ID;
+    process.env.WJX_CORP_ID = "env-corp";
+    try {
+      const fetch = mockFetch({ result: true, data: {} });
+      await restoreAdmin({ uids: "uid1" }, credentials, fetch, "100");
+
+      const body = JSON.parse(fetch.captured().init.body);
+      assert.equal(body.corpid, "env-corp");
+    } finally {
+      if (saved !== undefined) process.env.WJX_CORP_ID = saved;
+      else delete process.env.WJX_CORP_ID;
+    }
   });
 });
 
@@ -287,7 +407,7 @@ describe("restoreAdmin", () => {
 describe("listDepartments", () => {
   it("should POST with JSON content type", async () => {
     const fetch = mockFetch({ result: true, data: {} });
-    await listDepartments({ username: "user1" }, credentials, fetch, "1700000000");
+    await listDepartments({ corpid: "test-corp" }, credentials, fetch, "1700000000");
 
     const { init } = fetch.captured();
     assert.equal(init.method, "POST");
@@ -296,25 +416,33 @@ describe("listDepartments", () => {
 
   it("should use LIST_DEPARTMENTS action code (1005101)", async () => {
     const fetch = mockFetch({ result: true, data: {} });
-    await listDepartments({ username: "user1" }, credentials, fetch, "1700000000");
+    await listDepartments({ corpid: "test-corp" }, credentials, fetch, "1700000000");
 
     const body = JSON.parse(fetch.captured().init.body);
     assert.equal(body.action, Action.LIST_DEPARTMENTS);
     assert.equal(body.action, "1005101");
   });
 
-  it("should include username in request body", async () => {
+  it("should include corpid in request body", async () => {
     const fetch = mockFetch({ result: true, data: {} });
-    await listDepartments({ username: "alice@example.com" }, credentials, fetch, "100");
+    await listDepartments({ corpid: "my-corp" }, credentials, fetch, "100");
 
     const body = JSON.parse(fetch.captured().init.body);
-    assert.equal(body.username, "alice@example.com");
+    assert.equal(body.corpid, "my-corp");
+  });
+
+  it("should NOT include username in request body", async () => {
+    const fetch = mockFetch({ result: true, data: {} });
+    await listDepartments({ corpid: "test-corp" }, credentials, fetch, "100");
+
+    const body = JSON.parse(fetch.captured().init.body);
+    assert.equal("username" in body, false, "username should not appear in request body");
   });
 
   it("should pass optional page_index and page_size when provided", async () => {
     const fetch = mockFetch({ result: true, data: {} });
     await listDepartments(
-      { username: "user1", page_index: 2, page_size: 20 },
+      { corpid: "test-corp", page_index: 2, page_size: 20 },
       credentials, fetch, "100",
     );
 
@@ -325,7 +453,7 @@ describe("listDepartments", () => {
 
   it("should not include optional fields when not provided", async () => {
     const fetch = mockFetch({ result: true, data: {} });
-    await listDepartments({ username: "user1" }, credentials, fetch, "100");
+    await listDepartments({ corpid: "test-corp" }, credentials, fetch, "100");
 
     const body = JSON.parse(fetch.captured().init.body);
     assert.equal("page_index" in body, false);
@@ -334,10 +462,35 @@ describe("listDepartments", () => {
 
   it("should include sign as 40-char hex SHA1", async () => {
     const fetch = mockFetch({ result: true, data: {} });
-    await listDepartments({ username: "user1" }, credentials, fetch, "100");
+    await listDepartments({ corpid: "test-corp" }, credentials, fetch, "100");
 
     const body = JSON.parse(fetch.captured().init.body);
     assert.match(body.sign, /^[0-9a-f]{40}$/);
+  });
+
+  it("should NOT include traceid in POST body", async () => {
+    const fetch = mockFetch({ result: true, data: {} });
+    await listDepartments({ corpid: "test-corp" }, credentials, fetch, "100");
+
+    const body = JSON.parse(fetch.captured().init.body);
+    assert.equal("traceid" in body, false, "traceid must not appear in POST body");
+  });
+
+  it("should NOT include appKey in request body", async () => {
+    const fetch = mockFetch({ result: true, data: {} });
+    await listDepartments({ corpid: "test-corp" }, credentials, fetch, "100");
+
+    const body = JSON.parse(fetch.captured().init.body);
+    assert.equal("appKey" in body, false);
+    assert.equal("appkey" in body, false);
+  });
+
+  it("should use contacts.aspx endpoint", async () => {
+    const fetch = mockFetch({ result: true, data: {} });
+    await listDepartments({ corpid: "test-corp" }, credentials, fetch, "100");
+
+    const url = fetch.captured().url;
+    assert.ok(url.includes("contacts.aspx"), "URL should use contacts.aspx endpoint");
   });
 
   it("should retry on 500 (default maxRetries=2 for read)", async () => {
@@ -353,7 +506,7 @@ describe("listDepartments", () => {
       });
     };
 
-    const result = await listDepartments({ username: "user1" }, credentials, fetch, "100");
+    const result = await listDepartments({ corpid: "test-corp" }, credentials, fetch, "100");
     assert.equal(callCount, 3);
     assert.deepEqual(result, { result: true, data: {} });
   });
@@ -361,7 +514,7 @@ describe("listDepartments", () => {
   it("should return parsed API response", async () => {
     const mockResponse = { result: true, data: { departments: [] } };
     const result = await listDepartments(
-      { username: "user1" },
+      { corpid: "test-corp" },
       credentials, mockFetch(mockResponse), "100",
     );
     assert.deepEqual(result, mockResponse);
@@ -369,7 +522,7 @@ describe("listDepartments", () => {
 
   it("should include action in URL query string", async () => {
     const fetch = mockFetch({ result: true, data: {} });
-    await listDepartments({ username: "user1" }, credentials, fetch, "100");
+    await listDepartments({ corpid: "test-corp" }, credentials, fetch, "100");
 
     const url = fetch.captured().url;
     assert.ok(url.includes("action=1005101"));
@@ -381,7 +534,7 @@ describe("listDepartments", () => {
 describe("addDepartment", () => {
   it("should POST with JSON content type", async () => {
     const fetch = mockFetch({ result: true, data: {} });
-    await addDepartment({ username: "user1", name: "Engineering" }, credentials, fetch, "1700000000");
+    await addDepartment({ corpid: "test-corp", depts: '["研发部/后端"]' }, credentials, fetch, "1700000000");
 
     const { init } = fetch.captured();
     assert.equal(init.method, "POST");
@@ -390,44 +543,62 @@ describe("addDepartment", () => {
 
   it("should use ADD_DEPARTMENT action code (1005102)", async () => {
     const fetch = mockFetch({ result: true, data: {} });
-    await addDepartment({ username: "user1", name: "Engineering" }, credentials, fetch, "1700000000");
+    await addDepartment({ corpid: "test-corp", depts: '["研发部"]' }, credentials, fetch, "1700000000");
 
     const body = JSON.parse(fetch.captured().init.body);
     assert.equal(body.action, Action.ADD_DEPARTMENT);
     assert.equal(body.action, "1005102");
   });
 
-  it("should include username and name in request body", async () => {
+  it("should include corpid and depts in request body", async () => {
     const fetch = mockFetch({ result: true, data: {} });
-    await addDepartment({ username: "admin", name: "Sales" }, credentials, fetch, "100");
+    const deptsJson = '["研发部/后端", "产品部"]';
+    await addDepartment({ corpid: "my-corp", depts: deptsJson }, credentials, fetch, "100");
 
     const body = JSON.parse(fetch.captured().init.body);
-    assert.equal(body.username, "admin");
-    assert.equal(body.name, "Sales");
+    assert.equal(body.corpid, "my-corp");
+    assert.equal(body.depts, deptsJson);
   });
 
-  it("should include optional parent_id when provided", async () => {
+  it("should NOT include username in request body", async () => {
     const fetch = mockFetch({ result: true, data: {} });
-    await addDepartment({ username: "user1", name: "Sub", parent_id: 10 }, credentials, fetch, "100");
+    await addDepartment({ corpid: "test-corp", depts: '["研发部"]' }, credentials, fetch, "100");
 
     const body = JSON.parse(fetch.captured().init.body);
-    assert.equal(body.parent_id, 10);
-  });
-
-  it("should not include parent_id when not provided", async () => {
-    const fetch = mockFetch({ result: true, data: {} });
-    await addDepartment({ username: "user1", name: "Top" }, credentials, fetch, "100");
-
-    const body = JSON.parse(fetch.captured().init.body);
-    assert.equal("parent_id" in body, false);
+    assert.equal("username" in body, false, "username should not appear in request body");
   });
 
   it("should include sign as 40-char hex SHA1", async () => {
     const fetch = mockFetch({ result: true, data: {} });
-    await addDepartment({ username: "user1", name: "Dept" }, credentials, fetch, "100");
+    await addDepartment({ corpid: "test-corp", depts: '["研发部"]' }, credentials, fetch, "100");
 
     const body = JSON.parse(fetch.captured().init.body);
     assert.match(body.sign, /^[0-9a-f]{40}$/);
+  });
+
+  it("should NOT include traceid in POST body", async () => {
+    const fetch = mockFetch({ result: true, data: {} });
+    await addDepartment({ corpid: "test-corp", depts: '["研发部"]' }, credentials, fetch, "100");
+
+    const body = JSON.parse(fetch.captured().init.body);
+    assert.equal("traceid" in body, false, "traceid must not appear in POST body");
+  });
+
+  it("should NOT include appKey in request body", async () => {
+    const fetch = mockFetch({ result: true, data: {} });
+    await addDepartment({ corpid: "test-corp", depts: '["研发部"]' }, credentials, fetch, "100");
+
+    const body = JSON.parse(fetch.captured().init.body);
+    assert.equal("appKey" in body, false);
+    assert.equal("appkey" in body, false);
+  });
+
+  it("should use contacts.aspx endpoint", async () => {
+    const fetch = mockFetch({ result: true, data: {} });
+    await addDepartment({ corpid: "test-corp", depts: '["研发部"]' }, credentials, fetch, "100");
+
+    const url = fetch.captured().url;
+    assert.ok(url.includes("contacts.aspx"), "URL should use contacts.aspx endpoint");
   });
 
   it("should NOT retry on 500 (maxRetries=0 for write)", async () => {
@@ -438,19 +609,34 @@ describe("addDepartment", () => {
     };
 
     await assert.rejects(
-      () => addDepartment({ username: "user1", name: "Dept" }, credentials, fetch, "100"),
+      () => addDepartment({ corpid: "test-corp", depts: '["研发部"]' }, credentials, fetch, "100"),
       /WJX API request failed with 500/,
     );
     assert.equal(callCount, 1);
   });
 
   it("should return parsed API response", async () => {
-    const mockResponse = { result: true, data: { dept_id: 7 } };
+    const mockResponse = { result: true, data: {} };
     const result = await addDepartment(
-      { username: "user1", name: "Dept" },
+      { corpid: "test-corp", depts: '["研发部"]' },
       credentials, mockFetch(mockResponse), "100",
     );
     assert.deepEqual(result, mockResponse);
+  });
+
+  it("should throw on HTTP error status", async () => {
+    await assert.rejects(
+      () => addDepartment({ corpid: "test-corp", depts: '["研发部"]' }, credentials, mockFetch("err", 500), "100"),
+      /WJX API request failed with 500/,
+    );
+  });
+
+  it("should include action in URL query string", async () => {
+    const fetch = mockFetch({ result: true, data: {} });
+    await addDepartment({ corpid: "test-corp", depts: '["研发部"]' }, credentials, fetch, "100");
+
+    const url = fetch.captured().url;
+    assert.ok(url.includes("action=1005102"));
   });
 });
 
@@ -459,7 +645,8 @@ describe("addDepartment", () => {
 describe("modifyDepartment", () => {
   it("should POST with JSON content type", async () => {
     const fetch = mockFetch({ result: true, data: {} });
-    await modifyDepartment({ username: "user1", dept_id: 1 }, credentials, fetch, "1700000000");
+    const deptsJson = '[{"id":"d1","name":"新部门名"}]';
+    await modifyDepartment({ corpid: "test-corp", depts: deptsJson }, credentials, fetch, "1700000000");
 
     const { init } = fetch.captured();
     assert.equal(init.method, "POST");
@@ -468,49 +655,63 @@ describe("modifyDepartment", () => {
 
   it("should use MODIFY_DEPARTMENT action code (1005103)", async () => {
     const fetch = mockFetch({ result: true, data: {} });
-    await modifyDepartment({ username: "user1", dept_id: 1 }, credentials, fetch, "1700000000");
+    const deptsJson = '[{"id":"d1","name":"新部门名"}]';
+    await modifyDepartment({ corpid: "test-corp", depts: deptsJson }, credentials, fetch, "1700000000");
 
     const body = JSON.parse(fetch.captured().init.body);
     assert.equal(body.action, Action.MODIFY_DEPARTMENT);
     assert.equal(body.action, "1005103");
   });
 
-  it("should include username and dept_id in request body", async () => {
+  it("should include corpid and depts in request body", async () => {
     const fetch = mockFetch({ result: true, data: {} });
-    await modifyDepartment({ username: "admin", dept_id: 5 }, credentials, fetch, "100");
+    const deptsJson = '[{"id":"d1","name":"Updated"}]';
+    await modifyDepartment({ corpid: "my-corp", depts: deptsJson }, credentials, fetch, "100");
 
     const body = JSON.parse(fetch.captured().init.body);
-    assert.equal(body.username, "admin");
-    assert.equal(body.dept_id, 5);
+    assert.equal(body.corpid, "my-corp");
+    assert.equal(body.depts, deptsJson);
   });
 
-  it("should include optional name and parent_id when provided", async () => {
+  it("should NOT include username in request body", async () => {
     const fetch = mockFetch({ result: true, data: {} });
-    await modifyDepartment(
-      { username: "user1", dept_id: 1, name: "New Name", parent_id: 2 },
-      credentials, fetch, "100",
-    );
+    await modifyDepartment({ corpid: "test-corp", depts: '[{"id":"d1","name":"X"}]' }, credentials, fetch, "100");
 
     const body = JSON.parse(fetch.captured().init.body);
-    assert.equal(body.name, "New Name");
-    assert.equal(body.parent_id, 2);
-  });
-
-  it("should not include optional fields when not provided", async () => {
-    const fetch = mockFetch({ result: true, data: {} });
-    await modifyDepartment({ username: "user1", dept_id: 1 }, credentials, fetch, "100");
-
-    const body = JSON.parse(fetch.captured().init.body);
-    assert.equal("name" in body, false);
-    assert.equal("parent_id" in body, false);
+    assert.equal("username" in body, false, "username should not appear in request body");
   });
 
   it("should include sign as 40-char hex SHA1", async () => {
     const fetch = mockFetch({ result: true, data: {} });
-    await modifyDepartment({ username: "user1", dept_id: 1 }, credentials, fetch, "100");
+    await modifyDepartment({ corpid: "test-corp", depts: '[{"id":"d1","name":"X"}]' }, credentials, fetch, "100");
 
     const body = JSON.parse(fetch.captured().init.body);
     assert.match(body.sign, /^[0-9a-f]{40}$/);
+  });
+
+  it("should NOT include traceid in POST body", async () => {
+    const fetch = mockFetch({ result: true, data: {} });
+    await modifyDepartment({ corpid: "test-corp", depts: '[{"id":"d1","name":"X"}]' }, credentials, fetch, "100");
+
+    const body = JSON.parse(fetch.captured().init.body);
+    assert.equal("traceid" in body, false, "traceid must not appear in POST body");
+  });
+
+  it("should NOT include appKey in request body", async () => {
+    const fetch = mockFetch({ result: true, data: {} });
+    await modifyDepartment({ corpid: "test-corp", depts: '[{"id":"d1","name":"X"}]' }, credentials, fetch, "100");
+
+    const body = JSON.parse(fetch.captured().init.body);
+    assert.equal("appKey" in body, false);
+    assert.equal("appkey" in body, false);
+  });
+
+  it("should use contacts.aspx endpoint", async () => {
+    const fetch = mockFetch({ result: true, data: {} });
+    await modifyDepartment({ corpid: "test-corp", depts: '[{"id":"d1","name":"X"}]' }, credentials, fetch, "100");
+
+    const url = fetch.captured().url;
+    assert.ok(url.includes("contacts.aspx"), "URL should use contacts.aspx endpoint");
   });
 
   it("should NOT retry on 500 (maxRetries=0 for write)", async () => {
@@ -521,7 +722,7 @@ describe("modifyDepartment", () => {
     };
 
     await assert.rejects(
-      () => modifyDepartment({ username: "user1", dept_id: 1 }, credentials, fetch, "100"),
+      () => modifyDepartment({ corpid: "test-corp", depts: '[{"id":"d1","name":"X"}]' }, credentials, fetch, "100"),
       /WJX API request failed with 500/,
     );
     assert.equal(callCount, 1);
@@ -530,10 +731,18 @@ describe("modifyDepartment", () => {
   it("should return parsed API response", async () => {
     const mockResponse = { result: true, data: {} };
     const result = await modifyDepartment(
-      { username: "user1", dept_id: 1, name: "X" },
+      { corpid: "test-corp", depts: '[{"id":"d1","name":"X"}]' },
       credentials, mockFetch(mockResponse), "100",
     );
     assert.deepEqual(result, mockResponse);
+  });
+
+  it("should include action in URL query string", async () => {
+    const fetch = mockFetch({ result: true, data: {} });
+    await modifyDepartment({ corpid: "test-corp", depts: '[{"id":"d1","name":"X"}]' }, credentials, fetch, "100");
+
+    const url = fetch.captured().url;
+    assert.ok(url.includes("action=1005103"));
   });
 });
 
@@ -542,7 +751,7 @@ describe("modifyDepartment", () => {
 describe("deleteDepartment", () => {
   it("should POST with JSON content type", async () => {
     const fetch = mockFetch({ result: true, data: {} });
-    await deleteDepartment({ username: "user1", dept_id: 1 }, credentials, fetch, "1700000000");
+    await deleteDepartment({ corpid: "test-corp", type: "1", depts: '["d1"]' }, credentials, fetch, "1700000000");
 
     const { init } = fetch.captured();
     assert.equal(init.method, "POST");
@@ -551,28 +760,92 @@ describe("deleteDepartment", () => {
 
   it("should use DELETE_DEPARTMENT action code (1005104)", async () => {
     const fetch = mockFetch({ result: true, data: {} });
-    await deleteDepartment({ username: "user1", dept_id: 1 }, credentials, fetch, "1700000000");
+    await deleteDepartment({ corpid: "test-corp", type: "1", depts: '["d1"]' }, credentials, fetch, "1700000000");
 
     const body = JSON.parse(fetch.captured().init.body);
     assert.equal(body.action, Action.DELETE_DEPARTMENT);
     assert.equal(body.action, "1005104");
   });
 
-  it("should include username and dept_id in request body", async () => {
+  it("should include corpid, type, and depts in request body", async () => {
     const fetch = mockFetch({ result: true, data: {} });
-    await deleteDepartment({ username: "admin", dept_id: 42 }, credentials, fetch, "100");
+    await deleteDepartment({ corpid: "my-corp", type: "2", depts: '["研发部"]' }, credentials, fetch, "100");
 
     const body = JSON.parse(fetch.captured().init.body);
-    assert.equal(body.username, "admin");
-    assert.equal(body.dept_id, 42);
+    assert.equal(body.corpid, "my-corp");
+    assert.equal(body.type, "2");
+    assert.equal(body.depts, '["研发部"]');
+  });
+
+  it("should include optional del_child when provided (converted to string)", async () => {
+    const fetch = mockFetch({ result: true, data: {} });
+    await deleteDepartment(
+      { corpid: "test-corp", type: "1", depts: '["d1"]', del_child: true },
+      credentials, fetch, "100",
+    );
+
+    const body = JSON.parse(fetch.captured().init.body);
+    assert.equal(body.del_child, "1");
+  });
+
+  it("should convert del_child=false to '0'", async () => {
+    const fetch = mockFetch({ result: true, data: {} });
+    await deleteDepartment(
+      { corpid: "test-corp", type: "1", depts: '["d1"]', del_child: false },
+      credentials, fetch, "100",
+    );
+
+    const body = JSON.parse(fetch.captured().init.body);
+    assert.equal(body.del_child, "0");
+  });
+
+  it("should not include del_child when not provided", async () => {
+    const fetch = mockFetch({ result: true, data: {} });
+    await deleteDepartment({ corpid: "test-corp", type: "1", depts: '["d1"]' }, credentials, fetch, "100");
+
+    const body = JSON.parse(fetch.captured().init.body);
+    assert.equal("del_child" in body, false);
+  });
+
+  it("should NOT include username in request body", async () => {
+    const fetch = mockFetch({ result: true, data: {} });
+    await deleteDepartment({ corpid: "test-corp", type: "1", depts: '["d1"]' }, credentials, fetch, "100");
+
+    const body = JSON.parse(fetch.captured().init.body);
+    assert.equal("username" in body, false, "username should not appear in request body");
   });
 
   it("should include sign as 40-char hex SHA1", async () => {
     const fetch = mockFetch({ result: true, data: {} });
-    await deleteDepartment({ username: "user1", dept_id: 1 }, credentials, fetch, "100");
+    await deleteDepartment({ corpid: "test-corp", type: "1", depts: '["d1"]' }, credentials, fetch, "100");
 
     const body = JSON.parse(fetch.captured().init.body);
     assert.match(body.sign, /^[0-9a-f]{40}$/);
+  });
+
+  it("should NOT include traceid in POST body", async () => {
+    const fetch = mockFetch({ result: true, data: {} });
+    await deleteDepartment({ corpid: "test-corp", type: "1", depts: '["d1"]' }, credentials, fetch, "100");
+
+    const body = JSON.parse(fetch.captured().init.body);
+    assert.equal("traceid" in body, false, "traceid must not appear in POST body");
+  });
+
+  it("should NOT include appKey in request body", async () => {
+    const fetch = mockFetch({ result: true, data: {} });
+    await deleteDepartment({ corpid: "test-corp", type: "1", depts: '["d1"]' }, credentials, fetch, "100");
+
+    const body = JSON.parse(fetch.captured().init.body);
+    assert.equal("appKey" in body, false);
+    assert.equal("appkey" in body, false);
+  });
+
+  it("should use contacts.aspx endpoint", async () => {
+    const fetch = mockFetch({ result: true, data: {} });
+    await deleteDepartment({ corpid: "test-corp", type: "1", depts: '["d1"]' }, credentials, fetch, "100");
+
+    const url = fetch.captured().url;
+    assert.ok(url.includes("contacts.aspx"), "URL should use contacts.aspx endpoint");
   });
 
   it("should NOT retry on 500 (maxRetries=0 for write)", async () => {
@@ -583,7 +856,7 @@ describe("deleteDepartment", () => {
     };
 
     await assert.rejects(
-      () => deleteDepartment({ username: "user1", dept_id: 1 }, credentials, fetch, "100"),
+      () => deleteDepartment({ corpid: "test-corp", type: "1", depts: '["d1"]' }, credentials, fetch, "100"),
       /WJX API request failed with 500/,
     );
     assert.equal(callCount, 1);
@@ -592,7 +865,7 @@ describe("deleteDepartment", () => {
   it("should return parsed API response", async () => {
     const mockResponse = { result: true, data: {} };
     const result = await deleteDepartment(
-      { username: "user1", dept_id: 1 },
+      { corpid: "test-corp", type: "1", depts: '["d1"]' },
       credentials, mockFetch(mockResponse), "100",
     );
     assert.deepEqual(result, mockResponse);
@@ -600,14 +873,14 @@ describe("deleteDepartment", () => {
 
   it("should throw on HTTP error status", async () => {
     await assert.rejects(
-      () => deleteDepartment({ username: "user1", dept_id: 1 }, credentials, mockFetch("err", 500), "100"),
+      () => deleteDepartment({ corpid: "test-corp", type: "1", depts: '["d1"]' }, credentials, mockFetch("err", 500), "100"),
       /WJX API request failed with 500/,
     );
   });
 
   it("should include action in URL query string", async () => {
     const fetch = mockFetch({ result: true, data: {} });
-    await deleteDepartment({ username: "user1", dept_id: 1 }, credentials, fetch, "100");
+    await deleteDepartment({ corpid: "test-corp", type: "1", depts: '["d1"]' }, credentials, fetch, "100");
 
     const url = fetch.captured().url;
     assert.ok(url.includes("action=1005104"));
@@ -619,7 +892,7 @@ describe("deleteDepartment", () => {
 describe("listTags", () => {
   it("should POST with JSON content type", async () => {
     const fetch = mockFetch({ result: true, data: {} });
-    await listTags({ username: "user1" }, credentials, fetch, "1700000000");
+    await listTags({ corpid: "test-corp" }, credentials, fetch, "1700000000");
 
     const { init } = fetch.captured();
     assert.equal(init.method, "POST");
@@ -628,27 +901,60 @@ describe("listTags", () => {
 
   it("should use LIST_TAGS action code (1005201)", async () => {
     const fetch = mockFetch({ result: true, data: {} });
-    await listTags({ username: "user1" }, credentials, fetch, "1700000000");
+    await listTags({ corpid: "test-corp" }, credentials, fetch, "1700000000");
 
     const body = JSON.parse(fetch.captured().init.body);
     assert.equal(body.action, Action.LIST_TAGS);
     assert.equal(body.action, "1005201");
   });
 
-  it("should include username in request body", async () => {
+  it("should include corpid in request body", async () => {
     const fetch = mockFetch({ result: true, data: {} });
-    await listTags({ username: "alice@example.com" }, credentials, fetch, "100");
+    await listTags({ corpid: "my-corp" }, credentials, fetch, "100");
 
     const body = JSON.parse(fetch.captured().init.body);
-    assert.equal(body.username, "alice@example.com");
+    assert.equal(body.corpid, "my-corp");
+  });
+
+  it("should NOT include username in request body", async () => {
+    const fetch = mockFetch({ result: true, data: {} });
+    await listTags({ corpid: "test-corp" }, credentials, fetch, "100");
+
+    const body = JSON.parse(fetch.captured().init.body);
+    assert.equal("username" in body, false, "username should not appear in request body");
   });
 
   it("should include sign as 40-char hex SHA1", async () => {
     const fetch = mockFetch({ result: true, data: {} });
-    await listTags({ username: "user1" }, credentials, fetch, "100");
+    await listTags({ corpid: "test-corp" }, credentials, fetch, "100");
 
     const body = JSON.parse(fetch.captured().init.body);
     assert.match(body.sign, /^[0-9a-f]{40}$/);
+  });
+
+  it("should NOT include traceid in POST body", async () => {
+    const fetch = mockFetch({ result: true, data: {} });
+    await listTags({ corpid: "test-corp" }, credentials, fetch, "100");
+
+    const body = JSON.parse(fetch.captured().init.body);
+    assert.equal("traceid" in body, false, "traceid must not appear in POST body");
+  });
+
+  it("should NOT include appKey in request body", async () => {
+    const fetch = mockFetch({ result: true, data: {} });
+    await listTags({ corpid: "test-corp" }, credentials, fetch, "100");
+
+    const body = JSON.parse(fetch.captured().init.body);
+    assert.equal("appKey" in body, false);
+    assert.equal("appkey" in body, false);
+  });
+
+  it("should use contacts.aspx endpoint", async () => {
+    const fetch = mockFetch({ result: true, data: {} });
+    await listTags({ corpid: "test-corp" }, credentials, fetch, "100");
+
+    const url = fetch.captured().url;
+    assert.ok(url.includes("contacts.aspx"), "URL should use contacts.aspx endpoint");
   });
 
   it("should retry on 500 (default maxRetries=2 for read)", async () => {
@@ -664,32 +970,23 @@ describe("listTags", () => {
       });
     };
 
-    const result = await listTags({ username: "user1" }, credentials, fetch, "100");
+    const result = await listTags({ corpid: "test-corp" }, credentials, fetch, "100");
     assert.equal(callCount, 3);
     assert.deepEqual(result, { result: true, data: {} });
   });
 
   it("should return parsed API response", async () => {
-    const mockResponse = { result: true, data: { tags: [{ id: 1, name: "VIP" }] } };
+    const mockResponse = { result: true, data: { tags: [] } };
     const result = await listTags(
-      { username: "user1" },
+      { corpid: "test-corp" },
       credentials, mockFetch(mockResponse), "100",
     );
     assert.deepEqual(result, mockResponse);
   });
 
-  it("should NOT include appKey in request body", async () => {
-    const fetch = mockFetch({ result: true, data: {} });
-    await listTags({ username: "user1" }, credentials, fetch, "100");
-
-    const body = JSON.parse(fetch.captured().init.body);
-    assert.equal("appKey" in body, false);
-    assert.equal("appkey" in body, false);
-  });
-
   it("should include action in URL query string", async () => {
     const fetch = mockFetch({ result: true, data: {} });
-    await listTags({ username: "user1" }, credentials, fetch, "100");
+    await listTags({ corpid: "test-corp" }, credentials, fetch, "100");
 
     const url = fetch.captured().url;
     assert.ok(url.includes("action=1005201"));
@@ -701,7 +998,7 @@ describe("listTags", () => {
 describe("addTag", () => {
   it("should POST with JSON content type", async () => {
     const fetch = mockFetch({ result: true, data: {} });
-    await addTag({ username: "user1", tag_name: "VIP" }, credentials, fetch, "1700000000");
+    await addTag({ corpid: "test-corp", child_names: '["学历/本科"]' }, credentials, fetch, "1700000000");
 
     const { init } = fetch.captured();
     assert.equal(init.method, "POST");
@@ -710,28 +1007,62 @@ describe("addTag", () => {
 
   it("should use ADD_TAG action code (1005202)", async () => {
     const fetch = mockFetch({ result: true, data: {} });
-    await addTag({ username: "user1", tag_name: "VIP" }, credentials, fetch, "1700000000");
+    await addTag({ corpid: "test-corp", child_names: '["学历/本科"]' }, credentials, fetch, "1700000000");
 
     const body = JSON.parse(fetch.captured().init.body);
     assert.equal(body.action, Action.ADD_TAG);
     assert.equal(body.action, "1005202");
   });
 
-  it("should include username and tag_name in request body", async () => {
+  it("should include corpid and child_names in request body", async () => {
     const fetch = mockFetch({ result: true, data: {} });
-    await addTag({ username: "admin", tag_name: "Important" }, credentials, fetch, "100");
+    const tagsJson = '["学历/本科", "学历/硕士"]';
+    await addTag({ corpid: "my-corp", child_names: tagsJson }, credentials, fetch, "100");
 
     const body = JSON.parse(fetch.captured().init.body);
-    assert.equal(body.username, "admin");
-    assert.equal(body.tag_name, "Important");
+    assert.equal(body.corpid, "my-corp");
+    assert.equal(body.child_names, tagsJson);
+  });
+
+  it("should NOT include username in request body", async () => {
+    const fetch = mockFetch({ result: true, data: {} });
+    await addTag({ corpid: "test-corp", child_names: '["学历/本科"]' }, credentials, fetch, "100");
+
+    const body = JSON.parse(fetch.captured().init.body);
+    assert.equal("username" in body, false, "username should not appear in request body");
   });
 
   it("should include sign as 40-char hex SHA1", async () => {
     const fetch = mockFetch({ result: true, data: {} });
-    await addTag({ username: "user1", tag_name: "VIP" }, credentials, fetch, "100");
+    await addTag({ corpid: "test-corp", child_names: '["学历/本科"]' }, credentials, fetch, "100");
 
     const body = JSON.parse(fetch.captured().init.body);
     assert.match(body.sign, /^[0-9a-f]{40}$/);
+  });
+
+  it("should NOT include traceid in POST body", async () => {
+    const fetch = mockFetch({ result: true, data: {} });
+    await addTag({ corpid: "test-corp", child_names: '["学历/本科"]' }, credentials, fetch, "100");
+
+    const body = JSON.parse(fetch.captured().init.body);
+    assert.equal("traceid" in body, false, "traceid must not appear in POST body");
+  });
+
+  it("should NOT include appKey in request body", async () => {
+    const fetch = mockFetch({ result: true, data: {} });
+    await addTag({ corpid: "test-corp", child_names: '["学历/本科"]' }, credentials, fetch, "100");
+
+    const body = JSON.parse(fetch.captured().init.body);
+    assert.equal("appKey" in body, false);
+    assert.equal("appkey" in body, false);
+  });
+
+  it("should use contacts.aspx endpoint", async () => {
+    const fetch = mockFetch({ result: true, data: {} });
+    await addTag({ corpid: "test-corp", child_names: '["学历/本科"]' }, credentials, fetch, "100");
+
+    const url = fetch.captured().url;
+    assert.ok(url.includes("contacts.aspx"), "URL should use contacts.aspx endpoint");
   });
 
   it("should NOT retry on 500 (maxRetries=0 for write)", async () => {
@@ -742,33 +1073,31 @@ describe("addTag", () => {
     };
 
     await assert.rejects(
-      () => addTag({ username: "user1", tag_name: "VIP" }, credentials, fetch, "100"),
+      () => addTag({ corpid: "test-corp", child_names: '["学历/本科"]' }, credentials, fetch, "100"),
       /WJX API request failed with 500/,
     );
     assert.equal(callCount, 1);
   });
 
   it("should return parsed API response", async () => {
-    const mockResponse = { result: true, data: { tag_id: 3 } };
+    const mockResponse = { result: true, data: {} };
     const result = await addTag(
-      { username: "user1", tag_name: "VIP" },
+      { corpid: "test-corp", child_names: '["学历/本科"]' },
       credentials, mockFetch(mockResponse), "100",
     );
     assert.deepEqual(result, mockResponse);
   });
 
-  it("should NOT include appKey in request body", async () => {
-    const fetch = mockFetch({ result: true, data: {} });
-    await addTag({ username: "user1", tag_name: "VIP" }, credentials, fetch, "100");
-
-    const body = JSON.parse(fetch.captured().init.body);
-    assert.equal("appKey" in body, false);
-    assert.equal("appkey" in body, false);
+  it("should throw on HTTP error status", async () => {
+    await assert.rejects(
+      () => addTag({ corpid: "test-corp", child_names: '["学历/本科"]' }, credentials, mockFetch("err", 500), "100"),
+      /WJX API request failed with 500/,
+    );
   });
 
   it("should include action in URL query string", async () => {
     const fetch = mockFetch({ result: true, data: {} });
-    await addTag({ username: "user1", tag_name: "VIP" }, credentials, fetch, "100");
+    await addTag({ corpid: "test-corp", child_names: '["学历/本科"]' }, credentials, fetch, "100");
 
     const url = fetch.captured().url;
     assert.ok(url.includes("action=1005202"));
@@ -780,7 +1109,7 @@ describe("addTag", () => {
 describe("modifyTag", () => {
   it("should POST with JSON content type", async () => {
     const fetch = mockFetch({ result: true, data: {} });
-    await modifyTag({ username: "user1", tag_id: 1, tag_name: "Updated" }, credentials, fetch, "1700000000");
+    await modifyTag({ corpid: "test-corp", tp_id: "tp1" }, credentials, fetch, "1700000000");
 
     const { init } = fetch.captured();
     assert.equal(init.method, "POST");
@@ -789,29 +1118,87 @@ describe("modifyTag", () => {
 
   it("should use MODIFY_TAG action code (1005203)", async () => {
     const fetch = mockFetch({ result: true, data: {} });
-    await modifyTag({ username: "user1", tag_id: 1, tag_name: "Updated" }, credentials, fetch, "1700000000");
+    await modifyTag({ corpid: "test-corp", tp_id: "tp1" }, credentials, fetch, "1700000000");
 
     const body = JSON.parse(fetch.captured().init.body);
     assert.equal(body.action, Action.MODIFY_TAG);
     assert.equal(body.action, "1005203");
   });
 
-  it("should include username, tag_id, and tag_name in request body", async () => {
+  it("should include corpid and tp_id in request body", async () => {
     const fetch = mockFetch({ result: true, data: {} });
-    await modifyTag({ username: "admin", tag_id: 5, tag_name: "Renamed" }, credentials, fetch, "100");
+    await modifyTag({ corpid: "my-corp", tp_id: "tp42" }, credentials, fetch, "100");
 
     const body = JSON.parse(fetch.captured().init.body);
-    assert.equal(body.username, "admin");
-    assert.equal(body.tag_id, 5);
-    assert.equal(body.tag_name, "Renamed");
+    assert.equal(body.corpid, "my-corp");
+    assert.equal(body.tp_id, "tp42");
+  });
+
+  it("should include optional tp_name when provided", async () => {
+    const fetch = mockFetch({ result: true, data: {} });
+    await modifyTag({ corpid: "test-corp", tp_id: "tp1", tp_name: "新标签组名" }, credentials, fetch, "100");
+
+    const body = JSON.parse(fetch.captured().init.body);
+    assert.equal(body.tp_name, "新标签组名");
+  });
+
+  it("should include optional child_names when provided", async () => {
+    const fetch = mockFetch({ result: true, data: {} });
+    const childNames = '[{"id":"c1","name":"新名称"}]';
+    await modifyTag({ corpid: "test-corp", tp_id: "tp1", child_names: childNames }, credentials, fetch, "100");
+
+    const body = JSON.parse(fetch.captured().init.body);
+    assert.equal(body.child_names, childNames);
+  });
+
+  it("should not include optional fields when not provided", async () => {
+    const fetch = mockFetch({ result: true, data: {} });
+    await modifyTag({ corpid: "test-corp", tp_id: "tp1" }, credentials, fetch, "100");
+
+    const body = JSON.parse(fetch.captured().init.body);
+    assert.equal("tp_name" in body, false);
+    assert.equal("child_names" in body, false);
+  });
+
+  it("should NOT include username in request body", async () => {
+    const fetch = mockFetch({ result: true, data: {} });
+    await modifyTag({ corpid: "test-corp", tp_id: "tp1" }, credentials, fetch, "100");
+
+    const body = JSON.parse(fetch.captured().init.body);
+    assert.equal("username" in body, false, "username should not appear in request body");
   });
 
   it("should include sign as 40-char hex SHA1", async () => {
     const fetch = mockFetch({ result: true, data: {} });
-    await modifyTag({ username: "user1", tag_id: 1, tag_name: "X" }, credentials, fetch, "100");
+    await modifyTag({ corpid: "test-corp", tp_id: "tp1" }, credentials, fetch, "100");
 
     const body = JSON.parse(fetch.captured().init.body);
     assert.match(body.sign, /^[0-9a-f]{40}$/);
+  });
+
+  it("should NOT include traceid in POST body", async () => {
+    const fetch = mockFetch({ result: true, data: {} });
+    await modifyTag({ corpid: "test-corp", tp_id: "tp1" }, credentials, fetch, "100");
+
+    const body = JSON.parse(fetch.captured().init.body);
+    assert.equal("traceid" in body, false, "traceid must not appear in POST body");
+  });
+
+  it("should NOT include appKey in request body", async () => {
+    const fetch = mockFetch({ result: true, data: {} });
+    await modifyTag({ corpid: "test-corp", tp_id: "tp1" }, credentials, fetch, "100");
+
+    const body = JSON.parse(fetch.captured().init.body);
+    assert.equal("appKey" in body, false);
+    assert.equal("appkey" in body, false);
+  });
+
+  it("should use contacts.aspx endpoint", async () => {
+    const fetch = mockFetch({ result: true, data: {} });
+    await modifyTag({ corpid: "test-corp", tp_id: "tp1" }, credentials, fetch, "100");
+
+    const url = fetch.captured().url;
+    assert.ok(url.includes("contacts.aspx"), "URL should use contacts.aspx endpoint");
   });
 
   it("should NOT retry on 500 (maxRetries=0 for write)", async () => {
@@ -822,7 +1209,7 @@ describe("modifyTag", () => {
     };
 
     await assert.rejects(
-      () => modifyTag({ username: "user1", tag_id: 1, tag_name: "X" }, credentials, fetch, "100"),
+      () => modifyTag({ corpid: "test-corp", tp_id: "tp1" }, credentials, fetch, "100"),
       /WJX API request failed with 500/,
     );
     assert.equal(callCount, 1);
@@ -831,22 +1218,15 @@ describe("modifyTag", () => {
   it("should return parsed API response", async () => {
     const mockResponse = { result: true, data: {} };
     const result = await modifyTag(
-      { username: "user1", tag_id: 1, tag_name: "X" },
+      { corpid: "test-corp", tp_id: "tp1", tp_name: "新名" },
       credentials, mockFetch(mockResponse), "100",
     );
     assert.deepEqual(result, mockResponse);
   });
 
-  it("should throw on HTTP error status", async () => {
-    await assert.rejects(
-      () => modifyTag({ username: "user1", tag_id: 1, tag_name: "X" }, credentials, mockFetch("err", 500), "100"),
-      /WJX API request failed with 500/,
-    );
-  });
-
   it("should include action in URL query string", async () => {
     const fetch = mockFetch({ result: true, data: {} });
-    await modifyTag({ username: "user1", tag_id: 1, tag_name: "X" }, credentials, fetch, "100");
+    await modifyTag({ corpid: "test-corp", tp_id: "tp1" }, credentials, fetch, "100");
 
     const url = fetch.captured().url;
     assert.ok(url.includes("action=1005203"));
@@ -858,7 +1238,7 @@ describe("modifyTag", () => {
 describe("deleteTag", () => {
   it("should POST with JSON content type", async () => {
     const fetch = mockFetch({ result: true, data: {} });
-    await deleteTag({ username: "user1", tag_id: 1 }, credentials, fetch, "1700000000");
+    await deleteTag({ corpid: "test-corp", type: "1", tags: '["t1"]' }, credentials, fetch, "1700000000");
 
     const { init } = fetch.captured();
     assert.equal(init.method, "POST");
@@ -867,28 +1247,62 @@ describe("deleteTag", () => {
 
   it("should use DELETE_TAG action code (1005204)", async () => {
     const fetch = mockFetch({ result: true, data: {} });
-    await deleteTag({ username: "user1", tag_id: 1 }, credentials, fetch, "1700000000");
+    await deleteTag({ corpid: "test-corp", type: "1", tags: '["t1"]' }, credentials, fetch, "1700000000");
 
     const body = JSON.parse(fetch.captured().init.body);
     assert.equal(body.action, Action.DELETE_TAG);
     assert.equal(body.action, "1005204");
   });
 
-  it("should include username and tag_id in request body", async () => {
+  it("should include corpid, type, and tags in request body", async () => {
     const fetch = mockFetch({ result: true, data: {} });
-    await deleteTag({ username: "admin", tag_id: 99 }, credentials, fetch, "100");
+    await deleteTag({ corpid: "my-corp", type: "2", tags: '["学历"]' }, credentials, fetch, "100");
 
     const body = JSON.parse(fetch.captured().init.body);
-    assert.equal(body.username, "admin");
-    assert.equal(body.tag_id, 99);
+    assert.equal(body.corpid, "my-corp");
+    assert.equal(body.type, "2");
+    assert.equal(body.tags, '["学历"]');
+  });
+
+  it("should NOT include username in request body", async () => {
+    const fetch = mockFetch({ result: true, data: {} });
+    await deleteTag({ corpid: "test-corp", type: "1", tags: '["t1"]' }, credentials, fetch, "100");
+
+    const body = JSON.parse(fetch.captured().init.body);
+    assert.equal("username" in body, false, "username should not appear in request body");
   });
 
   it("should include sign as 40-char hex SHA1", async () => {
     const fetch = mockFetch({ result: true, data: {} });
-    await deleteTag({ username: "user1", tag_id: 1 }, credentials, fetch, "100");
+    await deleteTag({ corpid: "test-corp", type: "1", tags: '["t1"]' }, credentials, fetch, "100");
 
     const body = JSON.parse(fetch.captured().init.body);
     assert.match(body.sign, /^[0-9a-f]{40}$/);
+  });
+
+  it("should NOT include traceid in POST body", async () => {
+    const fetch = mockFetch({ result: true, data: {} });
+    await deleteTag({ corpid: "test-corp", type: "1", tags: '["t1"]' }, credentials, fetch, "100");
+
+    const body = JSON.parse(fetch.captured().init.body);
+    assert.equal("traceid" in body, false, "traceid must not appear in POST body");
+  });
+
+  it("should NOT include appKey in request body", async () => {
+    const fetch = mockFetch({ result: true, data: {} });
+    await deleteTag({ corpid: "test-corp", type: "1", tags: '["t1"]' }, credentials, fetch, "100");
+
+    const body = JSON.parse(fetch.captured().init.body);
+    assert.equal("appKey" in body, false);
+    assert.equal("appkey" in body, false);
+  });
+
+  it("should use contacts.aspx endpoint", async () => {
+    const fetch = mockFetch({ result: true, data: {} });
+    await deleteTag({ corpid: "test-corp", type: "1", tags: '["t1"]' }, credentials, fetch, "100");
+
+    const url = fetch.captured().url;
+    assert.ok(url.includes("contacts.aspx"), "URL should use contacts.aspx endpoint");
   });
 
   it("should NOT retry on 500 (maxRetries=0 for write)", async () => {
@@ -899,7 +1313,7 @@ describe("deleteTag", () => {
     };
 
     await assert.rejects(
-      () => deleteTag({ username: "user1", tag_id: 1 }, credentials, fetch, "100"),
+      () => deleteTag({ corpid: "test-corp", type: "1", tags: '["t1"]' }, credentials, fetch, "100"),
       /WJX API request failed with 500/,
     );
     assert.equal(callCount, 1);
@@ -908,7 +1322,7 @@ describe("deleteTag", () => {
   it("should return parsed API response", async () => {
     const mockResponse = { result: true, data: {} };
     const result = await deleteTag(
-      { username: "user1", tag_id: 1 },
+      { corpid: "test-corp", type: "1", tags: '["t1"]' },
       credentials, mockFetch(mockResponse), "100",
     );
     assert.deepEqual(result, mockResponse);
@@ -916,60 +1330,86 @@ describe("deleteTag", () => {
 
   it("should throw on HTTP error status", async () => {
     await assert.rejects(
-      () => deleteTag({ username: "user1", tag_id: 1 }, credentials, mockFetch("err", 500), "100"),
+      () => deleteTag({ corpid: "test-corp", type: "1", tags: '["t1"]' }, credentials, mockFetch("err", 500), "100"),
       /WJX API request failed with 500/,
     );
   });
 
   it("should include action in URL query string", async () => {
     const fetch = mockFetch({ result: true, data: {} });
-    await deleteTag({ username: "user1", tag_id: 1 }, credentials, fetch, "100");
+    await deleteTag({ corpid: "test-corp", type: "1", tags: '["t1"]' }, credentials, fetch, "100");
 
     const url = fetch.captured().url;
     assert.ok(url.includes("action=1005204"));
   });
 });
 
-// ─── sign consistency (new functions) ────────────────────────────────
+// ─── URL action parameter ───────────────────────────────────────────
 
-describe("sign consistency (dept/admin/tag)", () => {
-  it("addAdmin should produce different signs for different timestamps", async () => {
-    const fetch1 = mockFetch({ result: true, data: {} });
-    const fetch2 = mockFetch({ result: true, data: {} });
-
-    await addAdmin({ username: "user1", admin_name: "A" }, credentials, fetch1, "100");
-    await addAdmin({ username: "user1", admin_name: "A" }, credentials, fetch2, "200");
-
-    const body1 = JSON.parse(fetch1.captured().init.body);
-    const body2 = JSON.parse(fetch2.captured().init.body);
-    assert.notEqual(body1.sign, body2.sign);
+describe("URL action parameter (contacts admin/dept/tag)", () => {
+  it("addAdmin URL should include action=1005004", async () => {
+    const fetch = mockFetch({ result: true, data: {} });
+    await addAdmin({ corpid: "test-corp", users: '[{"admin_name":"Alice"}]' }, credentials, fetch, "100");
+    assert.ok(fetch.captured().url.includes("action=1005004"));
   });
 
-  it("listDepartments should produce different signs for different appKeys", async () => {
-    const cred1 = { appId: "app", appKey: "key1" };
-    const cred2 = { appId: "app", appKey: "key2" };
-    const fetch1 = mockFetch({ result: true, data: {} });
-    const fetch2 = mockFetch({ result: true, data: {} });
-
-    await listDepartments({ username: "user1" }, cred1, fetch1, "100");
-    await listDepartments({ username: "user1" }, cred2, fetch2, "100");
-
-    const body1 = JSON.parse(fetch1.captured().init.body);
-    const body2 = JSON.parse(fetch2.captured().init.body);
-    assert.notEqual(body1.sign, body2.sign);
+  it("deleteAdmin URL should include action=1005005", async () => {
+    const fetch = mockFetch({ result: true, data: {} });
+    await deleteAdmin({ corpid: "test-corp", uids: "uid1" }, credentials, fetch, "100");
+    assert.ok(fetch.captured().url.includes("action=1005005"));
   });
 
-  it("addTag should produce different signs for different appKeys", async () => {
-    const cred1 = { appId: "app", appKey: "key1" };
-    const cred2 = { appId: "app", appKey: "key2" };
-    const fetch1 = mockFetch({ result: true, data: {} });
-    const fetch2 = mockFetch({ result: true, data: {} });
+  it("restoreAdmin URL should include action=1005006", async () => {
+    const fetch = mockFetch({ result: true, data: {} });
+    await restoreAdmin({ corpid: "test-corp", uids: "uid1" }, credentials, fetch, "100");
+    assert.ok(fetch.captured().url.includes("action=1005006"));
+  });
 
-    await addTag({ username: "user1", tag_name: "T" }, cred1, fetch1, "100");
-    await addTag({ username: "user1", tag_name: "T" }, cred2, fetch2, "100");
+  it("listDepartments URL should include action=1005101", async () => {
+    const fetch = mockFetch({ result: true, data: {} });
+    await listDepartments({ corpid: "test-corp" }, credentials, fetch, "100");
+    assert.ok(fetch.captured().url.includes("action=1005101"));
+  });
 
-    const body1 = JSON.parse(fetch1.captured().init.body);
-    const body2 = JSON.parse(fetch2.captured().init.body);
-    assert.notEqual(body1.sign, body2.sign);
+  it("addDepartment URL should include action=1005102", async () => {
+    const fetch = mockFetch({ result: true, data: {} });
+    await addDepartment({ corpid: "test-corp", depts: '["研发部"]' }, credentials, fetch, "100");
+    assert.ok(fetch.captured().url.includes("action=1005102"));
+  });
+
+  it("modifyDepartment URL should include action=1005103", async () => {
+    const fetch = mockFetch({ result: true, data: {} });
+    await modifyDepartment({ corpid: "test-corp", depts: '[{"id":"d1","name":"X"}]' }, credentials, fetch, "100");
+    assert.ok(fetch.captured().url.includes("action=1005103"));
+  });
+
+  it("deleteDepartment URL should include action=1005104", async () => {
+    const fetch = mockFetch({ result: true, data: {} });
+    await deleteDepartment({ corpid: "test-corp", type: "1", depts: '["d1"]' }, credentials, fetch, "100");
+    assert.ok(fetch.captured().url.includes("action=1005104"));
+  });
+
+  it("listTags URL should include action=1005201", async () => {
+    const fetch = mockFetch({ result: true, data: {} });
+    await listTags({ corpid: "test-corp" }, credentials, fetch, "100");
+    assert.ok(fetch.captured().url.includes("action=1005201"));
+  });
+
+  it("addTag URL should include action=1005202", async () => {
+    const fetch = mockFetch({ result: true, data: {} });
+    await addTag({ corpid: "test-corp", child_names: '["学历/本科"]' }, credentials, fetch, "100");
+    assert.ok(fetch.captured().url.includes("action=1005202"));
+  });
+
+  it("modifyTag URL should include action=1005203", async () => {
+    const fetch = mockFetch({ result: true, data: {} });
+    await modifyTag({ corpid: "test-corp", tp_id: "tp1" }, credentials, fetch, "100");
+    assert.ok(fetch.captured().url.includes("action=1005203"));
+  });
+
+  it("deleteTag URL should include action=1005204", async () => {
+    const fetch = mockFetch({ result: true, data: {} });
+    await deleteTag({ corpid: "test-corp", type: "1", tags: '["t1"]' }, credentials, fetch, "100");
+    assert.ok(fetch.captured().url.includes("action=1005204"));
   });
 });

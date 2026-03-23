@@ -32,7 +32,7 @@ describe("addSubAccount", () => {
   it("should POST with action 1003001 and required fields", async () => {
     const fetch = mockFetch({ result: true, data: {} });
     await addSubAccount(
-      { username: "admin", subuser: "sub1", password: "pass123" },
+      { subuser: "sub1", password: "pass123" },
       credentials,
       fetch,
       "1700000000",
@@ -44,7 +44,6 @@ describe("addSubAccount", () => {
 
     const body = JSON.parse(init.body);
     assert.equal(body.action, "1003001");
-    assert.equal(body.username, "admin");
     assert.equal(body.subuser, "sub1");
     assert.equal(body.password, "pass123");
     assert.equal(body.appid, "test-app");
@@ -52,10 +51,23 @@ describe("addSubAccount", () => {
     assert.match(body.sign, /^[0-9a-f]{40}$/);
   });
 
+  it("should use subuser.aspx endpoint", async () => {
+    const fetch = mockFetch({ result: true, data: {} });
+    await addSubAccount(
+      { subuser: "sub1" },
+      credentials,
+      fetch,
+      "1700000000",
+    );
+
+    const url = fetch.captured().url;
+    assert.ok(url.includes("subuser.aspx"), "URL should use subuser.aspx endpoint");
+  });
+
   it("should NOT include traceid in POST body", async () => {
     const fetch = mockFetch({ result: true, data: {} });
     await addSubAccount(
-      { username: "admin", subuser: "sub1", password: "pass123" },
+      { subuser: "sub1", password: "pass123" },
       credentials,
       fetch,
       "1700000000",
@@ -68,7 +80,7 @@ describe("addSubAccount", () => {
   it("should include traceid in URL query string", async () => {
     const fetch = mockFetch({ result: true, data: {} });
     await addSubAccount(
-      { username: "admin", subuser: "sub1", password: "pass123" },
+      { subuser: "sub1", password: "pass123" },
       credentials,
       fetch,
       "1700000000",
@@ -78,10 +90,23 @@ describe("addSubAccount", () => {
     assert.ok(url.includes("traceid="), "URL should contain traceid query param");
   });
 
+  it("should NOT send username in request body", async () => {
+    const fetch = mockFetch({ result: true, data: {} });
+    await addSubAccount(
+      { subuser: "sub1" },
+      credentials,
+      fetch,
+      "100",
+    );
+
+    const body = JSON.parse(fetch.captured().init.body);
+    assert.equal("username" in body, false, "username should not be in body");
+  });
+
   it("should include optional mobile when provided", async () => {
     const fetch = mockFetch({ result: true, data: {} });
     await addSubAccount(
-      { username: "admin", subuser: "sub1", password: "pass123", mobile: "13800138000" },
+      { subuser: "sub1", mobile: "13800138000" },
       credentials,
       fetch,
       "100",
@@ -94,7 +119,7 @@ describe("addSubAccount", () => {
   it("should include optional email when provided", async () => {
     const fetch = mockFetch({ result: true, data: {} });
     await addSubAccount(
-      { username: "admin", subuser: "sub1", password: "pass123", email: "sub@test.com" },
+      { subuser: "sub1", email: "sub@test.com" },
       credentials,
       fetch,
       "100",
@@ -104,23 +129,36 @@ describe("addSubAccount", () => {
     assert.equal(body.email, "sub@test.com");
   });
 
-  it("should include optional role_id when provided", async () => {
+  it("should include optional role when provided", async () => {
     const fetch = mockFetch({ result: true, data: {} });
     await addSubAccount(
-      { username: "admin", subuser: "sub1", password: "pass123", role_id: 5 },
+      { subuser: "sub1", role: 2 },
       credentials,
       fetch,
       "100",
     );
 
     const body = JSON.parse(fetch.captured().init.body);
-    assert.equal(body.role_id, 5);
+    assert.equal(body.role, 2);
+  });
+
+  it("should include optional group when provided", async () => {
+    const fetch = mockFetch({ result: true, data: {} });
+    await addSubAccount(
+      { subuser: "sub1", group: 5 },
+      credentials,
+      fetch,
+      "100",
+    );
+
+    const body = JSON.parse(fetch.captured().init.body);
+    assert.equal(body.group, 5);
   });
 
   it("should not include optional fields when not provided", async () => {
     const fetch = mockFetch({ result: true, data: {} });
     await addSubAccount(
-      { username: "admin", subuser: "sub1", password: "pass123" },
+      { subuser: "sub1" },
       credentials,
       fetch,
       "100",
@@ -129,7 +167,9 @@ describe("addSubAccount", () => {
     const body = JSON.parse(fetch.captured().init.body);
     assert.equal("mobile" in body, false);
     assert.equal("email" in body, false);
-    assert.equal("role_id" in body, false);
+    assert.equal("role" in body, false);
+    assert.equal("group" in body, false);
+    assert.equal("password" in body, false);
   });
 
   it("should NOT retry on 500 (maxRetries=0)", async () => {
@@ -145,7 +185,7 @@ describe("addSubAccount", () => {
     await assert.rejects(
       () =>
         addSubAccount(
-          { username: "admin", subuser: "sub1", password: "pass123" },
+          { subuser: "sub1", password: "pass123" },
           credentials,
           fetch,
           "100",
@@ -158,7 +198,7 @@ describe("addSubAccount", () => {
   it("should return parsed API response", async () => {
     const mockResponse = { result: true, data: { userId: 42 } };
     const result = await addSubAccount(
-      { username: "admin", subuser: "sub1", password: "pass123" },
+      { subuser: "sub1", password: "pass123" },
       credentials,
       mockFetch(mockResponse),
       "100",
@@ -169,7 +209,7 @@ describe("addSubAccount", () => {
   it("should return parsed API error response", async () => {
     const mockResponse = { result: false, errormsg: "用户名已存在" };
     const result = await addSubAccount(
-      { username: "admin", subuser: "sub1", password: "pass123" },
+      { subuser: "sub1", password: "pass123" },
       credentials,
       mockFetch(mockResponse),
       "100",
@@ -181,7 +221,7 @@ describe("addSubAccount", () => {
     await assert.rejects(
       () =>
         addSubAccount(
-          { username: "admin", subuser: "sub1", password: "pass123" },
+          { subuser: "sub1", password: "pass123" },
           credentials,
           mockFetch("Not Found", 404),
           "100",
@@ -193,7 +233,7 @@ describe("addSubAccount", () => {
   it("should NOT include appKey in request body", async () => {
     const fetch = mockFetch({ result: true, data: {} });
     await addSubAccount(
-      { username: "admin", subuser: "sub1", password: "pass123" },
+      { subuser: "sub1", password: "pass123" },
       credentials,
       fetch,
       "100",
@@ -211,7 +251,7 @@ describe("modifySubAccount", () => {
   it("should POST with action 1003002 and required fields", async () => {
     const fetch = mockFetch({ result: true, data: {} });
     await modifySubAccount(
-      { username: "admin", subuser: "sub1" },
+      { subuser: "sub1" },
       credentials,
       fetch,
       "1700000000",
@@ -223,17 +263,29 @@ describe("modifySubAccount", () => {
 
     const body = JSON.parse(init.body);
     assert.equal(body.action, "1003002");
-    assert.equal(body.username, "admin");
     assert.equal(body.subuser, "sub1");
     assert.equal(body.appid, "test-app");
     assert.ok("sign" in body);
     assert.match(body.sign, /^[0-9a-f]{40}$/);
   });
 
+  it("should use subuser.aspx endpoint", async () => {
+    const fetch = mockFetch({ result: true, data: {} });
+    await modifySubAccount(
+      { subuser: "sub1" },
+      credentials,
+      fetch,
+      "100",
+    );
+
+    const url = fetch.captured().url;
+    assert.ok(url.includes("subuser.aspx"), "URL should use subuser.aspx endpoint");
+  });
+
   it("should NOT include traceid in POST body", async () => {
     const fetch = mockFetch({ result: true, data: {} });
     await modifySubAccount(
-      { username: "admin", subuser: "sub1" },
+      { subuser: "sub1" },
       credentials,
       fetch,
       "100",
@@ -243,23 +295,36 @@ describe("modifySubAccount", () => {
     assert.equal("traceid" in body, false, "traceid must not appear in POST body");
   });
 
-  it("should include optional password when provided", async () => {
+  it("should NOT send username in request body", async () => {
     const fetch = mockFetch({ result: true, data: {} });
     await modifySubAccount(
-      { username: "admin", subuser: "sub1", password: "newpass" },
+      { subuser: "sub1" },
       credentials,
       fetch,
       "100",
     );
 
     const body = JSON.parse(fetch.captured().init.body);
-    assert.equal(body.password, "newpass");
+    assert.equal("username" in body, false, "username should not be in body");
+  });
+
+  it("should include optional group when provided", async () => {
+    const fetch = mockFetch({ result: true, data: {} });
+    await modifySubAccount(
+      { subuser: "sub1", group: 5 },
+      credentials,
+      fetch,
+      "100",
+    );
+
+    const body = JSON.parse(fetch.captured().init.body);
+    assert.equal(body.group, 5);
   });
 
   it("should include optional mobile when provided", async () => {
     const fetch = mockFetch({ result: true, data: {} });
     await modifySubAccount(
-      { username: "admin", subuser: "sub1", mobile: "13900139000" },
+      { subuser: "sub1", mobile: "13900139000" },
       credentials,
       fetch,
       "100",
@@ -272,7 +337,7 @@ describe("modifySubAccount", () => {
   it("should include optional email when provided", async () => {
     const fetch = mockFetch({ result: true, data: {} });
     await modifySubAccount(
-      { username: "admin", subuser: "sub1", email: "new@test.com" },
+      { subuser: "sub1", email: "new@test.com" },
       credentials,
       fetch,
       "100",
@@ -282,33 +347,33 @@ describe("modifySubAccount", () => {
     assert.equal(body.email, "new@test.com");
   });
 
-  it("should include optional role_id when provided", async () => {
+  it("should include optional role when provided", async () => {
     const fetch = mockFetch({ result: true, data: {} });
     await modifySubAccount(
-      { username: "admin", subuser: "sub1", role_id: 3 },
+      { subuser: "sub1", role: 3 },
       credentials,
       fetch,
       "100",
     );
 
     const body = JSON.parse(fetch.captured().init.body);
-    assert.equal(body.role_id, 3);
+    assert.equal(body.role, 3);
   });
 
   it("should not include optional fields when not provided", async () => {
     const fetch = mockFetch({ result: true, data: {} });
     await modifySubAccount(
-      { username: "admin", subuser: "sub1" },
+      { subuser: "sub1" },
       credentials,
       fetch,
       "100",
     );
 
     const body = JSON.parse(fetch.captured().init.body);
-    assert.equal("password" in body, false);
     assert.equal("mobile" in body, false);
     assert.equal("email" in body, false);
-    assert.equal("role_id" in body, false);
+    assert.equal("role" in body, false);
+    assert.equal("group" in body, false);
   });
 
   it("should NOT retry on 500 (maxRetries=0)", async () => {
@@ -321,7 +386,7 @@ describe("modifySubAccount", () => {
     await assert.rejects(
       () =>
         modifySubAccount(
-          { username: "admin", subuser: "sub1" },
+          { subuser: "sub1" },
           credentials,
           fetch,
           "100",
@@ -334,7 +399,7 @@ describe("modifySubAccount", () => {
   it("should NOT include appKey in request body", async () => {
     const fetch = mockFetch({ result: true, data: {} });
     await modifySubAccount(
-      { username: "admin", subuser: "sub1" },
+      { subuser: "sub1" },
       credentials,
       fetch,
       "100",
@@ -352,7 +417,7 @@ describe("deleteSubAccount", () => {
   it("should POST with action 1003003 and required fields", async () => {
     const fetch = mockFetch({ result: true, data: {} });
     await deleteSubAccount(
-      { username: "admin", subuser: "sub1" },
+      { subuser: "sub1" },
       credentials,
       fetch,
       "1700000000",
@@ -364,17 +429,29 @@ describe("deleteSubAccount", () => {
 
     const body = JSON.parse(init.body);
     assert.equal(body.action, "1003003");
-    assert.equal(body.username, "admin");
     assert.equal(body.subuser, "sub1");
     assert.equal(body.appid, "test-app");
     assert.ok("sign" in body);
     assert.match(body.sign, /^[0-9a-f]{40}$/);
   });
 
+  it("should use subuser.aspx endpoint", async () => {
+    const fetch = mockFetch({ result: true, data: {} });
+    await deleteSubAccount(
+      { subuser: "sub1" },
+      credentials,
+      fetch,
+      "100",
+    );
+
+    const url = fetch.captured().url;
+    assert.ok(url.includes("subuser.aspx"), "URL should use subuser.aspx endpoint");
+  });
+
   it("should NOT include traceid in POST body", async () => {
     const fetch = mockFetch({ result: true, data: {} });
     await deleteSubAccount(
-      { username: "admin", subuser: "sub1" },
+      { subuser: "sub1" },
       credentials,
       fetch,
       "100",
@@ -382,6 +459,19 @@ describe("deleteSubAccount", () => {
 
     const body = JSON.parse(fetch.captured().init.body);
     assert.equal("traceid" in body, false, "traceid must not appear in POST body");
+  });
+
+  it("should NOT send username in request body", async () => {
+    const fetch = mockFetch({ result: true, data: {} });
+    await deleteSubAccount(
+      { subuser: "sub1" },
+      credentials,
+      fetch,
+      "100",
+    );
+
+    const body = JSON.parse(fetch.captured().init.body);
+    assert.equal("username" in body, false, "username should not be in body");
   });
 
   it("should NOT retry on 500 (maxRetries=0)", async () => {
@@ -394,7 +484,7 @@ describe("deleteSubAccount", () => {
     await assert.rejects(
       () =>
         deleteSubAccount(
-          { username: "admin", subuser: "sub1" },
+          { subuser: "sub1" },
           credentials,
           fetch,
           "100",
@@ -407,7 +497,7 @@ describe("deleteSubAccount", () => {
   it("should return parsed API response", async () => {
     const mockResponse = { result: true, data: {} };
     const result = await deleteSubAccount(
-      { username: "admin", subuser: "sub1" },
+      { subuser: "sub1" },
       credentials,
       mockFetch(mockResponse),
       "100",
@@ -419,7 +509,7 @@ describe("deleteSubAccount", () => {
     await assert.rejects(
       () =>
         deleteSubAccount(
-          { username: "admin", subuser: "sub1" },
+          { subuser: "sub1" },
           credentials,
           mockFetch("err", 500),
           "100",
@@ -431,7 +521,7 @@ describe("deleteSubAccount", () => {
   it("should NOT include appKey in request body", async () => {
     const fetch = mockFetch({ result: true, data: {} });
     await deleteSubAccount(
-      { username: "admin", subuser: "sub1" },
+      { subuser: "sub1" },
       credentials,
       fetch,
       "100",
@@ -449,7 +539,7 @@ describe("restoreSubAccount", () => {
   it("should POST with action 1003004 and required fields", async () => {
     const fetch = mockFetch({ result: true, data: {} });
     await restoreSubAccount(
-      { username: "admin", subuser: "sub1" },
+      { subuser: "sub1" },
       credentials,
       fetch,
       "1700000000",
@@ -461,17 +551,29 @@ describe("restoreSubAccount", () => {
 
     const body = JSON.parse(init.body);
     assert.equal(body.action, "1003004");
-    assert.equal(body.username, "admin");
     assert.equal(body.subuser, "sub1");
     assert.equal(body.appid, "test-app");
     assert.ok("sign" in body);
     assert.match(body.sign, /^[0-9a-f]{40}$/);
   });
 
+  it("should use subuser.aspx endpoint", async () => {
+    const fetch = mockFetch({ result: true, data: {} });
+    await restoreSubAccount(
+      { subuser: "sub1" },
+      credentials,
+      fetch,
+      "100",
+    );
+
+    const url = fetch.captured().url;
+    assert.ok(url.includes("subuser.aspx"), "URL should use subuser.aspx endpoint");
+  });
+
   it("should NOT include traceid in POST body", async () => {
     const fetch = mockFetch({ result: true, data: {} });
     await restoreSubAccount(
-      { username: "admin", subuser: "sub1" },
+      { subuser: "sub1" },
       credentials,
       fetch,
       "100",
@@ -479,6 +581,45 @@ describe("restoreSubAccount", () => {
 
     const body = JSON.parse(fetch.captured().init.body);
     assert.equal("traceid" in body, false, "traceid must not appear in POST body");
+  });
+
+  it("should NOT send username in request body", async () => {
+    const fetch = mockFetch({ result: true, data: {} });
+    await restoreSubAccount(
+      { subuser: "sub1" },
+      credentials,
+      fetch,
+      "100",
+    );
+
+    const body = JSON.parse(fetch.captured().init.body);
+    assert.equal("username" in body, false, "username should not be in body");
+  });
+
+  it("should include optional mobile when provided", async () => {
+    const fetch = mockFetch({ result: true, data: {} });
+    await restoreSubAccount(
+      { subuser: "sub1", mobile: "13800138000" },
+      credentials,
+      fetch,
+      "100",
+    );
+
+    const body = JSON.parse(fetch.captured().init.body);
+    assert.equal(body.mobile, "13800138000");
+  });
+
+  it("should include optional email when provided", async () => {
+    const fetch = mockFetch({ result: true, data: {} });
+    await restoreSubAccount(
+      { subuser: "sub1", email: "restore@test.com" },
+      credentials,
+      fetch,
+      "100",
+    );
+
+    const body = JSON.parse(fetch.captured().init.body);
+    assert.equal(body.email, "restore@test.com");
   });
 
   it("should NOT retry on 500 (maxRetries=0)", async () => {
@@ -491,7 +632,7 @@ describe("restoreSubAccount", () => {
     await assert.rejects(
       () =>
         restoreSubAccount(
-          { username: "admin", subuser: "sub1" },
+          { subuser: "sub1" },
           credentials,
           fetch,
           "100",
@@ -504,7 +645,7 @@ describe("restoreSubAccount", () => {
   it("should return parsed API response", async () => {
     const mockResponse = { result: true, data: { restored: true } };
     const result = await restoreSubAccount(
-      { username: "admin", subuser: "sub1" },
+      { subuser: "sub1" },
       credentials,
       mockFetch(mockResponse),
       "100",
@@ -516,7 +657,7 @@ describe("restoreSubAccount", () => {
     await assert.rejects(
       () =>
         restoreSubAccount(
-          { username: "admin", subuser: "sub1" },
+          { subuser: "sub1" },
           credentials,
           mockFetch("err", 404),
           "100",
@@ -528,7 +669,7 @@ describe("restoreSubAccount", () => {
   it("should NOT include appKey in request body", async () => {
     const fetch = mockFetch({ result: true, data: {} });
     await restoreSubAccount(
-      { username: "admin", subuser: "sub1" },
+      { subuser: "sub1" },
       credentials,
       fetch,
       "100",
@@ -543,10 +684,10 @@ describe("restoreSubAccount", () => {
 // ─── querySubAccounts ───────────────────────────────────────────────
 
 describe("querySubAccounts", () => {
-  it("should POST with action 1003005 and username", async () => {
+  it("should POST with action 1003005", async () => {
     const fetch = mockFetch({ result: true, data: { total_count: 0 } });
     await querySubAccounts(
-      { username: "admin" },
+      {},
       credentials,
       fetch,
       "1700000000",
@@ -558,16 +699,28 @@ describe("querySubAccounts", () => {
 
     const body = JSON.parse(init.body);
     assert.equal(body.action, "1003005");
-    assert.equal(body.username, "admin");
     assert.equal(body.appid, "test-app");
     assert.ok("sign" in body);
     assert.match(body.sign, /^[0-9a-f]{40}$/);
   });
 
+  it("should use subuser.aspx endpoint", async () => {
+    const fetch = mockFetch({ result: true, data: {} });
+    await querySubAccounts(
+      {},
+      credentials,
+      fetch,
+      "100",
+    );
+
+    const url = fetch.captured().url;
+    assert.ok(url.includes("subuser.aspx"), "URL should use subuser.aspx endpoint");
+  });
+
   it("should NOT include traceid in POST body", async () => {
     const fetch = mockFetch({ result: true, data: {} });
     await querySubAccounts(
-      { username: "admin" },
+      {},
       credentials,
       fetch,
       "100",
@@ -580,7 +733,7 @@ describe("querySubAccounts", () => {
   it("should include traceid in URL query string", async () => {
     const fetch = mockFetch({ result: true, data: {} });
     await querySubAccounts(
-      { username: "admin" },
+      {},
       credentials,
       fetch,
       "100",
@@ -590,10 +743,88 @@ describe("querySubAccounts", () => {
     assert.ok(url.includes("traceid="), "URL should contain traceid query param");
   });
 
+  it("should NOT send username in request body", async () => {
+    const fetch = mockFetch({ result: true, data: {} });
+    await querySubAccounts(
+      {},
+      credentials,
+      fetch,
+      "100",
+    );
+
+    const body = JSON.parse(fetch.captured().init.body);
+    assert.equal("username" in body, false, "username should not be in body");
+  });
+
+  it("should include optional subuser when provided", async () => {
+    const fetch = mockFetch({ result: true, data: {} });
+    await querySubAccounts(
+      { subuser: "sub1" },
+      credentials,
+      fetch,
+      "100",
+    );
+
+    const body = JSON.parse(fetch.captured().init.body);
+    assert.equal(body.subuser, "sub1");
+  });
+
+  it("should include optional name_like when provided", async () => {
+    const fetch = mockFetch({ result: true, data: {} });
+    await querySubAccounts(
+      { name_like: "test" },
+      credentials,
+      fetch,
+      "100",
+    );
+
+    const body = JSON.parse(fetch.captured().init.body);
+    assert.equal(body.name_like, "test");
+  });
+
+  it("should include optional role when provided", async () => {
+    const fetch = mockFetch({ result: true, data: {} });
+    await querySubAccounts(
+      { role: 2 },
+      credentials,
+      fetch,
+      "100",
+    );
+
+    const body = JSON.parse(fetch.captured().init.body);
+    assert.equal(body.role, 2);
+  });
+
+  it("should include optional group when provided", async () => {
+    const fetch = mockFetch({ result: true, data: {} });
+    await querySubAccounts(
+      { group: 3 },
+      credentials,
+      fetch,
+      "100",
+    );
+
+    const body = JSON.parse(fetch.captured().init.body);
+    assert.equal(body.group, 3);
+  });
+
+  it("should include optional status when provided", async () => {
+    const fetch = mockFetch({ result: true, data: {} });
+    await querySubAccounts(
+      { status: true },
+      credentials,
+      fetch,
+      "100",
+    );
+
+    const body = JSON.parse(fetch.captured().init.body);
+    assert.equal(body.status, true);
+  });
+
   it("should include optional page_index when provided", async () => {
     const fetch = mockFetch({ result: true, data: {} });
     await querySubAccounts(
-      { username: "admin", page_index: 2 },
+      { page_index: 2 },
       credentials,
       fetch,
       "100",
@@ -606,7 +837,7 @@ describe("querySubAccounts", () => {
   it("should include optional page_size when provided", async () => {
     const fetch = mockFetch({ result: true, data: {} });
     await querySubAccounts(
-      { username: "admin", page_size: 50 },
+      { page_size: 50 },
       credentials,
       fetch,
       "100",
@@ -616,16 +847,21 @@ describe("querySubAccounts", () => {
     assert.equal(body.page_size, 50);
   });
 
-  it("should not include pagination fields when not provided", async () => {
+  it("should not include optional fields when not provided", async () => {
     const fetch = mockFetch({ result: true, data: {} });
     await querySubAccounts(
-      { username: "admin" },
+      {},
       credentials,
       fetch,
       "100",
     );
 
     const body = JSON.parse(fetch.captured().init.body);
+    assert.equal("subuser" in body, false);
+    assert.equal("name_like" in body, false);
+    assert.equal("role" in body, false);
+    assert.equal("group" in body, false);
+    assert.equal("status" in body, false);
     assert.equal("page_index" in body, false);
     assert.equal("page_size" in body, false);
   });
@@ -644,7 +880,7 @@ describe("querySubAccounts", () => {
     };
 
     const result = await querySubAccounts(
-      { username: "admin" },
+      {},
       credentials,
       fetch,
       "100",
@@ -667,7 +903,7 @@ describe("querySubAccounts", () => {
     };
 
     const result = await querySubAccounts(
-      { username: "admin" },
+      {},
       credentials,
       fetch,
       "100",
@@ -679,7 +915,7 @@ describe("querySubAccounts", () => {
   it("should return parsed API response", async () => {
     const mockResponse = { result: true, data: { total_count: 3, users: [] } };
     const result = await querySubAccounts(
-      { username: "admin" },
+      {},
       credentials,
       mockFetch(mockResponse),
       "100",
@@ -690,7 +926,7 @@ describe("querySubAccounts", () => {
   it("should NOT include appKey in request body", async () => {
     const fetch = mockFetch({ result: true, data: {} });
     await querySubAccounts(
-      { username: "admin" },
+      {},
       credentials,
       fetch,
       "100",
@@ -708,7 +944,7 @@ describe("URL action parameter", () => {
   it("addSubAccount URL should include action=1003001", async () => {
     const fetch = mockFetch({ result: true, data: {} });
     await addSubAccount(
-      { username: "admin", subuser: "sub1", password: "p" },
+      { subuser: "sub1", password: "p" },
       credentials,
       fetch,
       "100",
@@ -719,7 +955,7 @@ describe("URL action parameter", () => {
   it("modifySubAccount URL should include action=1003002", async () => {
     const fetch = mockFetch({ result: true, data: {} });
     await modifySubAccount(
-      { username: "admin", subuser: "sub1" },
+      { subuser: "sub1" },
       credentials,
       fetch,
       "100",
@@ -730,7 +966,7 @@ describe("URL action parameter", () => {
   it("deleteSubAccount URL should include action=1003003", async () => {
     const fetch = mockFetch({ result: true, data: {} });
     await deleteSubAccount(
-      { username: "admin", subuser: "sub1" },
+      { subuser: "sub1" },
       credentials,
       fetch,
       "100",
@@ -741,7 +977,7 @@ describe("URL action parameter", () => {
   it("restoreSubAccount URL should include action=1003004", async () => {
     const fetch = mockFetch({ result: true, data: {} });
     await restoreSubAccount(
-      { username: "admin", subuser: "sub1" },
+      { subuser: "sub1" },
       credentials,
       fetch,
       "100",
@@ -752,7 +988,7 @@ describe("URL action parameter", () => {
   it("querySubAccounts URL should include action=1003005", async () => {
     const fetch = mockFetch({ result: true, data: {} });
     await querySubAccounts(
-      { username: "admin" },
+      {},
       credentials,
       fetch,
       "100",

@@ -3,6 +3,8 @@ import { withSignature } from "./sign.js";
 import {
   WJX_API_URL,
   WJX_USER_SYSTEM_API_URL,
+  WJX_SUBUSER_API_URL,
+  WJX_CONTACTS_API_URL,
   DEFAULT_TIMEOUT_MS,
   DEFAULT_MAX_RETRIES,
   RETRY_DELAY_MS,
@@ -188,4 +190,22 @@ export async function callWjxUserSystemApi<T = unknown>(
   opts: RequestOptions = {},
 ): Promise<WjxApiResponse<T>> {
   return _callApi<T>(WJX_USER_SYSTEM_API_URL, params, opts);
+}
+
+export async function callWjxSubuserApi<T = unknown>(
+  params: SignableRecord,
+  opts: RequestOptions = {},
+): Promise<WjxApiResponse<T>> {
+  return _callApi<T>(WJX_SUBUSER_API_URL, params, opts);
+}
+
+export async function callWjxContactsApi<T = unknown>(
+  params: SignableRecord,
+  opts: RequestOptions = {},
+): Promise<WjxApiResponse<T>> {
+  return _callApi<T>(WJX_CONTACTS_API_URL, params, opts);
+}
+
+export function getCorpId(env: NodeJS.ProcessEnv = process.env): string | undefined {
+  return env.WJX_CORP_ID || undefined;
 }

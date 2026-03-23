@@ -1,85 +1,82 @@
 export interface QueryContactsInput {
-  username: string;
-  dept_id?: number;
-  page_index?: number;
-  page_size?: number;
+  corpid?: string;
+  uid: string;
 }
 
 export interface AddContactsInput {
-  username: string;
-  members: string; // JSON array of member objects
+  corpid?: string;
+  users: string; // JSON array of user objects
+  auto_create_udept?: boolean;
+  auto_create_tag?: boolean;
 }
 
-export interface ManageContactsInput {
-  username: string;
-  operation: "update" | "delete";
-  members: string; // JSON array: for update, member objects with id; for delete, array of member IDs
+export interface DeleteContactsInput {
+  corpid?: string;
+  uids: string; // comma-separated user IDs
 }
 
 // ─── Admin ───────────────────────────────────────────────────────────
 
 export interface AddAdminInput {
-  username: string;
-  admin_name: string;
-  mobile?: string;
-  email?: string;
-  role?: string;
+  corpid?: string;
+  users: string; // JSON array of admin objects
 }
 
 export interface DeleteAdminInput {
-  username: string;
-  admin_id: number;
+  corpid?: string;
+  uids: string; // comma-separated admin user IDs
 }
 
 export interface RestoreAdminInput {
-  username: string;
-  admin_id: number;
+  corpid?: string;
+  uids: string; // comma-separated admin user IDs
 }
 
 // ─── Department ──────────────────────────────────────────────────────
 
 export interface ListDepartmentsInput {
-  username: string;
+  corpid?: string;
   page_index?: number;
   page_size?: number;
 }
 
 export interface AddDepartmentInput {
-  username: string;
-  name: string;
-  parent_id?: number;
+  corpid?: string;
+  depts: string; // JSON array of department path strings
 }
 
 export interface ModifyDepartmentInput {
-  username: string;
-  dept_id: number;
-  name?: string;
-  parent_id?: number;
+  corpid?: string;
+  depts: string; // JSON array of department objects [{id, name, parentid}]
 }
 
 export interface DeleteDepartmentInput {
-  username: string;
-  dept_id: number;
+  corpid?: string;
+  type: string; // "1" = by ID, "2" = by name
+  depts: string; // JSON array of department identifiers
+  del_child?: boolean;
 }
 
 // ─── Tag ─────────────────────────────────────────────────────────────
 
 export interface ListTagsInput {
-  username: string;
+  corpid?: string;
 }
 
 export interface AddTagInput {
-  username: string;
-  tag_name: string;
+  corpid?: string;
+  child_names: string; // JSON array of "group/tag" strings
 }
 
 export interface ModifyTagInput {
-  username: string;
-  tag_id: number;
-  tag_name: string;
+  corpid?: string;
+  tp_id: string;
+  tp_name?: string;
+  child_names?: string; // JSON array of tag objects
 }
 
 export interface DeleteTagInput {
-  username: string;
-  tag_id: number;
+  corpid?: string;
+  type: string; // "1" = by ID, "2" = by name
+  tags: string; // JSON array of tag identifiers
 }

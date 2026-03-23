@@ -1,6 +1,6 @@
 import type { WjxApiResponse, WjxCredentials, FetchLike, SignableRecord } from "../../core/types.js";
 import { Action } from "../../core/constants.js";
-import { callWjxApi, getWjxCredentials } from "../../core/api-client.js";
+import { callWjxSubuserApi, getWjxCredentials } from "../../core/api-client.js";
 import type {
   AddSubAccountInput,
   ModifySubAccountInput,
@@ -17,15 +17,15 @@ export async function addSubAccount<T = unknown>(
 ): Promise<WjxApiResponse<T>> {
   const params: SignableRecord = {
     action: Action.ADD_SUB_ACCOUNT,
-    username: input.username,
     subuser: input.subuser,
-    password: input.password,
   };
+  if (input.password !== undefined) params.password = input.password;
   if (input.mobile !== undefined) params.mobile = input.mobile;
   if (input.email !== undefined) params.email = input.email;
-  if (input.role_id !== undefined) params.role_id = input.role_id;
+  if (input.role !== undefined) params.role = input.role;
+  if (input.group !== undefined) params.group = input.group;
 
-  return callWjxApi<T>(params, { credentials, fetchImpl, timestamp, maxRetries: 0 });
+  return callWjxSubuserApi<T>(params, { credentials, fetchImpl, timestamp, maxRetries: 0 });
 }
 
 export async function modifySubAccount<T = unknown>(
@@ -36,15 +36,14 @@ export async function modifySubAccount<T = unknown>(
 ): Promise<WjxApiResponse<T>> {
   const params: SignableRecord = {
     action: Action.MODIFY_SUB_ACCOUNT,
-    username: input.username,
     subuser: input.subuser,
   };
-  if (input.password !== undefined) params.password = input.password;
   if (input.mobile !== undefined) params.mobile = input.mobile;
   if (input.email !== undefined) params.email = input.email;
-  if (input.role_id !== undefined) params.role_id = input.role_id;
+  if (input.role !== undefined) params.role = input.role;
+  if (input.group !== undefined) params.group = input.group;
 
-  return callWjxApi<T>(params, { credentials, fetchImpl, timestamp, maxRetries: 0 });
+  return callWjxSubuserApi<T>(params, { credentials, fetchImpl, timestamp, maxRetries: 0 });
 }
 
 export async function deleteSubAccount<T = unknown>(
@@ -53,10 +52,9 @@ export async function deleteSubAccount<T = unknown>(
   fetchImpl: FetchLike = fetch,
   timestamp?: string,
 ): Promise<WjxApiResponse<T>> {
-  return callWjxApi<T>(
+  return callWjxSubuserApi<T>(
     {
       action: Action.DELETE_SUB_ACCOUNT,
-      username: input.username,
       subuser: input.subuser,
     },
     { credentials, fetchImpl, timestamp, maxRetries: 0 },
@@ -69,14 +67,14 @@ export async function restoreSubAccount<T = unknown>(
   fetchImpl: FetchLike = fetch,
   timestamp?: string,
 ): Promise<WjxApiResponse<T>> {
-  return callWjxApi<T>(
-    {
-      action: Action.RESTORE_SUB_ACCOUNT,
-      username: input.username,
-      subuser: input.subuser,
-    },
-    { credentials, fetchImpl, timestamp, maxRetries: 0 },
-  );
+  const params: SignableRecord = {
+    action: Action.RESTORE_SUB_ACCOUNT,
+    subuser: input.subuser,
+  };
+  if (input.mobile !== undefined) params.mobile = input.mobile;
+  if (input.email !== undefined) params.email = input.email;
+
+  return callWjxSubuserApi<T>(params, { credentials, fetchImpl, timestamp, maxRetries: 0 });
 }
 
 export async function querySubAccounts<T = unknown>(
@@ -87,10 +85,14 @@ export async function querySubAccounts<T = unknown>(
 ): Promise<WjxApiResponse<T>> {
   const params: SignableRecord = {
     action: Action.QUERY_SUB_ACCOUNTS,
-    username: input.username,
   };
+  if (input.subuser !== undefined) params.subuser = input.subuser;
+  if (input.name_like !== undefined) params.name_like = input.name_like;
+  if (input.role !== undefined) params.role = input.role;
+  if (input.group !== undefined) params.group = input.group;
+  if (input.status !== undefined) params.status = input.status;
   if (input.page_index !== undefined) params.page_index = input.page_index;
   if (input.page_size !== undefined) params.page_size = input.page_size;
 
-  return callWjxApi<T>(params, { credentials, fetchImpl, timestamp });
+  return callWjxSubuserApi<T>(params, { credentials, fetchImpl, timestamp });
 }

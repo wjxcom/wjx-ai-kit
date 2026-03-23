@@ -2,6 +2,10 @@ export const WJX_API_URL =
   process.env.WJX_API_URL ?? "https://www.wjx.cn/openapi/default.aspx";
 export const WJX_USER_SYSTEM_API_URL =
   process.env.WJX_USER_SYSTEM_API_URL ?? "https://www.wjx.cn/openapi/usersystem.aspx";
+export const WJX_SUBUSER_API_URL =
+  process.env.WJX_SUBUSER_API_URL ?? "https://www.wjx.cn/openapi/subuser.aspx";
+export const WJX_CONTACTS_API_URL =
+  process.env.WJX_CONTACTS_API_URL ?? "https://www.wjx.cn/openapi/contacts.aspx";
 
 export const Action = {
   GET_SURVEY: "1000001",
@@ -27,6 +31,7 @@ export const Action = {
   ADD_PARTICIPANTS: "1002001",
   MODIFY_PARTICIPANTS: "1002002",
   DELETE_PARTICIPANTS: "1002003",
+  BIND_ACTIVITY: "1002004",
   QUERY_SURVEY_BINDING: "1002005",
   QUERY_USER_SURVEYS: "1002006",
   ADD_SUB_ACCOUNT: "1003001",

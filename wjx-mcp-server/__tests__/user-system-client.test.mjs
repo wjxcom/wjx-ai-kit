@@ -30,7 +30,7 @@ function mockFetch(responseBody, status = 200) {
 // ─── addParticipants ────────────────────────────────────────────────
 
 describe("addParticipants", () => {
-  const input = { username: "user1", users: '[{"uid":"u1","name":"Alice"}]', usid: 100 };
+  const input = { username: "user1", users: '[{"uid":"u1","name":"Alice"}]', sysid: 100 };
 
   it("should POST to WJX_USER_SYSTEM_API_URL with JSON content type", async () => {
     const fetch = mockFetch({ result: true, data: {} });
@@ -51,14 +51,14 @@ describe("addParticipants", () => {
     assert.equal(body.action, "1002001");
   });
 
-  it("should include username, users, and usid in body", async () => {
+  it("should include username, users, and sysid in body", async () => {
     const fetch = mockFetch({ result: true, data: {} });
     await addParticipants(input, credentials, fetch, "1700000000");
 
     const body = JSON.parse(fetch.captured().init.body);
     assert.equal(body.username, "user1");
     assert.equal(body.users, '[{"uid":"u1","name":"Alice"}]');
-    assert.equal(body.usid, 100);
+    assert.equal(body.sysid, 100);
   });
 
   it("should include sign as 40-char hex in body", async () => {
@@ -137,7 +137,7 @@ describe("addParticipants", () => {
 // ─── modifyParticipants ─────────────────────────────────────────────
 
 describe("modifyParticipants", () => {
-  const input = { username: "user2", users: '[{"uid":"u2","name":"Bob"}]', usid: 200 };
+  const input = { username: "user2", users: '[{"uid":"u2","name":"Bob"}]', sysid: 200 };
 
   it("should POST to WJX_USER_SYSTEM_API_URL with JSON content type", async () => {
     const fetch = mockFetch({ result: true, data: {} });
@@ -158,14 +158,14 @@ describe("modifyParticipants", () => {
     assert.equal(body.action, "1002002");
   });
 
-  it("should include username, users, and usid in body", async () => {
+  it("should include username, users, and sysid in body", async () => {
     const fetch = mockFetch({ result: true, data: {} });
     await modifyParticipants(input, credentials, fetch, "1700000000");
 
     const body = JSON.parse(fetch.captured().init.body);
     assert.equal(body.username, "user2");
     assert.equal(body.users, '[{"uid":"u2","name":"Bob"}]');
-    assert.equal(body.usid, 200);
+    assert.equal(body.sysid, 200);
   });
 
   it("should include sign as 40-char hex in body", async () => {
@@ -228,7 +228,7 @@ describe("modifyParticipants", () => {
 // ─── deleteParticipants ─────────────────────────────────────────────
 
 describe("deleteParticipants", () => {
-  const input = { username: "user3", uids: "uid1,uid2,uid3", usid: 300 };
+  const input = { username: "user3", uids: '["uid1","uid2","uid3"]', sysid: 300 };
 
   it("should POST to WJX_USER_SYSTEM_API_URL with JSON content type", async () => {
     const fetch = mockFetch({ result: true, data: {} });
@@ -249,14 +249,14 @@ describe("deleteParticipants", () => {
     assert.equal(body.action, "1002003");
   });
 
-  it("should include username, uids, and usid in body", async () => {
+  it("should include username, uids, and sysid in body", async () => {
     const fetch = mockFetch({ result: true, data: {} });
     await deleteParticipants(input, credentials, fetch, "1700000000");
 
     const body = JSON.parse(fetch.captured().init.body);
     assert.equal(body.username, "user3");
-    assert.equal(body.uids, "uid1,uid2,uid3");
-    assert.equal(body.usid, 300);
+    assert.equal(body.uids, '["uid1","uid2","uid3"]');
+    assert.equal(body.sysid, 300);
   });
 
   it("should include sign as 40-char hex in body", async () => {
@@ -328,7 +328,7 @@ describe("deleteParticipants", () => {
 // ─── querySurveyBinding ─────────────────────────────────────────────
 
 describe("querySurveyBinding", () => {
-  const input = { username: "user4", vid: 12345, usid: 400 };
+  const input = { username: "user4", vid: 12345, sysid: 400 };
 
   it("should POST to WJX_USER_SYSTEM_API_URL with JSON content type", async () => {
     const fetch = mockFetch({ result: true, data: {} });
@@ -349,14 +349,14 @@ describe("querySurveyBinding", () => {
     assert.equal(body.action, "1002005");
   });
 
-  it("should include username, vid, and usid in body", async () => {
+  it("should include username, vid, and sysid in body", async () => {
     const fetch = mockFetch({ result: true, data: {} });
     await querySurveyBinding(input, credentials, fetch, "1700000000");
 
     const body = JSON.parse(fetch.captured().init.body);
     assert.equal(body.username, "user4");
     assert.equal(body.vid, 12345);
-    assert.equal(body.usid, 400);
+    assert.equal(body.sysid, 400);
   });
 
   it("should include sign as 40-char hex in body", async () => {
@@ -436,7 +436,7 @@ describe("querySurveyBinding", () => {
 // ─── queryUserSurveys ───────────────────────────────────────────────
 
 describe("queryUserSurveys", () => {
-  const input = { username: "user5", uid: "uid-abc-123", usid: 500 };
+  const input = { username: "user5", uid: "uid-abc-123", sysid: 500 };
 
   it("should POST to WJX_USER_SYSTEM_API_URL with JSON content type", async () => {
     const fetch = mockFetch({ result: true, data: {} });
@@ -457,14 +457,14 @@ describe("queryUserSurveys", () => {
     assert.equal(body.action, "1002006");
   });
 
-  it("should include username, uid, and usid in body", async () => {
+  it("should include username, uid, and sysid in body", async () => {
     const fetch = mockFetch({ result: true, data: {} });
     await queryUserSurveys(input, credentials, fetch, "1700000000");
 
     const body = JSON.parse(fetch.captured().init.body);
     assert.equal(body.username, "user5");
     assert.equal(body.uid, "uid-abc-123");
-    assert.equal(body.usid, 500);
+    assert.equal(body.sysid, 500);
   });
 
   it("should include sign as 40-char hex in body", async () => {
@@ -567,7 +567,7 @@ describe("user-system constants", () => {
 
 describe("sign determinism", () => {
   it("same input produces different signs for different timestamps", async () => {
-    const input = { username: "u", users: "[]", usid: 1 };
+    const input = { username: "u", users: "[]", sysid: 1 };
     const fetch1 = mockFetch({ result: true, data: {} });
     const fetch2 = mockFetch({ result: true, data: {} });
 
@@ -580,7 +580,7 @@ describe("sign determinism", () => {
   });
 
   it("same input produces different signs for different appKeys", async () => {
-    const input = { username: "u", users: "[]", usid: 1 };
+    const input = { username: "u", users: "[]", sysid: 1 };
     const cred1 = { appId: "app", appKey: "key1" };
     const cred2 = { appId: "app", appKey: "key2" };
     const fetch1 = mockFetch({ result: true, data: {} });
