@@ -69,11 +69,33 @@ export {
   queryContacts,
   addContacts,
   manageContacts,
+  addAdmin,
+  deleteAdmin,
+  restoreAdmin,
+  listDepartments,
+  addDepartment,
+  modifyDepartment,
+  deleteDepartment,
+  listTags,
+  addTag,
+  modifyTag,
+  deleteTag,
 } from "./modules/contacts/client.js";
 export type {
   QueryContactsInput,
   AddContactsInput,
   ManageContactsInput,
+  AddAdminInput,
+  DeleteAdminInput,
+  RestoreAdminInput,
+  ListDepartmentsInput,
+  AddDepartmentInput,
+  ModifyDepartmentInput,
+  DeleteDepartmentInput,
+  ListTagsInput,
+  AddTagInput,
+  ModifyTagInput,
+  DeleteTagInput,
 } from "./modules/contacts/types.js";
 
 // User System module
@@ -107,3 +129,39 @@ export type {
   RestoreSubAccountInput,
   QuerySubAccountsInput,
 } from "./modules/multi-user/types.js";
+
+// SSO module
+export {
+  buildSsoSubaccountUrl,
+  buildSsoUserSystemUrl,
+  buildSsoPartnerUrl,
+  buildSurveyUrl,
+} from "./modules/sso/client.js";
+export { buildSsoSignature } from "./modules/sso/sign.js";
+export type {
+  SsoSubaccountInput,
+  SsoUserSystemInput,
+  SsoPartnerInput,
+  BuildSurveyUrlInput,
+} from "./modules/sso/types.js";
+
+// Analytics module
+export {
+  decodeResponses,
+  calculateNps,
+  calculateCsat,
+  detectAnomalies,
+  compareMetrics,
+} from "./modules/analytics/compute.js";
+export { decodePushPayload } from "./modules/analytics/push-decode.js";
+export type {
+  DecodedAnswer,
+  DecodeResponsesResult,
+  NpsResult,
+  CsatResult,
+  AnomalyFlag,
+  AnomalyResult,
+  MetricComparison,
+  CompareResult,
+  PushDecodeResult,
+} from "./modules/analytics/types.js";

@@ -92,7 +92,7 @@ test("createSurvey sends a JSON POST request to WJX", async () => {
   assert.equal("traceid" in parsedBody, false, "traceid should not be in POST body");
 });
 
-test("server exposes all 37 tools, 6 resources, and 9 prompts over stdio", async () => {
+test("server exposes all 54 tools, 7 resources, and 10 prompts over stdio", async () => {
   const transport = new StdioClientTransport({
     command: "node",
     args: [serverEntry],
@@ -117,16 +117,28 @@ test("server exposes all 37 tools, 6 resources, and 9 prompts over stdio", async
     const toolsResult = await client.listTools();
     const toolNames = toolsResult.tools.map((t) => t.name).sort();
     assert.deepEqual(toolNames, [
+      "add_admin",
       "add_contacts",
+      "add_department",
       "add_participants",
       "add_sub_account",
+      "add_tag",
       "build_survey_url",
+      "calculate_csat",
+      "calculate_nps",
       "clear_recycle_bin",
       "clear_responses",
+      "compare_metrics",
       "create_survey",
+      "decode_push_payload",
+      "decode_responses",
+      "delete_admin",
+      "delete_department",
       "delete_participants",
       "delete_sub_account",
       "delete_survey",
+      "delete_tag",
+      "detect_anomalies",
       "download_responses",
       "get_360_report",
       "get_file_links",
@@ -136,17 +148,22 @@ test("server exposes all 37 tools, 6 resources, and 9 prompts over stdio", async
       "get_survey_settings",
       "get_tag_details",
       "get_winners",
+      "list_departments",
       "list_surveys",
+      "list_tags",
       "manage_contacts",
+      "modify_department",
       "modify_participants",
       "modify_response",
       "modify_sub_account",
+      "modify_tag",
       "query_contacts",
       "query_responses",
       "query_responses_realtime",
       "query_sub_accounts",
       "query_survey_binding",
       "query_user_surveys",
+      "restore_admin",
       "restore_sub_account",
       "sso_partner_url",
       "sso_subaccount_url",
@@ -208,6 +225,7 @@ test("server exposes all 37 tools, 6 resources, and 9 prompts over stdio", async
     const resourceUris = resourcesResult.resources.map((r) => r.uri).sort();
     assert.deepEqual(resourceUris, [
       "wjx://reference/analysis-methods",
+      "wjx://reference/push-format",
       "wjx://reference/question-types",
       "wjx://reference/response-format",
       "wjx://reference/survey-statuses",
@@ -227,6 +245,7 @@ test("server exposes all 37 tools, 6 resources, and 9 prompts over stdio", async
     assert.deepEqual(promptNames, [
       "analyze-results",
       "comparative-analysis",
+      "configure-webhook",
       "create-nps-survey",
       "cross-tabulation",
       "csat-analysis",

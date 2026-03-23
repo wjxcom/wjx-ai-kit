@@ -131,7 +131,7 @@ export function registerResponseTools(server: McpServer): void {
       },
       annotations: {
         destructiveHint: false,
-        idempotentHint: true,
+        idempotentHint: false,
         openWorldHint: true,
         title: "答卷下载",
       },
@@ -370,7 +370,7 @@ export function registerResponseTools(server: McpServer): void {
       },
       annotations: {
         destructiveHint: false,
-        idempotentHint: true,
+        idempotentHint: false,
         openWorldHint: true,
         title: "360度评估报告下载",
       },

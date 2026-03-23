@@ -272,6 +272,15 @@ test("getSurveySettings", async (t) => {
     const body = parsedBody(mock);
     assert.equal(body.action, Action.GET_SETTINGS);
     assert.equal(body.vid, 500);
+    assert.equal(body.additional_setting, "[1000,1001,1002,1003,1004,1005]");
+  });
+
+  await t.test("should use custom additional_setting when provided", async () => {
+    const mock = mockFetch({ result: true, data: {} });
+    await getSurveySettings({ vid: 500, additional_setting: "[1000]" }, TEST_CREDENTIALS, mock.impl, "1700000000");
+
+    const body = parsedBody(mock);
+    assert.equal(body.additional_setting, "[1000]");
   });
 
   await t.test("should return parsed settings response", async () => {

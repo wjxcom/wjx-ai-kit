@@ -8,6 +8,7 @@ import { registerContactsTools } from "./modules/contacts/tools.js";
 import { registerSsoTools } from "./modules/sso/tools.js";
 import { registerUserSystemTools } from "./modules/user-system/tools.js";
 import { registerMultiUserTools } from "./modules/multi-user/tools.js";
+import { registerAnalyticsTools } from "./modules/analytics/tools.js";
 import { registerResources } from "./resources/index.js";
 import { registerPrompts } from "./prompts/index.js";
 
@@ -44,6 +45,7 @@ export function createServer(): McpServer {
   registerSsoTools(server);
   registerUserSystemTools(server);
   registerMultiUserTools(server);
+  registerAnalyticsTools(server);
 
   return server;
 }

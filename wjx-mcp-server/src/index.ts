@@ -44,9 +44,37 @@ export { createServer } from "./server.js";
 
 export async function main(): Promise<void> {
   loadEnvFile();
+
+  const transportMode = process.argv.includes("--http")
+    ? "http"
+    : (process.env.MCP_TRANSPORT ?? "stdio");
+
   const server = createServer();
-  const transport = new StdioServerTransport();
-  await server.connect(transport);
+
+  if (transportMode === "http") {
+    const { startHttpTransport } = await import("./transports/http.js");
+    const port = Number(process.env.PORT ?? 3000);
+    if (!Number.isFinite(port) || port < 0 || port > 65535) {
+      throw new Error(`Invalid PORT: ${process.env.PORT}`);
+    }
+    const { httpServer } = await startHttpTransport(server, {
+      port,
+      authToken: process.env.MCP_AUTH_TOKEN,
+      stateful: process.env.MCP_SESSION !== "stateless",
+    });
+    const shutdown = () => {
+      httpServer.close();
+      void server.close();
+    };
+    process.once("SIGINT", shutdown);
+    process.once("SIGTERM", shutdown);
+  } else {
+    const transport = new StdioServerTransport();
+    await server.connect(transport);
+    const shutdown = () => { void server.close(); };
+    process.once("SIGINT", shutdown);
+    process.once("SIGTERM", shutdown);
+  }
 }
 
 function isMainModule(): boolean {

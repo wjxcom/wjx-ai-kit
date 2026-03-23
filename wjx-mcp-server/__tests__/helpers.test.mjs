@@ -22,11 +22,10 @@ describe("toolResult", () => {
     assert.equal(result.content[0].text, "null");
   });
 
-  it("should handle undefined data via fallback", () => {
+  it("should handle undefined data by producing 'null' (valid JSON)", () => {
     const result = toolResult(undefined, false);
-    // JSON.stringify(undefined) returns undefined (not a string),
-    // so the ?? fallback to String(data) kicks in
-    assert.equal(result.content[0].text, "undefined");
+    // undefined is not valid JSON; we normalize to "null" for valid MCP text
+    assert.equal(result.content[0].text, "null");
   });
 
   it("should handle numeric data", () => {

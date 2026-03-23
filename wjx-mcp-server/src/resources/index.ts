@@ -9,6 +9,7 @@ import {
   ANALYSIS_METHODS,
   RESPONSE_FORMAT_GUIDE,
 } from "./analysis-reference.js";
+import { PUSH_FORMAT_GUIDE } from "./push-reference.js";
 
 function formatResource(data: Record<string, unknown>): string {
   return JSON.stringify(data, null, 2);
@@ -94,6 +95,19 @@ export function registerResources(server: McpServer): void {
           "3": "统计结果查看员",
           "4": "完整结果查看员",
         }),
+      }],
+    }),
+  );
+
+  server.resource(
+    "push-format",
+    "wjx://reference/push-format",
+    { description: "问卷星数据推送格式、AES加密与签名验证说明", mimeType: "application/json" },
+    async () => ({
+      contents: [{
+        uri: "wjx://reference/push-format",
+        mimeType: "application/json",
+        text: formatResource(PUSH_FORMAT_GUIDE),
       }],
     }),
   );

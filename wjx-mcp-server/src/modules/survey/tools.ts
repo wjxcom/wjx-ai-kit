@@ -213,6 +213,13 @@ export function registerSurveyTools(server: McpServer): void {
         "获取问卷的详细设置，包括时间设置、提交后跳转、考试设置、维度、奖品、数据推送等。",
       inputSchema: {
         vid: z.number().int().positive().describe("问卷编号"),
+        additional_setting: z
+          .string()
+          .optional()
+          .default("[1000,1001,1002,1003,1004,1005]")
+          .describe(
+            "要获取的设置类别 JSON 数组字符串。默认获取全部：1000=基本信息, 1001=提交后设置, 1002=时间设置, 1003=消息推送, 1004=参数设置, 1005=API设置",
+          ),
       },
       annotations: {
         destructiveHint: false,
@@ -223,7 +230,7 @@ export function registerSurveyTools(server: McpServer): void {
     },
     async (args) => {
       try {
-        const result = await getSurveySettings({ vid: args.vid });
+        const result = await getSurveySettings({ vid: args.vid, additional_setting: args.additional_setting });
         return toolResult(result, result.result === false);
       } catch (error) {
         return toolError(error);
@@ -270,6 +277,15 @@ export function registerSurveyTools(server: McpServer): void {
     },
     async (args) => {
       try {
+        const hasAnySetting =
+          args.api_setting !== undefined ||
+          args.after_submit_setting !== undefined ||
+          args.msg_setting !== undefined ||
+          args.sojumpparm_setting !== undefined ||
+          args.time_setting !== undefined;
+        if (!hasAnySetting) {
+          return toolResult({ error: "至少需要提供一个设置项" }, true);
+        }
         const result = await updateSurveySettings({
           vid: args.vid,
           api_setting: args.api_setting,

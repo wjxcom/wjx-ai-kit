@@ -89,7 +89,7 @@ export async function listSurveys<T = unknown>(
   };
   if (input.status !== undefined) params.status = input.status;
   if (input.atype !== undefined) params.atype = input.atype;
-  if (input.name_like) params.name_like = input.name_like;
+  if (input.name_like !== undefined && input.name_like !== "") params.name_like = input.name_like;
   if (input.sort !== undefined) params.sort = input.sort;
 
   return callWjxApi<T>(params, { credentials, fetchImpl, timestamp });
@@ -118,7 +118,11 @@ export async function getSurveySettings<T = unknown>(
   timestamp?: string,
 ): Promise<WjxApiResponse<T>> {
   return callWjxApi<T>(
-    { action: Action.GET_SETTINGS, vid: input.vid },
+    {
+      action: Action.GET_SETTINGS,
+      vid: input.vid,
+      additional_setting: input.additional_setting ?? "[1000,1001,1002,1003,1004,1005]",
+    },
     { credentials, fetchImpl, timestamp },
   );
 }

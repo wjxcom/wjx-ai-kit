@@ -40,6 +40,7 @@ export interface UpdateSurveyStatusInput {
 
 export interface GetSurveySettingsInput {
   vid: number;
+  additional_setting?: string;
 }
 
 export interface UpdateSurveySettingsInput {

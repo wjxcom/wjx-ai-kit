@@ -102,6 +102,57 @@ Use survey type 1 (survey) and output the create_survey tool call with properly 
     },
   );
 
+  server.prompt(
+    "configure-webhook",
+    "引导配置问卷星数据推送（Webhook），包括推送URL设置、加密配置、签名验证和测试",
+    {
+      vid: z.string().describe("问卷编号 (vid)"),
+    },
+    async ({ vid }) => ({
+      messages: [{
+        role: "user",
+        content: {
+          type: "text",
+          text: `请帮我配置问卷 ${vid} 的数据推送（Webhook）。
+
+请按以下步骤操作：
+
+**第一步：查看当前设置**
+调用 get_survey_settings 工具获取问卷 ${vid} 的当前配置，检查 msg_setting 中是否已有推送设置。
+
+**第二步：配置推送参数**
+调用 update_survey_settings 工具，通过 msg_setting 字段配置以下推送参数：
+- push_url：接收推送数据的 HTTPS URL（必填）
+- is_encrypt：是否启用 AES-128-CBC 加密（建议开启，设为 1）
+- push_custom_params：需要附加的自定义参数（可选）
+
+请向我确认推送 URL 和是否需要加密后再执行配置。
+
+**第三步：了解推送数据格式**
+参考资源 wjx://reference/push-format 了解推送载荷的完整字段说明：
+- vid（问卷编号）、jid（答卷编号）、submitdata（答卷数据）、submittime（提交时间）
+- source（来源）、ip（IP地址）等字段
+- submitdata 的编码格式：题号$答案}题号$答案
+
+**第四步：解密测试**
+如果启用了加密，可以使用 decode_push_payload 工具对收到的测试推送密文进行解密验证：
+- 加密算法：AES-128-CBC
+- 密钥派生：MD5(appKey) 取前 16 字符
+- 填充方式：PKCS7
+- 密文格式：前 16 字节为 IV，其余为加密数据，整体 Base64 编码
+
+**第五步：签名验证**
+推送请求在 HTTP 头中携带 X-Wjx-Signature 签名，验证方法：
+- sign = SHA1(rawBody + appKey)
+- 将请求原始 body 与 appKey 拼接后计算 SHA1
+- 比对结果与请求头中的签名值，一致则验证通过
+
+请告诉我你的推送接收 URL 以及是否需要开启加密，我来帮你完成配置。`,
+        },
+      }],
+    }),
+  );
+
   // ═══ Analysis Prompts ══════════════════════════════════════════════════
   registerAnalysisPrompts(server);
 }
