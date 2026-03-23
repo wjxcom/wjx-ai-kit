@@ -18,8 +18,8 @@ export interface SsoSubaccountInput {
 export interface SsoUserSystemInput {
   /** Account username (fixed). */
   u: string;
-  /** Must be 1 (user system flag). */
-  user_system: number;
+  /** User system flag (defaults to 1). */
+  user_system?: number;
   /** User system ID. */
   system_id: number;
   /** Participant ID. */
