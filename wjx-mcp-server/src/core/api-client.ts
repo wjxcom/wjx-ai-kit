@@ -47,6 +47,14 @@ export function validateQuestionsJson(questions: string): void {
   if (!Array.isArray(parsed)) {
     throw new Error("questions must be a JSON array");
   }
+  for (const [i, q] of (parsed as Record<string, unknown>[]).entries()) {
+    if (typeof q.q_index !== "number") {
+      throw new Error(`questions[${i}] missing required field "q_index" (number)`);
+    }
+    if (typeof q.q_type !== "number") {
+      throw new Error(`questions[${i}] missing required field "q_type" (number)`);
+    }
+  }
 }
 
 function isRetryable(status: number): boolean {
