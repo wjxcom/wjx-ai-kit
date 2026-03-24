@@ -20,7 +20,7 @@ export async function addParticipants<T = unknown>(
       action: Action.ADD_PARTICIPANTS,
       username: input.username,
       users: input.users,
-      usid: input.usid,
+      sysid: input.sysid,
     },
     { credentials, fetchImpl, timestamp, maxRetries: 0 },
   );
@@ -37,7 +37,7 @@ export async function modifyParticipants<T = unknown>(
       action: Action.MODIFY_PARTICIPANTS,
       username: input.username,
       users: input.users,
-      usid: input.usid,
+      sysid: input.sysid,
     },
     { credentials, fetchImpl, timestamp, maxRetries: 0 },
   );
@@ -54,7 +54,7 @@ export async function deleteParticipants<T = unknown>(
       action: Action.DELETE_PARTICIPANTS,
       username: input.username,
       uids: input.uids,
-      usid: input.usid,
+      sysid: input.sysid,
     },
     { credentials, fetchImpl, timestamp, maxRetries: 0 },
   );
@@ -70,7 +70,7 @@ export async function querySurveyBinding<T = unknown>(
     action: Action.QUERY_SURVEY_BINDING,
     username: input.username,
     vid: input.vid,
-    usid: input.usid,
+    sysid: input.sysid,
   };
   if (input.page_index !== undefined) params.page_index = input.page_index;
   if (input.page_size !== undefined) params.page_size = input.page_size;
@@ -88,7 +88,7 @@ export async function queryUserSurveys<T = unknown>(
     action: Action.QUERY_USER_SURVEYS,
     username: input.username,
     uid: input.uid,
-    usid: input.usid,
+    sysid: input.sysid,
   };
   if (input.page_index !== undefined) params.page_index = input.page_index;
   if (input.page_size !== undefined) params.page_size = input.page_size;

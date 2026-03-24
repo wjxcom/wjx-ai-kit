@@ -14,9 +14,9 @@ export function registerUserSystemTools(server: McpServer): void {
   server.registerTool(
     "add_participants",
     {
-      title: "批量添加参与者",
+      title: "[已过时] 批量添加参与者",
       description:
-        "向用户系统批量添加参与者（每次最多100人）。users 为 JSON 数组字符串，每个对象包含 uid、uname、upass、udept、uextf 字段。",
+        "[Deprecated] 向用户系统批量添加参与者（每次最多100人）。users 为 JSON 数组字符串，每个对象包含 uid、uname、upass、udept、uextf 字段。",
       inputSchema: {
         username: z.string().min(1).describe("主账户用户名"),
         users: z
@@ -35,7 +35,7 @@ export function registerUserSystemTools(server: McpServer): void {
         destructiveHint: false,
         idempotentHint: false,
         openWorldHint: true,
-        title: "批量添加参与者",
+        title: "[已过时] 批量添加参与者",
       },
     },
     async (args) => {
@@ -43,7 +43,7 @@ export function registerUserSystemTools(server: McpServer): void {
         const result = await addParticipants({
           username: args.username,
           users: args.users,
-          usid: args.usid,
+          sysid: args.usid,
         });
         return toolResult(result, result.result === false);
       } catch (error) {
@@ -56,9 +56,9 @@ export function registerUserSystemTools(server: McpServer): void {
   server.registerTool(
     "modify_participants",
     {
-      title: "批量修改参与者",
+      title: "[已过时] 批量修改参与者",
       description:
-        "批量修改用户系统中参与者的信息。users 为 JSON 数组字符串，每个对象包含 uid、uname、upass、udept、uextf 字段。",
+        "[Deprecated] 批量修改用户系统中参与者的信息。users 为 JSON 数组字符串，每个对象包含 uid、uname、upass、udept、uextf 字段。",
       inputSchema: {
         username: z.string().min(1).describe("主账户用户名"),
         users: z
@@ -74,10 +74,10 @@ export function registerUserSystemTools(server: McpServer): void {
         usid: z.number().int().positive().describe("用户系统 ID"),
       },
       annotations: {
-        destructiveHint: false,
+        destructiveHint: true,
         idempotentHint: true,
         openWorldHint: true,
-        title: "批量修改参与者",
+        title: "[已过时] 批量修改参与者",
       },
     },
     async (args) => {
@@ -85,7 +85,7 @@ export function registerUserSystemTools(server: McpServer): void {
         const result = await modifyParticipants({
           username: args.username,
           users: args.users,
-          usid: args.usid,
+          sysid: args.usid,
         });
         return toolResult(result, result.result === false);
       } catch (error) {
@@ -98,19 +98,26 @@ export function registerUserSystemTools(server: McpServer): void {
   server.registerTool(
     "delete_participants",
     {
-      title: "批量删除参与者",
+      title: "[已过时] 批量删除参与者",
       description:
-        "从用户系统中批量删除参与者。此操作不可逆，请谨慎使用！uids 为逗号分隔的用户 ID 列表。",
+        "[Deprecated] 从用户系统中批量删除参与者。此操作不可逆，请谨慎使用！uids 为 JSON 数组字符串，如 [\"uid1\",\"uid2\"]。",
       inputSchema: {
         username: z.string().min(1).describe("主账户用户名"),
-        uids: z.string().min(1).describe("参与者 ID 列表，逗号分隔"),
+        uids: z
+          .string()
+          .min(2)
+          .refine(
+            (s) => { try { return Array.isArray(JSON.parse(s)); } catch { return false; } },
+            "uids 必须是合法的 JSON 数组",
+          )
+          .describe("参与者 ID 列表 JSON 字符串（数组），如 [\"uid1\",\"uid2\"]"),
         usid: z.number().int().positive().describe("用户系统 ID"),
       },
       annotations: {
         destructiveHint: true,
         idempotentHint: false,
         openWorldHint: true,
-        title: "批量删除参与者",
+        title: "[已过时] 批量删除参与者",
       },
     },
     async (args) => {
@@ -118,7 +125,7 @@ export function registerUserSystemTools(server: McpServer): void {
         const result = await deleteParticipants({
           username: args.username,
           uids: args.uids,
-          usid: args.usid,
+          sysid: args.usid,
         });
         return toolResult(result, result.result === false);
       } catch (error) {
@@ -131,9 +138,9 @@ export function registerUserSystemTools(server: McpServer): void {
   server.registerTool(
     "query_survey_binding",
     {
-      title: "查询问卷用户绑定",
+      title: "[已过时] 查询问卷用户绑定",
       description:
-        "查询问卷与用户系统的绑定关系，返回绑定的参与者列表，支持分页。",
+        "[Deprecated] 查询问卷与用户系统的绑定关系，返回绑定的参与者列表，支持分页。",
       inputSchema: {
         username: z.string().min(1).describe("主账户用户名"),
         vid: z.number().int().positive().describe("问卷编号"),
@@ -145,7 +152,7 @@ export function registerUserSystemTools(server: McpServer): void {
         destructiveHint: false,
         idempotentHint: true,
         openWorldHint: true,
-        title: "查询问卷用户绑定",
+        title: "[已过时] 查询问卷用户绑定",
       },
     },
     async (args) => {
@@ -153,7 +160,7 @@ export function registerUserSystemTools(server: McpServer): void {
         const result = await querySurveyBinding({
           username: args.username,
           vid: args.vid,
-          usid: args.usid,
+          sysid: args.usid,
           page_index: args.page_index,
           page_size: args.page_size,
         });
@@ -168,9 +175,9 @@ export function registerUserSystemTools(server: McpServer): void {
   server.registerTool(
     "query_user_surveys",
     {
-      title: "查询用户关联问卷",
+      title: "[已过时] 查询用户关联问卷",
       description:
-        "查询指定参与者被分配的问卷列表，支持分页。",
+        "[Deprecated] 查询指定参与者被分配的问卷列表，支持分页。",
       inputSchema: {
         username: z.string().min(1).describe("主账户用户名"),
         uid: z.string().min(1).describe("参与者 ID"),
@@ -182,7 +189,7 @@ export function registerUserSystemTools(server: McpServer): void {
         destructiveHint: false,
         idempotentHint: true,
         openWorldHint: true,
-        title: "查询用户关联问卷",
+        title: "[已过时] 查询用户关联问卷",
       },
     },
     async (args) => {
@@ -190,7 +197,7 @@ export function registerUserSystemTools(server: McpServer): void {
         const result = await queryUserSurveys({
           username: args.username,
           uid: args.uid,
-          usid: args.usid,
+          sysid: args.usid,
           page_index: args.page_index,
           page_size: args.page_size,
         });

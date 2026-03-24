@@ -145,8 +145,8 @@ describe("buildCreateSurveyParams", () => {
 // ─── validateQuestionsJson ──────────────────────────────────────────
 
 describe("validateQuestionsJson", () => {
-  it("should accept valid JSON array", () => {
-    assert.doesNotThrow(() => validateQuestionsJson('[{"q_index":1}]'));
+  it("should accept valid JSON array with q_index and q_type", () => {
+    assert.doesNotThrow(() => validateQuestionsJson('[{"q_index":1,"q_type":3}]'));
   });
 
   it("should accept empty JSON array", () => {
@@ -171,6 +171,34 @@ describe("validateQuestionsJson", () => {
     assert.throws(
       () => validateQuestionsJson("[{incomplete"),
       /questions must be valid JSON/,
+    );
+  });
+
+  it("should reject question missing q_index", () => {
+    assert.throws(
+      () => validateQuestionsJson('[{"q_type":3}]'),
+      /questions\[0\] missing required field "q_index"/,
+    );
+  });
+
+  it("should reject question missing q_type", () => {
+    assert.throws(
+      () => validateQuestionsJson('[{"q_index":1}]'),
+      /questions\[0\] missing required field "q_type"/,
+    );
+  });
+
+  it("should reject question with string q_index", () => {
+    assert.throws(
+      () => validateQuestionsJson('[{"q_index":"1","q_type":3}]'),
+      /questions\[0\] missing required field "q_index"/,
+    );
+  });
+
+  it("should validate all questions in the array", () => {
+    assert.throws(
+      () => validateQuestionsJson('[{"q_index":1,"q_type":3},{"q_index":2}]'),
+      /questions\[1\] missing required field "q_type"/,
     );
   });
 });

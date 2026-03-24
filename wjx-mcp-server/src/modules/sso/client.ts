@@ -59,10 +59,12 @@ export function buildSsoUserSystemUrl(
 
   const sign = buildSsoSignature([creds.appId, creds.appKey, input.uid, ts]);
 
+  const userSystem = input.user_system ?? 1;
+
   const params = new URLSearchParams();
   params.set("appid", creds.appId);
   params.set("u", input.u);
-  params.set("usersystem", input.user_system.toString());
+  params.set("usersystem", userSystem.toString());
   params.set("systemid", input.system_id.toString());
   params.set("uid", input.uid);
   params.set("ts", ts);

@@ -1,25 +1,25 @@
 export interface AddParticipantsInput {
   username: string;
   users: string;
-  usid: number;
+  sysid: number;
 }
 
 export interface ModifyParticipantsInput {
   username: string;
   users: string;
-  usid: number;
+  sysid: number;
 }
 
 export interface DeleteParticipantsInput {
   username: string;
-  uids: string;
-  usid: number;
+  uids: string; // JSON array of user IDs
+  sysid: number;
 }
 
 export interface QuerySurveyBindingInput {
   username: string;
   vid: number;
-  usid: number;
+  sysid: number;
   page_index?: number;
   page_size?: number;
 }
@@ -27,7 +27,7 @@ export interface QuerySurveyBindingInput {
 export interface QueryUserSurveysInput {
   username: string;
   uid: string;
-  usid: number;
+  sysid: number;
   page_index?: number;
   page_size?: number;
 }

@@ -1,5 +1,5 @@
 // Re-export from new modular locations for backward compatibility
-export { WJX_API_URL, WJX_USER_SYSTEM_API_URL, Action } from "./core/constants.js";
+export { WJX_API_URL, WJX_USER_SYSTEM_API_URL, WJX_SUBUSER_API_URL, WJX_CONTACTS_API_URL, Action } from "./core/constants.js";
 export type {
   WjxCredentials,
   WjxApiSuccess,
@@ -8,7 +8,7 @@ export type {
   FetchLike,
   RequestOptions,
 } from "./core/types.js";
-export { getWjxCredentials, validateQuestionsJson, callWjxApi, callWjxUserSystemApi, getUnixTimestamp } from "./core/api-client.js";
+export { getWjxCredentials, validateQuestionsJson, callWjxApi, callWjxUserSystemApi, callWjxSubuserApi, callWjxContactsApi, getCorpId, getUnixTimestamp } from "./core/api-client.js";
 
 // Survey module
 export {
@@ -68,7 +68,7 @@ export type {
 export {
   queryContacts,
   addContacts,
-  manageContacts,
+  deleteContacts,
   addAdmin,
   deleteAdmin,
   restoreAdmin,
@@ -84,7 +84,7 @@ export {
 export type {
   QueryContactsInput,
   AddContactsInput,
-  ManageContactsInput,
+  DeleteContactsInput,
   AddAdminInput,
   DeleteAdminInput,
   RestoreAdminInput,

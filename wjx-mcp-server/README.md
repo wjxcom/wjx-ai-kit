@@ -1,53 +1,150 @@
 # WJX MCP Server
 
-问卷星 (WJX) MCP Server — 通过 [Model Context Protocol](https://modelcontextprotocol.io/) 将问卷星 OpenAPI 能力暴露给 Claude 及其他 AI 客户端，让 AI 可以直接创建和管理问卷。
+> 问卷星 MCP Server — 通过 [Model Context Protocol](https://modelcontextprotocol.io/) 将[问卷星](https://www.wjx.cn) OpenAPI 完整暴露给 AI 客户端。
 
-## 前置条件
+[![npm version](https://img.shields.io/npm/v/wjx-mcp-server)](https://www.npmjs.com/package/wjx-mcp-server)
+[![license](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
+[![node](https://img.shields.io/badge/node-%3E%3D20-green)](https://nodejs.org/)
 
-- Node.js >= 20
-- 问卷星 OpenAPI 开发凭据（`appid` 和 `appkey`，在后台 "API自动登录" 弹窗中获取，或联系客户顾问）
+通过 Claude、Cursor 或任何 MCP 兼容的 AI 客户端，以自然语言创建、管理和分析问卷。服务器封装了问卷星 OpenAPI，提供 **54 个 Tools**、**7 个 Resources** 和 **10 个 Prompts**。
 
-## 安装
+---
+
+## 功能特性
+
+### 7 大模块 · 54 个 Tools
+
+| 模块 | 工具数 | 说明 |
+|------|:------:|------|
+| **Survey** 问卷管理 | 10 | 创建、查询、列表、状态变更、设置读写、删除、题目标签、回收站 |
+| **Response** 答卷数据 | 10 | 查询、实时查询、下载、统计报告、代填提交、文件链接、中奖者、改分、360° 报告、清空 |
+| **Contacts** 通讯录 | 14 | 成员管理、管理员管理、部门管理、标签管理 |
+| **SSO** 免登录 | 4 | 生成子账号 / 用户系统 / 合作伙伴 / 问卷创建编辑的 SSO 链接 |
+| **User System** 用户体系 | 5 | 参与者增删改、绑定查询、分配查询 |
+| **Multi-User** 多用户管理 | 5 | 子账号增删改恢复、子账号列表 |
+| **Analytics** 本地分析 | 6 | 解码答卷、NPS 计算、CSAT 计算、异常检测、指标对比、推送解密 |
+
+### 7 个 MCP Resources
+
+AI 客户端可直接读取的参考数据：`survey-types`、`question-types`、`survey-statuses`、`analysis-methods`、`response-format`、`user-roles`、`push-format`。
+
+### 10 个 MCP Prompts
+
+预置工作流模板：`design-survey`、`analyze-results`、`create-nps-survey`、`configure-webhook`、`nps-analysis`、`csat-analysis`、`cross-tabulation`、`sentiment-analysis`、`survey-health-check`、`comparative-analysis`。
+
+### 生产级特性
+
+- **请求签名** — SHA1 签名 + 30 秒时间窗口，每次请求自动计算
+- **TraceID** — 每请求生成 32 位 GUID，便于调试与追踪
+- **自动重试** — 读操作遇 5xx/429 自动重试（指数退避，最多 2 次）；写操作不重试
+- **超时控制** — 默认 15 秒，可按请求配置
+- **双传输模式** — stdio（默认）+ Streamable HTTP（Bearer token 认证）
+- **零额外依赖** — 运行时仅需 `@modelcontextprotocol/sdk` 和 `zod`
+
+---
+
+## 模块总览
+
+```mermaid
+flowchart LR
+    Client[AI 客户端] --> Entry[index.ts]
+    Entry --> |stdio| STDIO[StdioTransport]
+    Entry --> |--http| HTTP[StreamableHTTP]
+
+    STDIO --> Server[McpServer]
+    HTTP --> Server
+
+    Server --> R[Resources ×7]
+    Server --> P[Prompts ×10]
+    Server --> Tools[Tools ×54]
+
+    Tools --> S1[survey ×10]
+    Tools --> S2[response ×10]
+    Tools --> S3[contacts ×14]
+    Tools --> S4[sso ×4]
+    Tools --> S5[user-system ×5]
+    Tools --> S6[multi-user ×5]
+    Tools --> S7[analytics ×6]
+
+    S1 & S2 & S3 & S5 & S6 --> API[api-client.ts]
+    API --> Sign[SHA1 签名]
+    API --> WJX[(问卷星 OpenAPI)]
+
+    S4 --> URL[本地 URL 构建]
+    S7 --> Calc[本地计算 / 解密]
+```
+
+---
+
+## 快速开始
+
+> 目标：5 分钟内完成首次运行。
+
+### 前置条件
+
+- **Node.js >= 20**
+- **问卷星 OpenAPI 凭据**（`appid` + `appkey`）
+
+#### 获取 API 凭据
+
+1. 登录[问卷星控制台](https://www.wjx.cn)
+2. 进入 **账号设置 → API自动登录** 或联系客户经理开通 OpenAPI 权限
+3. 获取 `appid`（数字 ID）和 `appkey`（签名密钥，与 SSO 密钥相同）
+
+### 安装与构建
 
 ```bash
-cd wjx-mcp-server
+git clone https://codeup.aliyun.com/6445da2d020eabef3107e22e/wjxfc/wjxagents.git
+cd wjxagents/wjx-mcp-server
 npm install
 npm run build
 ```
 
-## 配置
-
-复制 `.env.example` 为 `.env`，填入凭据：
+### 配置
 
 ```bash
 cp .env.example .env
 ```
 
-| 环境变量 | 必需 | 说明 |
-|----------|------|------|
-| `WJX_APP_ID` | 是 | 问卷星 OpenAPI 开发 ID |
-| `WJX_APP_KEY` | 是 | 问卷星 OpenAPI 开发密钥 |
+编辑 `.env`，填入你的凭据：
 
-服务启动时会自动加载 `.env` 文件。
-
-## 使用方法
-
-### 在 Claude Code 中使用
-
-```bash
-claude mcp add wjx -- node /home/claw/wjxagents/wjx-mcp-server/dist/index.js
+```dotenv
+WJX_APP_ID=your_appid
+WJX_APP_KEY=your_appkey
 ```
 
-### 在 Claude Desktop 中使用
+### 启动（stdio 模式）
 
-编辑配置文件：
+```bash
+npm start
+```
+
+### 启动（HTTP 模式）
+
+适用于远程部署或服务化场景：
+
+```bash
+# 通过 npm script
+npm run start:http
+
+# 或通过环境变量
+MCP_TRANSPORT=http PORT=3000 MCP_AUTH_TOKEN=my-secret node dist/index.js
+```
+
+---
+
+## 集成配置
+
+### Claude Desktop
+
+编辑 Claude Desktop 配置文件（macOS: `~/Library/Application Support/Claude/claude_desktop_config.json`）：
 
 ```json
 {
   "mcpServers": {
     "wjx": {
       "command": "node",
-      "args": ["/home/claw/wjxagents/wjx-mcp-server/dist/index.js"],
+      "args": ["./wjx-mcp-server/dist/index.js"],
       "env": {
         "WJX_APP_ID": "your_appid",
         "WJX_APP_KEY": "your_appkey"
@@ -57,154 +154,137 @@ claude mcp add wjx -- node /home/claw/wjxagents/wjx-mcp-server/dist/index.js
 }
 ```
 
-### 直接运行
+> 将 `args` 中的路径替换为你本地 `dist/index.js` 的实际路径。
+
+### Claude Code
 
 ```bash
-WJX_APP_ID=your_appid WJX_APP_KEY=your_appkey node dist/index.js
+claude mcp add wjx -- node ./wjx-mcp-server/dist/index.js
 ```
 
-## 支持的 Tools
+### Cursor
 
-### `create_survey` — 创建问卷
+在项目根目录创建或编辑 `.cursor/mcp.json`：
 
-创建一份新的问卷星问卷。
-
-| 参数 | 类型 | 必需 | 说明 |
-|------|------|------|------|
-| `title` | string | 是 | 问卷名称 |
-| `atype` | number | 是 | 问卷类型 |
-| `desc` | string | 是 | 问卷描述 |
-| `publish` | boolean | 否 | 是否立即发布，默认 `false` |
-| `questions` | string | 是 | 题目列表的 JSON 字符串 |
-
-### `get_survey` — 获取问卷内容
-
-根据问卷编号获取问卷详情。
-
-| 参数 | 类型 | 必需 | 说明 |
-|------|------|------|------|
-| `vid` | number | 是 | 问卷编号 |
-| `get_questions` | boolean | 否 | 是否获取题目信息，默认 `true` |
-| `get_items` | boolean | 否 | 是否获取选项信息，默认 `true` |
-
-### `list_surveys` — 获取问卷列表
-
-分页获取账户下的问卷列表。
-
-| 参数 | 类型 | 必需 | 说明 |
-|------|------|------|------|
-| `page_index` | number | 否 | 页码，默认 1 |
-| `page_size` | number | 否 | 每页数量（1-300），默认 10 |
-| `status` | number | 否 | 按状态筛选 |
-| `atype` | number | 否 | 按类型筛选 |
-| `name_like` | string | 否 | 按名称模糊搜索（最长10字符） |
-| `sort` | number | 否 | 排序规则（0-5） |
-
-### `update_survey_status` — 修改问卷状态
-
-修改问卷的发布状态。
-
-| 参数 | 类型 | 必需 | 说明 |
-|------|------|------|------|
-| `vid` | number | 是 | 问卷编号 |
-| `state` | number | 是 | 1=发布, 2=暂停, 3=删除 |
-
-## 问卷类型（`atype`）
-
-| 值 | 类型 |
-|----|------|
-| 1 | 调查 |
-| 2 | 测评 |
-| 3 | 投票 |
-| 6 | 考试 |
-| 7 | 表单 |
-
-## 题目类型（`q_type`）
-
-| 值 | 类型 |
-|----|------|
-| 1 | 分页 |
-| 2 | 段落说明 |
-| 3 | 单选题 |
-| 4 | 多选题 |
-| 5 | 填空题 |
-| 6 | 多项填空题 |
-| 7 | 矩阵题 |
-| 8 | 文件上传题 |
-| 9 | 比重题 |
-| 10 | 滑动条 |
-
-## 验证与后台可见性
-
-- 自动化测试或端到端验证在创建问卷后，常会调用 **`update_survey_status` 且 `state=3`（删除）** 做环境清理，因此你在问卷星后台「我的问卷」里**看不到**这些问卷是正常的。
-- 若需要**长期保留**验证问卷：创建后**不要**对同一 `vid` 调用删除；或使用单独的测试用 `appid` / 测试子账号。
-
-## 与 Paperclip / 资料范围
-
-- MCP Server 的维护**优先依赖**问卷星 **OpenAPI 文档与行为真源**（见 `docs/wjx-openapi-spec.md`、错误码、题目 JSON 样例），**不需要**向仓库导入问卷星整库业务代码。
-
-## 生产特性
-
-- **请求签名**: SHA1 签名自动计算，30秒时间窗口
-- **TraceID**: 每次请求自动附带 32 位 GUID，方便排查
-- **请求超时**: 默认 15 秒，可配置
-- **自动重试**: 读取类接口遇到 5xx/429 错误自动重试（最多 2 次，指数退避）；写入类接口不重试
-- **`.env` 自动加载**: 无需额外依赖
-
-## 开发
-
-```bash
-npm install          # 安装依赖
-npm run build        # 编译
-npm test             # 运行全部测试（单元 + 集成）
-npm run test:unit    # 仅运行单元测试
-npm run test:integration  # 仅运行集成测试
+```json
+{
+  "mcpServers": {
+    "wjx": {
+      "command": "node",
+      "args": ["./wjx-mcp-server/dist/index.js"],
+      "env": {
+        "WJX_APP_ID": "your_appid",
+        "WJX_APP_KEY": "your_appkey"
+      }
+    }
+  }
+}
 ```
+
+---
+
+## 配置项说明
+
+| 环境变量 | 必填 | 默认值 | 说明 |
+|----------|:----:|--------|------|
+| `WJX_APP_ID` | **是** | — | 问卷星 OpenAPI 开发者 ID |
+| `WJX_APP_KEY` | **是** | — | 问卷星 OpenAPI 签名密钥（与 SSO 密钥相同） |
+| `MCP_TRANSPORT` | 否 | `stdio` | 设为 `http` 启用 HTTP 传输 |
+| `PORT` | 否 | `3000` | HTTP 模式监听端口 |
+| `MCP_AUTH_TOKEN` | 否 | — | HTTP 模式的 Bearer token 认证 |
+| `MCP_SESSION` | 否 | `stateful` | 设为 `stateless` 禁用会话跟踪 |
+
+服务器内置 `.env` 加载器，无需额外安装 `dotenv`。
+
+---
+
+## HTTP 模式
+
+| 端点 | 方法 | 说明 |
+|------|------|------|
+| `/mcp` | POST | MCP 消息端点（Streamable HTTP / SSE） |
+| `/health` | GET | 健康检查，返回 `{ status: "ok" }` |
+
+设置 `MCP_AUTH_TOKEN` 后，`/mcp` 端点要求 `Authorization: Bearer <token>` 请求头；`/health` 端点始终公开。
+
+---
 
 ## 项目结构
 
 ```
 wjx-mcp-server/
-├── docs/
-│   └── wjx-openapi-spec.md       # 问卷星 OpenAPI 接口文档
 ├── src/
-│   ├── index.ts                   # 入口：loadEnvFile() + main()
-│   ├── server.ts                  # createServer() + 模块注册
-│   ├── helpers.ts                 # toolResult(), toolError()
+│   ├── index.ts                  # 入口：加载 .env、选择传输模式
+│   ├── server.ts                 # createServer() — 注册模块
+│   ├── helpers.ts                # toolResult() / toolError() 工具函数
 │   ├── core/
-│   │   ├── api-client.ts          # callWjxApi(), 重试/签名/超时
-│   │   ├── sign.ts                # SHA1 签名算法
-│   │   ├── constants.ts           # Action codes, API URLs
-│   │   └── types.ts               # 公共类型定义
+│   │   ├── api-client.ts         # callWjxApi() — 重试、超时、签名
+│   │   ├── sign.ts               # SHA1 排序签名
+│   │   ├── constants.ts          # Action codes、API URL、默认值
+│   │   └── types.ts              # 共享类型定义
 │   ├── modules/
-│   │   ├── survey/                # 问卷管理 (10 tools)
-│   │   ├── response/              # 答卷数据 (10 tools)
-│   │   ├── user-system/           # 用户体系 (5 tools)
-│   │   ├── multi-user/            # 多用户管理 (5 tools)
-│   │   ├── contacts/              # 通讯录 (3 tools)
-│   │   └── sso/                   # SSO 免登录 (4 tools)
-│   ├── resources/                 # MCP Resources
-│   └── prompts/                   # MCP Prompts (含分析模板)
-├── __tests__/                     # 单元测试
-├── tests/                         # 集成测试
-├── .env.example                   # 环境变量模板
+│   │   ├── survey/               # 问卷管理（10 tools）
+│   │   ├── response/             # 答卷数据（10 tools）
+│   │   ├── contacts/             # 通讯录（14 tools）
+│   │   ├── sso/                  # 免登录 URL（4 tools）
+│   │   ├── user-system/          # 用户体系（5 tools）
+│   │   ├── multi-user/           # 多用户管理（5 tools）
+│   │   └── analytics/            # 本地分析（6 tools）
+│   ├── resources/                # 7 个 MCP Resources
+│   ├── prompts/                  # 10 个 MCP Prompts
+│   └── transports/http.ts        # Streamable HTTP 传输
+├── __tests__/                    # 单元测试（node:test）
+├── tests/                        # 集成测试
+├── docs/
+│   ├── architecture.md           # 架构设计文档
+│   └── wjx-openapi-spec.md      # 问卷星 OpenAPI 参考
+├── .env.example                  # 环境变量模板
+├── CHANGELOG.md                  # 版本历史
+├── LICENSE                       # MIT License
 ├── package.json
-├── tsconfig.json
-└── README.md
+└── tsconfig.json
 ```
 
-## 认证说明
+---
 
-- 签名算法：按 key 字母排序拼接 value，末尾追加 appkey，SHA1 哈希
-- traceid 参与签名但仅在 URL query 中传递，不放入 POST body
-- 30 秒有效期：每次请求包含 Unix 时间戳
+## 测试
 
-| 凭据 | 说明 |
-|------|------|
-| `appid` | OpenAPI 开发 ID（数字，如 `3642599`） |
-| `appkey` | 签名密钥（同 SSO 密钥） |
-| 推送密钥 | 仅用于 Webhook 回调验证，与 OpenAPI 无关 |
+```bash
+# 全部测试（单元 + 集成）
+npm test
+
+# 仅单元测试
+npm run test:unit
+
+# 仅集成测试
+npm run test:integration
+```
+
+测试使用 Node.js 内置测试运行器（`node:test`），无需额外测试框架。
+
+---
+
+## 开发
+
+```bash
+npm install          # 安装依赖
+npm run build        # 编译 TypeScript
+npm test             # 运行测试
+npm run clean        # 清理 dist/
+```
+
+---
+
+## 贡献
+
+欢迎贡献！请参阅 [CONTRIBUTING.md](CONTRIBUTING.md) 了解贡献指南。
+
+## 文档
+
+- [架构设计](docs/architecture.md) — 详细架构说明
+- [更新日志](CHANGELOG.md) — 版本历史
+- [问卷星 OpenAPI 参考](docs/wjx-openapi-spec.md) — API 规范文档
 
 ## 许可证
 
-ISC
+[MIT](LICENSE) © wjxagents
