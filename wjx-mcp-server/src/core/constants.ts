@@ -1,11 +1,25 @@
+export const WJX_BASE_URL =
+  (process.env.WJX_BASE_URL ?? "https://www.wjx.cn").replace(/\/+$/, "");
+
 export const WJX_API_URL =
-  process.env.WJX_API_URL ?? "https://www.wjx.cn/openapi/default.aspx";
+  process.env.WJX_API_URL ?? `${WJX_BASE_URL}/openapi/default.aspx`;
 export const WJX_USER_SYSTEM_API_URL =
-  process.env.WJX_USER_SYSTEM_API_URL ?? "https://www.wjx.cn/openapi/usersystem.aspx";
+  process.env.WJX_USER_SYSTEM_API_URL ?? `${WJX_BASE_URL}/openapi/usersystem.aspx`;
 export const WJX_SUBUSER_API_URL =
-  process.env.WJX_SUBUSER_API_URL ?? "https://www.wjx.cn/openapi/subuser.aspx";
+  process.env.WJX_SUBUSER_API_URL ?? `${WJX_BASE_URL}/openapi/subuser.aspx`;
 export const WJX_CONTACTS_API_URL =
-  process.env.WJX_CONTACTS_API_URL ?? "https://www.wjx.cn/openapi/contacts.aspx";
+  process.env.WJX_CONTACTS_API_URL ?? `${WJX_BASE_URL}/openapi/contacts.aspx`;
+
+export const WJX_SSO_SUBACCOUNT_URL =
+  process.env.WJX_SSO_SUBACCOUNT_URL ?? `${WJX_BASE_URL}/zunxiang/login.aspx`;
+export const WJX_SSO_USER_SYSTEM_URL =
+  process.env.WJX_SSO_USER_SYSTEM_URL ?? `${WJX_BASE_URL}/user/loginform.aspx`;
+export const WJX_SSO_PARTNER_URL =
+  process.env.WJX_SSO_PARTNER_URL ?? `${WJX_BASE_URL}/partner/login.aspx`;
+export const WJX_SURVEY_CREATE_URL =
+  process.env.WJX_SURVEY_CREATE_URL ?? `${WJX_BASE_URL}/newwjx/mysojump/createblankNew.aspx`;
+export const WJX_SURVEY_EDIT_URL =
+  process.env.WJX_SURVEY_EDIT_URL ?? `${WJX_BASE_URL}/newwjx/design/editquestionnaire.aspx`;
 
 export const Action = {
   GET_SURVEY: "1000001",

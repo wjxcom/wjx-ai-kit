@@ -1,4 +1,11 @@
 import { getWjxCredentials, getUnixTimestamp } from "../../core/api-client.js";
+import {
+  WJX_SSO_SUBACCOUNT_URL,
+  WJX_SSO_USER_SYSTEM_URL,
+  WJX_SSO_PARTNER_URL,
+  WJX_SURVEY_CREATE_URL,
+  WJX_SURVEY_EDIT_URL,
+} from "../../core/constants.js";
 import { buildSsoSignature } from "./sign.js";
 import type { WjxCredentials } from "../../core/types.js";
 import type {
@@ -43,7 +50,7 @@ export function buildSsoSubaccountUrl(
   if (input.url !== undefined) params.set("url", input.url);
   if (input.admin !== undefined) params.set("admin", input.admin.toString());
 
-  return `https://www.wjx.cn/zunxiang/login.aspx?${params.toString()}`;
+  return `${WJX_SSO_SUBACCOUNT_URL}?${params.toString()}`;
 }
 
 /**
@@ -77,7 +84,7 @@ export function buildSsoUserSystemUrl(
   if (input.activity !== undefined) params.set("activity", input.activity.toString());
   if (input.return_url !== undefined) params.set("returnurl", input.return_url);
 
-  return `https://www.wjx.cn/user/loginform.aspx?${params.toString()}`;
+  return `${WJX_SSO_USER_SYSTEM_URL}?${params.toString()}`;
 }
 
 /**
@@ -110,7 +117,7 @@ export function buildSsoPartnerUrl(
   if (mobile) params.set("mobile", mobile);
   if (subuser) params.set("subuser", subuser);
 
-  return `https://www.wjx.cn/partner/login.aspx?${params.toString()}`;
+  return `${WJX_SSO_PARTNER_URL}?${params.toString()}`;
 }
 
 /**
@@ -125,7 +132,7 @@ export function buildSurveyUrl(input: BuildSurveyUrlInput): string {
     if (input.redirect_url !== undefined) params.set("redirecturl", input.redirect_url);
 
     const qs = params.toString();
-    const base = "https://www.wjx.cn/newwjx/mysojump/createblankNew.aspx";
+    const base = WJX_SURVEY_CREATE_URL;
     return qs ? `${base}?${qs}` : base;
   }
 
@@ -140,5 +147,5 @@ export function buildSurveyUrl(input: BuildSurveyUrlInput): string {
   if (input.runprotect !== undefined) params.set("runprotect", input.runprotect.toString());
   if (input.redirect_url !== undefined) params.set("redirecturl", input.redirect_url);
 
-  return `https://www.wjx.cn/newwjx/design/editquestionnaire.aspx?${params.toString()}`;
+  return `${WJX_SURVEY_EDIT_URL}?${params.toString()}`;
 }
