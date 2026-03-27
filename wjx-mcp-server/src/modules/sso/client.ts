@@ -1,4 +1,3 @@
-import { getWjxCredentials, getUnixTimestamp } from "../../core/api-client.js";
 import {
   WJX_SSO_SUBACCOUNT_URL,
   WJX_SSO_USER_SYSTEM_URL,
@@ -6,8 +5,6 @@ import {
   WJX_SURVEY_CREATE_URL,
   WJX_SURVEY_EDIT_URL,
 } from "../../core/constants.js";
-import { buildSsoSignature } from "./sign.js";
-import type { WjxCredentials } from "../../core/types.js";
 import type {
   SsoSubaccountInput,
   SsoUserSystemInput,
@@ -17,36 +14,15 @@ import type {
 
 /**
  * Build sub-account SSO login/create URL.
- * sign = sha1(appid + appkey + subuser + mobile + email + roleId + ts)
  */
 export function buildSsoSubaccountUrl(
   input: SsoSubaccountInput,
-  credentials?: WjxCredentials,
 ): string {
-  const creds = credentials ?? getWjxCredentials();
-  const ts = getUnixTimestamp();
-  const mobile = input.mobile ?? "";
-  const email = input.email ?? "";
-  const roleId = input.role_id?.toString() ?? "";
-
-  const sign = buildSsoSignature([
-    creds.appId,
-    creds.appKey,
-    input.subuser,
-    mobile,
-    email,
-    roleId,
-    ts,
-  ]);
-
   const params = new URLSearchParams();
-  params.set("appid", creds.appId);
   params.set("subuser", input.subuser);
-  params.set("ts", ts);
-  params.set("sign", sign);
-  if (mobile) params.set("mobile", mobile);
-  if (email) params.set("email", email);
-  if (roleId) params.set("roleId", roleId);
+  if (input.mobile) params.set("mobile", input.mobile);
+  if (input.email) params.set("email", input.email);
+  if (input.role_id !== undefined) params.set("roleId", input.role_id.toString());
   if (input.url !== undefined) params.set("url", input.url);
   if (input.admin !== undefined) params.set("admin", input.admin.toString());
 
@@ -55,27 +31,17 @@ export function buildSsoSubaccountUrl(
 
 /**
  * Build user system participant SSO URL.
- * sign = sha1(appid + appkey + uid + ts)
  */
 export function buildSsoUserSystemUrl(
   input: SsoUserSystemInput,
-  credentials?: WjxCredentials,
 ): string {
-  const creds = credentials ?? getWjxCredentials();
-  const ts = getUnixTimestamp();
-
-  const sign = buildSsoSignature([creds.appId, creds.appKey, input.uid, ts]);
-
   const userSystem = input.user_system ?? 1;
 
   const params = new URLSearchParams();
-  params.set("appid", creds.appId);
   params.set("u", input.u);
   params.set("usersystem", userSystem.toString());
   params.set("systemid", input.system_id.toString());
   params.set("uid", input.uid);
-  params.set("ts", ts);
-  params.set("sign", sign);
   if (input.uname !== undefined) params.set("uname", input.uname);
   if (input.udept !== undefined) params.set("udept", input.udept);
   if (input.uextf !== undefined) params.set("uextf", input.uextf);
@@ -89,33 +55,14 @@ export function buildSsoUserSystemUrl(
 
 /**
  * Build partner/agent SSO login URL.
- * sign = sha1(appid + appkey + username + mobile + subuser + ts)
  */
 export function buildSsoPartnerUrl(
   input: SsoPartnerInput,
-  credentials?: WjxCredentials,
 ): string {
-  const creds = credentials ?? getWjxCredentials();
-  const ts = getUnixTimestamp();
-  const mobile = input.mobile ?? "";
-  const subuser = input.subuser ?? "";
-
-  const sign = buildSsoSignature([
-    creds.appId,
-    creds.appKey,
-    input.username,
-    mobile,
-    subuser,
-    ts,
-  ]);
-
   const params = new URLSearchParams();
-  params.set("appid", creds.appId);
   params.set("username", input.username);
-  params.set("ts", ts);
-  params.set("sign", sign);
-  if (mobile) params.set("mobile", mobile);
-  if (subuser) params.set("subuser", subuser);
+  if (input.mobile) params.set("mobile", input.mobile);
+  if (input.subuser) params.set("subuser", input.subuser);
 
   return `${WJX_SSO_PARTNER_URL}?${params.toString()}`;
 }

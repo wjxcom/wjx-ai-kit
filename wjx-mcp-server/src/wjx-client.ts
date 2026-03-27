@@ -8,11 +8,10 @@ export type {
   FetchLike,
   RequestOptions,
 } from "./core/types.js";
-export { getWjxCredentials, validateQuestionsJson, callWjxApi, callWjxUserSystemApi, callWjxSubuserApi, callWjxContactsApi, getCorpId, getUnixTimestamp } from "./core/api-client.js";
+export { getWjxCredentials, validateQuestionsJson, callWjxApi, callWjxUserSystemApi, callWjxSubuserApi, callWjxContactsApi, getCorpId } from "./core/api-client.js";
 
 // Survey module
 export {
-  buildCreateSurveyParams,
   createSurvey,
   getSurvey,
   listSurveys,
@@ -27,7 +26,6 @@ export {
 } from "./modules/survey/client.js";
 export type {
   CreateSurveyInput,
-  CreateSurveyParams,
   GetSurveyInput,
   ListSurveysInput,
   UpdateSurveyStatusInput,
@@ -141,7 +139,6 @@ export {
   buildSsoPartnerUrl,
   buildSurveyUrl,
 } from "./modules/sso/client.js";
-export { buildSsoSignature } from "./modules/sso/sign.js";
 export type {
   SsoSubaccountInput,
   SsoUserSystemInput,

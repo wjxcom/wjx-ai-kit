@@ -1,10 +1,8 @@
-import type { WjxApiResponse, WjxCredentials, FetchLike, RequestOptions, SignableRecord } from "../../core/types.js";
+import type { WjxApiResponse, WjxCredentials, FetchLike } from "../../core/types.js";
 import { Action } from "../../core/constants.js";
-import { callWjxApi, getWjxCredentials, validateQuestionsJson, getUnixTimestamp } from "../../core/api-client.js";
-import { withSignature } from "../../core/sign.js";
+import { callWjxApi, getWjxCredentials, validateQuestionsJson } from "../../core/api-client.js";
 import type {
   CreateSurveyInput,
-  CreateSurveyParams,
   GetSurveyInput,
   ListSurveysInput,
   UpdateSurveyStatusInput,
@@ -17,35 +15,12 @@ import type {
   UploadFileInput,
 } from "./types.js";
 
-/** @internal Test helper — builds signed params without traceid (production uses callWjxApi) */
-export function buildCreateSurveyParams(
-  input: CreateSurveyInput,
-  credentials: WjxCredentials,
-  timestamp: string = getUnixTimestamp(),
-): CreateSurveyParams {
-  validateQuestionsJson(input.questions);
-
-  const signableParams = {
-    action: Action.CREATE_SURVEY,
-    appid: credentials.appId,
-    atype: input.type,
-    desc: input.description,
-    publish: input.publish ?? false,
-    questions: input.questions,
-    title: input.title,
-    ts: timestamp,
-  };
-
-  return withSignature(signableParams, credentials.appKey) as CreateSurveyParams;
-}
-
 export async function createSurvey<T = unknown>(
   input: CreateSurveyInput,
   credentials: WjxCredentials = getWjxCredentials(),
   fetchImpl: FetchLike = fetch,
-  timestamp?: string,
 ): Promise<WjxApiResponse<T>> {
-  const params: SignableRecord = {
+  const params: Record<string, unknown> = {
     action: Action.CREATE_SURVEY,
     title: input.title,
   };
@@ -62,16 +37,15 @@ export async function createSurvey<T = unknown>(
   if (input.compress_img !== undefined) params.compress_img = input.compress_img;
   if (input.is_string !== undefined) params.is_string = input.is_string;
 
-  return callWjxApi<T>(params, { credentials, fetchImpl, timestamp, maxRetries: 0 });
+  return callWjxApi<T>(params, { credentials, fetchImpl, maxRetries: 0 });
 }
 
 export async function getSurvey<T = unknown>(
   input: GetSurveyInput,
   credentials: WjxCredentials = getWjxCredentials(),
   fetchImpl: FetchLike = fetch,
-  timestamp?: string,
 ): Promise<WjxApiResponse<T>> {
-  const params: SignableRecord = {
+  const params: Record<string, unknown> = {
     action: Action.GET_SURVEY,
     vid: input.vid,
     get_questions: input.get_questions ?? true,
@@ -83,16 +57,15 @@ export async function getSurvey<T = unknown>(
   if (input.get_tags !== undefined) params.get_tags = input.get_tags;
   if (input.showtitle !== undefined) params.showtitle = input.showtitle;
 
-  return callWjxApi<T>(params, { credentials, fetchImpl, timestamp });
+  return callWjxApi<T>(params, { credentials, fetchImpl });
 }
 
 export async function listSurveys<T = unknown>(
   input: ListSurveysInput = {},
   credentials: WjxCredentials = getWjxCredentials(),
   fetchImpl: FetchLike = fetch,
-  timestamp?: string,
 ): Promise<WjxApiResponse<T>> {
-  const params: SignableRecord = {
+  const params: Record<string, unknown> = {
     action: Action.LIST_SURVEYS,
     page_index: input.page_index ?? 1,
     page_size: input.page_size ?? 10,
@@ -110,14 +83,13 @@ export async function listSurveys<T = unknown>(
   if (input.begin_time !== undefined) params.begin_time = input.begin_time;
   if (input.end_time !== undefined) params.end_time = input.end_time;
 
-  return callWjxApi<T>(params, { credentials, fetchImpl, timestamp });
+  return callWjxApi<T>(params, { credentials, fetchImpl });
 }
 
 export async function updateSurveyStatus<T = unknown>(
   input: UpdateSurveyStatusInput,
   credentials: WjxCredentials = getWjxCredentials(),
   fetchImpl: FetchLike = fetch,
-  timestamp?: string,
 ): Promise<WjxApiResponse<T>> {
   return callWjxApi<T>(
     {
@@ -125,7 +97,7 @@ export async function updateSurveyStatus<T = unknown>(
       vid: input.vid,
       state: input.state,
     },
-    { credentials, fetchImpl, timestamp, maxRetries: 0 },
+    { credentials, fetchImpl, maxRetries: 0 },
   );
 }
 
@@ -133,7 +105,6 @@ export async function getSurveySettings<T = unknown>(
   input: GetSurveySettingsInput,
   credentials: WjxCredentials = getWjxCredentials(),
   fetchImpl: FetchLike = fetch,
-  timestamp?: string,
 ): Promise<WjxApiResponse<T>> {
   return callWjxApi<T>(
     {
@@ -141,7 +112,7 @@ export async function getSurveySettings<T = unknown>(
       vid: input.vid,
       additional_setting: input.additional_setting ?? "[1000,1001,1002,1003,1004,1005]",
     },
-    { credentials, fetchImpl, timestamp },
+    { credentials, fetchImpl },
   );
 }
 
@@ -149,9 +120,8 @@ export async function updateSurveySettings<T = unknown>(
   input: UpdateSurveySettingsInput,
   credentials: WjxCredentials = getWjxCredentials(),
   fetchImpl: FetchLike = fetch,
-  timestamp?: string,
 ): Promise<WjxApiResponse<T>> {
-  const params: SignableRecord = {
+  const params: Record<string, unknown> = {
     action: Action.UPDATE_SETTINGS,
     vid: input.vid,
   };
@@ -161,34 +131,32 @@ export async function updateSurveySettings<T = unknown>(
   if (input.sojumpparm_setting !== undefined) params.sojumpparm_setting = input.sojumpparm_setting;
   if (input.time_setting !== undefined) params.time_setting = input.time_setting;
 
-  return callWjxApi<T>(params, { credentials, fetchImpl, timestamp, maxRetries: 0 });
+  return callWjxApi<T>(params, { credentials, fetchImpl, maxRetries: 0 });
 }
 
 export async function deleteSurvey<T = unknown>(
   input: DeleteSurveyInput,
   credentials: WjxCredentials = getWjxCredentials(),
   fetchImpl: FetchLike = fetch,
-  timestamp?: string,
 ): Promise<WjxApiResponse<T>> {
-  const params: SignableRecord = {
+  const params: Record<string, unknown> = {
     action: Action.DELETE_SURVEY,
     vid: input.vid,
     username: input.username,
   };
   if (input.completely_delete !== undefined) params.completely_delete = input.completely_delete;
 
-  return callWjxApi<T>(params, { credentials, fetchImpl, timestamp, maxRetries: 0 });
+  return callWjxApi<T>(params, { credentials, fetchImpl, maxRetries: 0 });
 }
 
 export async function getQuestionTags<T = unknown>(
   input: GetQuestionTagsInput,
   credentials: WjxCredentials = getWjxCredentials(),
   fetchImpl: FetchLike = fetch,
-  timestamp?: string,
 ): Promise<WjxApiResponse<T>> {
   return callWjxApi<T>(
     { action: Action.GET_TAGS, username: input.username },
-    { credentials, fetchImpl, timestamp },
+    { credentials, fetchImpl },
   );
 }
 
@@ -196,11 +164,10 @@ export async function getTagDetails<T = unknown>(
   input: GetTagDetailsInput,
   credentials: WjxCredentials = getWjxCredentials(),
   fetchImpl: FetchLike = fetch,
-  timestamp?: string,
 ): Promise<WjxApiResponse<T>> {
   return callWjxApi<T>(
     { action: Action.GET_TAG_DETAILS, tag_id: input.tag_id },
-    { credentials, fetchImpl, timestamp },
+    { credentials, fetchImpl },
   );
 }
 
@@ -208,22 +175,20 @@ export async function clearRecycleBin<T = unknown>(
   input: ClearRecycleBinInput,
   credentials: WjxCredentials = getWjxCredentials(),
   fetchImpl: FetchLike = fetch,
-  timestamp?: string,
 ): Promise<WjxApiResponse<T>> {
-  const params: SignableRecord = {
+  const params: Record<string, unknown> = {
     action: Action.CLEAR_RECYCLE_BIN,
     username: input.username,
   };
   if (input.vid !== undefined) params.vid = input.vid;
 
-  return callWjxApi<T>(params, { credentials, fetchImpl, timestamp, maxRetries: 0 });
+  return callWjxApi<T>(params, { credentials, fetchImpl, maxRetries: 0 });
 }
 
 export async function uploadFile<T = unknown>(
   input: UploadFileInput,
   credentials: WjxCredentials = getWjxCredentials(),
   fetchImpl: FetchLike = fetch,
-  timestamp?: string,
 ): Promise<WjxApiResponse<T>> {
   return callWjxApi<T>(
     {
@@ -231,6 +196,6 @@ export async function uploadFile<T = unknown>(
       file_name: input.file_name,
       file: input.file,
     },
-    { credentials, fetchImpl, timestamp, maxRetries: 0 },
+    { credentials, fetchImpl, maxRetries: 0 },
   );
 }

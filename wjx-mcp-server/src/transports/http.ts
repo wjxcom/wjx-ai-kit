@@ -13,38 +13,14 @@ export interface HttpOptions {
 }
 
 /**
- * Extract per-request WJX credentials from incoming HTTP headers.
- *
- * Supports two styles (checked in order):
- *  1. Custom headers:  X-WJX-App-Id + X-WJX-App-Key   (simplest)
- *  2. Basic auth:      Authorization: Basic base64(appid:appkey)
- *
- * Returns `undefined` when neither is present.
+ * Extract Bearer token from Authorization header.
+ * Returns the raw token string, or `undefined` when not present.
  */
-function extractCredentials(req: IncomingMessage): WjxCredentials | undefined {
-  // --- Style 1: custom headers (no encoding needed) ---
-  const hdrId  = req.headers["x-wjx-app-id"];
-  const hdrKey = req.headers["x-wjx-app-key"];
-  if (typeof hdrId === "string" && typeof hdrKey === "string" && hdrId && hdrKey) {
-    return { appId: hdrId, appKey: hdrKey };
-  }
-
-  // --- Style 2: Basic auth ---
+function extractBearerToken(req: IncomingMessage): string | undefined {
   const auth = req.headers.authorization;
-  if (auth) {
-    const match = auth.match(/^Basic\s+(.+)$/i);
-    if (match) {
-      const decoded = Buffer.from(match[1], "base64").toString("utf-8");
-      const colonIdx = decoded.indexOf(":");
-      if (colonIdx !== -1) {
-        const appId  = decoded.slice(0, colonIdx);
-        const appKey = decoded.slice(colonIdx + 1);
-        if (appId && appKey) return { appId, appKey };
-      }
-    }
-  }
-
-  return undefined;
+  if (!auth) return undefined;
+  const match = auth.match(/^Bearer\s+(.+)$/i);
+  return match ? match[1] : undefined;
 }
 
 /** Read the full request body as a string, then JSON.parse it. */
@@ -81,22 +57,27 @@ export async function startHttpTransport(
   const sessions = new Map<string, SessionEntry>();
 
   const httpServer = createHttpServer(async (req: IncomingMessage, res: ServerResponse) => {
-    const clientCreds = extractCredentials(req);
+    const bearerToken = extractBearerToken(req);
 
-    // ── Authentication (Bearer token, single-tenant mode) ───────────
-    if (!clientCreds && options.authToken) {
-      const authHeader = req.headers.authorization;
-      const expected = `Bearer ${options.authToken}`;
+    // ── Authentication ───────────────────────────────────────────────
+    if (options.authToken) {
+      // Single-tenant gate: verify the incoming token matches MCP_AUTH_TOKEN
+      const expected = options.authToken;
       if (
-        !authHeader ||
-        authHeader.length !== expected.length ||
-        !timingSafeEqual(Buffer.from(authHeader), Buffer.from(expected))
+        !bearerToken ||
+        bearerToken.length !== expected.length ||
+        !timingSafeEqual(Buffer.from(bearerToken), Buffer.from(expected))
       ) {
         res.writeHead(401, { "Content-Type": "application/json" });
         res.end(JSON.stringify({ error: "Unauthorized" }));
         return;
       }
     }
+
+    // Build per-request WjxCredentials from Bearer token
+    const clientCreds: WjxCredentials | undefined = bearerToken
+      ? { token: bearerToken }
+      : undefined;
 
     const url = new URL(req.url ?? "/", `http://${req.headers.host ?? "localhost"}`);
 

@@ -1,4 +1,4 @@
-import type { WjxApiResponse, WjxCredentials, FetchLike, SignableRecord } from "../../core/types.js";
+import type { WjxApiResponse, WjxCredentials, FetchLike } from "../../core/types.js";
 import { Action } from "../../core/constants.js";
 import { callWjxUserSystemApi, getWjxCredentials } from "../../core/api-client.js";
 import type {
@@ -14,7 +14,6 @@ export async function addParticipants<T = unknown>(
   input: AddParticipantsInput,
   credentials: WjxCredentials = getWjxCredentials(),
   fetchImpl: FetchLike = fetch,
-  timestamp?: string,
 ): Promise<WjxApiResponse<T>> {
   return callWjxUserSystemApi<T>(
     {
@@ -23,7 +22,7 @@ export async function addParticipants<T = unknown>(
       users: input.users,
       sysid: input.sysid,
     },
-    { credentials, fetchImpl, timestamp, maxRetries: 0 },
+    { credentials, fetchImpl, maxRetries: 0 },
   );
 }
 
@@ -31,7 +30,6 @@ export async function modifyParticipants<T = unknown>(
   input: ModifyParticipantsInput,
   credentials: WjxCredentials = getWjxCredentials(),
   fetchImpl: FetchLike = fetch,
-  timestamp?: string,
 ): Promise<WjxApiResponse<T>> {
   return callWjxUserSystemApi<T>(
     {
@@ -40,7 +38,7 @@ export async function modifyParticipants<T = unknown>(
       users: input.users,
       sysid: input.sysid,
     },
-    { credentials, fetchImpl, timestamp, maxRetries: 0 },
+    { credentials, fetchImpl, maxRetries: 0 },
   );
 }
 
@@ -48,7 +46,6 @@ export async function deleteParticipants<T = unknown>(
   input: DeleteParticipantsInput,
   credentials: WjxCredentials = getWjxCredentials(),
   fetchImpl: FetchLike = fetch,
-  timestamp?: string,
 ): Promise<WjxApiResponse<T>> {
   return callWjxUserSystemApi<T>(
     {
@@ -57,7 +54,7 @@ export async function deleteParticipants<T = unknown>(
       uids: input.uids,
       sysid: input.sysid,
     },
-    { credentials, fetchImpl, timestamp, maxRetries: 0 },
+    { credentials, fetchImpl, maxRetries: 0 },
   );
 }
 
@@ -86,9 +83,8 @@ export async function querySurveyBinding<T = unknown>(
   input: QuerySurveyBindingInput,
   credentials: WjxCredentials = getWjxCredentials(),
   fetchImpl: FetchLike = fetch,
-  timestamp?: string,
 ): Promise<WjxApiResponse<T>> {
-  const params: SignableRecord = {
+  const params: Record<string, unknown> = {
     action: Action.QUERY_SURVEY_BINDING,
     username: input.username,
     vid: input.vid,
@@ -102,16 +98,15 @@ export async function querySurveyBinding<T = unknown>(
   if (input.month !== undefined) params.month = input.month;
   if (input.force_join_times !== undefined) params.force_join_times = input.force_join_times;
 
-  return callWjxUserSystemApi<T>(params, { credentials, fetchImpl, timestamp });
+  return callWjxUserSystemApi<T>(params, { credentials, fetchImpl });
 }
 
 export async function queryUserSurveys<T = unknown>(
   input: QueryUserSurveysInput,
   credentials: WjxCredentials = getWjxCredentials(),
   fetchImpl: FetchLike = fetch,
-  timestamp?: string,
 ): Promise<WjxApiResponse<T>> {
-  const params: SignableRecord = {
+  const params: Record<string, unknown> = {
     action: Action.QUERY_USER_SURVEYS,
     username: input.username,
     uid: input.uid,
@@ -120,5 +115,5 @@ export async function queryUserSurveys<T = unknown>(
   if (input.page_index !== undefined) params.page_index = input.page_index;
   if (input.page_size !== undefined) params.page_size = input.page_size;
 
-  return callWjxUserSystemApi<T>(params, { credentials, fetchImpl, timestamp });
+  return callWjxUserSystemApi<T>(params, { credentials, fetchImpl });
 }

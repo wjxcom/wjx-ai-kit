@@ -7,7 +7,6 @@ import {
   detectAnomalies,
   compareMetrics,
 } from "./compute.js";
-import { decodePushPayload } from "./push-decode.js";
 import { toolResult, toolError } from "../../helpers.js";
 
 export function registerAnalyticsTools(server: McpServer): void {
@@ -164,38 +163,4 @@ export function registerAnalyticsTools(server: McpServer): void {
     },
   );
 
-  // ─── decode_push_payload ───────────────────────────────────────────
-  server.registerTool(
-    "decode_push_payload",
-    {
-      title: "解密推送数据",
-      description:
-        "解密问卷星数据推送的 AES-128-CBC 加密载荷。密钥为 MD5(appKey) 前 16 字符，IV 为密文前 16 字节，PKCS7 填充。可选验证 SHA1(rawBody+appKey) 签名。纯本地计算。",
-      inputSchema: {
-        encrypted_data: z.string().describe("Base64 编码的加密数据"),
-        app_key: z.string().describe("应用的 AppKey"),
-        signature: z.string().optional().describe("SHA1 签名（可选，用于验签）"),
-        raw_body: z.string().optional().describe("原始请求体（可选，用于验签）"),
-      },
-      annotations: {
-        openWorldHint: false,
-        destructiveHint: false,
-        idempotentHint: true,
-        title: "解密推送数据",
-      },
-    },
-    async (args) => {
-      try {
-        const result = decodePushPayload(
-          args.encrypted_data,
-          args.app_key,
-          args.signature,
-          args.raw_body,
-        );
-        return toolResult(result, false);
-      } catch (error) {
-        return toolError(error);
-      }
-    },
-  );
 }

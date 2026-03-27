@@ -1,4 +1,4 @@
-import type { WjxApiResponse, WjxCredentials, FetchLike, SignableRecord } from "../../core/types.js";
+import type { WjxApiResponse, WjxCredentials, FetchLike } from "../../core/types.js";
 import { Action } from "../../core/constants.js";
 import { callWjxApi, getWjxCredentials } from "../../core/api-client.js";
 import type {
@@ -18,9 +18,8 @@ export async function queryResponses<T = unknown>(
   input: QueryResponsesInput,
   credentials: WjxCredentials = getWjxCredentials(),
   fetchImpl: FetchLike = fetch,
-  timestamp?: string,
 ): Promise<WjxApiResponse<T>> {
-  const params: SignableRecord = {
+  const params: Record<string, unknown> = {
     action: Action.QUERY_RESPONSES,
     vid: input.vid,
   };
@@ -40,31 +39,29 @@ export async function queryResponses<T = unknown>(
   if (input.distinct_sojumpparm !== undefined) params.distinct_sojumpparm = input.distinct_sojumpparm;
   if (input.conds !== undefined) params.conds = input.conds;
 
-  return callWjxApi<T>(params, { credentials, fetchImpl, timestamp });
+  return callWjxApi<T>(params, { credentials, fetchImpl });
 }
 
 export async function queryResponsesRealtime<T = unknown>(
   input: QueryResponsesRealtimeInput,
   credentials: WjxCredentials = getWjxCredentials(),
   fetchImpl: FetchLike = fetch,
-  timestamp?: string,
 ): Promise<WjxApiResponse<T>> {
-  const params: SignableRecord = {
+  const params: Record<string, unknown> = {
     action: Action.QUERY_RESPONSES_REALTIME,
     vid: input.vid,
   };
   if (input.count !== undefined) params.count = input.count;
 
-  return callWjxApi<T>(params, { credentials, fetchImpl, timestamp, maxRetries: 0 });
+  return callWjxApi<T>(params, { credentials, fetchImpl, maxRetries: 0 });
 }
 
 export async function downloadResponses<T = unknown>(
   input: DownloadResponsesInput,
   credentials: WjxCredentials = getWjxCredentials(),
   fetchImpl: FetchLike = fetch,
-  timestamp?: string,
 ): Promise<WjxApiResponse<T>> {
-  const params: SignableRecord = {
+  const params: Record<string, unknown> = {
     action: Action.DOWNLOAD_RESPONSES,
     vid: input.vid,
   };
@@ -80,16 +77,15 @@ export async function downloadResponses<T = unknown>(
   if (input.suffix !== undefined) params.suffix = input.suffix;
   if (input.query_record !== undefined) params.query_record = input.query_record;
 
-  return callWjxApi<T>(params, { credentials, fetchImpl, timestamp });
+  return callWjxApi<T>(params, { credentials, fetchImpl });
 }
 
 export async function getReport<T = unknown>(
   input: GetReportInput,
   credentials: WjxCredentials = getWjxCredentials(),
   fetchImpl: FetchLike = fetch,
-  timestamp?: string,
 ): Promise<WjxApiResponse<T>> {
-  const params: SignableRecord = {
+  const params: Record<string, unknown> = {
     action: Action.GET_REPORT,
     vid: input.vid,
   };
@@ -103,16 +99,15 @@ export async function getReport<T = unknown>(
   if (input.distinct_sojumpparm !== undefined) params.distinct_sojumpparm = input.distinct_sojumpparm;
   if (input.conds !== undefined) params.conds = input.conds;
 
-  return callWjxApi<T>(params, { credentials, fetchImpl, timestamp });
+  return callWjxApi<T>(params, { credentials, fetchImpl });
 }
 
 export async function submitResponse<T = unknown>(
   input: SubmitResponseInput,
   credentials: WjxCredentials = getWjxCredentials(),
   fetchImpl: FetchLike = fetch,
-  timestamp?: string,
 ): Promise<WjxApiResponse<T>> {
-  const params: SignableRecord = {
+  const params: Record<string, unknown> = {
     action: Action.SUBMIT_RESPONSE,
     vid: input.vid,
     inputcosttime: input.inputcosttime,
@@ -122,32 +117,30 @@ export async function submitResponse<T = unknown>(
   if (input.sojumpparm !== undefined) params.sojumpparm = input.sojumpparm;
   if (input.submittime !== undefined) params.submittime = input.submittime;
 
-  return callWjxApi<T>(params, { credentials, fetchImpl, timestamp, maxRetries: 0 });
+  return callWjxApi<T>(params, { credentials, fetchImpl, maxRetries: 0 });
 }
 
 export async function getFileLinks<T = unknown>(
   input: GetFileLinksInput,
   credentials: WjxCredentials = getWjxCredentials(),
   fetchImpl: FetchLike = fetch,
-  timestamp?: string,
 ): Promise<WjxApiResponse<T>> {
-  const params: SignableRecord = {
+  const params: Record<string, unknown> = {
     action: Action.GET_FILE_LINKS,
     vid: input.vid,
     file_keys: input.file_keys,
   };
   if (input.file_view_expires !== undefined) params.file_view_expires = input.file_view_expires;
 
-  return callWjxApi<T>(params, { credentials, fetchImpl, timestamp });
+  return callWjxApi<T>(params, { credentials, fetchImpl });
 }
 
 export async function getWinners<T = unknown>(
   input: GetWinnersInput,
   credentials: WjxCredentials = getWjxCredentials(),
   fetchImpl: FetchLike = fetch,
-  timestamp?: string,
 ): Promise<WjxApiResponse<T>> {
-  const params: SignableRecord = {
+  const params: Record<string, unknown> = {
     action: Action.GET_WINNERS,
     vid: input.vid,
   };
@@ -156,14 +149,13 @@ export async function getWinners<T = unknown>(
   if (input.page_index !== undefined) params.page_index = input.page_index;
   if (input.page_size !== undefined) params.page_size = input.page_size;
 
-  return callWjxApi<T>(params, { credentials, fetchImpl, timestamp });
+  return callWjxApi<T>(params, { credentials, fetchImpl });
 }
 
 export async function modifyResponse<T = unknown>(
   input: ModifyResponseInput,
   credentials: WjxCredentials = getWjxCredentials(),
   fetchImpl: FetchLike = fetch,
-  timestamp?: string,
 ): Promise<WjxApiResponse<T>> {
   return callWjxApi<T>(
     {
@@ -173,7 +165,7 @@ export async function modifyResponse<T = unknown>(
       type: input.type,
       answers: input.answers,
     },
-    { credentials, fetchImpl, timestamp, maxRetries: 0 },
+    { credentials, fetchImpl, maxRetries: 0 },
   );
 }
 
@@ -181,22 +173,20 @@ export async function get360Report<T = unknown>(
   input: Get360ReportInput,
   credentials: WjxCredentials = getWjxCredentials(),
   fetchImpl: FetchLike = fetch,
-  timestamp?: string,
 ): Promise<WjxApiResponse<T>> {
-  const params: SignableRecord = {
+  const params: Record<string, unknown> = {
     action: Action.GET_360_REPORT,
     vid: input.vid,
   };
   if (input.taskid !== undefined) params.taskid = input.taskid;
 
-  return callWjxApi<T>(params, { credentials, fetchImpl, timestamp, maxRetries: 0 });
+  return callWjxApi<T>(params, { credentials, fetchImpl, maxRetries: 0 });
 }
 
 export async function clearResponses<T = unknown>(
   input: ClearResponsesInput,
   credentials: WjxCredentials = getWjxCredentials(),
   fetchImpl: FetchLike = fetch,
-  timestamp?: string,
 ): Promise<WjxApiResponse<T>> {
   return callWjxApi<T>(
     {
@@ -205,6 +195,6 @@ export async function clearResponses<T = unknown>(
       vid: input.vid,
       reset_to_zero: input.reset_to_zero,
     },
-    { credentials, fetchImpl, timestamp, maxRetries: 0 },
+    { credentials, fetchImpl, maxRetries: 0 },
   );
 }

@@ -15,7 +15,7 @@ export function registerSsoTools(server: McpServer): void {
     {
       title: "生成子账号SSO登录链接",
       description:
-        "生成子账号单点登录（SSO）链接，用于子账号免密登录或自动创建子账号。签名有效期60秒。",
+        "生成子账号单点登录（SSO）链接，用于子账号免密登录或自动创建子账号。",
       inputSchema: {
         subuser: z.string().min(1).describe("子账号用户名"),
         mobile: z.string().optional().describe("手机号"),
@@ -66,7 +66,7 @@ export function registerSsoTools(server: McpServer): void {
     {
       title: "生成用户系统SSO链接",
       description:
-        "生成用户系统参与者的单点登录（SSO）链接，用于用户系统中的成员免密登录。签名有效期300秒。",
+        "生成用户系统参与者的单点登录（SSO）链接，用于用户系统中的成员免密登录。",
       inputSchema: {
         u: z.string().min(1).describe("账户用户名"),
         user_system: z

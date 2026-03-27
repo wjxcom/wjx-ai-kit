@@ -1,4 +1,4 @@
-import type { WjxApiResponse, WjxCredentials, FetchLike, SignableRecord } from "../../core/types.js";
+import type { WjxApiResponse, WjxCredentials, FetchLike } from "../../core/types.js";
 import { Action } from "../../core/constants.js";
 import { callWjxContactsApi, getWjxCredentials, getCorpId } from "../../core/api-client.js";
 import type {
@@ -30,24 +30,22 @@ export async function queryContacts<T = unknown>(
   input: QueryContactsInput,
   credentials: WjxCredentials = getWjxCredentials(),
   fetchImpl: FetchLike = fetch,
-  timestamp?: string,
 ): Promise<WjxApiResponse<T>> {
-  const params: SignableRecord = {
+  const params: Record<string, unknown> = {
     action: Action.QUERY_CONTACTS,
     corpid: resolveCorpId(input),
     uid: input.uid,
   };
 
-  return callWjxContactsApi<T>(params, { credentials, fetchImpl, timestamp });
+  return callWjxContactsApi<T>(params, { credentials, fetchImpl });
 }
 
 export async function addContacts<T = unknown>(
   input: AddContactsInput,
   credentials: WjxCredentials = getWjxCredentials(),
   fetchImpl: FetchLike = fetch,
-  timestamp?: string,
 ): Promise<WjxApiResponse<T>> {
-  const params: SignableRecord = {
+  const params: Record<string, unknown> = {
     action: Action.ADD_CONTACTS,
     corpid: resolveCorpId(input),
     users: input.users,
@@ -55,14 +53,13 @@ export async function addContacts<T = unknown>(
   if (input.auto_create_udept !== undefined) params.auto_create_udept = input.auto_create_udept ? "1" : "0";
   if (input.auto_create_tag !== undefined) params.auto_create_tag = input.auto_create_tag ? "1" : "0";
 
-  return callWjxContactsApi<T>(params, { credentials, fetchImpl, timestamp, maxRetries: 0 });
+  return callWjxContactsApi<T>(params, { credentials, fetchImpl, maxRetries: 0 });
 }
 
 export async function deleteContacts<T = unknown>(
   input: DeleteContactsInput,
   credentials: WjxCredentials = getWjxCredentials(),
   fetchImpl: FetchLike = fetch,
-  timestamp?: string,
 ): Promise<WjxApiResponse<T>> {
   return callWjxContactsApi<T>(
     {
@@ -70,7 +67,7 @@ export async function deleteContacts<T = unknown>(
       corpid: resolveCorpId(input),
       uids: input.uids,
     },
-    { credentials, fetchImpl, timestamp, maxRetries: 0 },
+    { credentials, fetchImpl, maxRetries: 0 },
   );
 }
 
@@ -80,7 +77,6 @@ export async function addAdmin<T = unknown>(
   input: AddAdminInput,
   credentials: WjxCredentials = getWjxCredentials(),
   fetchImpl: FetchLike = fetch,
-  timestamp?: string,
 ): Promise<WjxApiResponse<T>> {
   return callWjxContactsApi<T>(
     {
@@ -88,7 +84,7 @@ export async function addAdmin<T = unknown>(
       corpid: resolveCorpId(input),
       users: input.users,
     },
-    { credentials, fetchImpl, timestamp, maxRetries: 0 },
+    { credentials, fetchImpl, maxRetries: 0 },
   );
 }
 
@@ -96,7 +92,6 @@ export async function deleteAdmin<T = unknown>(
   input: DeleteAdminInput,
   credentials: WjxCredentials = getWjxCredentials(),
   fetchImpl: FetchLike = fetch,
-  timestamp?: string,
 ): Promise<WjxApiResponse<T>> {
   return callWjxContactsApi<T>(
     {
@@ -104,7 +99,7 @@ export async function deleteAdmin<T = unknown>(
       corpid: resolveCorpId(input),
       uids: input.uids,
     },
-    { credentials, fetchImpl, timestamp, maxRetries: 0 },
+    { credentials, fetchImpl, maxRetries: 0 },
   );
 }
 
@@ -112,7 +107,6 @@ export async function restoreAdmin<T = unknown>(
   input: RestoreAdminInput,
   credentials: WjxCredentials = getWjxCredentials(),
   fetchImpl: FetchLike = fetch,
-  timestamp?: string,
 ): Promise<WjxApiResponse<T>> {
   return callWjxContactsApi<T>(
     {
@@ -120,7 +114,7 @@ export async function restoreAdmin<T = unknown>(
       corpid: resolveCorpId(input),
       uids: input.uids,
     },
-    { credentials, fetchImpl, timestamp, maxRetries: 0 },
+    { credentials, fetchImpl, maxRetries: 0 },
   );
 }
 
@@ -130,22 +124,21 @@ export async function listDepartments<T = unknown>(
   input: ListDepartmentsInput,
   credentials: WjxCredentials = getWjxCredentials(),
   fetchImpl: FetchLike = fetch,
-  timestamp?: string,
 ): Promise<WjxApiResponse<T>> {
-  return callWjxContactsApi<T>(
-    {
-      action: Action.LIST_DEPARTMENTS,
-      corpid: resolveCorpId(input),
-    },
-    { credentials, fetchImpl, timestamp },
-  );
+  const params: Record<string, unknown> = {
+    action: Action.LIST_DEPARTMENTS,
+    corpid: resolveCorpId(input),
+  };
+  if (input.page_index !== undefined) params.page_index = input.page_index;
+  if (input.page_size !== undefined) params.page_size = input.page_size;
+
+  return callWjxContactsApi<T>(params, { credentials, fetchImpl });
 }
 
 export async function addDepartment<T = unknown>(
   input: AddDepartmentInput,
   credentials: WjxCredentials = getWjxCredentials(),
   fetchImpl: FetchLike = fetch,
-  timestamp?: string,
 ): Promise<WjxApiResponse<T>> {
   return callWjxContactsApi<T>(
     {
@@ -153,7 +146,7 @@ export async function addDepartment<T = unknown>(
       corpid: resolveCorpId(input),
       depts: input.depts,
     },
-    { credentials, fetchImpl, timestamp, maxRetries: 0 },
+    { credentials, fetchImpl, maxRetries: 0 },
   );
 }
 
@@ -161,7 +154,6 @@ export async function modifyDepartment<T = unknown>(
   input: ModifyDepartmentInput,
   credentials: WjxCredentials = getWjxCredentials(),
   fetchImpl: FetchLike = fetch,
-  timestamp?: string,
 ): Promise<WjxApiResponse<T>> {
   return callWjxContactsApi<T>(
     {
@@ -169,7 +161,7 @@ export async function modifyDepartment<T = unknown>(
       corpid: resolveCorpId(input),
       depts: input.depts,
     },
-    { credentials, fetchImpl, timestamp, maxRetries: 0 },
+    { credentials, fetchImpl, maxRetries: 0 },
   );
 }
 
@@ -177,9 +169,8 @@ export async function deleteDepartment<T = unknown>(
   input: DeleteDepartmentInput,
   credentials: WjxCredentials = getWjxCredentials(),
   fetchImpl: FetchLike = fetch,
-  timestamp?: string,
 ): Promise<WjxApiResponse<T>> {
-  const params: SignableRecord = {
+  const params: Record<string, unknown> = {
     action: Action.DELETE_DEPARTMENT,
     corpid: resolveCorpId(input),
     type: input.type,
@@ -187,7 +178,7 @@ export async function deleteDepartment<T = unknown>(
   };
   if (input.del_child !== undefined) params.del_child = input.del_child ? "1" : "0";
 
-  return callWjxContactsApi<T>(params, { credentials, fetchImpl, timestamp, maxRetries: 0 });
+  return callWjxContactsApi<T>(params, { credentials, fetchImpl, maxRetries: 0 });
 }
 
 // ─── Tag ─────────────────────────────────────────────────────────────
@@ -196,14 +187,13 @@ export async function listTags<T = unknown>(
   input: ListTagsInput,
   credentials: WjxCredentials = getWjxCredentials(),
   fetchImpl: FetchLike = fetch,
-  timestamp?: string,
 ): Promise<WjxApiResponse<T>> {
   return callWjxContactsApi<T>(
     {
       action: Action.LIST_TAGS,
       corpid: resolveCorpId(input),
     },
-    { credentials, fetchImpl, timestamp },
+    { credentials, fetchImpl },
   );
 }
 
@@ -211,25 +201,23 @@ export async function addTag<T = unknown>(
   input: AddTagInput,
   credentials: WjxCredentials = getWjxCredentials(),
   fetchImpl: FetchLike = fetch,
-  timestamp?: string,
 ): Promise<WjxApiResponse<T>> {
-  const params: SignableRecord = {
+  const params: Record<string, unknown> = {
     action: Action.ADD_TAG,
     corpid: resolveCorpId(input),
     child_names: input.child_names,
   };
   if (input.is_radio !== undefined) params.is_radio = input.is_radio ? "1" : "0";
 
-  return callWjxContactsApi<T>(params, { credentials, fetchImpl, timestamp, maxRetries: 0 });
+  return callWjxContactsApi<T>(params, { credentials, fetchImpl, maxRetries: 0 });
 }
 
 export async function modifyTag<T = unknown>(
   input: ModifyTagInput,
   credentials: WjxCredentials = getWjxCredentials(),
   fetchImpl: FetchLike = fetch,
-  timestamp?: string,
 ): Promise<WjxApiResponse<T>> {
-  const params: SignableRecord = {
+  const params: Record<string, unknown> = {
     action: Action.MODIFY_TAG,
     corpid: resolveCorpId(input),
     tp_id: input.tp_id,
@@ -237,14 +225,13 @@ export async function modifyTag<T = unknown>(
   if (input.tp_name !== undefined) params.tp_name = input.tp_name;
   if (input.child_names !== undefined) params.child_names = input.child_names;
 
-  return callWjxContactsApi<T>(params, { credentials, fetchImpl, timestamp, maxRetries: 0 });
+  return callWjxContactsApi<T>(params, { credentials, fetchImpl, maxRetries: 0 });
 }
 
 export async function deleteTag<T = unknown>(
   input: DeleteTagInput,
   credentials: WjxCredentials = getWjxCredentials(),
   fetchImpl: FetchLike = fetch,
-  timestamp?: string,
 ): Promise<WjxApiResponse<T>> {
   return callWjxContactsApi<T>(
     {
@@ -253,6 +240,6 @@ export async function deleteTag<T = unknown>(
       type: input.type,
       tags: input.tags,
     },
-    { credentials, fetchImpl, timestamp, maxRetries: 0 },
+    { credentials, fetchImpl, maxRetries: 0 },
   );
 }

@@ -15,18 +15,6 @@ export interface UploadFileInput {
   file: string;
 }
 
-export interface CreateSurveyParams {
-  action: string;
-  appid: string;
-  atype: number;
-  desc: string;
-  publish: boolean;
-  questions: string;
-  title: string;
-  ts: string;
-  sign: string;
-}
-
 export interface GetSurveyInput {
   vid: number;
   get_questions?: boolean;

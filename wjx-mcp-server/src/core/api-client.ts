@@ -1,5 +1,4 @@
 import { randomUUID } from "node:crypto";
-import { withSignature } from "./sign.js";
 import {
   WJX_API_URL,
   WJX_USER_SYSTEM_API_URL,
@@ -15,12 +14,7 @@ import type {
   WjxApiResponse,
   FetchLike,
   RequestOptions,
-  SignableRecord,
 } from "./types.js";
-
-export function getUnixTimestamp(): string {
-  return Math.floor(Date.now() / 1000).toString();
-}
 
 function generateTraceId(): string {
   return randomUUID().replace(/-/g, "");
@@ -34,16 +28,15 @@ export function getWjxCredentials(
   if (reqCreds) return reqCreds;
 
   // 2. Fallback: environment variables (single-tenant / stdio mode)
-  const appId = env.WJX_APP_ID;
-  const appKey = env.WJX_APP_KEY;
+  const token = env.WJX_TOKEN;
 
-  if (!appId || !appKey) {
+  if (!token) {
     throw new Error(
-      "WJX_APP_ID and WJX_APP_KEY must be set (via env vars or Authorization header).",
+      "WJX_TOKEN must be set (via env var or Authorization header).",
     );
   }
 
-  return { appId, appKey };
+  return { token };
 }
 
 export function validateQuestionsJson(questions: string): void {
@@ -77,7 +70,7 @@ function sleep(ms: number): Promise<void> {
 
 async function _callApi<T = unknown>(
   baseUrl: string,
-  params: SignableRecord,
+  params: Record<string, unknown>,
   opts: RequestOptions = {},
 ): Promise<WjxApiResponse<T>> {
   const credentials = opts.credentials ?? getWjxCredentials();
@@ -88,15 +81,6 @@ async function _callApi<T = unknown>(
   const traceId = generateTraceId();
   const action = String(params.action ?? "unknown");
 
-  // traceid participates in sign but must NOT be in POST body (per WJX spec)
-  const signableParams: SignableRecord = {
-    ...params,
-    appid: credentials.appId,
-    ts: opts.timestamp ?? getUnixTimestamp(),
-    traceid: traceId,
-  };
-  const fullSigned = withSignature(signableParams, credentials.appKey);
-  const { traceid: _tid, ...signed } = fullSigned as Record<string, unknown>;
   const url = `${baseUrl}?traceid=${traceId}&action=${encodeURIComponent(action)}`;
 
   let lastError: Error | undefined;
@@ -108,11 +92,6 @@ async function _callApi<T = unknown>(
         `[wjx] retry ${attempt}/${maxRetries} for action=${action} traceid=${traceId} after ${delay}ms`,
       );
       await sleep(delay);
-      // Refresh timestamp on retry since WJX has a 30s window
-      signableParams.ts = getUnixTimestamp();
-      const freshFull = withSignature(signableParams, credentials.appKey) as Record<string, unknown>;
-      const { traceid: _tid2, ...freshSigned } = freshFull;
-      Object.assign(signed, freshSigned);
     }
 
     try {
@@ -123,8 +102,11 @@ async function _callApi<T = unknown>(
       try {
         response = await fetchImpl(url, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(signed),
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${credentials.token}`,
+          },
+          body: JSON.stringify(params),
           signal: controller.signal,
         });
       } finally {
@@ -187,28 +169,28 @@ async function _callApi<T = unknown>(
 }
 
 export async function callWjxApi<T = unknown>(
-  params: SignableRecord,
+  params: Record<string, unknown>,
   opts: RequestOptions = {},
 ): Promise<WjxApiResponse<T>> {
   return _callApi<T>(WJX_API_URL, params, opts);
 }
 
 export async function callWjxUserSystemApi<T = unknown>(
-  params: SignableRecord,
+  params: Record<string, unknown>,
   opts: RequestOptions = {},
 ): Promise<WjxApiResponse<T>> {
   return _callApi<T>(WJX_USER_SYSTEM_API_URL, params, opts);
 }
 
 export async function callWjxSubuserApi<T = unknown>(
-  params: SignableRecord,
+  params: Record<string, unknown>,
   opts: RequestOptions = {},
 ): Promise<WjxApiResponse<T>> {
   return _callApi<T>(WJX_SUBUSER_API_URL, params, opts);
 }
 
 export async function callWjxContactsApi<T = unknown>(
-  params: SignableRecord,
+  params: Record<string, unknown>,
   opts: RequestOptions = {},
 ): Promise<WjxApiResponse<T>> {
   return _callApi<T>(WJX_CONTACTS_API_URL, params, opts);

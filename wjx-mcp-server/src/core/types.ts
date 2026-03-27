@@ -1,6 +1,5 @@
 export interface WjxCredentials {
-  appId: string;
-  appKey: string;
+  token: string;
 }
 
 export interface WjxApiSuccess<T = unknown> {
@@ -25,9 +24,6 @@ export type FetchLike = (
 export interface RequestOptions {
   credentials?: WjxCredentials;
   fetchImpl?: FetchLike;
-  timestamp?: string;
   timeoutMs?: number;
   maxRetries?: number;
 }
-
-export type SignableRecord = Record<string, string | number | boolean | null | undefined>;
