@@ -175,6 +175,7 @@ export function registerMultiUserTools(server: McpServer): void {
         status: z.boolean().optional().describe("按状态筛选"),
         page_index: z.number().int().positive().optional().describe("页码，从1开始"),
         page_size: z.number().int().min(1).max(100).optional().describe("每页数量（1-100）"),
+        mobile: z.string().optional().describe("按手机号筛选"),
       },
       annotations: {
         destructiveHint: false,
@@ -193,6 +194,7 @@ export function registerMultiUserTools(server: McpServer): void {
           status: args.status,
           page_index: args.page_index,
           page_size: args.page_size,
+          mobile: args.mobile,
         });
         return toolResult(result, result.result === false);
       } catch (error) {

@@ -120,6 +120,7 @@ export async function submitResponse<T = unknown>(
   };
   if (input.udsid !== undefined) params.udsid = input.udsid;
   if (input.sojumpparm !== undefined) params.sojumpparm = input.sojumpparm;
+  if (input.submittime !== undefined) params.submittime = input.submittime;
 
   return callWjxApi<T>(params, { credentials, fetchImpl, timestamp, maxRetries: 0 });
 }

@@ -132,14 +132,13 @@ export async function listDepartments<T = unknown>(
   fetchImpl: FetchLike = fetch,
   timestamp?: string,
 ): Promise<WjxApiResponse<T>> {
-  const params: SignableRecord = {
-    action: Action.LIST_DEPARTMENTS,
-    corpid: resolveCorpId(input),
-  };
-  if (input.page_index !== undefined) params.page_index = input.page_index;
-  if (input.page_size !== undefined) params.page_size = input.page_size;
-
-  return callWjxContactsApi<T>(params, { credentials, fetchImpl, timestamp });
+  return callWjxContactsApi<T>(
+    {
+      action: Action.LIST_DEPARTMENTS,
+      corpid: resolveCorpId(input),
+    },
+    { credentials, fetchImpl, timestamp },
+  );
 }
 
 export async function addDepartment<T = unknown>(
@@ -214,14 +213,14 @@ export async function addTag<T = unknown>(
   fetchImpl: FetchLike = fetch,
   timestamp?: string,
 ): Promise<WjxApiResponse<T>> {
-  return callWjxContactsApi<T>(
-    {
-      action: Action.ADD_TAG,
-      corpid: resolveCorpId(input),
-      child_names: input.child_names,
-    },
-    { credentials, fetchImpl, timestamp, maxRetries: 0 },
-  );
+  const params: SignableRecord = {
+    action: Action.ADD_TAG,
+    corpid: resolveCorpId(input),
+    child_names: input.child_names,
+  };
+  if (input.is_radio !== undefined) params.is_radio = input.is_radio ? "1" : "0";
+
+  return callWjxContactsApi<T>(params, { credentials, fetchImpl, timestamp, maxRetries: 0 });
 }
 
 export async function modifyTag<T = unknown>(

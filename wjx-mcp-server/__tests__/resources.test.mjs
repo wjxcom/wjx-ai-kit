@@ -62,6 +62,8 @@ test("SURVEY_STATUSES", async (t) => {
     assert.equal(SURVEY_STATUSES[1], "收集中（已发布）");
     assert.equal(SURVEY_STATUSES[2], "已暂停");
     assert.equal(SURVEY_STATUSES[3], "已删除（在回收站）");
+    assert.equal(SURVEY_STATUSES[4], "彻底删除");
+    assert.equal(SURVEY_STATUSES[5], "被审核");
   });
 });
 
@@ -69,7 +71,7 @@ test("VERIFY_STATUSES", async (t) => {
   await t.test("should contain all verify status codes", () => {
     assert.equal(VERIFY_STATUSES[0], "未审核");
     assert.equal(VERIFY_STATUSES[1], "审核通过");
-    assert.equal(VERIFY_STATUSES[2], "审核未通过");
-    assert.equal(VERIFY_STATUSES[3], "审核中");
+    assert.equal(VERIFY_STATUSES[2], "审核中");
+    assert.equal(VERIFY_STATUSES[3], "审核未通过");
   });
 });

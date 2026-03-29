@@ -16,12 +16,28 @@ export interface DeleteParticipantsInput {
   sysid: number;
 }
 
+export interface BindActivityInput {
+  username: string;
+  vid: number;
+  sysid: number;
+  uids: string;
+  answer_times?: number;
+  can_chg_answer?: boolean;
+  can_view_result?: boolean;
+  can_hide_qlist?: number;
+}
+
 export interface QuerySurveyBindingInput {
   username: string;
   vid: number;
   sysid: number;
   page_index?: number;
   page_size?: number;
+  join_status?: number;
+  day?: string;
+  week?: string;
+  month?: string;
+  force_join_times?: boolean;
 }
 
 export interface QueryUserSurveysInput {

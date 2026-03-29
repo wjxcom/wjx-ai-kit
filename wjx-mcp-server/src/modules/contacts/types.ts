@@ -36,8 +36,6 @@ export interface RestoreAdminInput {
 
 export interface ListDepartmentsInput {
   corpid?: string;
-  page_index?: number;
-  page_size?: number;
 }
 
 export interface AddDepartmentInput {
@@ -66,6 +64,7 @@ export interface ListTagsInput {
 export interface AddTagInput {
   corpid?: string;
   child_names: string; // JSON array of "group/tag" strings
+  is_radio?: boolean;
 }
 
 export interface ModifyTagInput {

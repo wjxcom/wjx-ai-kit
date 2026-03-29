@@ -64,11 +64,13 @@ export const SURVEY_STATUSES: Record<number, string> = {
   1: "收集中（已发布）",
   2: "已暂停",
   3: "已删除（在回收站）",
+  4: "彻底删除",
+  5: "被审核",
 };
 
 export const VERIFY_STATUSES: Record<number, string> = {
   0: "未审核",
   1: "审核通过",
-  2: "审核未通过",
-  3: "审核中",
+  2: "审核中",
+  3: "审核未通过",
 };

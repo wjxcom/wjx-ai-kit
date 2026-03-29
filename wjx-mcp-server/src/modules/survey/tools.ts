@@ -11,6 +11,7 @@ import {
   getQuestionTags,
   getTagDetails,
   clearRecycleBin,
+  uploadFile,
 } from "./client.js";
 import { toolResult, toolError } from "../../helpers.js";
 
@@ -21,21 +22,39 @@ export function registerSurveyTools(server: McpServer): void {
     {
       title: "创建问卷",
       description:
-        "通过问卷星 OpenAPI 创建新问卷。支持问卷调查(1)、测评(2)、投票(3)、考试(6)、表单(7)等类型。",
+        "通过问卷星 OpenAPI 创建新问卷。支持两种模式：1) 全新创建：需传 atype/desc/questions；2) 复制已有问卷：传 source_vid 即可。",
       inputSchema: {
         title: z.string().min(1).describe("问卷名称"),
         atype: z
           .number()
           .int()
-          .describe("问卷类型：1=调查, 2=测评, 3=投票, 6=考试, 7=表单"),
-        desc: z.string().describe("问卷描述"),
+          .optional()
+          .describe("问卷类型：1=调查, 2=测评, 3=投票, 4=360度评估, 5=360评估无测评关系, 6=考试, 7=表单, 8=用户体系, 9=教学评估, 11=民主评议。不使用 source_vid 时必填"),
+        desc: z.string().optional().describe("问卷描述。不使用 source_vid 时必填"),
         publish: z.boolean().optional().default(false).describe("是否立即发布"),
         questions: z
           .string()
           .min(2)
+          .optional()
           .describe(
-            "题目列表 JSON 字符串。每个题目必须包含 q_index（题号）和 q_type（题型编码：3=单选,4=多选,5=填空,6=多项填空,7=矩阵,8=文件上传,9=比重,10=滑动条,1=分页,2=段落）。选择题需包含 items 数组。示例：[{\"q_index\":1,\"q_type\":3,\"q_title\":\"您的性别\",\"items\":[{\"q_index\":1,\"item_index\":1,\"item_title\":\"男\"},{\"q_index\":1,\"item_index\":2,\"item_title\":\"女\"}]}]",
+            "题目列表 JSON 字符串。不使用 source_vid 时必填。每个题目必须包含 q_index（题号）和 q_type（题型编码：3=单选,4=多选,5=填空,6=多项填空,7=矩阵,8=文件上传,9=比重,10=滑动条,1=分页,2=段落）。常用子类型：301=下拉框,302=量表题,303=评分单选,305=判断题,401=评分多选,402=排序题,601=考试多项填空,602=考试完型填空,701-712=矩阵子类型,801=绘图题。完整子类型请参考 question-types resource。选择题需包含 items 数组。示例：[{\"q_index\":1,\"q_type\":3,\"q_title\":\"您的性别\",\"items\":[{\"q_index\":1,\"item_index\":1,\"item_title\":\"男\"},{\"q_index\":1,\"item_index\":2,\"item_title\":\"女\"}]}]",
           ),
+        source_vid: z
+          .string()
+          .optional()
+          .describe("源问卷编号，传入后从已有问卷复制创建，无需传 atype/desc/questions"),
+        creater: z
+          .string()
+          .optional()
+          .describe("创建者子账号用户名，不传则默认主账号"),
+        compress_img: z
+          .boolean()
+          .optional()
+          .describe("是否压缩问卷中的图片"),
+        is_string: z
+          .boolean()
+          .optional()
+          .describe("是否使用原始 activity string 格式"),
       },
       annotations: {
         destructiveHint: false,
@@ -48,10 +67,14 @@ export function registerSurveyTools(server: McpServer): void {
       try {
         const result = await createSurvey({
           title: args.title,
-          type: args.atype,
-          description: args.desc,
+          type: args.atype ?? 0,
+          description: args.desc ?? "",
           publish: args.publish,
-          questions: args.questions,
+          questions: args.questions ?? "",
+          source_vid: args.source_vid,
+          creater: args.creater,
+          compress_img: args.compress_img,
+          is_string: args.is_string,
         });
         return toolResult(result, result.result === false);
       } catch (error) {
@@ -79,6 +102,26 @@ export function registerSurveyTools(server: McpServer): void {
           .optional()
           .default(true)
           .describe("是否获取选项信息"),
+        get_exts: z
+          .boolean()
+          .optional()
+          .describe("是否获取问答选项列表"),
+        get_setting: z
+          .boolean()
+          .optional()
+          .describe("是否获取题目设置信息"),
+        get_page_cut: z
+          .boolean()
+          .optional()
+          .describe("是否获取分页信息"),
+        get_tags: z
+          .boolean()
+          .optional()
+          .describe("是否获取绑定的题目标签信息"),
+        showtitle: z
+          .boolean()
+          .optional()
+          .describe("是否返回问卷标题"),
       },
       annotations: {
         destructiveHint: false,
@@ -93,6 +136,11 @@ export function registerSurveyTools(server: McpServer): void {
           vid: args.vid,
           get_questions: args.get_questions,
           get_items: args.get_items,
+          get_exts: args.get_exts,
+          get_setting: args.get_setting,
+          get_page_cut: args.get_page_cut,
+          get_tags: args.get_tags,
+          showtitle: args.showtitle,
         });
         return toolResult(result, result.result === false);
       } catch (error) {
@@ -133,7 +181,7 @@ export function registerSurveyTools(server: McpServer): void {
           .number()
           .int()
           .optional()
-          .describe("问卷类型筛选：1=调查, 2=测评, 3=投票, 6=考试, 7=表单"),
+          .describe("问卷类型筛选：1=调查, 2=测评, 3=投票, 4=360度评估, 5=360评估无测评关系, 6=考试, 7=表单, 8=用户体系, 9=教学评估, 11=民主评议"),
         name_like: z
           .string()
           .max(10)
@@ -146,6 +194,42 @@ export function registerSurveyTools(server: McpServer): void {
           .max(5)
           .optional()
           .describe("排序：0=ID升序, 1=ID降序, 2=开始时间升序, 3=开始时间降序, 4=创建时间升序, 5=创建时间降序"),
+        creater: z
+          .string()
+          .optional()
+          .describe("指定子账号用户名筛选"),
+        folder: z
+          .string()
+          .optional()
+          .describe("文件夹名称筛选"),
+        is_xingbiao: z
+          .boolean()
+          .optional()
+          .describe("是否只获取星标问卷"),
+        query_all: z
+          .boolean()
+          .optional()
+          .describe("是否获取企业所有问卷（需管理员权限）"),
+        verify_status: z
+          .number()
+          .int()
+          .optional()
+          .describe("审核状态筛选：0=未审核, 1=审核通过, 2=审核中, 3=审核未通过"),
+        time_type: z
+          .number()
+          .int()
+          .min(0)
+          .max(2)
+          .optional()
+          .describe("时间查询类型：0=创建时间, 1=开始时间, 2=结束时间"),
+        begin_time: z
+          .number()
+          .optional()
+          .describe("时间范围起始（毫秒时间戳）"),
+        end_time: z
+          .number()
+          .optional()
+          .describe("时间范围结束（毫秒时间戳）"),
       },
       annotations: {
         destructiveHint: false,
@@ -163,6 +247,14 @@ export function registerSurveyTools(server: McpServer): void {
           atype: args.atype,
           name_like: args.name_like,
           sort: args.sort,
+          creater: args.creater,
+          folder: args.folder,
+          is_xingbiao: args.is_xingbiao,
+          query_all: args.query_all,
+          verify_status: args.verify_status,
+          time_type: args.time_type,
+          begin_time: args.begin_time,
+          end_time: args.end_time,
         });
         return toolResult(result, result.result === false);
       } catch (error) {
@@ -381,6 +473,37 @@ export function registerSurveyTools(server: McpServer): void {
     async (args) => {
       try {
         const result = await getTagDetails({ tag_id: args.tag_id });
+        return toolResult(result, result.result === false);
+      } catch (error) {
+        return toolError(error);
+      }
+    },
+  );
+
+  // ─── upload_file ─────────────────────────────────────────────────
+  server.registerTool(
+    "upload_file",
+    {
+      title: "上传文件",
+      description:
+        "上传图片文件用于问卷。支持 png/jpg/gif/jpeg/bmp/webp 格式，文件以 Base64 编码传入，最大约 4MB。",
+      inputSchema: {
+        file_name: z.string().min(1).describe("文件名，须含扩展名（.png/.jpg/.gif/.jpeg/.bmp/.webp）"),
+        file: z.string().min(1).describe("Base64 编码的文件内容"),
+      },
+      annotations: {
+        destructiveHint: false,
+        idempotentHint: false,
+        openWorldHint: true,
+        title: "上传文件",
+      },
+    },
+    async (args) => {
+      try {
+        const result = await uploadFile({
+          file_name: args.file_name,
+          file: args.file,
+        });
         return toolResult(result, result.result === false);
       } catch (error) {
         return toolError(error);
