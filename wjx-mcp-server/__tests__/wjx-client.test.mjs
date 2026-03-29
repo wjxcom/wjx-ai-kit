@@ -7,6 +7,11 @@ import {
   getSurvey,
   listSurveys,
   updateSurveyStatus,
+  uploadFile,
+  submitResponse,
+  bindActivity,
+  querySurveyBinding,
+  querySubAccounts,
   getWjxCredentials,
   validateQuestionsJson,
   WJX_API_URL,
@@ -291,6 +296,25 @@ describe("createSurvey", () => {
       /WJX API request failed with 404/,
     );
   });
+
+  it("should pass optional creater when provided", async () => {
+    const fetch = mockFetch({ result: true, data: {} });
+    await createSurvey(
+      { ...validInput, creater: "sub_user1" },
+      credentials, fetch, "100",
+    );
+
+    const body = JSON.parse(fetch.captured().init.body);
+    assert.equal(body.creater, "sub_user1");
+  });
+
+  it("should not include creater when not provided", async () => {
+    const fetch = mockFetch({ result: true, data: {} });
+    await createSurvey(validInput, credentials, fetch, "100");
+
+    const body = JSON.parse(fetch.captured().init.body);
+    assert.equal("creater" in body, false);
+  });
 });
 
 // ─── getSurvey ──────────────────────────────────────────────────────
@@ -342,6 +366,33 @@ describe("getSurvey", () => {
       /WJX API request failed with 500/,
     );
   });
+
+  it("should pass optional get_exts, get_setting, get_page_cut, get_tags, showtitle", async () => {
+    const fetch = mockFetch({ result: true, data: {} });
+    await getSurvey(
+      { vid: 1, get_exts: true, get_setting: true, get_page_cut: true, get_tags: true, showtitle: true },
+      credentials, fetch, "100",
+    );
+
+    const body = JSON.parse(fetch.captured().init.body);
+    assert.equal(body.get_exts, true);
+    assert.equal(body.get_setting, true);
+    assert.equal(body.get_page_cut, true);
+    assert.equal(body.get_tags, true);
+    assert.equal(body.showtitle, true);
+  });
+
+  it("should not include optional get_survey params when not provided", async () => {
+    const fetch = mockFetch({ result: true, data: {} });
+    await getSurvey({ vid: 1 }, credentials, fetch, "100");
+
+    const body = JSON.parse(fetch.captured().init.body);
+    assert.equal("get_exts" in body, false);
+    assert.equal("get_setting" in body, false);
+    assert.equal("get_page_cut" in body, false);
+    assert.equal("get_tags" in body, false);
+    assert.equal("showtitle" in body, false);
+  });
 });
 
 // ─── listSurveys ────────────────────────────────────────────────────
@@ -391,6 +442,39 @@ describe("listSurveys", () => {
     assert.equal("atype" in body, false);
     assert.equal("name_like" in body, false);
     assert.equal("sort" in body, false);
+  });
+
+  it("should pass new optional filters (creater, folder, verify_status, etc.)", async () => {
+    const fetch = mockFetch({ result: true, data: {} });
+    await listSurveys(
+      { creater: "sub1", folder: "测试", is_xingbiao: true, query_all: true, verify_status: 1, time_type: 0, begin_time: 1700000000000, end_time: 1700100000000 },
+      credentials, fetch, "100",
+    );
+
+    const body = JSON.parse(fetch.captured().init.body);
+    assert.equal(body.creater, "sub1");
+    assert.equal(body.folder, "测试");
+    assert.equal(body.is_xingbiao, true);
+    assert.equal(body.query_all, true);
+    assert.equal(body.verify_status, 1);
+    assert.equal(body.time_type, 0);
+    assert.equal(body.begin_time, 1700000000000);
+    assert.equal(body.end_time, 1700100000000);
+  });
+
+  it("should not include new optional fields when not provided", async () => {
+    const fetch = mockFetch({ result: true, data: {} });
+    await listSurveys({}, credentials, fetch, "100");
+
+    const body = JSON.parse(fetch.captured().init.body);
+    assert.equal("creater" in body, false);
+    assert.equal("folder" in body, false);
+    assert.equal("is_xingbiao" in body, false);
+    assert.equal("query_all" in body, false);
+    assert.equal("verify_status" in body, false);
+    assert.equal("time_type" in body, false);
+    assert.equal("begin_time" in body, false);
+    assert.equal("end_time" in body, false);
   });
 });
 
@@ -705,5 +789,222 @@ describe("constants", () => {
     assert.equal(Action.LIST_SURVEYS, "1000002");
     assert.equal(Action.CREATE_SURVEY, "1000101");
     assert.equal(Action.UPDATE_STATUS, "1000102");
+  });
+
+  it("should export UPLOAD_FILE action code", () => {
+    assert.equal(Action.UPLOAD_FILE, "1000104");
+  });
+});
+
+// ─── uploadFile ─────────────────────────────────────────────────────
+
+describe("uploadFile", () => {
+  it("should POST with action 1000104 and file params", async () => {
+    const fetch = mockFetch({ result: true, data: { url: "https://example.com/img.png" } });
+    await uploadFile({ file_name: "test.png", file: "aGVsbG8=" }, credentials, fetch, "100");
+
+    const body = JSON.parse(fetch.captured().init.body);
+    assert.equal(body.action, "1000104");
+    assert.equal(body.file_name, "test.png");
+    assert.equal(body.file, "aGVsbG8=");
+    assert.ok("sign" in body);
+  });
+
+  it("should NOT retry on 500 (maxRetries=0)", async () => {
+    let callCount = 0;
+    const fetch = async () => {
+      callCount++;
+      return new Response("err", { status: 500, statusText: "Error" });
+    };
+
+    await assert.rejects(
+      () => uploadFile({ file_name: "a.png", file: "data" }, credentials, fetch, "100"),
+      /WJX API request failed with 500/,
+    );
+    assert.equal(callCount, 1);
+  });
+});
+
+// ─── createSurvey source_vid mode ───────────────────────────────────
+
+describe("createSurvey source_vid mode", () => {
+  it("should pass source_vid and skip atype/desc/questions", async () => {
+    const fetch = mockFetch({ result: true, data: { vid: 999 } });
+    await createSurvey(
+      { title: "复制问卷", type: 0, description: "", questions: "", source_vid: "12345" },
+      credentials, fetch, "100",
+    );
+
+    const body = JSON.parse(fetch.captured().init.body);
+    assert.equal(body.source_vid, "12345");
+    assert.equal("atype" in body, false);
+    assert.equal("desc" in body, false);
+    assert.equal("questions" in body, false);
+  });
+
+  it("should not validate questions when source_vid is provided", async () => {
+    const fetch = mockFetch({ result: true, data: {} });
+    // passing invalid questions should not throw when source_vid is set
+    await assert.doesNotReject(
+      () => createSurvey(
+        { title: "copy", type: 0, description: "", questions: "invalid json", source_vid: "111" },
+        credentials, fetch, "100",
+      ),
+    );
+  });
+
+  it("should pass compress_img and is_string when provided", async () => {
+    const fetch = mockFetch({ result: true, data: {} });
+    await createSurvey(
+      { ...validInput, compress_img: true, is_string: true },
+      credentials, fetch, "100",
+    );
+
+    const body = JSON.parse(fetch.captured().init.body);
+    assert.equal(body.compress_img, true);
+    assert.equal(body.is_string, true);
+  });
+
+  it("should not include compress_img/is_string when not provided", async () => {
+    const fetch = mockFetch({ result: true, data: {} });
+    await createSurvey(validInput, credentials, fetch, "100");
+
+    const body = JSON.parse(fetch.captured().init.body);
+    assert.equal("compress_img" in body, false);
+    assert.equal("is_string" in body, false);
+  });
+});
+
+// ─── submitResponse submittime ──────────────────────────────────────
+
+describe("submitResponse submittime", () => {
+  it("should pass submittime when provided", async () => {
+    const fetch = mockFetch({ result: true, data: {} });
+    await submitResponse(
+      { vid: 1, inputcosttime: 30, submitdata: "1$A", submittime: "2026-03-29 12:00:00" },
+      credentials, fetch, "100",
+    );
+
+    const body = JSON.parse(fetch.captured().init.body);
+    assert.equal(body.submittime, "2026-03-29 12:00:00");
+  });
+
+  it("should not include submittime when not provided", async () => {
+    const fetch = mockFetch({ result: true, data: {} });
+    await submitResponse(
+      { vid: 1, inputcosttime: 30, submitdata: "1$A" },
+      credentials, fetch, "100",
+    );
+
+    const body = JSON.parse(fetch.captured().init.body);
+    assert.equal("submittime" in body, false);
+  });
+});
+
+// ─── bindActivity ───────────────────────────────────────────────────
+
+describe("bindActivity", () => {
+  it("should POST with action BIND_ACTIVITY and required params", async () => {
+    const fetch = mockFetch({ result: true, data: {} });
+    await bindActivity(
+      { username: "admin", vid: 100, sysid: 1, uids: '["u1","u2"]' },
+      credentials, fetch, "100",
+    );
+
+    const body = JSON.parse(fetch.captured().init.body);
+    assert.equal(body.action, Action.BIND_ACTIVITY);
+    assert.equal(body.username, "admin");
+    assert.equal(body.vid, 100);
+    assert.equal(body.sysid, 1);
+    assert.equal(body.uids, '["u1","u2"]');
+    assert.ok("sign" in body);
+  });
+
+  it("should pass all optional params when provided", async () => {
+    const fetch = mockFetch({ result: true, data: {} });
+    await bindActivity(
+      {
+        username: "admin", vid: 100, sysid: 1, uids: '["u1"]',
+        answer_times: 3, can_chg_answer: true, can_view_result: false, can_hide_qlist: 1,
+      },
+      credentials, fetch, "100",
+    );
+
+    const body = JSON.parse(fetch.captured().init.body);
+    assert.equal(body.answer_times, 3);
+    assert.equal(body.can_chg_answer, true);
+    assert.equal(body.can_view_result, false);
+    assert.equal(body.can_hide_qlist, 1);
+  });
+
+  it("should not include optional params when not provided", async () => {
+    const fetch = mockFetch({ result: true, data: {} });
+    await bindActivity(
+      { username: "admin", vid: 100, sysid: 1, uids: '["u1"]' },
+      credentials, fetch, "100",
+    );
+
+    const body = JSON.parse(fetch.captured().init.body);
+    assert.equal("answer_times" in body, false);
+    assert.equal("can_chg_answer" in body, false);
+    assert.equal("can_view_result" in body, false);
+    assert.equal("can_hide_qlist" in body, false);
+  });
+});
+
+// ─── querySurveyBinding new params ──────────────────────────────────
+
+describe("querySurveyBinding new params", () => {
+  it("should pass join_status/day/week/month/force_join_times when provided", async () => {
+    const fetch = mockFetch({ result: true, data: {} });
+    await querySurveyBinding(
+      {
+        username: "admin", vid: 100, sysid: 1,
+        join_status: 1, day: "20260329", week: "202613", month: "202603", force_join_times: true,
+      },
+      credentials, fetch, "100",
+    );
+
+    const body = JSON.parse(fetch.captured().init.body);
+    assert.equal(body.join_status, 1);
+    assert.equal(body.day, "20260329");
+    assert.equal(body.week, "202613");
+    assert.equal(body.month, "202603");
+    assert.equal(body.force_join_times, true);
+  });
+
+  it("should not include new params when not provided", async () => {
+    const fetch = mockFetch({ result: true, data: {} });
+    await querySurveyBinding(
+      { username: "admin", vid: 100, sysid: 1 },
+      credentials, fetch, "100",
+    );
+
+    const body = JSON.parse(fetch.captured().init.body);
+    assert.equal("join_status" in body, false);
+    assert.equal("day" in body, false);
+    assert.equal("week" in body, false);
+    assert.equal("month" in body, false);
+    assert.equal("force_join_times" in body, false);
+  });
+});
+
+// ─── querySubAccounts mobile ────────────────────────────────────────
+
+describe("querySubAccounts mobile", () => {
+  it("should pass mobile when provided", async () => {
+    const fetch = mockFetch({ result: true, data: {} });
+    await querySubAccounts({ mobile: "13800138000" }, credentials, fetch, "100");
+
+    const body = JSON.parse(fetch.captured().init.body);
+    assert.equal(body.mobile, "13800138000");
+  });
+
+  it("should not include mobile when not provided", async () => {
+    const fetch = mockFetch({ result: true, data: {} });
+    await querySubAccounts({}, credentials, fetch, "100");
+
+    const body = JSON.parse(fetch.captured().init.body);
+    assert.equal("mobile" in body, false);
   });
 });

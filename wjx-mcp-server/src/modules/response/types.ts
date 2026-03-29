@@ -56,6 +56,7 @@ export interface SubmitResponseInput {
   submitdata: string;
   udsid?: number;
   sojumpparm?: string;
+  submittime?: string;
 }
 
 export interface GetFileLinksInput {

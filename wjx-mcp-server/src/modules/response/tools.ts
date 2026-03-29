@@ -222,6 +222,7 @@ export function registerResponseTools(server: McpServer): void {
         submitdata: z.string().min(1).describe("答卷内容字符串，格式：题号$答案}题号$答案"),
         udsid: z.number().int().optional().describe("自定义来源编号"),
         sojumpparm: z.string().optional().describe("自定义链接参数"),
+        submittime: z.string().optional().describe("答卷提交时间，日期时间字符串，默认当前时间"),
       },
       annotations: {
         destructiveHint: false,
@@ -238,6 +239,7 @@ export function registerResponseTools(server: McpServer): void {
           submitdata: args.submitdata,
           udsid: args.udsid,
           sojumpparm: args.sojumpparm,
+          submittime: args.submittime,
         });
         return toolResult(result, result.result === false);
       } catch (error) {

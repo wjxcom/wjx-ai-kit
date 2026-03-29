@@ -14,6 +14,7 @@ import type {
   GetQuestionTagsInput,
   GetTagDetailsInput,
   ClearRecycleBinInput,
+  UploadFileInput,
 } from "./types.js";
 
 /** @internal Test helper — builds signed params without traceid (production uses callWjxApi) */
@@ -44,19 +45,24 @@ export async function createSurvey<T = unknown>(
   fetchImpl: FetchLike = fetch,
   timestamp?: string,
 ): Promise<WjxApiResponse<T>> {
-  validateQuestionsJson(input.questions);
+  const params: SignableRecord = {
+    action: Action.CREATE_SURVEY,
+    title: input.title,
+  };
+  if (input.source_vid !== undefined) {
+    params.source_vid = input.source_vid;
+  } else {
+    params.atype = input.type;
+    params.desc = input.description;
+    params.questions = input.questions;
+    validateQuestionsJson(input.questions);
+  }
+  params.publish = input.publish ?? false;
+  if (input.creater !== undefined) params.creater = input.creater;
+  if (input.compress_img !== undefined) params.compress_img = input.compress_img;
+  if (input.is_string !== undefined) params.is_string = input.is_string;
 
-  return callWjxApi<T>(
-    {
-      action: Action.CREATE_SURVEY,
-      atype: input.type,
-      desc: input.description,
-      publish: input.publish ?? false,
-      questions: input.questions,
-      title: input.title,
-    },
-    { credentials, fetchImpl, timestamp, maxRetries: 0 },
-  );
+  return callWjxApi<T>(params, { credentials, fetchImpl, timestamp, maxRetries: 0 });
 }
 
 export async function getSurvey<T = unknown>(
@@ -65,15 +71,19 @@ export async function getSurvey<T = unknown>(
   fetchImpl: FetchLike = fetch,
   timestamp?: string,
 ): Promise<WjxApiResponse<T>> {
-  return callWjxApi<T>(
-    {
-      action: Action.GET_SURVEY,
-      vid: input.vid,
-      get_questions: input.get_questions ?? true,
-      get_items: input.get_items ?? true,
-    },
-    { credentials, fetchImpl, timestamp },
-  );
+  const params: SignableRecord = {
+    action: Action.GET_SURVEY,
+    vid: input.vid,
+    get_questions: input.get_questions ?? true,
+    get_items: input.get_items ?? true,
+  };
+  if (input.get_exts !== undefined) params.get_exts = input.get_exts;
+  if (input.get_setting !== undefined) params.get_setting = input.get_setting;
+  if (input.get_page_cut !== undefined) params.get_page_cut = input.get_page_cut;
+  if (input.get_tags !== undefined) params.get_tags = input.get_tags;
+  if (input.showtitle !== undefined) params.showtitle = input.showtitle;
+
+  return callWjxApi<T>(params, { credentials, fetchImpl, timestamp });
 }
 
 export async function listSurveys<T = unknown>(
@@ -91,6 +101,14 @@ export async function listSurveys<T = unknown>(
   if (input.atype !== undefined) params.atype = input.atype;
   if (input.name_like !== undefined && input.name_like !== "") params.name_like = input.name_like;
   if (input.sort !== undefined) params.sort = input.sort;
+  if (input.creater !== undefined) params.creater = input.creater;
+  if (input.folder !== undefined) params.folder = input.folder;
+  if (input.is_xingbiao !== undefined) params.is_xingbiao = input.is_xingbiao;
+  if (input.query_all !== undefined) params.query_all = input.query_all;
+  if (input.verify_status !== undefined) params.verify_status = input.verify_status;
+  if (input.time_type !== undefined) params.time_type = input.time_type;
+  if (input.begin_time !== undefined) params.begin_time = input.begin_time;
+  if (input.end_time !== undefined) params.end_time = input.end_time;
 
   return callWjxApi<T>(params, { credentials, fetchImpl, timestamp });
 }
@@ -199,4 +217,20 @@ export async function clearRecycleBin<T = unknown>(
   if (input.vid !== undefined) params.vid = input.vid;
 
   return callWjxApi<T>(params, { credentials, fetchImpl, timestamp, maxRetries: 0 });
+}
+
+export async function uploadFile<T = unknown>(
+  input: UploadFileInput,
+  credentials: WjxCredentials = getWjxCredentials(),
+  fetchImpl: FetchLike = fetch,
+  timestamp?: string,
+): Promise<WjxApiResponse<T>> {
+  return callWjxApi<T>(
+    {
+      action: Action.UPLOAD_FILE,
+      file_name: input.file_name,
+      file: input.file,
+    },
+    { credentials, fetchImpl, timestamp, maxRetries: 0 },
+  );
 }

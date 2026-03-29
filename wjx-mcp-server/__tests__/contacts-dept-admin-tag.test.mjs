@@ -439,26 +439,6 @@ describe("listDepartments", () => {
     assert.equal("username" in body, false, "username should not appear in request body");
   });
 
-  it("should pass optional page_index and page_size when provided", async () => {
-    const fetch = mockFetch({ result: true, data: {} });
-    await listDepartments(
-      { corpid: "test-corp", page_index: 2, page_size: 20 },
-      credentials, fetch, "100",
-    );
-
-    const body = JSON.parse(fetch.captured().init.body);
-    assert.equal(body.page_index, 2);
-    assert.equal(body.page_size, 20);
-  });
-
-  it("should not include optional fields when not provided", async () => {
-    const fetch = mockFetch({ result: true, data: {} });
-    await listDepartments({ corpid: "test-corp" }, credentials, fetch, "100");
-
-    const body = JSON.parse(fetch.captured().init.body);
-    assert.equal("page_index" in body, false);
-    assert.equal("page_size" in body, false);
-  });
 
   it("should include sign as 40-char hex SHA1", async () => {
     const fetch = mockFetch({ result: true, data: {} });
@@ -1101,6 +1081,30 @@ describe("addTag", () => {
 
     const url = fetch.captured().url;
     assert.ok(url.includes("action=1005202"));
+  });
+
+  it("should pass is_radio as '1' when true", async () => {
+    const fetch = mockFetch({ result: true, data: {} });
+    await addTag({ corpid: "test-corp", child_names: '["学历/本科"]', is_radio: true }, credentials, fetch, "100");
+
+    const body = JSON.parse(fetch.captured().init.body);
+    assert.equal(body.is_radio, "1");
+  });
+
+  it("should pass is_radio as '0' when false", async () => {
+    const fetch = mockFetch({ result: true, data: {} });
+    await addTag({ corpid: "test-corp", child_names: '["学历/本科"]', is_radio: false }, credentials, fetch, "100");
+
+    const body = JSON.parse(fetch.captured().init.body);
+    assert.equal(body.is_radio, "0");
+  });
+
+  it("should not include is_radio when not provided", async () => {
+    const fetch = mockFetch({ result: true, data: {} });
+    await addTag({ corpid: "test-corp", child_names: '["学历/本科"]' }, credentials, fetch, "100");
+
+    const body = JSON.parse(fetch.captured().init.body);
+    assert.equal("is_radio" in body, false);
   });
 });
 

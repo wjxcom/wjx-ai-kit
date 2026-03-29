@@ -140,7 +140,7 @@ export function registerContactsTools(server: McpServer): void {
             (s) => { try { return Array.isArray(JSON.parse(s)); } catch { return false; } },
             "users 必须是合法的 JSON 数组",
           )
-          .describe("管理员列表 JSON 字符串（数组），每项包含管理员信息，一次不能超过100条"),
+          .describe("管理员列表 JSON 字符串（数组），每项包含: admin_name(成员用户编号), mobile(手机号), email(邮箱), role(角色: 0=系统管理员, 1=分组管理员, 2=问卷管理员, 3=统计查看者, 4=完整结果查看者, 5=部门管理员)，一次不能超过100条"),
       },
       annotations: {
         destructiveHint: false,
@@ -227,22 +227,9 @@ export function registerContactsTools(server: McpServer): void {
     "list_departments",
     {
       title: "查询部门列表",
-      description: "查询通讯录中的部门列表，支持分页获取。",
+      description: "查询通讯录中的部门列表。",
       inputSchema: {
         corpid: z.string().optional().describe("通讯录编号（可选）"),
-        page_index: z
-          .number()
-          .int()
-          .positive()
-          .optional()
-          .describe("页码，从1开始"),
-        page_size: z
-          .number()
-          .int()
-          .min(1)
-          .max(100)
-          .optional()
-          .describe("每页数量（1-100）"),
       },
       annotations: {
         destructiveHint: false,
@@ -255,8 +242,6 @@ export function registerContactsTools(server: McpServer): void {
       try {
         const result = await listDepartments({
           corpid: args.corpid,
-          page_index: args.page_index,
-          page_size: args.page_size,
         });
         return toolResult(result, result.result === false);
       } catch (error) {
@@ -307,7 +292,7 @@ export function registerContactsTools(server: McpServer): void {
     "modify_department",
     {
       title: "修改部门",
-      description: "批量修改部门信息（最多100条）。depts 为 JSON 数组字符串，每项为部门对象（包含 id、name、parentid 等字段）。id 从 list_departments 返回值获取。",
+      description: "批量修改部门信息（最多100条）。depts 为 JSON 数组字符串，每项为部门对象（包含 id、name、order 等字段）。id 从 list_departments 返回值获取。",
       inputSchema: {
         corpid: z.string().optional().describe("通讯录编号（可选）"),
         depts: z
@@ -317,7 +302,7 @@ export function registerContactsTools(server: McpServer): void {
             (s) => { try { return Array.isArray(JSON.parse(s)); } catch { return false; } },
             "depts 必须是合法的 JSON 数组",
           )
-          .describe("部门列表 JSON 字符串（数组），每项包含: id(部门ID), name(部门名称), parentid(父部门ID)，一次最多100条"),
+          .describe("部门列表 JSON 字符串（数组），每项包含: id(部门ID), name(部门名称), order(排序序号)，一次最多100条"),
       },
       annotations: {
         destructiveHint: true,
@@ -427,6 +412,10 @@ export function registerContactsTools(server: McpServer): void {
             "child_names 必须是合法的 JSON 数组",
           )
           .describe("标签列表 JSON 字符串，格式: [\"组/标签\", ...], 如 [\"学历/本科\", \"年龄/18-35\"]"),
+        is_radio: z
+          .boolean()
+          .optional()
+          .describe("标签组是否为单选（true=单选, false=多选，默认多选）"),
       },
       annotations: {
         destructiveHint: false,
@@ -440,6 +429,7 @@ export function registerContactsTools(server: McpServer): void {
         const result = await addTag({
           corpid: args.corpid,
           child_names: args.child_names,
+          is_radio: args.is_radio,
         });
         return toolResult(result, result.result === false);
       } catch (error) {

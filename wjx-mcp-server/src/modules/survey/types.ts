@@ -4,6 +4,15 @@ export interface CreateSurveyInput {
   description: string;
   publish?: boolean;
   questions: string;
+  creater?: string;
+  source_vid?: string;
+  compress_img?: boolean;
+  is_string?: boolean;
+}
+
+export interface UploadFileInput {
+  file_name: string;
+  file: string;
 }
 
 export interface CreateSurveyParams {
@@ -22,6 +31,11 @@ export interface GetSurveyInput {
   vid: number;
   get_questions?: boolean;
   get_items?: boolean;
+  get_exts?: boolean;
+  get_setting?: boolean;
+  get_page_cut?: boolean;
+  get_tags?: boolean;
+  showtitle?: boolean;
 }
 
 export interface ListSurveysInput {
@@ -31,6 +45,14 @@ export interface ListSurveysInput {
   atype?: number;
   name_like?: string;
   sort?: number;
+  creater?: string;
+  folder?: string;
+  is_xingbiao?: boolean;
+  query_all?: boolean;
+  verify_status?: number;
+  time_type?: number;
+  begin_time?: number;
+  end_time?: number;
 }
 
 export interface UpdateSurveyStatusInput {

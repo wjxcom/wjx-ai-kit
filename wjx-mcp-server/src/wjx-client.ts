@@ -23,6 +23,7 @@ export {
   getQuestionTags,
   getTagDetails,
   clearRecycleBin,
+  uploadFile,
 } from "./modules/survey/client.js";
 export type {
   CreateSurveyInput,
@@ -36,6 +37,7 @@ export type {
   GetQuestionTagsInput,
   GetTagDetailsInput,
   ClearRecycleBinInput,
+  UploadFileInput,
 } from "./modules/survey/types.js";
 
 // Response module
@@ -103,6 +105,7 @@ export {
   addParticipants,
   modifyParticipants,
   deleteParticipants,
+  bindActivity,
   querySurveyBinding,
   queryUserSurveys,
 } from "./modules/user-system/client.js";
@@ -110,6 +113,7 @@ export type {
   AddParticipantsInput,
   ModifyParticipantsInput,
   DeleteParticipantsInput,
+  BindActivityInput,
   QuerySurveyBindingInput,
   QueryUserSurveysInput,
 } from "./modules/user-system/types.js";

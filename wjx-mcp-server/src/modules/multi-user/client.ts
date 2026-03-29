@@ -93,6 +93,7 @@ export async function querySubAccounts<T = unknown>(
   if (input.status !== undefined) params.status = input.status;
   if (input.page_index !== undefined) params.page_index = input.page_index;
   if (input.page_size !== undefined) params.page_size = input.page_size;
+  if (input.mobile !== undefined) params.mobile = input.mobile;
 
   return callWjxSubuserApi<T>(params, { credentials, fetchImpl, timestamp });
 }
