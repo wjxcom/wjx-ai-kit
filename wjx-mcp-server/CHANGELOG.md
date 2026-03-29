@@ -5,6 +5,36 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.2.0] - 2026-03-29
+
+### Added
+
+- **`upload_file` tool** (action 1000104): upload images for surveys via Base64, supports png/jpg/gif/jpeg/bmp/webp
+- **`bind_activity` tool** (action 1002004): bind surveys to user systems with answer limits, modification rights, and visibility controls
+- **`create_survey` copy mode**: `source_vid` parameter to create surveys by copying an existing one, plus `creater`, `compress_img`, `is_string` params
+- **`get_survey` extended params**: `get_exts`, `get_setting`, `get_page_cut`, `get_tags`, `showtitle` for richer survey detail retrieval
+- **`list_surveys` filters**: `creater`, `folder`, `is_xingbiao`, `query_all`, `verify_status`, `time_type`, `begin_time`, `end_time` for advanced filtering
+- **`submit_response` submittime**: specify custom submission timestamp
+- **`query_survey_binding` filters**: `join_status`, `day`, `week`, `month`, `force_join_times` for participation filtering
+- **`query_sub_accounts` mobile**: filter sub-accounts by phone number
+- **`add_tag` is_radio**: set tag groups as single-select or multi-select
+- `CLAUDE.md` project instructions for AI coding assistants
+
+### Changed
+
+- Total tools: 54 → 56
+- Total tests: 723 → 827
+- `create_survey` `atype`/`desc`/`questions` now optional (required only when not using `source_vid`)
+- `atype` descriptions expanded with all survey types (4=360, 5=360 no relation, 8=user system, 9=teaching eval, 11=democratic review)
+- `add_admin` description improved with role number mapping
+- `modify_department` description corrected (parentid → order)
+
+### Fixed
+
+- `VERIFY_STATUSES` order corrected: 2=审核中, 3=审核未通过 (was swapped)
+- `SURVEY_STATUSES` added missing entries: 4=彻底删除, 5=被审核
+- `list_departments` removed unsupported `page_index`/`page_size` parameters (C# backend does not paginate this endpoint)
+
 ## [2.1.0] - 2026-03-23
 
 ### Added
