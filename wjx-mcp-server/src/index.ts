@@ -1,49 +1,15 @@
-import { readFileSync, realpathSync } from "node:fs";
-import { resolve, dirname } from "node:path";
+import "./core/load-env.js"; // Must be first — populates process.env before other modules read it
+
+import { realpathSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 
 import { createServer } from "./server.js";
 
-function loadEnvFile(): void {
-  const __dirname = dirname(fileURLToPath(import.meta.url));
-  const envPath = resolve(__dirname, "..", ".env");
-  try {
-    const content = readFileSync(envPath, "utf-8");
-    for (const line of content.split("\n")) {
-      const trimmed = line.trim();
-      if (!trimmed || trimmed.startsWith("#")) continue;
-      const eqIdx = trimmed.indexOf("=");
-      if (eqIdx === -1) continue;
-      const key = trimmed.slice(0, eqIdx).trim();
-      let value = trimmed.slice(eqIdx + 1).trim();
-      // Strip inline comments (unquoted values only)
-      if (value[0] !== '"' && value[0] !== "'") {
-        const commentIdx = value.indexOf(" #");
-        if (commentIdx !== -1) value = value.slice(0, commentIdx).trimEnd();
-      }
-      // Strip surrounding quotes (single or double)
-      if (
-        value.length >= 2 &&
-        ((value[0] === '"' && value[value.length - 1] === '"') ||
-          (value[0] === "'" && value[value.length - 1] === "'"))
-      ) {
-        value = value.slice(1, -1);
-      }
-      if (!(key in process.env)) {
-        process.env[key] = value;
-      }
-    }
-  } catch {
-    // .env file is optional
-  }
-}
-
 export { createServer } from "./server.js";
 
 export async function main(): Promise<void> {
-  loadEnvFile();
 
   const transportMode = process.argv.includes("--http")
     ? "http"
@@ -57,14 +23,17 @@ export async function main(): Promise<void> {
     if (!Number.isFinite(port) || port < 0 || port > 65535) {
       throw new Error(`Invalid PORT: ${process.env.PORT}`);
     }
-    const { httpServer } = await startHttpTransport(server, {
-      port,
-      authToken: process.env.MCP_AUTH_TOKEN,
-      stateful: process.env.MCP_SESSION !== "stateless",
-    });
+    const { httpServer } = await startHttpTransport(
+      server,
+      {
+        port,
+        authToken: process.env.MCP_AUTH_TOKEN,
+        stateful: process.env.MCP_SESSION !== "stateless",
+      },
+      createServer,
+    );
     const shutdown = () => {
       httpServer.close();
-      void server.close();
     };
     process.once("SIGINT", shutdown);
     process.once("SIGTERM", shutdown);

@@ -9,6 +9,7 @@ import {
   DEFAULT_MAX_RETRIES,
   RETRY_DELAY_MS,
 } from "./constants.js";
+import { getRequestCredentials } from "./context.js";
 import type {
   WjxCredentials,
   WjxApiResponse,
@@ -28,11 +29,18 @@ function generateTraceId(): string {
 export function getWjxCredentials(
   env: NodeJS.ProcessEnv = process.env,
 ): WjxCredentials {
+  // 1. Per-request credentials injected by HTTP transport (multi-tenant)
+  const reqCreds = getRequestCredentials();
+  if (reqCreds) return reqCreds;
+
+  // 2. Fallback: environment variables (single-tenant / stdio mode)
   const appId = env.WJX_APP_ID;
   const appKey = env.WJX_APP_KEY;
 
   if (!appId || !appKey) {
-    throw new Error("WJX_APP_ID and WJX_APP_KEY must be set.");
+    throw new Error(
+      "WJX_APP_ID and WJX_APP_KEY must be set (via env vars or Authorization header).",
+    );
   }
 
   return { appId, appKey };

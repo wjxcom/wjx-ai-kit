@@ -194,6 +194,33 @@ claude mcp add wjx -- node ./wjx-mcp-server/dist/index.js
 | `MCP_AUTH_TOKEN` | 否 | — | HTTP 模式的 Bearer token 认证 |
 | `MCP_SESSION` | 否 | `stateful` | 设为 `stateless` 禁用会话跟踪 |
 
+### API / SSO 地址配置
+
+所有工具调用的 URL 均可通过环境变量覆盖，方便切换测试环境或私有化部署。
+
+只需设置 `WJX_BASE_URL` 即可一键切换所有 URL 的基础域名；也可单独覆盖某个地址：
+
+| 环境变量 | 默认值 | 说明 |
+|----------|--------|------|
+| `WJX_BASE_URL` | `https://www.wjx.cn` | 所有 URL 的基础域名，其余 URL 默认从此派生 |
+| `WJX_API_URL` | `{BASE}/openapi/default.aspx` | 问卷/答卷等通用 API 地址 |
+| `WJX_USER_SYSTEM_API_URL` | `{BASE}/openapi/usersystem.aspx` | 用户体系 API 地址 |
+| `WJX_SUBUSER_API_URL` | `{BASE}/openapi/subuser.aspx` | 子账号管理 API 地址 |
+| `WJX_CONTACTS_API_URL` | `{BASE}/openapi/contacts.aspx` | 通讯录 API 地址 |
+| `WJX_SSO_SUBACCOUNT_URL` | `{BASE}/zunxiang/login.aspx` | 子账号 SSO 登录地址 |
+| `WJX_SSO_USER_SYSTEM_URL` | `{BASE}/user/loginform.aspx` | 用户体系 SSO 登录地址 |
+| `WJX_SSO_PARTNER_URL` | `{BASE}/partner/login.aspx` | 合作伙伴 SSO 登录地址 |
+| `WJX_SURVEY_CREATE_URL` | `{BASE}/newwjx/mysojump/createblankNew.aspx` | 问卷创建页地址 |
+| `WJX_SURVEY_EDIT_URL` | `{BASE}/newwjx/design/editquestionnaire.aspx` | 问卷编辑页地址 |
+
+> 表中 `{BASE}` 代表 `WJX_BASE_URL` 的值。优先级：**独立环境变量 > WJX_BASE_URL + 路径 > 硬编码默认值**。
+
+示例 — 切换到测试环境：
+
+```dotenv
+WJX_BASE_URL=https://test.wjx.cn
+```
+
 服务器内置 `.env` 加载器，无需额外安装 `dotenv`。
 
 ---
