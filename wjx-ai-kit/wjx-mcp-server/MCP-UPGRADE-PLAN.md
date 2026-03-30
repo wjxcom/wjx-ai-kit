@@ -337,10 +337,13 @@ Week 3-4（依后端进度）─────────────────
 
 | Review | Trigger | Why | Runs | Status | Findings |
 |--------|---------|-----|------|--------|----------|
-| CEO Review | `/plan-ceo-review` | Scope & strategy | 2 | DONE | Priority reorder (DSL-first), version strategy fix |
-| Autoplan CEO | `/autoplan` Phase 1 | Dual-voice strategic review | 1 | DONE | Critical baseline error (56 not 54, Phase 1 redundant), tool-count-as-strategy rejected, workflow-first reframe accepted |
-| Code Review | `/review` | Code quality gate | 1 | clean | 1 informational issue |
+| CEO Review | `/plan-ceo-review` | Scope & strategy | 4 | DONE | 6 expansions accepted, 2 bug fixes (health check, load-env), mode: SCOPE_EXPANSION |
+| Codex Review | `/codex review` | Independent 2nd opinion | 4 | issues_found | Round 3-4 (eng): auth conflation, folder param fake, health-check prompt padded, startup warning wrong creds, ParsedSurvey boundary |
+| Eng Review | `/plan-eng-review` | Architecture & tests (required) | 3 | CLEAR (PLAN) | 10 issues, 1 critical gap (textToSurvey malformed input) |
+| Code Review | `/review` | Code quality gate | 2 | clean (DIFF via /ship) | 0 issues on latest run |
 | Design Review | `/plan-design-review` | UI/UX gaps | 1 | skipped | N/A (server-side project) |
-| Eng Review | `/plan-eng-review` | Architecture & tests | 0 | -- | -- |
+| Adversarial | auto-scaled | Large diff (200+ lines) | 1 | clean | tier: large, gate: informational |
 
-**VERDICT:** CEO review complete (3 rounds). Plan v4.0 with corrected baseline. Next: `/plan-eng-review` to validate surveyToText architecture and test matrix.
+**CROSS-MODEL:** Round 3-4 Codex found 6 new issues: auth conflation (accepted as known limitation), folder param removed, survey-health-check prompt already complete (removed from scope), startup warning corrected to WJX_TOKEN, ParsedSurvey typed vs wire payload (typed chosen), build_preview_url moved to SDK method.
+**UNRESOLVED:** 0
+**VERDICT:** CEO + ENG + CODE CLEARED. Scope reduced: removed survey-health-check enhancement (already exists), removed folder param, corrected startup warning target.

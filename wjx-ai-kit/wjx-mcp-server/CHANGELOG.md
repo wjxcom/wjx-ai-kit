@@ -15,17 +15,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `setCredentialProvider()` hook for pluggable multi-tenant credential injection
   - Optional `Logger` callback replacing hardcoded `console.error`
   - Lazy URL getter functions for delayed environment variable evaluation
-  - 506 unit tests (12 test files, 3 new: sdk-exports, logger-callback, credential-provider)
-- **wjx-cli skeleton**: package.json placeholder for future CLI implementation
+  - `textToSurvey()` / `surveyToText()`: DSL round-trip parser for 6 question types (single-choice, multi-choice, fill-in, scale, matrix, paragraph)
+  - `ParsedSurvey` / `ParsedQuestion` typed interfaces for structured survey representation
+  - `buildPreviewUrl()`: generate survey preview URLs from vid
+  - 598 unit tests (14 test files, including text-to-survey and survey-to-text round-trip tests)
+- **`create_survey_by_text` tool**: create surveys from natural language DSL text, with type validation and wire format conversion
+- **DSL syntax reference resource** (`wjx://reference/dsl-syntax`): documents the text DSL format for AI clients
+- **Dockerfile**: multi-stage Docker build for monorepo deployment with health check
+- **wjx-cli skeleton**: package.json + source structure for future CLI implementation
 
 ### Changed
 
-- MCP server now depends on `wjx-api-sdk` via workspace link
+- MCP server now depends on `wjx-api-sdk` via workspace link (`^1.0.0`)
 - All module `client.ts` and `types.ts` files replaced with re-exports from SDK
 - Core `api-client.ts`, `constants.ts`, `types.ts` replaced with re-exports from SDK
 - `setCredentialProvider` type signature now accepts `undefined` to clear the provider
 - Authentication: single Bearer Token (`WJX_TOKEN`) only, all SHA1 signing code removed
-- Total tests: 827 → 722 (consolidated: 506 SDK + 216 MCP server, deduplicated)
+- `/health` endpoint now bypasses auth gate for Docker probes
+- `load-env.ts` rewritten: cwd priority with `__dirname` fallback for npx compatibility
+- Added `bin` entry for `wjx-mcp-server` in package.json (npx support)
+- Added shebang and `WJX_TOKEN` missing warning in stdio mode
+- Total tools: 55 -> 56
+- Total tests: 827 -> 820 (598 SDK + 222 MCP server)
 
 ### Removed
 
