@@ -7,56 +7,18 @@ import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
 
 import {
-  buildCreateSurveyParams,
   createSurvey,
-  WJX_API_URL,
+  getWjxApiUrl,
   Action,
 } from "../dist/wjx-client.js";
-import { buildSignaturePayload, signParams } from "../dist/sign.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const projectDir = path.resolve(__dirname, "..");
 const serverEntry = path.join(projectDir, "dist", "index.js");
 
-test("signParams concatenates sorted values and appkey before hashing", () => {
-  const params = {
-    title: "问卷标题",
-    action: "1000101",
-    appid: "test-app",
-    publish: false,
-    ts: "1700000000",
-  };
+const credentials = { token: "test-token" };
 
-  const payload = buildSignaturePayload(params, "secret-key");
-  const sign = signParams(params, "secret-key");
-
-  assert.equal(payload, "1000101test-appfalse问卷标题1700000000secret-key");
-  assert.equal(sign, "b3a551b74307086a5692ab96193190cd05af430c");
-});
-
-test("buildCreateSurveyParams produces a signed WJX request body", () => {
-  const params = buildCreateSurveyParams(
-    {
-      title: "满意度调查",
-      type: 1,
-      description: "服务满意度调查",
-      publish: true,
-      questions: '[{"q_index":1,"q_type":3,"q_title":"你满意吗？"}]',
-    },
-    { appId: "demo-app", appKey: "demo-key" },
-    "1700000000",
-  );
-
-  assert.equal(params.action, "1000101");
-  assert.equal(params.appid, "demo-app");
-  assert.equal(params.atype, 1);
-  assert.equal(params.desc, "服务满意度调查");
-  assert.equal(params.publish, true);
-  assert.equal(params.ts, "1700000000");
-  assert.equal(params.sign, "4785e9ceec67dc4ddfca8f6abf8706c258990c30");
-});
-
-test("createSurvey sends a JSON POST request to WJX", async () => {
+test("createSurvey sends a JSON POST with Bearer auth to WJX", async () => {
   let capturedUrl;
   let capturedInit;
 
@@ -67,7 +29,7 @@ test("createSurvey sends a JSON POST request to WJX", async () => {
       description: "调研问卷",
       questions: "[]",
     },
-    { appId: "client-app", appKey: "client-key" },
+    credentials,
     async (input, init) => {
       capturedUrl = input;
       capturedInit = init;
@@ -77,22 +39,24 @@ test("createSurvey sends a JSON POST request to WJX", async () => {
         { status: 200, headers: { "Content-Type": "application/json" } },
       );
     },
-    "1700000000",
   );
 
-  assert.ok(capturedUrl.startsWith(WJX_API_URL), `URL should start with ${WJX_API_URL}`);
+  const apiUrl = getWjxApiUrl();
+  assert.ok(capturedUrl.startsWith(apiUrl), `URL should start with ${apiUrl}`);
   assert.equal(capturedInit.method, "POST");
   assert.equal(capturedInit.headers["Content-Type"], "application/json");
+  assert.equal(capturedInit.headers["Authorization"], "Bearer test-token");
   assert.deepEqual(response, { result: true, data: { surveyId: 123 } });
 
   const parsedBody = JSON.parse(capturedInit.body);
   assert.equal(parsedBody.action, "1000101");
-  assert.equal(parsedBody.appid, "client-app");
-  assert.match(parsedBody.sign, /^[0-9a-f]{40}$/, "sign should be 40-char hex SHA1");
+  assert.equal("sign" in parsedBody, false, "sign should not be in body");
+  assert.equal("appid" in parsedBody, false, "appid should not be in body");
+  assert.equal("ts" in parsedBody, false, "ts should not be in body");
   assert.equal("traceid" in parsedBody, false, "traceid should not be in POST body");
 });
 
-test("server exposes all 54 tools, 7 resources, and 10 prompts over stdio", async () => {
+test("server exposes all 55 tools, 7 resources, and 10 prompts over stdio", async () => {
   const transport = new StdioClientTransport({
     command: "node",
     args: [serverEntry],
@@ -123,6 +87,7 @@ test("server exposes all 54 tools, 7 resources, and 10 prompts over stdio", asyn
       "add_participants",
       "add_sub_account",
       "add_tag",
+      "bind_activity",
       "build_survey_url",
       "calculate_csat",
       "calculate_nps",
@@ -130,7 +95,6 @@ test("server exposes all 54 tools, 7 resources, and 10 prompts over stdio", asyn
       "clear_responses",
       "compare_metrics",
       "create_survey",
-      "decode_push_payload",
       "decode_responses",
       "delete_admin",
       "delete_contacts",
@@ -171,14 +135,12 @@ test("server exposes all 54 tools, 7 resources, and 10 prompts over stdio", asyn
       "submit_response",
       "update_survey_settings",
       "update_survey_status",
+      "upload_file",
     ]);
 
     const createTool = toolsResult.tools.find((t) => t.name === "create_survey");
     assert.ok(createTool, `create_survey not found. stderr: ${stderr.join("")}`);
     assert.deepEqual(createTool.inputSchema.required?.slice().sort(), [
-      "atype",
-      "desc",
-      "questions",
       "title",
     ]);
 

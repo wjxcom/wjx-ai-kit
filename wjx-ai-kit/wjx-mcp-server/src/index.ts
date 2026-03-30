@@ -4,8 +4,13 @@ import { realpathSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
+import { setCredentialProvider } from "wjx-api-sdk";
+import { getRequestCredentials } from "./core/context.js";
 
 import { createServer } from "./server.js";
+
+// Wire MCP-server's per-request credential store into the SDK
+setCredentialProvider(getRequestCredentials);
 
 export { createServer } from "./server.js";
 
