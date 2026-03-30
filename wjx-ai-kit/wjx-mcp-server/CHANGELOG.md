@@ -5,6 +5,34 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.3.0] - 2026-03-30
+
+### Added
+
+- **wjx-ai-kit monorepo**: unified platform with npm workspaces (`wjx-api-sdk`, `wjx-mcp-server`, `wjx-cli`)
+- **wjx-api-sdk** (v1.0.0): zero-MCP-dependency SDK extracted from wjx-mcp-server
+  - 50+ API functions across 7 modules (survey, response, contacts, user-system, multi-user, SSO, analytics)
+  - `setCredentialProvider()` hook for pluggable multi-tenant credential injection
+  - Optional `Logger` callback replacing hardcoded `console.error`
+  - Lazy URL getter functions for delayed environment variable evaluation
+  - 506 unit tests (12 test files, 3 new: sdk-exports, logger-callback, credential-provider)
+- **wjx-cli skeleton**: package.json placeholder for future CLI implementation
+
+### Changed
+
+- MCP server now depends on `wjx-api-sdk` via workspace link
+- All module `client.ts` and `types.ts` files replaced with re-exports from SDK
+- Core `api-client.ts`, `constants.ts`, `types.ts` replaced with re-exports from SDK
+- `setCredentialProvider` type signature now accepts `undefined` to clear the provider
+- Authentication: single Bearer Token (`WJX_TOKEN`) only, all SHA1 signing code removed
+- Total tests: 827 → 722 (consolidated: 506 SDK + 216 MCP server, deduplicated)
+
+### Removed
+
+- `src/core/sign.ts`, `src/modules/sso/sign.ts`, `src/sign.ts` (SHA1 signing)
+- `SignableRecord` type, `timestamp` parameter from all API functions
+- Duplicate test files from MCP server (moved to SDK)
+
 ## [2.2.0] - 2026-03-29
 
 ### Added
