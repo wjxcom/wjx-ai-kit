@@ -1,0 +1,8 @@
+{
+  "private": true,
+  "workspaces": [
+    "wjx-api-sdk",
+    "wjx-mcp-server",
+    "wjx-cli"
+  ]
+}
