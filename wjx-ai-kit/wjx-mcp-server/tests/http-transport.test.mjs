@@ -68,7 +68,7 @@ describe("HTTP transport with auth", () => {
     }
   });
 
-  it("rejects requests without token (401)", async () => {
+  it("allows /health without token even when auth is configured", async () => {
     const server = createServer();
     const result = await startHttpTransport(server, {
       port: 0,
@@ -80,6 +80,16 @@ describe("HTTP transport with auth", () => {
     const baseUrl = `http://127.0.0.1:${addr.port}`;
 
     const res = await fetch(`${baseUrl}/health`);
+    assert.equal(res.status, 200);
+    const body = await res.json();
+    assert.equal(body.status, "ok");
+  });
+
+  it("rejects /mcp without token (401)", async () => {
+    const addr = httpServer.address();
+    const baseUrl = `http://127.0.0.1:${addr.port}`;
+
+    const res = await fetch(`${baseUrl}/mcp`, { method: "POST" });
     assert.equal(res.status, 401);
     const body = await res.json();
     assert.equal(body.error, "Unauthorized");
@@ -89,10 +99,13 @@ describe("HTTP transport with auth", () => {
     const addr = httpServer.address();
     const baseUrl = `http://127.0.0.1:${addr.port}`;
 
-    const res = await fetch(`${baseUrl}/health`, {
+    const res = await fetch(`${baseUrl}/mcp`, {
+      method: "POST",
       headers: { Authorization: "Bearer wrong-token" },
     });
     assert.equal(res.status, 401);
+    const body = await res.json();
+    assert.equal(body.error, "Unauthorized");
   });
 
   it("accepts requests with correct token", async () => {

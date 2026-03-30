@@ -57,6 +57,15 @@ export async function startHttpTransport(
   const sessions = new Map<string, SessionEntry>();
 
   const httpServer = createHttpServer(async (req: IncomingMessage, res: ServerResponse) => {
+    const url = new URL(req.url ?? "/", `http://${req.headers.host ?? "localhost"}`);
+
+    // ── Health check (before auth — must work for Docker/k8s probes) ──
+    if (url.pathname === "/health") {
+      res.writeHead(200, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ status: "ok" }));
+      return;
+    }
+
     const bearerToken = extractBearerToken(req);
 
     // ── Authentication ───────────────────────────────────────────────
@@ -78,14 +87,6 @@ export async function startHttpTransport(
     const clientCreds: WjxCredentials | undefined = bearerToken
       ? { token: bearerToken }
       : undefined;
-
-    const url = new URL(req.url ?? "/", `http://${req.headers.host ?? "localhost"}`);
-
-    if (url.pathname === "/health") {
-      res.writeHead(200, { "Content-Type": "application/json" });
-      res.end(JSON.stringify({ status: "ok" }));
-      return;
-    }
 
     if (url.pathname !== "/mcp") {
       res.writeHead(404, { "Content-Type": "application/json" });

@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-wjx-mcp-server is a Model Context Protocol (MCP) server wrapping the Wenjuanxing (问卷星) OpenAPI. It exposes 54 tools, 7 resources, and 10 prompts to AI clients (Claude, Cursor, etc.). Pure TypeScript, ESM-only, minimal dependencies (`@modelcontextprotocol/sdk` + `zod`).
+wjx-mcp-server is a Model Context Protocol (MCP) server wrapping the Wenjuanxing (问卷星) OpenAPI. It exposes 56 tools, 8 resources, and 12 prompts to AI clients (Claude, Cursor, etc.). Pure TypeScript, ESM-only, minimal dependencies (`@modelcontextprotocol/sdk` + `zod`).
 
 ## Commands
 
@@ -38,8 +38,8 @@ Each of the 7 modules (survey, response, contacts, sso, user-system, multi-user,
 - **types.ts** — Shared types (WjxCredentials, WjxApiResponse, etc.)
 
 ### Resources & Prompts
-- `src/resources/` — 7 resources registered via `wjx://reference/<name>` URI scheme
-- `src/prompts/` — 10 prompts (4 general + 6 analysis: NPS, CSAT, cross-tab, sentiment, etc.)
+- `src/resources/` — 8 resources registered via `wjx://reference/<name>` URI scheme
+- `src/prompts/` — 12 prompts (4 general + 6 analysis + 2 operational)
 
 ### Backward Compat Barrel Files
 Root-level `src/wjx-client.ts`, `src/sign.ts`, `src/prompts.ts`, `src/resources.ts` are re-exports from modular locations. Don't add new code here.
@@ -68,13 +68,12 @@ All handlers use `toolResult()`/`toolError()` from `src/helpers.ts`.
 
 | Variable | Required | Purpose |
 |----------|----------|---------|
-| `WJX_APP_ID` | Yes | 问卷星 OpenAPI developer ID |
-| `WJX_APP_KEY` | Yes | Signing key |
+| `WJX_TOKEN` | Yes (stdio) | 问卷星 OpenAPI Bearer token |
 | `MCP_TRANSPORT` | No | `stdio` (default) or `http` |
 | `PORT` | No | HTTP mode port (default 3000) |
 | `MCP_AUTH_TOKEN` | No | Bearer token for HTTP mode |
 
-The server has its own .env parser in `index.ts` (no dotenv dependency).
+The server has its own .env parser in `src/core/load-env.ts` (no dotenv dependency). Resolution: `cwd/.env` first, then package root fallback.
 
 ## Conventions
 

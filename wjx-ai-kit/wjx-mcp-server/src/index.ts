@@ -1,3 +1,4 @@
+#!/usr/bin/env node
 import "./core/load-env.js"; // Must be first — populates process.env before other modules read it
 
 import { realpathSync } from "node:fs";
@@ -43,6 +44,9 @@ export async function main(): Promise<void> {
     process.once("SIGINT", shutdown);
     process.once("SIGTERM", shutdown);
   } else {
+    if (!process.env.WJX_TOKEN) {
+      console.error("[wjx-mcp-server] Warning: WJX_TOKEN is not set. API calls will fail until a token is provided.");
+    }
     const transport = new StdioServerTransport();
     await server.connect(transport);
     const shutdown = () => { void server.close(); };

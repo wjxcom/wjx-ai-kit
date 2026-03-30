@@ -56,7 +56,7 @@ test("createSurvey sends a JSON POST with Bearer auth to WJX", async () => {
   assert.equal("traceid" in parsedBody, false, "traceid should not be in POST body");
 });
 
-test("server exposes all 55 tools, 7 resources, and 10 prompts over stdio", async () => {
+test("server exposes all 56 tools, 8 resources, and 12 prompts over stdio", async () => {
   const transport = new StdioClientTransport({
     command: "node",
     args: [serverEntry],
@@ -95,6 +95,7 @@ test("server exposes all 55 tools, 7 resources, and 10 prompts over stdio", asyn
       "clear_responses",
       "compare_metrics",
       "create_survey",
+      "create_survey_by_text",
       "decode_responses",
       "delete_admin",
       "delete_contacts",
@@ -187,6 +188,7 @@ test("server exposes all 55 tools, 7 resources, and 10 prompts over stdio", asyn
     const resourceUris = resourcesResult.resources.map((r) => r.uri).sort();
     assert.deepEqual(resourceUris, [
       "wjx://reference/analysis-methods",
+      "wjx://reference/dsl-syntax",
       "wjx://reference/push-format",
       "wjx://reference/question-types",
       "wjx://reference/response-format",
@@ -206,6 +208,7 @@ test("server exposes all 55 tools, 7 resources, and 10 prompts over stdio", asyn
     const promptNames = promptsResult.prompts.map((p) => p.name).sort();
     assert.deepEqual(promptNames, [
       "analyze-results",
+      "anomaly-detection",
       "comparative-analysis",
       "configure-webhook",
       "create-nps-survey",
@@ -215,6 +218,7 @@ test("server exposes all 55 tools, 7 resources, and 10 prompts over stdio", asyn
       "nps-analysis",
       "sentiment-analysis",
       "survey-health-check",
+      "user-system-workflow",
     ]);
 
     // Verify a prompt can be retrieved

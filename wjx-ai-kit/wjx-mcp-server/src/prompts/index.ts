@@ -153,6 +153,110 @@ Use survey type 1 (survey) and output the create_survey tool call with properly 
     }),
   );
 
+  // ═══ Anomaly Detection ═══════════════════════════════════════════════
+  server.prompt(
+    "anomaly-detection",
+    "检测问卷答卷中的异常数据：刷票、机器人、规律性作答、极短用时等",
+    {
+      vid: z.string().describe("问卷编号 (vid)"),
+      threshold: z.string().optional().describe("异常阈值灵敏度：low/medium/high（默认 medium）"),
+    },
+    async ({ vid, threshold }) => ({
+      messages: [{
+        role: "user",
+        content: {
+          type: "text",
+          text: `请对问卷 ${vid} 的答卷数据进行异常检测分析。
+
+灵敏度：${threshold ?? "medium"}
+
+请按以下步骤操作：
+
+**第一步：获取数据**
+1. 用 get_survey 获取问卷结构（了解题型分布）
+2. 用 query_responses 获取答卷明细（需要 submitdata、submittime、inputcosttime、ip 等字段）
+
+**第二步：检测以下异常模式**
+- **速度异常**：答题用时（inputcosttime）低于正常范围（如 < 题目数 × 3秒）
+- **规律性作答**：所有选择题答案相同（如全选A）或呈固定模式（如 ABCABC）
+- **IP 集中**：大量答卷来自同一 IP 或同一 IP 段
+- **时间集中**：短时间内出现大量提交（如 1分钟内 > 10 份）
+- **答案雷同**：多份答卷的填空题答案高度相似（编辑距离 < 3）
+- **直线作答**：矩阵题/量表题所有行选同一列
+
+**第三步：输出报告**
+- 异常答卷列表（jid + 异常类型 + 严重程度）
+- 异常统计摘要（各类异常的数量和占比）
+- 数据质量评分（0-100）
+- 处理建议（是否需要剔除、标记或人工复核）
+
+如需使用 SDK 的 detectAnomalies 函数，请参考 wjx://reference/analysis-methods 资源。`,
+        },
+      }],
+    }),
+  );
+
+  // ═══ User System Workflow ═══════════════════════════════════════════
+  server.prompt(
+    "user-system-workflow",
+    "用户体系完整工作流指导：创建用户体系问卷 → 添加参与者 → 绑定问卷 → 分发 → 查询参与状态",
+    {
+      scenario: z.string().optional().describe("使用场景（如：员工考核、培训评估、学生测评）"),
+    },
+    async ({ scenario }) => ({
+      messages: [{
+        role: "user",
+        content: {
+          type: "text",
+          text: `请指导我完成一个完整的用户体系问卷工作流。${scenario ? `\n\n使用场景：${scenario}` : ""}
+
+## 用户体系工作流概览
+
+用户体系（atype=8）允许你为特定用户群发放问卷，追踪每个人的参与状态。
+
+### 步骤 1：创建用户体系问卷
+使用 create_survey 工具创建问卷，atype 设为 8（用户体系）：
+- 设计好题目结构
+- 可选：发布问卷（publish=true）
+
+### 步骤 2：添加参与者
+使用 add_participants 工具向用户体系添加用户：
+- username: 管理员用户名
+- sysid: 用户体系 ID（从问卷详情获取）
+- uids: 用户 ID 列表（JSON 数组字符串）
+- 可选：设置用户属性（姓名、部门等）
+
+### 步骤 3：绑定问卷
+使用 bind_activity 工具将问卷绑定到参与者：
+- vid: 问卷编号
+- sysid: 用户体系 ID
+- uids: 要绑定的用户 ID 列表
+- 可选参数：
+  - answer_times: 允许作答次数
+  - can_chg_answer: 是否允许修改答案
+  - can_view_result: 是否允许查看结果
+
+### 步骤 4：分发问卷
+使用 build_sso_user_system_url 生成每个用户的专属登录链接：
+- 每个用户通过 SSO 链接登录后自动关联身份
+- 链接格式：基础 URL + 签名参数
+
+### 步骤 5：查询参与状态
+- query_survey_binding: 查看绑定状态和参与情况
+  - join_status: 0=未参与, 1=已参与
+  - 支持按日/周/月筛选
+- query_user_surveys: 查看用户可参与的问卷列表
+
+### 步骤 6：管理参与者
+- modify_participants: 修改用户信息
+- delete_participants: 移除用户
+
+请告诉我你的具体需求，我来帮你一步步完成。`,
+        },
+      }],
+    }),
+  );
+
   // ═══ Analysis Prompts ══════════════════════════════════════════════════
   registerAnalysisPrompts(server);
 }
