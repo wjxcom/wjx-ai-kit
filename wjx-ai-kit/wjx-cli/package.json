@@ -1,0 +1,37 @@
+{
+  "name": "wjx-cli",
+  "version": "0.1.0",
+  "description": "问卷星 (Wenjuanxing) CLI — AI Agent 原生命令行工具",
+  "main": "dist/index.js",
+  "bin": {
+    "wjx": "dist/index.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "npx tsc -p tsconfig.json",
+    "test": "npm run build && node --test __tests__/*.test.mjs",
+    "clean": "rm -rf dist"
+  },
+  "keywords": [
+    "wjx",
+    "wenjuanxing",
+    "survey",
+    "cli"
+  ],
+  "author": "wjxagents",
+  "license": "MIT",
+  "type": "module",
+  "dependencies": {
+    "commander": "^14.0.3",
+    "wjx-api-sdk": "*"
+  },
+  "devDependencies": {
+    "@types/node": "^25.5.0",
+    "typescript": "^6.0.2"
+  }
+}
