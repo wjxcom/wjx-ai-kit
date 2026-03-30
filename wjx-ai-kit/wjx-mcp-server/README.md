@@ -6,17 +6,17 @@
 [![license](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 [![node](https://img.shields.io/badge/node-%3E%3D20-green)](https://nodejs.org/)
 
-通过 Claude、Cursor 或任何 MCP 兼容的 AI 客户端，以自然语言创建、管理和分析问卷。服务器封装了问卷星 OpenAPI，提供 **54 个 Tools**、**7 个 Resources** 和 **10 个 Prompts**。
+通过 Claude、Cursor 或任何 MCP 兼容的 AI 客户端，以自然语言创建、管理和分析问卷。服务器封装了问卷星 OpenAPI，提供 **56 个 Tools**、**8 个 Resources** 和 **12 个 Prompts**。
 
 ---
 
 ## 功能特性
 
-### 7 大模块 · 54 个 Tools
+### 7 大模块 · 56 个 Tools
 
 | 模块 | 工具数 | 说明 |
 |------|:------:|------|
-| **Survey** 问卷管理 | 10 | 创建、查询、列表、状态变更、设置读写、删除、题目标签、回收站 |
+| **Survey** 问卷管理 | 12 | 创建、查询、列表、状态变更、设置读写、删除、题目标签、回收站、文本创建、预览 |
 | **Response** 答卷数据 | 10 | 查询、实时查询、下载、统计报告、代填提交、文件链接、中奖者、改分、360° 报告、清空 |
 | **Contacts** 通讯录 | 14 | 成员管理、管理员管理、部门管理、标签管理 |
 | **SSO** 免登录 | 4 | 生成子账号 / 用户系统 / 合作伙伴 / 问卷创建编辑的 SSO 链接 |
@@ -24,13 +24,13 @@
 | **Multi-User** 多用户管理 | 5 | 子账号增删改恢复、子账号列表 |
 | **Analytics** 本地分析 | 6 | 解码答卷、NPS 计算、CSAT 计算、异常检测、指标对比、推送解密 |
 
-### 7 个 MCP Resources
+### 8 个 MCP Resources
 
-AI 客户端可直接读取的参考数据：`survey-types`、`question-types`、`survey-statuses`、`analysis-methods`、`response-format`、`user-roles`、`push-format`。
+AI 客户端可直接读取的参考数据：`survey-types`、`question-types`、`survey-statuses`、`analysis-methods`、`response-format`、`user-roles`、`push-format`、`dsl-syntax`。
 
-### 10 个 MCP Prompts
+### 12 个 MCP Prompts
 
-预置工作流模板：`design-survey`、`analyze-results`、`create-nps-survey`、`configure-webhook`、`nps-analysis`、`csat-analysis`、`cross-tabulation`、`sentiment-analysis`、`survey-health-check`、`comparative-analysis`。
+预置工作流模板：`design-survey`、`analyze-results`、`create-nps-survey`、`configure-webhook`、`nps-analysis`、`csat-analysis`、`cross-tabulation`、`sentiment-analysis`、`survey-health-check`、`comparative-analysis`、`create-survey-by-text`、`batch-export`。
 
 ### 生产级特性
 
@@ -54,11 +54,11 @@ flowchart LR
     STDIO --> Server[McpServer]
     HTTP --> Server
 
-    Server --> R[Resources ×7]
-    Server --> P[Prompts ×10]
-    Server --> Tools[Tools ×54]
+    Server --> R[Resources ×8]
+    Server --> P[Prompts ×12]
+    Server --> Tools[Tools ×56]
 
-    Tools --> S1[survey ×10]
+    Tools --> S1[survey ×12]
     Tools --> S2[response ×10]
     Tools --> S3[contacts ×14]
     Tools --> S4[sso ×4]
@@ -250,15 +250,15 @@ wjx-mcp-server/
 │   │   ├── constants.ts          # Action codes、API URL、默认值
 │   │   └── types.ts              # 共享类型定义
 │   ├── modules/
-│   │   ├── survey/               # 问卷管理（10 tools）
+│   │   ├── survey/               # 问卷管理（12 tools）
 │   │   ├── response/             # 答卷数据（10 tools）
 │   │   ├── contacts/             # 通讯录（14 tools）
 │   │   ├── sso/                  # 免登录 URL（4 tools）
 │   │   ├── user-system/          # 用户体系（5 tools）
 │   │   ├── multi-user/           # 多用户管理（5 tools）
 │   │   └── analytics/            # 本地分析（6 tools）
-│   ├── resources/                # 7 个 MCP Resources
-│   ├── prompts/                  # 10 个 MCP Prompts
+│   ├── resources/                # 8 个 MCP Resources
+│   ├── prompts/                  # 12 个 MCP Prompts
 │   └── transports/http.ts        # Streamable HTTP 传输
 ├── __tests__/                    # 单元测试（node:test）
 ├── tests/                        # 集成测试
