@@ -1,4 +1,5 @@
 import {
+  getWjxBaseUrl,
   getWjxSsoSubaccountUrl,
   getWjxSsoUserSystemUrl,
   getWjxSsoPartnerUrl,
@@ -10,6 +11,7 @@ import type {
   SsoUserSystemInput,
   SsoPartnerInput,
   BuildSurveyUrlInput,
+  BuildPreviewUrlInput,
 } from "./types.js";
 
 /**
@@ -95,4 +97,16 @@ export function buildSurveyUrl(input: BuildSurveyUrlInput): string {
   if (input.redirect_url !== undefined) params.set("redirecturl", input.redirect_url);
 
   return `${getWjxSurveyEditUrl()}?${params.toString()}`;
+}
+
+/**
+ * Build a survey preview/fill URL (the respondent-facing page).
+ * Pattern: {baseUrl}/vm/{vid}.aspx
+ */
+export function buildPreviewUrl(input: BuildPreviewUrlInput): string {
+  const base = `${getWjxBaseUrl()}/vm/${input.vid}.aspx`;
+  if (input.source) {
+    return `${base}?source=${encodeURIComponent(input.source)}`;
+  }
+  return base;
 }

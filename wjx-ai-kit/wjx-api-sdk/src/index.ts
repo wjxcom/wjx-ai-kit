@@ -49,6 +49,8 @@ export {
   clearRecycleBin,
   uploadFile,
 } from "./modules/survey/client.js";
+export { surveyToText, typeToLabel, stripHtml } from "./modules/survey/survey-to-text.js";
+export { textToSurvey } from "./modules/survey/text-to-survey.js";
 export type {
   CreateSurveyInput,
   GetSurveyInput,
@@ -61,6 +63,11 @@ export type {
   GetTagDetailsInput,
   ClearRecycleBinInput,
   UploadFileInput,
+  SurveyQuestionItem,
+  SurveyQuestion,
+  SurveyDetail,
+  ParsedQuestion,
+  ParsedSurvey,
 } from "./modules/survey/types.js";
 
 // Response module
@@ -163,12 +170,14 @@ export {
   buildSsoUserSystemUrl,
   buildSsoPartnerUrl,
   buildSurveyUrl,
+  buildPreviewUrl,
 } from "./modules/sso/client.js";
 export type {
   SsoSubaccountInput,
   SsoUserSystemInput,
   SsoPartnerInput,
   BuildSurveyUrlInput,
+  BuildPreviewUrlInput,
 } from "./modules/sso/types.js";
 
 // Analytics module

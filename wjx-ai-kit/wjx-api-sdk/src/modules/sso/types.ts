@@ -69,3 +69,11 @@ export interface BuildSurveyUrlInput {
   /** Run protect flag (edit mode). */
   runprotect?: number;
 }
+
+/** Input for generating a survey preview/fill URL. */
+export interface BuildPreviewUrlInput {
+  /** Survey vid (required). */
+  vid: number;
+  /** Optional source tracking parameter. */
+  source?: string;
+}
