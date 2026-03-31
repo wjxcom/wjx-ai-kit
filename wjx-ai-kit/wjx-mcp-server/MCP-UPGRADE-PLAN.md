@@ -2,7 +2,7 @@
 
 > 基于腾讯问卷竞品分析 + 问卷星 WjxNew AI 能力全景 + 双声道 CEO 审查
 > 日期：2026-03-30
-> 当前版本：wjx-mcp-server 2.2.0（**56 tools**, 7 resources, 10 prompts）
+> 当前版本：wjx-mcp-server 0.1.0（**56 tools**, 7 resources, 10 prompts）
 > 目标：让 AI Agent 能完成「需求 → 问卷草稿 → 发布 → 收集 → 分析」完整工作流
 
 ---

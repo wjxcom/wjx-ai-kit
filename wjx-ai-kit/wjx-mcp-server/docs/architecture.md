@@ -1,6 +1,6 @@
 # wjx-mcp-server 架构设计
 
-> 版本基线：`v2.1.0`
+> 版本基线：`v0.1.0`
 > 技术栈：Node.js `>=20`、TypeScript、`@modelcontextprotocol/sdk`、Zod
 
 ## 1. 概述

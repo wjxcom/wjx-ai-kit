@@ -3,19 +3,19 @@
 ## 项目背景
 
 wjx-cli 是 `wjx-ai-kit` monorepo 的第三个包，与 `wjx-api-sdk`、`wjx-mcp-server` 并列。
-monorepo 根目录：`/home/claw/wjxagents/wjx-ai-kit/`，使用 npm workspaces。
+monorepo 根目录：`wjx-ai-kit/`，使用 npm workspaces。
 
-SDK 已完成（v1.0.0, 506 tests），MCP Server 已完成（v2.3.0, 216 tests）。
-CLI 目前是骨架状态：只有 `package.json` 和空 `src/`。
+SDK 已完成（v0.1.0, 506 tests），MCP Server 已完成（v0.1.0, 216 tests）。
+CLI 已完成 v0.1.0（80 tests）。
 
 ## 关键文件
 
-- 实现计划：`/home/claw/wjxagents/wjx-ai-kit/wjx-cli/PLAN.md`（命令映射、分期、代码模式）
-- SDK barrel：`/home/claw/wjxagents/wjx-ai-kit/wjx-api-sdk/src/index.ts`（50+ 函数列表）
-- SDK 类型示例：`/home/claw/wjxagents/wjx-ai-kit/wjx-api-sdk/src/modules/survey/types.ts`
-- SDK client 示例：`/home/claw/wjxagents/wjx-ai-kit/wjx-api-sdk/src/modules/survey/client.ts`
-- MCP tools 参考：`/home/claw/wjxagents/wjx-ai-kit/wjx-mcp-server/src/modules/survey/tools.ts`
-- monorepo root：`/home/claw/wjxagents/wjx-ai-kit/package.json`
+- 实现计划：`wjx-cli/PLAN.md`（命令映射、分期、代码模式）
+- SDK barrel：`wjx-api-sdk/src/index.ts`（50+ 函数列表）
+- SDK 类型示例：`wjx-api-sdk/src/modules/survey/types.ts`
+- SDK client 示例：`wjx-api-sdk/src/modules/survey/client.ts`
+- MCP tools 参考：`wjx-mcp-server/src/modules/survey/tools.ts`
+- monorepo root：`wjx-ai-kit/package.json`
 
 ## 技术栈
 
@@ -59,7 +59,7 @@ const result = await listSurveys({ page: 1 }, creds);
 ## 构建和测试
 
 ```bash
-cd /home/claw/wjxagents/wjx-ai-kit
+cd wjx-ai-kit
 npm install                    # workspace 安装（会装 commander）
 cd wjx-cli
 npm run build                  # tsc 编译
@@ -69,7 +69,6 @@ node dist/index.js survey list # 手动测试
 
 ## Git
 
-- 仓库根目录：`/home/claw/wjxagents`（不是 wjx-ai-kit）
 - 当前分支：`develop`
 - 远程：Aliyun Codeup（没有 gh/glab CLI）
 - 提交后手动推送到 origin/develop

@@ -21,8 +21,8 @@ wjx-ai-kit/
 
 | 包 | 版本 | 说明 |
 |---|---|---|
-| [`wjx-api-sdk`](wjx-api-sdk/) | 1.0.0 | 零 MCP 依赖的问卷星 OpenAPI 客户端。7 模块、50+ 函数，可在任意 Node.js 项目中使用 |
-| [`wjx-mcp-server`](wjx-mcp-server/) | 2.3.0 | [Model Context Protocol](https://modelcontextprotocol.io/) 服务器。接入 Claude、Cursor 等 AI 客户端 |
+| [`wjx-api-sdk`](wjx-api-sdk/) | 0.1.0 | 零 MCP 依赖的问卷星 OpenAPI 客户端。7 模块、50+ 函数，可在任意 Node.js 项目中使用 |
+| [`wjx-mcp-server`](wjx-mcp-server/) | 0.1.0 | [Model Context Protocol](https://modelcontextprotocol.io/) 服务器。接入 Claude、Cursor 等 AI 客户端 |
 | [`wjx-cli`](wjx-cli/) | 0.1.0 | 命令行工具。支持 `wjx survey list`、stdin pipe、JSON/表格输出 |
 
 ---
@@ -57,8 +57,8 @@ wjx-ai-kit/
 ### 安装
 
 ```bash
-git clone https://codeup.aliyun.com/6445da2d020eabef3107e22e/wjxfc/wjxagents.git
-cd wjxagents/wjx-ai-kit
+git clone <your-repo-url>
+cd wjx-ai-kit
 npm install
 ```
 
