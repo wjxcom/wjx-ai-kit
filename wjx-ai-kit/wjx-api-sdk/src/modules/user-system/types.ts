@@ -8,6 +8,7 @@ export interface ModifyParticipantsInput {
   username: string;
   users: string;
   sysid: number;
+  auto_create_udept?: boolean;
 }
 
 export interface DeleteParticipantsInput {
@@ -31,8 +32,6 @@ export interface QuerySurveyBindingInput {
   username: string;
   vid: number;
   sysid: number;
-  page_index?: number;
-  page_size?: number;
   join_status?: number;
   day?: string;
   week?: string;
@@ -44,6 +43,4 @@ export interface QueryUserSurveysInput {
   username: string;
   uid: string;
   sysid: number;
-  page_index?: number;
-  page_size?: number;
 }

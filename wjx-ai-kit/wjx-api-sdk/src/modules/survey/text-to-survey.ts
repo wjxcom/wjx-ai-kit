@@ -6,19 +6,24 @@ import type { ParsedSurvey, ParsedQuestion } from "./types.js";
  */
 const LABEL_TO_TYPE: Record<string, string> = {
   "单选题": "single-choice",
-  "下拉框": "single-choice",
+  "下拉框": "dropdown",
+  "下拉单选": "dropdown",
   "多选题": "multi-choice",
   "填空题": "fill-in",
   "多项填空题": "fill-in",
   "量表题": "scale",
-  "评分单选": "scale",
+  "评分单选": "scoring-single",
+  "评分多选": "scoring-multi",
   "滑动条": "scale",
+  "排序题": "sort",
+  "判断题": "true-false",
   "矩阵题": "matrix",
   "矩阵量表题": "matrix",
   "矩阵单选题": "matrix",
   "矩阵多选题": "matrix",
   "矩阵填空题": "matrix",
   "段落说明": "paragraph",
+  "比重题": "weight",
 };
 
 /** Regex to match a numbered question line: "1. Title[标签]（选填）" */
@@ -160,6 +165,12 @@ function buildQuestion(type: string, title: string, required: boolean, body: str
   switch (type) {
     case "single-choice":
     case "multi-choice":
+    case "dropdown":
+    case "scoring-single":
+    case "scoring-multi":
+    case "sort":
+    case "true-false":
+    case "weight":
       q.options = body.filter((l) => l.length > 0);
       break;
 
