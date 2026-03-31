@@ -4,13 +4,13 @@ export const SURVEY_TYPES: Record<number, string> = {
   2: "测评",
   3: "投票",
   4: "360度评估",
-  5: "教学评估",
+  5: "360评估(无测评关系)",
   6: "考试",
   7: "表单",
-  8: "报名",
-  9: "在线测试",
+  8: "用户体系",
+  9: "教学评估",
   10: "量表",
-  11: "心理测评",
+  11: "民主评议",
 };
 
 /**
@@ -60,12 +60,11 @@ export const QUESTION_TYPES: Record<number, { name: string; subtypes?: Record<nu
 };
 
 export const SURVEY_STATUSES: Record<number, string> = {
-  0: "设计中（未发布）",
-  1: "收集中（已发布）",
+  0: "设计中",
+  1: "收集中",
   2: "已暂停",
-  3: "已删除（在回收站）",
+  3: "已删除(回收站)",
   4: "彻底删除",
-  5: "被审核",
 };
 
 export const VERIFY_STATUSES: Record<number, string> = {

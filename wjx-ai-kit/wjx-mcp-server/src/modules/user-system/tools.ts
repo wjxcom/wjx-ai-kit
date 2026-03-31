@@ -73,6 +73,7 @@ export function registerUserSystemTools(server: McpServer): void {
             "参与者列表 JSON 字符串（数组），每项包含: uid(用户ID), uname(姓名), upass(密码), udept(部门), uextf(扩展字段)",
           ),
         usid: z.number().int().positive().describe("用户系统 ID"),
+        auto_create_udept: z.boolean().optional().describe("部门不存在时是否自动创建"),
       },
       annotations: {
         destructiveHint: true,
@@ -87,6 +88,7 @@ export function registerUserSystemTools(server: McpServer): void {
           username: args.username,
           users: args.users,
           sysid: args.usid,
+          auto_create_udept: args.auto_create_udept,
         });
         return toolResult(result, result.result === false);
       } catch (error) {
@@ -196,8 +198,6 @@ export function registerUserSystemTools(server: McpServer): void {
         username: z.string().min(1).describe("主账户用户名"),
         vid: z.number().int().positive().describe("问卷编号"),
         usid: z.number().int().positive().describe("用户系统 ID"),
-        page_index: z.number().int().positive().optional().describe("页码，从1开始"),
-        page_size: z.number().int().min(1).max(100).optional().describe("每页数量（1-100）"),
         join_status: z.number().int().optional().describe("参与状态筛选，0=全部"),
         day: z.string().optional().describe("按日期筛选，格式 yyyyMMdd（8位）"),
         week: z.string().optional().describe("按周筛选，格式 yyyyWW（6位）"),
@@ -217,8 +217,6 @@ export function registerUserSystemTools(server: McpServer): void {
           username: args.username,
           vid: args.vid,
           sysid: args.usid,
-          page_index: args.page_index,
-          page_size: args.page_size,
           join_status: args.join_status,
           day: args.day,
           week: args.week,
@@ -243,8 +241,6 @@ export function registerUserSystemTools(server: McpServer): void {
         username: z.string().min(1).describe("主账户用户名"),
         uid: z.string().min(1).describe("参与者 ID"),
         usid: z.number().int().positive().describe("用户系统 ID"),
-        page_index: z.number().int().positive().optional().describe("页码，从1开始"),
-        page_size: z.number().int().min(1).max(100).optional().describe("每页数量（1-100）"),
       },
       annotations: {
         destructiveHint: false,
@@ -259,8 +255,6 @@ export function registerUserSystemTools(server: McpServer): void {
           username: args.username,
           uid: args.uid,
           sysid: args.usid,
-          page_index: args.page_index,
-          page_size: args.page_size,
         });
         return toolResult(result, result.result === false);
       } catch (error) {
