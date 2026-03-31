@@ -33,7 +33,7 @@
   },
   "dependencies": {
     "commander": "^14.0.3",
-    "wjx-api-sdk": "*"
+    "wjx-api-sdk": "^0.1.1"
   },
   "devDependencies": {
     "@types/node": "^25.5.0",

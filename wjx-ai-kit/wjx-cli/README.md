@@ -13,8 +13,7 @@ wjx-cli 是 [`wjx-ai-kit`](../) monorepo 的命令行入口，将 [wjx-api-sdk](
 ## 目录
 
 - [特性](#特性)
-- [**快速开始（新手教程）**](docs/getting-started.md)
-- [前置条件](#前置条件)
+- [**快速开始**](#快速开始)
 - [安装](#安装)
 - [认证](#认证)
 - [架构](#架构)
@@ -56,21 +55,30 @@ wjx-cli 是 [`wjx-ai-kit`](../) monorepo 的命令行入口，将 [wjx-api-sdk](
 
 ## 快速开始
 
-> **第一次使用？** 阅读 [安装与快速开始教程](docs/getting-started.md)，从零开始 5 分钟跑通第一个命令。
+```bash
+npm install -g wjx-cli
+export WJX_TOKEN=你的Token
+wjx survey list
+```
+
+> **新手？** 阅读 [快速开始教程](docs/getting-started.md)，含 [Node.js 安装指引](docs/install-nodejs.md)。
 
 ---
 
 ## 前置条件
 
-- **Node.js >= 20**（使用内置 `fetch`，无需 polyfill）
-- **npm >= 9**（workspace 支持）
+- **Node.js >= 20**（[安装指引](docs/install-nodejs.md)）
 - **问卷星 OpenAPI Token**（[申请方式](https://www.wjx.cn/openapi/)）
 
 ---
 
 ## 安装
 
-wjx-cli 是 `wjx-ai-kit` monorepo 的一部分：
+```bash
+npm install -g wjx-cli
+```
+
+### 从源码安装（开发者）
 
 ```bash
 git clone <your-repo-url>
@@ -78,19 +86,7 @@ cd wjx-ai-kit
 npm install
 npm run build --workspace=wjx-api-sdk
 npm run build --workspace=wjx-cli
-```
-
-### 全局可用（可选）
-
-```bash
 npm link --workspace=wjx-cli
-wjx --help
-```
-
-### 直接运行（无需全局安装）
-
-```bash
-node wjx-cli/dist/index.js --help
 ```
 
 ---
