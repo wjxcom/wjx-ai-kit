@@ -15,7 +15,8 @@
   "scripts": {
     "build": "npx tsc -p tsconfig.json",
     "test": "npm run build && node --test __tests__/*.test.mjs",
-    "clean": "rm -rf dist"
+    "clean": "rm -rf dist",
+    "prepublishOnly": "npm run build"
   },
   "keywords": [
     "wjx",

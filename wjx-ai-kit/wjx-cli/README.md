@@ -4,6 +4,7 @@
 
 [![license](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 [![node](https://img.shields.io/badge/node-%3E%3D20-green)](https://nodejs.org/)
+[![npm](https://img.shields.io/npm/v/wjx-cli)](https://www.npmjs.com/package/wjx-cli)
 [![tests](https://img.shields.io/badge/tests-80%20passing-brightgreen)](__tests__/cli.test.mjs)
 
 wjx-cli 是 [`wjx-ai-kit`](../) monorepo 的命令行入口，将 [wjx-api-sdk](../wjx-api-sdk/) 的 50+ 函数直接暴露为终端命令。设计目标：**让 AI Agent 和人类开发者都能用一行命令操作问卷星 OpenAPI**。

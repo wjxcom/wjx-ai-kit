@@ -21,7 +21,7 @@ wjx-ai-kit/
 
 | 包 | 版本 | 说明 |
 |---|---|---|
-| [`wjx-api-sdk`](wjx-api-sdk/) | 0.1.0 | 零 MCP 依赖的问卷星 OpenAPI 客户端。7 模块、50+ 函数，可在任意 Node.js 项目中使用 |
+| [`wjx-api-sdk`](wjx-api-sdk/) | 0.1.1 | 零 MCP 依赖的问卷星 OpenAPI 客户端。7 模块、50+ 函数，可在任意 Node.js 项目中使用 |
 | [`wjx-mcp-server`](wjx-mcp-server/) | 0.1.0 | [Model Context Protocol](https://modelcontextprotocol.io/) 服务器。接入 Claude、Cursor 等 AI 客户端 |
 | [`wjx-cli`](wjx-cli/) | 0.1.0 | 命令行工具。支持 `wjx survey list`、stdin pipe、JSON/表格输出 |
 
@@ -56,6 +56,18 @@ wjx-ai-kit/
 
 ### 安装
 
+**从 npm 安装（推荐）**
+
+```bash
+# SDK — 在你的 Node.js 项目中使用
+npm install wjx-api-sdk
+
+# CLI — 全局安装命令行工具
+npm install -g wjx-cli
+```
+
+**从源码安装（开发者）**
+
 ```bash
 git clone <your-repo-url>
 cd wjx-ai-kit
@@ -83,15 +95,13 @@ npm start --workspace=wjx-mcp-server
 适合脚本、CI/CD、AI Agent 工具调用。
 
 ```bash
-npm run build --workspace=wjx-api-sdk
-npm run build --workspace=wjx-cli
+# 全局安装
+npm install -g wjx-cli
 
-# 列出所有问卷
-WJX_TOKEN=your_token node wjx-cli/dist/index.js survey list
-
-# 或全局安装后
-npm link --workspace=wjx-cli
-wjx survey list --token your_token
+# 使用
+export WJX_TOKEN=your_token
+wjx survey list
+wjx response list --vid 12345
 ```
 
 详见 [wjx-cli/README.md](wjx-cli/README.md)。
@@ -99,6 +109,10 @@ wjx survey list --token your_token
 ### 使用方式三：SDK（编程集成）
 
 适合在你自己的 Node.js 项目中调用问卷星 API。
+
+```bash
+npm install wjx-api-sdk
+```
 
 ```typescript
 import { listSurveys, createSurvey } from "wjx-api-sdk";

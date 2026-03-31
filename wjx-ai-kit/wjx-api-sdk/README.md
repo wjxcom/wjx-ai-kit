@@ -4,6 +4,7 @@
 
 [![license](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 [![node](https://img.shields.io/badge/node-%3E%3D20-green)](https://nodejs.org/)
+[![npm](https://img.shields.io/npm/v/wjx-api-sdk)](https://www.npmjs.com/package/wjx-api-sdk)
 
 ---
 
@@ -19,7 +20,13 @@
 
 ## 安装
 
-作为 `wjx-ai-kit` monorepo 的一部分：
+### 从 npm 安装（推荐）
+
+```bash
+npm install wjx-api-sdk
+```
+
+### 从源码安装（开发者）
 
 ```bash
 git clone <your-repo-url>
