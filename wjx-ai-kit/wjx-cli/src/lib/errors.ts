@@ -36,6 +36,10 @@ export function stderrJson(code: ErrorCode, message: string): never {
 function classifyError(err: unknown): CliError {
   if (err instanceof CliError) return err;
 
+  if (err instanceof SyntaxError) {
+    return new CliError("INPUT_ERROR", err.message);
+  }
+
   if (err instanceof Error) {
     // SDK validation errors contain these patterns
     if (

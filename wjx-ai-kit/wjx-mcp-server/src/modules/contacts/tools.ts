@@ -130,7 +130,7 @@ export function registerContactsTools(server: McpServer): void {
     "add_admin",
     {
       title: "添加或修改管理员",
-      description: "批量添加或修改通讯录管理员（最多100人）。users 为 JSON 数组字符串，每个对象须包含 admin_name（成员用户编号），可选 mobile、email、role 等字段。",
+      description: "批量添加或修改通讯录管理员（最多100人）。users 为 JSON 数组字符串，每个对象必须包含 admin_name（成员用户编号）和 role（角色编码），可选 mobile、email 字段。注意：role 为必填，不传会导致设置失败。",
       inputSchema: {
         corpid: z.string().optional().describe("通讯录编号（可选）"),
         users: z
@@ -140,7 +140,7 @@ export function registerContactsTools(server: McpServer): void {
             (s) => { try { return Array.isArray(JSON.parse(s)); } catch { return false; } },
             "users 必须是合法的 JSON 数组",
           )
-          .describe("管理员列表 JSON 字符串（数组），每项包含: admin_name(成员用户编号), mobile(手机号), email(邮箱), role(角色: 0=系统管理员, 1=分组管理员, 2=问卷管理员, 3=统计查看者, 4=完整结果查看者, 5=部门管理员)，一次不能超过100条"),
+          .describe("管理员列表 JSON 字符串（数组），每项必须包含: admin_name(成员用户编号)、role(角色，必填: 0=系统管理员, 1=分组管理员, 2=问卷管理员, 3=统计查看者, 4=完整结果查看者, 5=部门管理员)，可选: mobile(手机号)、email(邮箱)。一次不能超过100条"),
       },
       annotations: {
         destructiveHint: false,
@@ -302,7 +302,7 @@ export function registerContactsTools(server: McpServer): void {
             (s) => { try { return Array.isArray(JSON.parse(s)); } catch { return false; } },
             "depts 必须是合法的 JSON 数组",
           )
-          .describe("部门列表 JSON 字符串（数组），每项包含: id(部门ID), name(部门名称), order(排序序号)，一次最多100条"),
+          .describe("部门列表 JSON 字符串（数组），每项包含: id(部门ID), name(部门名称), order(排序序号，须为>0且<999999的整数)，一次最多100条"),
       },
       annotations: {
         destructiveHint: true,

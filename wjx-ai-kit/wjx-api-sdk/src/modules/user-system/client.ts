@@ -31,15 +31,15 @@ export async function modifyParticipants<T = unknown>(
   credentials: WjxCredentials = getWjxCredentials(),
   fetchImpl: FetchLike = fetch,
 ): Promise<WjxApiResponse<T>> {
-  return callWjxUserSystemApi<T>(
-    {
-      action: Action.MODIFY_PARTICIPANTS,
-      username: input.username,
-      users: input.users,
-      sysid: input.sysid,
-    },
-    { credentials, fetchImpl, maxRetries: 0 },
-  );
+  const params: Record<string, unknown> = {
+    action: Action.MODIFY_PARTICIPANTS,
+    username: input.username,
+    users: input.users,
+    sysid: input.sysid,
+  };
+  if (input.auto_create_udept !== undefined) params.auto_create_udept = input.auto_create_udept;
+
+  return callWjxUserSystemApi<T>(params, { credentials, fetchImpl, maxRetries: 0 });
 }
 
 export async function deleteParticipants<T = unknown>(
@@ -89,8 +89,6 @@ export async function querySurveyBinding<T = unknown>(
     vid: input.vid,
     sysid: input.sysid,
   };
-  if (input.page_index !== undefined) params.page_index = input.page_index;
-  if (input.page_size !== undefined) params.page_size = input.page_size;
   if (input.join_status !== undefined) params.join_status = input.join_status;
   if (input.day !== undefined) params.day = input.day;
   if (input.week !== undefined) params.week = input.week;
@@ -111,8 +109,6 @@ export async function queryUserSurveys<T = unknown>(
     uid: input.uid,
     sysid: input.sysid,
   };
-  if (input.page_index !== undefined) params.page_index = input.page_index;
-  if (input.page_size !== undefined) params.page_size = input.page_size;
 
   return callWjxUserSystemApi<T>(params, { credentials, fetchImpl });
 }

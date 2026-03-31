@@ -250,16 +250,7 @@ describe("querySurveyBinding", () => {
     assert.equal(body.sysid, 400);
   });
 
-  it("should include optional pagination when provided", async () => {
-    const fetch = mockFetch({ result: true, data: {} });
-    await querySurveyBinding({ ...input, page_index: 2, page_size: 20 }, credentials, fetch);
-
-    const body = JSON.parse(fetch.captured().init.body);
-    assert.equal(body.page_index, 2);
-    assert.equal(body.page_size, 20);
-  });
-
-  it("should not include pagination fields when not provided", async () => {
+  it("should not include pagination fields (removed from API)", async () => {
     const fetch = mockFetch({ result: true, data: {} });
     await querySurveyBinding(input, credentials, fetch);
 
@@ -312,16 +303,7 @@ describe("queryUserSurveys", () => {
     assert.equal(body.sysid, 500);
   });
 
-  it("should include optional pagination when provided", async () => {
-    const fetch = mockFetch({ result: true, data: {} });
-    await queryUserSurveys({ ...input, page_index: 3, page_size: 50 }, credentials, fetch);
-
-    const body = JSON.parse(fetch.captured().init.body);
-    assert.equal(body.page_index, 3);
-    assert.equal(body.page_size, 50);
-  });
-
-  it("should not include pagination fields when not provided", async () => {
+  it("should not include pagination fields (removed from API)", async () => {
     const fetch = mockFetch({ result: true, data: {} });
     await queryUserSurveys(input, credentials, fetch);
 

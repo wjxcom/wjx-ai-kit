@@ -1,6 +1,16 @@
 #!/usr/bin/env node
 import { Command, CommanderError } from "commander";
 import { registerSurveyCommands } from "./commands/survey.js";
+import { registerDiagnosticCommands } from "./commands/diagnostics.js";
+import { registerResponseCommands } from "./commands/response.js";
+import { registerContactsCommands } from "./commands/contacts.js";
+import { registerDepartmentCommands } from "./commands/department.js";
+import { registerAdminCommands } from "./commands/admin.js";
+import { registerTagCommands } from "./commands/tag.js";
+import { registerUserSystemCommands } from "./commands/user-system.js";
+import { registerAccountCommands } from "./commands/account.js";
+import { registerSsoCommands } from "./commands/sso.js";
+import { registerAnalyticsCommands } from "./commands/analytics.js";
 import { readStdin, mergeStdinWithOpts } from "./lib/stdin.js";
 import { handleError } from "./lib/errors.js";
 
@@ -32,6 +42,16 @@ program.hook("preAction", async (thisCommand, actionCommand) => {
 });
 
 registerSurveyCommands(program);
+registerDiagnosticCommands(program);
+registerResponseCommands(program);
+registerContactsCommands(program);
+registerDepartmentCommands(program);
+registerAdminCommands(program);
+registerTagCommands(program);
+registerUserSystemCommands(program);
+registerAccountCommands(program);
+registerSsoCommands(program);
+registerAnalyticsCommands(program);
 
 (async () => {
   try {

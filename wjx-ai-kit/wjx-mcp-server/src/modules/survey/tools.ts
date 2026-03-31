@@ -32,7 +32,7 @@ export function registerSurveyTools(server: McpServer): void {
           .number()
           .int()
           .optional()
-          .describe("问卷类型：1=调查, 2=测评, 3=投票, 4=360度评估, 5=360评估无测评关系, 6=考试, 7=表单, 8=用户体系, 9=教学评估, 11=民主评议。不使用 source_vid 时必填"),
+          .describe("问卷类型：1=调查, 2=测评, 3=投票, 6=考试, 7=表单。注意：4(360度评估)、5(360评估无测评关系)、8(用户体系)、9(教学评估)、11(民主评议) 不支持通过 API 创建。不使用 source_vid 时必填"),
         desc: z.string().optional().describe("问卷描述。不使用 source_vid 时必填"),
         publish: z.boolean().optional().default(false).describe("是否立即发布"),
         questions: z
@@ -40,7 +40,10 @@ export function registerSurveyTools(server: McpServer): void {
           .min(2)
           .optional()
           .describe(
-            "题目列表 JSON 字符串。不使用 source_vid 时必填。每个题目必须包含 q_index（题号）和 q_type（题型编码：3=单选,4=多选,5=填空,6=多项填空,7=矩阵,8=文件上传,9=比重,10=滑动条,1=分页,2=段落）。常用子类型：301=下拉框,302=量表题,303=评分单选,305=判断题,401=评分多选,402=排序题,601=考试多项填空,602=考试完型填空,701-712=矩阵子类型,801=绘图题。完整子类型请参考 question-types resource。选择题需包含 items 数组。示例：[{\"q_index\":1,\"q_type\":3,\"q_title\":\"您的性别\",\"items\":[{\"q_index\":1,\"item_index\":1,\"item_title\":\"男\"},{\"q_index\":1,\"item_index\":2,\"item_title\":\"女\"}]}]",
+            "题目列表 JSON 字符串。不使用 source_vid 时必填。每个题目包含 q_index（题号）和 q_type（主题型）。" +
+            "【主题型】3=单选, 4=多选, 5=填空, 6=多项填空, 7=矩阵, 8=文件上传, 9=比重, 10=滑动条, 1=分页, 2=段落。" +
+            "【重要：子类型 q_subtype】301=下拉框, 302=量表题, 303=评分单选, 305=判断题, 401=评分多选, 402=排序题, 601=考试多项填空, 602=考试完型填空。" +
+            "选择题需包含 items 数组。示例：[{\"q_index\":1,\"q_type\":3,\"q_subtype\":301,\"q_title\":\"城市\",\"items\":[{\"q_index\":1,\"item_index\":1,\"item_title\":\"北京\"},{\"q_index\":1,\"item_index\":2,\"item_title\":\"上海\"}]}]",
           ),
         source_vid: z
           .string()
@@ -368,23 +371,23 @@ export function registerSurveyTools(server: McpServer): void {
         api_setting: z.string().refine(
           (s) => { try { JSON.parse(s); return true; } catch { return false; } },
           "api_setting 必须是合法的 JSON 字符串",
-        ).optional().describe("API请求次数限制设置 JSON"),
+        ).optional().describe("API请求次数限制设置 JSON，格式示例：{\"max_times\":100,\"pass_score\":60,\"pass_no_allow\":true}"),
         after_submit_setting: z.string().refine(
           (s) => { try { JSON.parse(s); return true; } catch { return false; } },
           "after_submit_setting 必须是合法的 JSON 字符串",
-        ).optional().describe("作答后跳转设置 JSON"),
+        ).optional().describe("作答后跳转设置 JSON，格式示例：{\"type\":1,\"url\":\"https://example.com\",\"thank_word\":\"感谢参与\",\"jump_tip\":\"即将跳转\"} (type: 0=显示感谢信息, 1=跳转到指定页面)"),
         msg_setting: z.string().refine(
           (s) => { try { JSON.parse(s); return true; } catch { return false; } },
           "msg_setting 必须是合法的 JSON 字符串",
-        ).optional().describe("数据推送设置 JSON"),
+        ).optional().describe("数据推送设置 JSON，格式示例：{\"push_url\":\"https://example.com/webhook\",\"quick_post\":true,\"retry\":true,\"is_encrypt\":0} (注意：必须同时传完整配置，否则未传字段可能被清空)"),
         sojumpparm_setting: z.string().refine(
           (s) => { try { JSON.parse(s); return true; } catch { return false; } },
           "sojumpparm_setting 必须是合法的 JSON 字符串",
-        ).optional().describe("自定义链接参数设置 JSON"),
+        ).optional().describe("自定义链接参数设置 JSON，格式示例：{\"params\":[{\"name\":\"source\",\"type\":0}]} (注意：此接口仅修改当前问卷配置，不支持「应用到全局」)"),
         time_setting: z.string().refine(
           (s) => { try { JSON.parse(s); return true; } catch { return false; } },
           "time_setting 必须是合法的 JSON 字符串",
-        ).optional().describe("时间设置 JSON（开始/结束时间、每日时段、考试时间限制等）"),
+        ).optional().describe("时间设置 JSON，格式示例：{\"start_time\":\"2026-04-01 00:00\",\"end_time\":\"2026-12-31 23:59\",\"exam_min_seconds\":60,\"exam_max_seconds\":3600} (考试时间限制：exam_min_seconds=最短作答秒数, exam_max_seconds=最长作答秒数)"),
       },
       annotations: {
         destructiveHint: true,
@@ -575,7 +578,7 @@ export function registerSurveyTools(server: McpServer): void {
       title: "用 DSL 文本创建问卷",
       description:
         "通过人类可读的 DSL 文本创建问卷。文本格式与 get_survey(format='dsl') 输出一致。" +
-        "支持 6 种骨架题型：单选题、多选题、填空题、量表题、矩阵题、段落说明。" +
+        "支持 12 种题型标签：[单选题]、[下拉框]/[下拉单选]、[多选题]、[填空题]、[量表题]、[评分单选]、[评分多选]、[排序题]、[判断题]、[比重题]、[矩阵题]、[段落说明]。" +
         "输入示例：\n" +
         "用户满意度调查\n\n" +
         "请认真填写\n\n" +
@@ -631,9 +634,15 @@ export function registerSurveyTools(server: McpServer): void {
 
 const TYPE_MAP: Record<string, { q_type: number; q_subtype: number }> = {
   "single-choice": { q_type: 3, q_subtype: 3 },
+  "dropdown": { q_type: 3, q_subtype: 301 },
   "multi-choice": { q_type: 4, q_subtype: 4 },
   "fill-in": { q_type: 5, q_subtype: 5 },
   "scale": { q_type: 3, q_subtype: 302 },
+  "scoring-single": { q_type: 3, q_subtype: 303 },
+  "scoring-multi": { q_type: 4, q_subtype: 401 },
+  "sort": { q_type: 4, q_subtype: 402 },
+  "true-false": { q_type: 3, q_subtype: 305 },
+  "weight": { q_type: 9, q_subtype: 9 },
   "matrix": { q_type: 7, q_subtype: 7 },
   "paragraph": { q_type: 2, q_subtype: 2 },
 };

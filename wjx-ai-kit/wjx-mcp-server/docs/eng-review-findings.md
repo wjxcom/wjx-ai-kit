@@ -1,4 +1,4 @@
-# Eng Review Findings — Phase 1 (v2.3.0)
+# Eng Review Findings — Phase 1 (v0.1.0)
 
 > 审查日期：2026-03-30
 > 审查人：Claude Opus (eng-manager agent)

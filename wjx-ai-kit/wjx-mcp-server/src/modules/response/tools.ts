@@ -170,7 +170,13 @@ export function registerResponseTools(server: McpServer): void {
         vid: z.number().int().positive().describe("问卷编号"),
         valid: z.boolean().optional().describe("是否查询有效答卷，默认true"),
         min_index: z.number().int().optional().describe("最小答卷序号"),
-        jid: z.string().optional().describe("答卷编号，多个用逗号分隔"),
+        jid: z.string().optional().refine(
+          (s) => {
+            if (s === undefined) return true;
+            return s.split(",").length <= 50;
+          },
+          "jid 最多允许传入50个，用逗号分隔",
+        ).describe("答卷编号，多个用逗号分隔，最多50个"),
         sojumpparm: z.string().optional().describe("自定义链接参数，多个用逗号分隔"),
         begin_time: z.number().int().optional().describe("查询开始时间（Unix毫秒时间戳）"),
         end_time: z.number().int().optional().describe("查询结束时间（Unix毫秒时间戳）"),

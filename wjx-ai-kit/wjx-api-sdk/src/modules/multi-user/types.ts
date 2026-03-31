@@ -31,7 +31,5 @@ export interface QuerySubAccountsInput {
   role?: number;
   group?: number;
   status?: boolean;
-  page_index?: number;
-  page_size?: number;
   mobile?: string;
 }

@@ -2,7 +2,7 @@
 
 ## textToSurvey 完整 30+ 题型支持
 - **What:** 扩展 textToSurvey() 支持全部 30+ 题型子类型（排序题、比重题、矩阵量表、文件上传、滑动条等）
-- **Why:** v2.3.0 骨架只支持 6 核心题型。完整版让 AI Agent 能用纯文本创建任意问卷
+- **Why:** v0.1.0 骨架只支持 6 核心题型。完整版让 AI Agent 能用纯文本创建任意问卷
 - **Pros:** 覆盖所有题型，与 surveyToText 完全对称
 - **Cons:** 需要深入研究问卷星编辑页 JS 转换逻辑，确保与后端 TxtToActivityService.cs 对齐
 - **Context:** surveyToText 在 wjx-api-sdk 的 survey-to-text.ts 已有 275 行实现，覆盖 30+ 题型的反向转换。textToSurvey 需要对称实现。问卷星编辑页有一套 JS 版本的 text→survey 转换逻辑可供参考研究

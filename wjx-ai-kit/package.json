@@ -1,5 +1,13 @@
 {
+  "name": "wjx-ai-kit",
   "private": true,
+  "description": "问卷星 AI 工具套件 — SDK、MCP Server、CLI 三位一体",
+  "repository": {
+    "type": "git",
+    "url": "https://codeup.aliyun.com/6445da2d020eabef3107e22e/wjxfc/wjxagents.git",
+    "directory": "wjx-ai-kit"
+  },
+  "license": "MIT",
   "workspaces": [
     "wjx-api-sdk",
     "wjx-mcp-server",

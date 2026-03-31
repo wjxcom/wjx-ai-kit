@@ -1,5 +1,4 @@
 import { Command } from "commander";
-import type { WjxApiResponse } from "wjx-api-sdk";
 import {
   createSurvey,
   getSurvey,
@@ -13,93 +12,12 @@ import {
   clearRecycleBin,
   uploadFile,
   buildSurveyUrl,
+  surveyToText,
 } from "wjx-api-sdk";
-import { getCredentials } from "../lib/auth.js";
-import { formatOutput } from "../lib/output.js";
 import { CliError, handleError } from "../lib/errors.js";
 import { mergeStdinWithOpts } from "../lib/stdin.js";
-
-/**
- * Strict integer parser. Rejects garbage like "123abc".
- */
-function strictInt(v: string): number {
-  const n = Number(v);
-  if (!Number.isInteger(n)) {
-    throw new CliError("INPUT_ERROR", `Invalid integer: "${v}"`);
-  }
-  return n;
-}
-
-interface ExecuteOpts {
-  noAuth?: boolean;
-}
-
-/**
- * Central command executor.
- * - Merges stdin data with CLI opts (source-aware)
- * - Gets credentials (unless noAuth)
- * - Calls SDK function
- * - Checks result===false (P0 fix)
- * - Formats output to stdout
- * - Routes errors to stderr JSON with correct exit codes
- */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type SdkFunction = (input: any, creds: any, ...rest: any[]) => Promise<WjxApiResponse<any>>;
-
-async function executeCommand(
-  program: Command,
-  actionCommand: Command,
-  sdkFn: SdkFunction,
-  buildInput: (merged: Record<string, unknown>) => Record<string, unknown>,
-  opts: ExecuteOpts = {},
-): Promise<void> {
-  try {
-    // Source-aware merge: stdin base + CLI-explicit overrides
-    const stdinData = (actionCommand as unknown as Record<string, unknown>).__stdinData as Record<string, unknown> | undefined;
-    const commandOpts = actionCommand.opts();
-    let merged: Record<string, unknown>;
-
-    if (stdinData && Object.keys(stdinData).length > 0) {
-      merged = mergeStdinWithOpts(stdinData, actionCommand);
-    } else {
-      merged = { ...commandOpts };
-    }
-
-    const input = buildInput(merged);
-
-    if (opts.noAuth) {
-      // Local commands (e.g. buildSurveyUrl) — call with input only
-      const localFn = sdkFn as unknown as (input: Record<string, unknown>) => unknown;
-      const result = localFn(input);
-      formatOutput(result, program.opts());
-      return;
-    }
-
-    const creds = getCredentials(program.opts());
-    const result = await sdkFn(input, creds);
-
-    // P0 fix: detect SDK API failure response
-    if (result.result === false) {
-      throw new CliError(
-        "API_ERROR",
-        result.errormsg || "API request failed",
-      );
-    }
-
-    formatOutput(result, program.opts());
-  } catch (e) {
-    handleError(e);
-  }
-}
-
-/**
- * Require a field in the merged input. Throws INPUT_ERROR if missing.
- */
-function requireField(merged: Record<string, unknown>, field: string, label?: string): void {
-  if (merged[field] === undefined || merged[field] === null) {
-    throw new CliError("INPUT_ERROR", `Missing required option: --${label || field}`);
-  }
-}
+import { getCredentials } from "../lib/auth.js";
+import { executeCommand, strictInt, requireField } from "../lib/command-helpers.js";
 
 export function registerSurveyCommands(program: Command): void {
   const survey = program.command("survey").description("问卷管理");
@@ -277,6 +195,48 @@ export function registerSurveyCommands(program: Command): void {
         requireField(m, "file");
         return { file_name: m.file_name, file: m.file };
       });
+    });
+
+  // --- export-text ---
+  survey
+    .command("export-text")
+    .description("导出问卷为纯文本（题目+选项）")
+    .option("--vid <n>", "问卷ID", strictInt)
+    .option("--raw", "输出纯文本（不包裹 JSON）")
+    .action(async (_opts, cmd) => {
+      try {
+        const stdinData = (cmd as unknown as Record<string, unknown>).__stdinData as Record<string, unknown> | undefined;
+        let merged: Record<string, unknown>;
+        if (stdinData && Object.keys(stdinData).length > 0) {
+          merged = mergeStdinWithOpts(stdinData, cmd);
+        } else {
+          merged = { ...cmd.opts() };
+        }
+
+        requireField(merged, "vid");
+
+        const creds = getCredentials(program.opts());
+        const result = await getSurvey({ vid: merged.vid as number }, creds);
+
+        if (result.result === false) {
+          throw new CliError("API_ERROR", result.errormsg || "API request failed");
+        }
+
+        const data = (result as unknown as Record<string, unknown>).data;
+        if (!data) {
+          throw new CliError("API_ERROR", "API 返回数据为空");
+        }
+        const text = surveyToText(data as Parameters<typeof surveyToText>[0]);
+        const globalOpts = program.opts();
+
+        if (merged.raw || globalOpts.table) {
+          console.log(text);
+        } else {
+          console.log(JSON.stringify({ vid: merged.vid, text }, null, 2));
+        }
+      } catch (e) {
+        handleError(e);
+      }
     });
 
   // --- url ---

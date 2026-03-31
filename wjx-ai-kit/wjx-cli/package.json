@@ -26,6 +26,11 @@
   "author": "wjxagents",
   "license": "MIT",
   "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "https://codeup.aliyun.com/6445da2d020eabef3107e22e/wjxfc/wjxagents.git",
+    "directory": "wjx-ai-kit/wjx-cli"
+  },
   "dependencies": {
     "commander": "^14.0.3",
     "wjx-api-sdk": "*"

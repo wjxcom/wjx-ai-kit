@@ -10,22 +10,22 @@
 
 ### 上下文
 
-- 工作目录：`/home/claw/wjxagents/wjx-ai-kit/wjx-cli/`
+- 工作目录：`wjx-ai-kit/wjx-cli/`
 - 完整计划：读 `PLAN.md`（命令映射、目录结构、代码模式、分期策略）
 - 项目指令：读 `CLAUDE.md`（技术栈、SDK 函数签名、测试环境、构建方法）
-- SDK barrel 文件：`/home/claw/wjxagents/wjx-ai-kit/wjx-api-sdk/src/index.ts`
-- SDK survey client 参考：`/home/claw/wjxagents/wjx-api-sdk/src/modules/survey/client.ts`
-- SDK survey types 参考：`/home/claw/wjxagents/wjx-api-sdk/src/modules/survey/types.ts`
+- SDK barrel 文件：`wjx-api-sdk/src/index.ts`
+- SDK survey client 参考：`wjx-api-sdk/src/modules/survey/client.ts`
+- SDK survey types 参考：`wjx-api-sdk/src/modules/survey/types.ts`
 
 ### 当前状态
 
-- wjx-api-sdk v1.0.0 已完成（506 tests），wjx-mcp-server v2.3.0 已完成（216 tests）
+- wjx-api-sdk v0.1.0 已完成（506 tests），wjx-mcp-server v0.1.0 已完成（216 tests）
 - wjx-cli 是骨架：只有 package.json（已配 `wjx-api-sdk: "*"` workspace 依赖）
 - 还没有 tsconfig.json、src/ 下无任何代码
 
 ### Phase 1 要做的事
 
-1. 安装 commander 依赖：`cd /home/claw/wjxagents/wjx-ai-kit && npm install commander --workspace=wjx-cli`
+1. 安装 commander 依赖：`cd wjx-ai-kit && npm install commander --workspace=wjx-cli`
 2. 创建 `tsconfig.json`（参考 wjx-api-sdk 的 tsconfig）
 3. 实现 `src/lib/auth.ts` — token 读取（env > --token 参数）
 4. 实现 `src/lib/output.ts` — JSON（默认）/ table 格式化

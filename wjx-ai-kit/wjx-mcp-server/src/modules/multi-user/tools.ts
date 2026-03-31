@@ -166,15 +166,13 @@ export function registerMultiUserTools(server: McpServer): void {
     {
       title: "查询子账号列表",
       description:
-        "查询主账户下的子账号列表，支持按用户名、名称模糊搜索、角色、分组、状态筛选，支持分页。",
+        "查询主账户下的子账号列表，支持按用户名、名称模糊搜索、角色、分组、状态筛选。",
       inputSchema: {
         subuser: z.string().optional().describe("精确匹配子账号用户名"),
         name_like: z.string().optional().describe("按名称模糊搜索（最长10字符）"),
         role: z.number().int().optional().describe("按角色筛选"),
         group: z.number().int().optional().describe("按分组筛选"),
         status: z.boolean().optional().describe("按状态筛选"),
-        page_index: z.number().int().positive().optional().describe("页码，从1开始"),
-        page_size: z.number().int().min(1).max(100).optional().describe("每页数量（1-100）"),
         mobile: z.string().optional().describe("按手机号筛选"),
       },
       annotations: {
@@ -192,8 +190,6 @@ export function registerMultiUserTools(server: McpServer): void {
           role: args.role,
           group: args.group,
           status: args.status,
-          page_index: args.page_index,
-          page_size: args.page_size,
           mobile: args.mobile,
         });
         return toolResult(result, result.result === false);

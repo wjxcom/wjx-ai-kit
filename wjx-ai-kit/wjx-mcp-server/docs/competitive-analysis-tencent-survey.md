@@ -2,7 +2,7 @@
 
 > 分析日期：2026-03-29
 > 竞品版本：tencent-survey-skill 1.0.2
-> 对标产品：wjx-mcp-server 2.2.0（问卷星）
+> 对标产品：wjx-mcp-server 0.1.0（问卷星）
 
 ---
 

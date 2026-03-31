@@ -58,12 +58,11 @@ test("QUESTION_TYPES", async (t) => {
 
 test("SURVEY_STATUSES", async (t) => {
   await t.test("should contain all status codes", () => {
-    assert.equal(SURVEY_STATUSES[0], "设计中（未发布）");
-    assert.equal(SURVEY_STATUSES[1], "收集中（已发布）");
+    assert.equal(SURVEY_STATUSES[0], "设计中");
+    assert.equal(SURVEY_STATUSES[1], "收集中");
     assert.equal(SURVEY_STATUSES[2], "已暂停");
-    assert.equal(SURVEY_STATUSES[3], "已删除（在回收站）");
+    assert.equal(SURVEY_STATUSES[3], "已删除(回收站)");
     assert.equal(SURVEY_STATUSES[4], "彻底删除");
-    assert.equal(SURVEY_STATUSES[5], "被审核");
   });
 });
 

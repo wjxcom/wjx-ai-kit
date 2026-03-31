@@ -314,7 +314,7 @@ describe("querySubAccounts", () => {
 
   it("should include optional params when provided", async () => {
     const fetch = mockFetch({ result: true, data: {} });
-    await querySubAccounts({ subuser: "sub1", name_like: "test", role: 2, group: 3, status: true, page_index: 2, page_size: 50 }, credentials, fetch);
+    await querySubAccounts({ subuser: "sub1", name_like: "test", role: 2, group: 3, status: true }, credentials, fetch);
 
     const body = JSON.parse(fetch.captured().init.body);
     assert.equal(body.subuser, "sub1");
@@ -322,8 +322,6 @@ describe("querySubAccounts", () => {
     assert.equal(body.role, 2);
     assert.equal(body.group, 3);
     assert.equal(body.status, true);
-    assert.equal(body.page_index, 2);
-    assert.equal(body.page_size, 50);
   });
 
   it("should not include optional fields when not provided", async () => {

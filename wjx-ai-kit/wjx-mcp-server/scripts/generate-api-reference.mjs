@@ -2,7 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import ts from "typescript";
 
-const root = "/home/claw/wjxagents/wjx-mcp-server";
+const root = path.resolve(path.dirname(new URL(import.meta.url).pathname), "..");
 const outputPath = path.join(root, "docs/api-reference.md");
 
 const modules = [
