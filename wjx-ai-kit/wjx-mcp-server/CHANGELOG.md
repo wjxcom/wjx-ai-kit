@@ -5,127 +5,53 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [2.3.0] - 2026-03-30
+## [0.1.1] - 2026-03-30
+
+### Fixed
+
+- `create_survey` 的 `atype` 描述明确限制仅支持 1/2/3/6/7 类型创建（与后端 C# 代码一致）
+- `create_survey` 的 `questions` 描述重构，区分主题型和子类型（q_subtype），添加 JSON 示例
+- `create_survey_by_text` 描述更新为支持 12 种题型标签
+- TYPE_MAP 扩展 6 种新题型映射：dropdown(301)、scoring-single(303)、scoring-multi(401)、sort(402)、true-false(305)、weight(9)
+- `update_survey_settings` 的 5 个 JSON 设置参数添加格式示例
+- `add_admin` 描述强调 `role` 为必填字段
+- `modify_department` 的 `depts` 描述添加 `order` 字段约束说明
+- `query_sub_accounts` 移除不存在的分页参数
+- `query_survey_binding` 和 `query_user_surveys` 移除不存在的分页参数
+- `modify_participants` 新增 `auto_create_udept` 参数
+- `get_report` 的 `jid` 参数添加最多 50 个的校验
+- `SURVEY_STATUSES` 枚举修正（去掉括号备注，与 API 实际返回一致）
+
+## [0.1.0] - 2026-03-30
 
 ### Added
 
 - **wjx-ai-kit monorepo**: unified platform with npm workspaces (`wjx-api-sdk`, `wjx-mcp-server`, `wjx-cli`)
-- **wjx-api-sdk** (v1.0.0): zero-MCP-dependency SDK extracted from wjx-mcp-server
+- **wjx-api-sdk**: zero-MCP-dependency SDK extracted from wjx-mcp-server
   - 50+ API functions across 7 modules (survey, response, contacts, user-system, multi-user, SSO, analytics)
   - `setCredentialProvider()` hook for pluggable multi-tenant credential injection
   - Optional `Logger` callback replacing hardcoded `console.error`
   - Lazy URL getter functions for delayed environment variable evaluation
-  - `textToSurvey()` / `surveyToText()`: DSL round-trip parser for 6 question types (single-choice, multi-choice, fill-in, scale, matrix, paragraph)
+  - `textToSurvey()` / `surveyToText()`: DSL round-trip parser for 6 question types
   - `ParsedSurvey` / `ParsedQuestion` typed interfaces for structured survey representation
   - `buildPreviewUrl()`: generate survey preview URLs from vid
-  - 598 unit tests (14 test files, including text-to-survey and survey-to-text round-trip tests)
-- **`create_survey_by_text` tool**: create surveys from natural language DSL text, with type validation and wire format conversion
-- **DSL syntax reference resource** (`wjx://reference/dsl-syntax`): documents the text DSL format for AI clients
+  - 598 unit tests
+- **7 大模块 · 56 个 Tools**:
+  - Survey (12): 问卷 CRUD、状态管理、设置读写、标签、回收站、文件上传、文本创建、预览
+  - Response (10): 答卷查询、实时查询、下载、统计报告、代填提交、文件链接、中奖者、改分、360 报告、清空
+  - Contacts (14): 通讯录成员、管理员、部门、标签管理
+  - SSO (4): 子账号/用户体系/合作伙伴/问卷创建编辑的 SSO 链接
+  - User System (5): 参与者管理、问卷绑定查询、用户关联问卷查询
+  - Multi-User (5): 子账号创建、修改、删除、恢复、查询
+  - Analytics (6): 答卷解码、NPS、CSAT、异常检测、指标对比、推送解密
+- **8 个 MCP Resources**: survey-types, question-types, survey-statuses, analysis-methods, response-format, user-roles, push-format, dsl-syntax
+- **12 个 MCP Prompts**: design-survey, analyze-results, create-nps-survey, configure-webhook, nps-analysis, csat-analysis, cross-tabulation, sentiment-analysis, survey-health-check, comparative-analysis, create-survey-by-text, batch-export
+- **`create_survey_by_text` tool**: create surveys from natural language DSL text
+- **DSL syntax reference resource** (`wjx://reference/dsl-syntax`)
+- **HTTP transport**: Streamable HTTP mode via `--http` flag with Bearer token auth
 - **Dockerfile**: multi-stage Docker build for monorepo deployment with health check
-- **wjx-cli skeleton**: package.json + source structure for future CLI implementation
-
-### Changed
-
-- MCP server now depends on `wjx-api-sdk` via workspace link (`^1.0.0`)
-- All module `client.ts` and `types.ts` files replaced with re-exports from SDK
-- Core `api-client.ts`, `constants.ts`, `types.ts` replaced with re-exports from SDK
-- `setCredentialProvider` type signature now accepts `undefined` to clear the provider
-- Authentication: single Bearer Token (`WJX_TOKEN`) only, all SHA1 signing code removed
-- `/health` endpoint now bypasses auth gate for Docker probes
-- `load-env.ts` rewritten: cwd priority with `__dirname` fallback for npx compatibility
-- Added `bin` entry for `wjx-mcp-server` in package.json (npx support)
-- Added shebang and `WJX_TOKEN` missing warning in stdio mode
-- Total tools: 55 -> 56
-- Total tests: 827 -> 820 (598 SDK + 222 MCP server)
-
-### Removed
-
-- `src/core/sign.ts`, `src/modules/sso/sign.ts`, `src/sign.ts` (SHA1 signing)
-- `SignableRecord` type, `timestamp` parameter from all API functions
-- Duplicate test files from MCP server (moved to SDK)
-
-## [2.2.0] - 2026-03-29
-
-### Added
-
-- **`upload_file` tool** (action 1000104): upload images for surveys via Base64, supports png/jpg/gif/jpeg/bmp/webp
-- **`bind_activity` tool** (action 1002004): bind surveys to user systems with answer limits, modification rights, and visibility controls
-- **`create_survey` copy mode**: `source_vid` parameter to create surveys by copying an existing one, plus `creater`, `compress_img`, `is_string` params
-- **`get_survey` extended params**: `get_exts`, `get_setting`, `get_page_cut`, `get_tags`, `showtitle` for richer survey detail retrieval
-- **`list_surveys` filters**: `creater`, `folder`, `is_xingbiao`, `query_all`, `verify_status`, `time_type`, `begin_time`, `end_time` for advanced filtering
-- **`submit_response` submittime**: specify custom submission timestamp
-- **`query_survey_binding` filters**: `join_status`, `day`, `week`, `month`, `force_join_times` for participation filtering
-- **`query_sub_accounts` mobile**: filter sub-accounts by phone number
-- **`add_tag` is_radio**: set tag groups as single-select or multi-select
-- `CLAUDE.md` project instructions for AI coding assistants
-
-### Changed
-
-- Total tools: 54 → 56
-- Total tests: 723 → 827
-- `create_survey` `atype`/`desc`/`questions` now optional (required only when not using `source_vid`)
-- `atype` descriptions expanded with all survey types (4=360, 5=360 no relation, 8=user system, 9=teaching eval, 11=democratic review)
-- `add_admin` description improved with role number mapping
-- `modify_department` description corrected (parentid → order)
-
-### Fixed
-
-- `VERIFY_STATUSES` order corrected: 2=审核中, 3=审核未通过 (was swapped)
-- `SURVEY_STATUSES` added missing entries: 4=彻底删除, 5=被审核
-- `list_departments` removed unsupported `page_index`/`page_size` parameters (C# backend does not paginate this endpoint)
-
-## [2.1.0] - 2026-03-23
-
-### Added
-
-- **Analytics module** (6 tools): `decode_responses`, `calculate_nps`, `calculate_csat`, `detect_anomalies`, `compare_metrics`, `decode_push_payload`
-- **Contacts CRUD** (11 tools): department, admin, and tag management (`list_departments`, `add_department`, `modify_department`, `delete_department`, `add_admin`, `delete_admin`, `restore_admin`, `list_tags`, `add_tag`, `modify_tag`, `delete_tag`)
-- **HTTP transport**: Streamable HTTP mode via `--http` flag with Bearer token auth, `/mcp` and `/health` endpoints
-- **Webhook resource**: `wjx://reference/push-format` push format guide
-- **Webhook prompt**: `configure-webhook` guided setup prompt
-- **CI/CD**: GitHub Actions workflows for CI (`ci.yml`) and npm publish (`publish.yml`)
-- **Templates**: GitHub issue templates (bug report, feature request) and PR template
+- **CI/CD**: GitHub Actions workflows for CI and npm publish
 - **Documentation**: README, CONTRIBUTING.md, architecture guide, API reference
-
-### Changed
-
-- Total tools: 37 → 54
-- Total resources: 6 → 7
-- Total prompts: 9 → 10
-- Total tests: ~391 → 723
-
-### Fixed
-
-- `decode_push_payload` description corrected from "HMAC-SHA1" to "SHA1(rawBody+appKey)"
-- `get_360_report` annotation `idempotentHint` corrected to `false` (first call creates server-side task)
-- NPS prompt `q_type` guidance corrected
-- Sentiment analysis wrong type codes fixed
-- Question type codes corrected in reference data
-- `GET_WINNERS` action code fixed
-- JSON parse context improvements
-- Zod validation edge cases fixed
-- 20 total audit fixes across all modules
-
-## [2.0.0] - 2026-03-21
-
-### Added
-
-- **Survey module** (10 tools): CRUD, settings, status management
-- **Response module** (10 tools): query, export, 360 reports, lottery, realtime
-- **Contacts module** (3 tools): query, add, manage contacts
-- **SSO module** (4 tools): SSO URL generation with ordered signature
-- **User system module** (5 tools): user system management
-- **Multi-user module** (5 tools): multi-user management
-- **Resources** (6): survey reference, analysis reference, question types, survey statuses, action codes, error codes
-- **Prompts** (9): design-survey, analyze-results, create-nps-survey, nps-analysis, csat-analysis, cross-tabulation, sentiment-analysis, survey-health-check, comparative-analysis
-- Core API client with SHA1 signature, retry with exponential backoff, trace ID
+- Core API client with request signing, retry with exponential backoff, trace ID
 - Zod v4 input validation for all tools
-- Comprehensive test suite (391 tests)
-
-## [1.0.0] - 2026-03-19
-
-### Added
-
-- Initial release
-- Basic survey and response tools
-- stdio transport
+- 222 MCP server tests + 598 SDK tests

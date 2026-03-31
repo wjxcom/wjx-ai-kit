@@ -2,7 +2,15 @@
 
 All notable changes to this project will be documented in this file.
 
-## [1.0.0] - 2026-03-30
+## [0.1.1] - 2026-03-30
+
+### Fixed
+
+- DSL 解析器 `textToSurvey` 扩展支持 12 种题型标签（下拉框、评分单选、评分多选、排序题、判断题、比重题）
+- 移除 `querySubAccounts`、`querySurveyBinding`、`queryUserSurveys` 中不存在的分页参数（`page_index`/`page_size`）
+- `modifyParticipants` 新增 `auto_create_udept` 参数支持
+
+## [0.1.0] - 2026-03-30
 
 ### Added
 
