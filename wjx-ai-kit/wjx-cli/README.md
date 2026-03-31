@@ -13,6 +13,7 @@ wjx-cli 是 [`wjx-ai-kit`](../) monorepo 的命令行入口，将 [wjx-api-sdk](
 ## 目录
 
 - [特性](#特性)
+- [**快速开始（新手教程）**](docs/getting-started.md)
 - [前置条件](#前置条件)
 - [安装](#安装)
 - [认证](#认证)
@@ -50,6 +51,12 @@ wjx-cli 是 [`wjx-ai-kit`](../) monorepo 的命令行入口，将 [wjx-api-sdk](
 - **56 个子命令** — 覆盖问卷、答卷、通讯录、部门、管理员、标签、用户体系、子账号、SSO、数据分析
 - **9 个本地命令** — SSO URL 生成和 analytics 计算无需 API Token，离线可用
 - **基于 wjx-api-sdk** — 直接调用 SDK 函数，类型安全，行为与 API 一致
+
+---
+
+## 快速开始
+
+> **第一次使用？** 阅读 [安装与快速开始教程](docs/getting-started.md)，从零开始 5 分钟跑通第一个命令。
 
 ---
 
