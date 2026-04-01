@@ -41,15 +41,15 @@ export function getWjxCredentials(
   if (providerCreds) return providerCreds;
 
   // 2. Fallback: environment variables (single-tenant / stdio / CLI mode)
-  const token = env.WJX_TOKEN;
+  const apiKey = env.WJX_API_KEY;
 
-  if (!token) {
+  if (!apiKey) {
     throw new Error(
-      "WJX_TOKEN must be set (via env var or credential provider).",
+      "WJX_API_KEY must be set (via env var or credential provider).",
     );
   }
 
-  return { token };
+  return { apiKey };
 }
 
 export function validateQuestionsJson(questions: string): void {
@@ -118,7 +118,7 @@ async function _callApi<T = unknown>(
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            "Authorization": `Bearer ${credentials.token}`,
+            "Authorization": `Bearer ${credentials.apiKey}`,
           },
           body: JSON.stringify(params),
           signal: controller.signal,

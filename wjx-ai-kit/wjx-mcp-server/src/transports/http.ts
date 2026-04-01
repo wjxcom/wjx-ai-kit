@@ -85,7 +85,7 @@ export async function startHttpTransport(
 
     // Build per-request WjxCredentials from Bearer token
     const clientCreds: WjxCredentials | undefined = bearerToken
-      ? { token: bearerToken }
+      ? { apiKey: bearerToken }
       : undefined;
 
     if (url.pathname !== "/mcp") {

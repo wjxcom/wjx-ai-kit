@@ -52,7 +52,7 @@ wjx-ai-kit/
 ### 前置条件
 
 - **Node.js >= 20**
-- **问卷星 OpenAPI Token**（Bearer Token 认证）
+- **问卷星 OpenAPI API Key**
 
 ### 安装
 
@@ -80,7 +80,7 @@ npm install
 
 ```bash
 # 配置环境变量
-echo "WJX_TOKEN=your_token" > wjx-mcp-server/.env
+echo "WJX_API_KEY=your_api_key" > wjx-mcp-server/.env
 
 # 构建并启动
 npm run build --workspace=wjx-api-sdk
@@ -99,7 +99,7 @@ npm start --workspace=wjx-mcp-server
 npm install -g wjx-cli
 
 # 使用
-export WJX_TOKEN=your_token
+export WJX_API_KEY=your_api_key
 wjx survey list
 wjx response list --vid 12345
 ```
@@ -117,7 +117,7 @@ npm install wjx-api-sdk
 ```typescript
 import { listSurveys, createSurvey } from "wjx-api-sdk";
 
-const creds = { token: "your_token" };
+const creds = { apiKey: "your_api_key" };
 
 // 列出问卷
 const surveys = await listSurveys({ page: 1, page_size: 10 }, creds);
@@ -151,7 +151,8 @@ npm test --workspace=wjx-cli          # CLI tests
 
 | 变量 | 必填 | 说明 |
 |---|:---:|---|
-| `WJX_TOKEN` | 是 | 问卷星 OpenAPI Bearer Token |
+| `WJX_API_KEY` | 是 | 问卷星 OpenAPI API Key |
+| `WJX_CORP_ID` | 否 | 企业通讯录 ID（通讯录相关操作需要） |
 | `WJX_BASE_URL` | 否 | 自定义 API 基础域名（默认 `https://www.wjx.cn`） |
 | `MCP_TRANSPORT` | 否 | MCP 传输模式：`stdio`（默认）或 `http` |
 | `PORT` | 否 | HTTP 模式端口（默认 3000） |

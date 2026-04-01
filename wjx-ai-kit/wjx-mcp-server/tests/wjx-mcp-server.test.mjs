@@ -16,7 +16,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const projectDir = path.resolve(__dirname, "..");
 const serverEntry = path.join(projectDir, "dist", "index.js");
 
-const credentials = { token: "test-token" };
+const credentials = { apiKey: "test-token" };
 
 test("createSurvey sends a JSON POST with Bearer auth to WJX", async () => {
   let capturedUrl;

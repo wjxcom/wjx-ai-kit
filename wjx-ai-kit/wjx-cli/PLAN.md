@@ -12,7 +12,7 @@ wjx <noun> <verb> [options]
 
 - **默认输出**: JSON（管道友好）
 - **可选输出**: `--table`（人类友好）
-- **认证**: `WJX_TOKEN` 环境变量 或 `--token` 参数
+- **认证**: `WJX_API_KEY` 环境变量 或 `--api-key` 参数
 - **CLI 框架**: Commander.js
 - **依赖**: wjx-api-sdk（workspace 链接，已配置）
 
@@ -35,7 +35,7 @@ wjx-cli/
       analytics.ts        # wjx analytics <verb>
     lib/
       output.ts           # JSON / table 格式化
-      auth.ts             # token 读取（env > --token > ~/.wjxrc）
+      auth.ts             # token 读取（env > --api-key > ~/.wjxrc）
       errors.ts           # 统一错误处理 + exit code
   tsconfig.json
   __tests__/
@@ -213,7 +213,7 @@ export function registerSurveyCommands(program: Command): void {
 
 - `WJX_BASE_URL=https://tanhao.sojump.cn`
 - apikey 在 `.env` 文件中（项目根目录或 wjx-mcp-server/.env）
-- 验证命令：`WJX_BASE_URL=https://tanhao.sojump.cn WJX_TOKEN=<token> wjx survey list`
+- 验证命令：`WJX_BASE_URL=https://tanhao.sojump.cn WJX_API_KEY=<api_key> wjx survey list`
 
 ## 成功标准
 

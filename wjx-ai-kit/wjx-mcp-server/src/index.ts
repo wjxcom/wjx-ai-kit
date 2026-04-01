@@ -44,8 +44,8 @@ export async function main(): Promise<void> {
     process.once("SIGINT", shutdown);
     process.once("SIGTERM", shutdown);
   } else {
-    if (!process.env.WJX_TOKEN) {
-      console.error("[wjx-mcp-server] Warning: WJX_TOKEN is not set. API calls will fail until a token is provided.");
+    if (!process.env.WJX_API_KEY) {
+      console.error("[wjx-mcp-server] Warning: WJX_API_KEY is not set. API calls will fail until an API key is provided.");
     }
     const transport = new StdioServerTransport();
     await server.connect(transport);

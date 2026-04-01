@@ -17,7 +17,7 @@ import {
   Action,
 } from "../dist/index.js";
 
-const credentials = { token: "test-token" };
+const credentials = { apiKey: "test-token" };
 const validInput = {
   title: "测试问卷",
   type: 0,
@@ -112,23 +112,23 @@ describe("validateQuestionsJson", () => {
 // ─── getWjxCredentials ──────────────────────────────────────────────
 
 describe("getWjxCredentials", () => {
-  it("should return credentials when WJX_TOKEN is set", () => {
-    const env = { WJX_TOKEN: "my-token" };
+  it("should return credentials when WJX_API_KEY is set", () => {
+    const env = { WJX_API_KEY: "my-token" };
     const result = getWjxCredentials(env);
-    assert.equal(result.token, "my-token");
+    assert.equal(result.apiKey, "my-token");
   });
 
-  it("should throw when WJX_TOKEN is missing", () => {
+  it("should throw when WJX_API_KEY is missing", () => {
     assert.throws(
       () => getWjxCredentials({}),
-      /WJX_TOKEN must be set/,
+      /WJX_API_KEY must be set/,
     );
   });
 
-  it("should throw when WJX_TOKEN is empty string", () => {
+  it("should throw when WJX_API_KEY is empty string", () => {
     assert.throws(
-      () => getWjxCredentials({ WJX_TOKEN: "" }),
-      /WJX_TOKEN must be set/,
+      () => getWjxCredentials({ WJX_API_KEY: "" }),
+      /WJX_API_KEY must be set/,
     );
   });
 });

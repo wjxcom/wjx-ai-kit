@@ -270,3 +270,92 @@ describe("surveyToText → textToSurvey round-trip", () => {
     assert.deepEqual(parsed.questions[0].matrixRows, ["服务", "价格"]);
   });
 });
+
+// ─── New question type labels (v0.1.1) ──────────────────────────────
+
+describe("textToSurvey: new question type labels", () => {
+  // Helper: parse a single question with the given label
+  function parseSingle(label, body = "") {
+    const text = `测试\n\n1. 题目${label}\n${body}`;
+    const result = textToSurvey(text);
+    return result.questions[0];
+  }
+
+  it("parses [简答题] as fill-in", () => {
+    assert.equal(parseSingle("[简答题]").type, "fill-in");
+  });
+
+  it("parses [问答题] as fill-in", () => {
+    assert.equal(parseSingle("[问答题]").type, "fill-in");
+  });
+
+  it("parses [多项填空题] as multi-fill", () => {
+    assert.equal(parseSingle("[多项填空题]").type, "multi-fill");
+  });
+
+  it("parses [考试多项填空] as exam-multi-fill", () => {
+    assert.equal(parseSingle("[考试多项填空]").type, "exam-multi-fill");
+  });
+
+  it("parses [考试完形填空] as exam-cloze", () => {
+    assert.equal(parseSingle("[考试完形填空]").type, "exam-cloze");
+  });
+
+  it("parses [完形填空] as exam-cloze", () => {
+    assert.equal(parseSingle("[完形填空]").type, "exam-cloze");
+  });
+
+  it("parses [滑动条] as slider with range", () => {
+    const q = parseSingle("[滑动条]", "0~100");
+    assert.equal(q.type, "slider");
+    assert.deepEqual(q.scaleRange, ["0", "100"]);
+  });
+
+  it("parses [商品题] as commodity with options", () => {
+    const q = parseSingle("[商品题]", "商品A\n商品B");
+    assert.equal(q.type, "commodity");
+    assert.deepEqual(q.options, ["商品A", "商品B"]);
+  });
+
+  it("parses [情景题] as scenario with options", () => {
+    const q = parseSingle("[情景题]", "场景一\n场景二");
+    assert.equal(q.type, "scenario");
+    assert.deepEqual(q.options, ["场景一", "场景二"]);
+  });
+
+  it("parses [矩阵量表题] as matrix-scale with rows", () => {
+    const q = parseSingle("[矩阵量表题]", "行：\n- 维度A\n- 维度B");
+    assert.equal(q.type, "matrix-scale");
+    assert.deepEqual(q.matrixRows, ["维度A", "维度B"]);
+  });
+
+  it("parses [矩阵单选题] as matrix-single", () => {
+    const q = parseSingle("[矩阵单选题]", "行：\n- 行1\n- 行2");
+    assert.equal(q.type, "matrix-single");
+    assert.deepEqual(q.matrixRows, ["行1", "行2"]);
+  });
+
+  it("parses [矩阵多选题] as matrix-multi", () => {
+    const q = parseSingle("[矩阵多选题]", "行：\n- 行1\n- 行2");
+    assert.equal(q.type, "matrix-multi");
+    assert.deepEqual(q.matrixRows, ["行1", "行2"]);
+  });
+
+  it("parses [矩阵填空题] as matrix-fill", () => {
+    const q = parseSingle("[矩阵填空题]", "行：\n- 行1");
+    assert.equal(q.type, "matrix-fill");
+    assert.deepEqual(q.matrixRows, ["行1"]);
+  });
+
+  it("parses [文件上传] as file-upload", () => {
+    assert.equal(parseSingle("[文件上传]").type, "file-upload");
+  });
+
+  it("parses [绘图题] as drawing", () => {
+    assert.equal(parseSingle("[绘图题]").type, "drawing");
+  });
+
+  it("parses [多级下拉题] as multi-level-dropdown", () => {
+    assert.equal(parseSingle("[多级下拉题]").type, "multi-level-dropdown");
+  });
+});

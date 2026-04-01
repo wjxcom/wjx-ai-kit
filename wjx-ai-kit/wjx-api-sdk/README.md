@@ -42,7 +42,7 @@ npm run build --workspace=wjx-api-sdk
 ```typescript
 import { listSurveys, getSurvey, createSurvey } from "wjx-api-sdk";
 
-const creds = { token: process.env.WJX_TOKEN! };
+const creds = { apiKey: process.env.WJX_API_KEY! };
 
 // 列出问卷
 const list = await listSurveys({ page_index: 1, page_size: 10 }, creds);
@@ -67,20 +67,20 @@ const created = await createSurvey({
 ### 方式一：直接传入（推荐）
 
 ```typescript
-const creds = { token: "your_token" };
+const creds = { apiKey: "your_api_key" };
 const result = await listSurveys({ page_index: 1 }, creds);
 ```
 
 ### 方式二：环境变量
 
-设置 `WJX_TOKEN` 环境变量后，可省略 `credentials` 参数：
+设置 `WJX_API_KEY` 环境变量后，可省略 `credentials` 参数：
 
 ```bash
-export WJX_TOKEN=your_token
+export WJX_API_KEY=your_api_key
 ```
 
 ```typescript
-// 自动从 WJX_TOKEN 读取
+// 自动从 WJX_API_KEY 读取
 const result = await listSurveys({ page_index: 1 });
 ```
 
@@ -90,7 +90,7 @@ const result = await listSurveys({ page_index: 1 });
 import { setCredentialProvider } from "wjx-api-sdk";
 
 setCredentialProvider(() => ({
-  token: getTokenFromVault(),
+  apiKey: getTokenFromVault(),
 }));
 
 // 后续调用自动使用 provider
@@ -283,7 +283,8 @@ console.log(parsed.questions); // ParsedQuestion[]
 
 | 变量 | 必填 | 说明 |
 |------|:----:|------|
-| `WJX_TOKEN` | 是 | 问卷星 OpenAPI Bearer Token |
+| `WJX_API_KEY` | 是 | 问卷星 OpenAPI API Key |
+| `WJX_CORP_ID` | 否 | 企业通讯录 ID（通讯录相关操作需要） |
 | `WJX_BASE_URL` | 否 | 自定义 API 基础域名（默认 `https://www.wjx.cn`） |
 
 ---

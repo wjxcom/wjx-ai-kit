@@ -10,7 +10,7 @@ import {
   clearResponses,
 } from "../dist/index.js";
 
-const credentials = { token: "test-token" };
+const credentials = { apiKey: "test-token" };
 
 function mockFetch(responseBody, status = 200) {
   let capturedUrl, capturedInit;

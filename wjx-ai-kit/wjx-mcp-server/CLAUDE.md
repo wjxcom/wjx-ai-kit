@@ -68,7 +68,8 @@ All handlers use `toolResult()`/`toolError()` from `src/helpers.ts`.
 
 | Variable | Required | Purpose |
 |----------|----------|---------|
-| `WJX_TOKEN` | Yes (stdio) | 问卷星 OpenAPI Bearer token |
+| `WJX_API_KEY` | Yes (stdio) | 问卷星 OpenAPI API Key |
+| `WJX_CORP_ID` | No | 企业通讯录 ID（通讯录相关操作需要） |
 | `MCP_TRANSPORT` | No | `stdio` (default) or `http` |
 | `PORT` | No | HTTP mode port (default 3000) |
 | `MCP_AUTH_TOKEN` | No | Bearer token for HTTP mode |
