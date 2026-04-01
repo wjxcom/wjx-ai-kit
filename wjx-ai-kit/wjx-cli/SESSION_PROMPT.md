@@ -27,14 +27,14 @@
 
 1. 安装 commander 依赖：`cd wjx-ai-kit && npm install commander --workspace=wjx-cli`
 2. 创建 `tsconfig.json`（参考 wjx-api-sdk 的 tsconfig）
-3. 实现 `src/lib/auth.ts` — token 读取（env > --token 参数）
+3. 实现 `src/lib/auth.ts` — API Key 读取（env > --api-key 参数）
 4. 实现 `src/lib/output.ts` — JSON（默认）/ table 格式化
 5. 实现 `src/lib/errors.ts` — 统一错误处理 + process.exit(1)
-6. 实现 `src/index.ts` — Commander program 入口 + 全局选项（--token, --json, --table, --verbose）
+6. 实现 `src/index.ts` — Commander program 入口 + 全局选项（--api-key, --json, --table, --verbose）
 7. 实现 `src/commands/survey.ts` — 12 个 verb（create/get/list/delete/status/settings/update-settings/tags/tag-details/clear-bin/upload/url）
 8. 添加 package.json test 脚本
 9. 编写测试
-10. 真实调用验证：`WJX_BASE_URL=https://tanhao.sojump.cn WJX_TOKEN=<从.env读> node dist/index.js survey list`
+10. 真实调用验证：`WJX_BASE_URL=https://tanhao.sojump.cn WJX_API_KEY=<从.env读> node dist/index.js survey list`
 
 ### 测试环境
 

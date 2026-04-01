@@ -66,9 +66,9 @@ describe("wjx CLI", () => {
     assert.match(parsed.url, /sojump|wjx/);
   });
 
-  it("exits with error when no token provided", async () => {
+  it("exits with error when no api-key provided", async () => {
     const result = await runFull(["survey", "list"], {
-      env: { WJX_TOKEN: "", PATH: process.env.PATH },
+      env: { WJX_API_KEY: "", PATH: process.env.PATH },
     });
     assert.notEqual(result.exitCode, 0);
   });
@@ -89,14 +89,14 @@ describe("output formatting", () => {
 describe("errors: exit code routing", () => {
   it("AUTH_ERROR → exit 1 + stderr JSON", async () => {
     const result = await runFull(["survey", "list"], {
-      env: { WJX_TOKEN: "", PATH: process.env.PATH },
+      env: { WJX_API_KEY: "", PATH: process.env.PATH },
     });
     assert.equal(result.exitCode, 1);
     const err = JSON.parse(result.stderr.trim());
     assert.equal(err.error, true);
     assert.equal(err.code, "AUTH_ERROR");
     assert.equal(err.exitCode, 1);
-    assert.ok(err.message.includes("WJX_TOKEN"));
+    assert.ok(err.message.includes("WJX_API_KEY"));
   });
 
   it("INPUT_ERROR → exit 2 + stderr JSON (missing --vid)", async () => {
@@ -127,7 +127,7 @@ describe("errors: exit code routing", () => {
 
   it("stderr is valid JSON, stdout is empty on error", async () => {
     const result = await runFull(["survey", "list"], {
-      env: { WJX_TOKEN: "", PATH: process.env.PATH },
+      env: { WJX_API_KEY: "", PATH: process.env.PATH },
     });
     // stdout should be empty on error
     assert.equal(result.stdout.trim(), "");
@@ -275,7 +275,7 @@ describe("--stdin flag", () => {
 describe("contract: error output schema", () => {
   it("error output has all required fields", async () => {
     const result = await runFull(["survey", "list"], {
-      env: { WJX_TOKEN: "", PATH: process.env.PATH },
+      env: { WJX_API_KEY: "", PATH: process.env.PATH },
     });
     const err = JSON.parse(result.stderr.trim());
     // Required fields
@@ -305,7 +305,7 @@ describe("contract: exit codes", () => {
 
   it("auth error → exit 1", async () => {
     const result = await runFull(["survey", "list"], {
-      env: { WJX_TOKEN: "", PATH: process.env.PATH },
+      env: { WJX_API_KEY: "", PATH: process.env.PATH },
     });
     assert.equal(result.exitCode, 1);
   });
@@ -321,9 +321,9 @@ describe("contract: exit codes", () => {
 // ═══════════════════════════════════════
 
 describe("whoami", () => {
-  it("whoami without token → AUTH_ERROR exit 1", async () => {
+  it("whoami without api-key → AUTH_ERROR exit 1", async () => {
     const result = await runFull(["whoami"], {
-      env: { WJX_TOKEN: "", PATH: process.env.PATH },
+      env: { WJX_API_KEY: "", PATH: process.env.PATH },
     });
     assert.equal(result.exitCode, 1);
     const err = JSON.parse(result.stderr.trim());
@@ -341,9 +341,9 @@ describe("whoami", () => {
 // ═══════════════════════════════════════
 
 describe("doctor", () => {
-  it("doctor without token → reports fail check", async () => {
+  it("doctor without api-key → reports fail check", async () => {
     const result = await runFull(["doctor"], {
-      env: { WJX_TOKEN: "", PATH: process.env.PATH },
+      env: { WJX_API_KEY: "", PATH: process.env.PATH },
     });
     // Should exit 1 since token is missing
     assert.equal(result.exitCode, 1);
@@ -351,8 +351,8 @@ describe("doctor", () => {
     assert.equal(parsed.ok, false);
     // Should have checks array
     assert.ok(Array.isArray(parsed.checks));
-    // WJX_TOKEN check should be fail
-    const tokenCheck = parsed.checks.find((c) => c.check === "WJX_TOKEN");
+    // WJX_API_KEY check should be fail
+    const tokenCheck = parsed.checks.find((c) => c.check === "WJX_API_KEY");
     assert.equal(tokenCheck.status, "fail");
   });
 
@@ -530,9 +530,9 @@ describe("department", () => {
     assert.ok(err.message.includes("type"));
   });
 
-  it("department list without token → AUTH_ERROR exit 1", async () => {
+  it("department list without api-key → AUTH_ERROR exit 1", async () => {
     const result = await runFull(["department", "list"], {
-      env: { WJX_TOKEN: "", PATH: process.env.PATH },
+      env: { WJX_API_KEY: "", PATH: process.env.PATH },
     });
     assert.equal(result.exitCode, 1);
     const err = JSON.parse(result.stderr.trim());
@@ -652,9 +652,9 @@ describe("account", () => {
     assert.ok(err.message.includes("subuser"));
   });
 
-  it("account list without token → AUTH_ERROR exit 1", async () => {
+  it("account list without api-key → AUTH_ERROR exit 1", async () => {
     const result = await runFull(["account", "list"], {
-      env: { WJX_TOKEN: "", PATH: process.env.PATH },
+      env: { WJX_API_KEY: "", PATH: process.env.PATH },
     });
     assert.equal(result.exitCode, 1);
     const err = JSON.parse(result.stderr.trim());

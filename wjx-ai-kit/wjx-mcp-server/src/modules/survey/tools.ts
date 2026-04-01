@@ -45,11 +45,11 @@ export function registerSurveyTools(server: McpServer): void {
           .optional()
           .describe(
             "题目列表 JSON 字符串。不使用 source_vid 时必填。每个题目必须包含 q_index（题号）、q_type（主题型）和 q_subtype（子类型，必填）。" +
-            "【主题型 q_type】3=单选, 4=多选, 5=填空, 6=多项填空, 7=矩阵, 8=文件��传, 9=比重, 10=滑动条, 1=分页, 2=段落。" +
-            "【子类型 q_subtype（必填！）】3=普通单选, 301=下拉框, 302=量表题, 303=评分单选, 305=判断题, 4=普通多选, 401=评分多选, 402=排序题, 403=商品题, 5=普通填空, 501=多���下拉, 6=普通多项填空, 601=考试多项填空, 602=考试完形填空, 8=文件上传, 801=绘图题, 9=比重, 10=滑动条。" +
+            "【主题型 q_type】3=单选, 4=多选, 5=填空, 6=多项填空, 7=矩阵, 8=文件上传, 9=比重, 10=滑动条, 1=分页, 2=段落。" +
+            "【子类型 q_subtype（必填！）】3=普通单选, 301=下拉框, 302=量表题, 303=评分单选, 305=判断题, 4=普通多选, 401=评分多选, 402=排序题, 403=商品题, 5=普通填空, 501=多级下拉, 6=普通多项填空, 601=考试多项填空, 602=考试完形填空, 8=文件上传, 801=绘图题, 9=比重, 10=滑动条。" +
             "【考试题型说明】考试单选=atype:6+q_type:3+q_subtype:3, 考试多选=atype:6+q_type:4+q_subtype:4, 考试单项填空=atype:6+q_type:5+q_subtype:5, 考试多项填空=q_type:6+q_subtype:601, 考试完形填空=q_type:6+q_subtype:602, 简答题=q_type:5+q_subtype:5。" +
             "【多项填空特殊要求】q_type=6 的多项填空题，q_title 中必须包含填空占位符 {_}（如：'姓名{_}，年龄{_}'），否则创建失败。" +
-            "选���题需包含 items 数组，q_title 不要包含题型标记。" +
+            "选择题需包含 items 数组，q_title 不要包含题型标记。" +
             "示例：[{\"q_index\":1,\"q_type\":3,\"q_subtype\":301,\"q_title\":\"城市\",\"items\":[{\"q_index\":1,\"item_index\":1,\"item_title\":\"北京\"},{\"q_index\":1,\"item_index\":2,\"item_title\":\"上海\"}]}]",
           ),
         source_vid: z
@@ -594,7 +594,7 @@ export function registerSurveyTools(server: McpServer): void {
       title: "用 DSL 文本创建问卷",
       description:
         "通过人类可读的 DSL 文本创建问卷。文本格式与 get_survey(format='dsl') 输出一致。" +
-        "支持题型标签：[单选题]、[下拉框]/[下拉单选]、[多选题]、[填空题]、[简答题]/[问答题]、[多项填空题]、[量表题]、[评分单选]、[评分多选]、[排序题]、[判断题]、[比重题]、[滑动条]、[矩阵题]、[矩阵量表题]、[矩阵单选题]、[矩阵多选题]、[矩阵填空题]、[文���上传]、[绘图题]、[段落说明]、[商品题]、[多级下拉题]、[考试多项填空]、[考试完形填空]。" +
+        "支持题型标签：[单选题]、[下拉框]/[下拉单选]、[多选题]、[填空题]、[简答题]/[问答题]、[多项填空题]、[量表题]、[评分单选]、[评分多选]、[排序题]、[判断题]、[比重题]、[滑动条]、[矩阵题]、[矩阵量表题]、[矩阵单选题]、[矩阵多选题]、[矩阵填空题]、[文件上传]、[绘图题]、[段落说明]、[商品题]、[多级下拉题]、[考试多项填空]、[考试完形填空]。" +
         "【考试题型】创建考试问卷时设 atype=6，考试中的单选/多选/填空自动变为考试题型。" +
         "【多项填空/考试填空】题目标题中必须包含填空占位符 {_}，如：'The boy {_} a student'。" +
         "q_title 不要包含题型标记。" +
@@ -719,7 +719,8 @@ function parsedQuestionsToWire(questions: ParsedQuestion[]): WireQuestion[] {
       // Auto-insert placeholders based on options count or default to 2
       const count = (q.options && q.options.length > 0) ? q.options.length : 2;
       const placeholders = Array.from({ length: count }, () => "{_}").join("，");
-      wq.q_title = `${wq.q_title}：${placeholders}`;
+      const separator = /[：:，,、。.；;）)》>\s]$/.test(wq.q_title) ? "" : "：";
+      wq.q_title = `${wq.q_title}${separator}${placeholders}`;
     }
 
     // Convert options to items

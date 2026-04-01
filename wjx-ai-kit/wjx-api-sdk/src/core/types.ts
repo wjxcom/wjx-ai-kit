@@ -1,5 +1,5 @@
 export interface WjxCredentials {
-  token: string;
+  apiKey: string;
 }
 
 export interface WjxApiSuccess<T = unknown> {

@@ -22,26 +22,26 @@ wjx --version
 
 ---
 
-## 配置 Token
+## 配置 API Key
 
-大多数命令需要问卷星 API Token。Token 就是你的"通行证"，告诉问卷星"我是谁"。
+大多数命令需要问卷星 API Key。API Key 就是你的"通行证"，告诉问卷星"我是谁"。
 
-### 获取 Token
+### 获取 API Key
 
 1. 登录 [问卷星](https://www.wjx.cn)
 2. 进入 **账号设置 > API 自动登录**
-3. 复制 Token（一串字母数字组成的密钥）
+3. 复制 API Key（一串字母数字组成的密钥）
 
 > 没有找到？联系问卷星客服或客户经理开通 OpenAPI 权限。
 
-### 设置 Token
+### 设置 API Key
 
 ```bash
 # macOS / Linux
-export WJX_TOKEN=你的Token粘贴在这里
+export WJX_API_KEY=你的ApiKey粘贴在这里
 
 # Windows PowerShell
-$env:WJX_TOKEN="你的Token粘贴在这里"
+$env:WJX_API_KEY="你的ApiKey粘贴在这里"
 ```
 
 > `export` 只在当前终端窗口有效。要永久生效，把这行加到 `~/.bashrc` 或 `~/.zshrc` 末尾。
@@ -49,7 +49,7 @@ $env:WJX_TOKEN="你的Token粘贴在这里"
 也可以写 `.env` 文件：
 
 ```bash
-echo "WJX_TOKEN=你的Token" > .env
+echo "WJX_API_KEY=你的ApiKey" > .env
 ```
 
 ---
@@ -88,7 +88,7 @@ wjx response count --vid 12345           # 答卷总数
 wjx response query --vid 12345           # 查询答卷
 wjx response report --vid 12345          # 统计报告
 
-# 本地分析（不需要 Token）
+# 本地分析（不需要 API Key）
 wjx analytics nps --scores "[9,10,7,3,8,10,9,6,8,10]"
 wjx analytics csat --scores "[4,5,3,5,2,4,5]"
 
@@ -104,7 +104,7 @@ wjx survey list > my-surveys.json
 | 报错 | 解决 |
 |------|------|
 | `command not found: wjx` | 重新运行 `npm install -g wjx-cli` |
-| `WJX_TOKEN 未设置` | `export WJX_TOKEN=你的Token` |
+| `WJX_API_KEY 未设置` | `export WJX_API_KEY=你的ApiKey` |
 | `Invalid integer: xxx` | `--vid` 后面只接纯数字 |
 | API 返回错误 | 运行 `wjx doctor` 查看诊断 |
 

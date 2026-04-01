@@ -8,7 +8,7 @@ export function registerDiagnosticCommands(program: Command): void {
   // --- whoami ---
   program
     .command("whoami")
-    .description("验证 Token 并显示账号信息")
+    .description("验证 ApiKey 并显示账号信息")
     .action(async () => {
       try {
         const creds = getCredentials(program.opts());
@@ -19,7 +19,7 @@ export function registerDiagnosticCommands(program: Command): void {
 
         if (result.result === false) {
           // Token invalid or API error
-          formatOutput({ authenticated: false, error: result.errormsg || "Token 无效" }, program.opts());
+          formatOutput({ authenticated: false, error: result.errormsg || "ApiKey 无效" }, program.opts());
           process.exit(1);
         }
 
@@ -37,7 +37,7 @@ export function registerDiagnosticCommands(program: Command): void {
   // --- doctor ---
   program
     .command("doctor")
-    .description("环境诊断（Token、网络、SDK 版本）")
+    .description("环境诊断（ApiKey、网络、SDK 版本）")
     .action(async () => {
       try {
         const checks: Array<{ check: string; status: string; detail: string }> = [];
@@ -51,15 +51,23 @@ export function registerDiagnosticCommands(program: Command): void {
           detail: `${nodeVersion}${major < 20 ? " (建议 >= 20)" : ""}`,
         });
 
-        // 2. WJX_TOKEN set?
-        const token = program.opts().token || process.env.WJX_TOKEN;
+        // 2. WJX_API_KEY set?
+        const apiKey = program.opts().apiKey || process.env.WJX_API_KEY;
         checks.push({
-          check: "WJX_TOKEN",
-          status: token ? "ok" : "fail",
-          detail: token ? `已设置 (${token.slice(0, 8)}...)` : "未设置",
+          check: "WJX_API_KEY",
+          status: apiKey ? "ok" : "fail",
+          detail: apiKey ? `已设置 (${apiKey.slice(0, 8)}...)` : "未设置",
         });
 
-        // 3. WJX_BASE_URL
+        // 3. WJX_CORP_ID
+        const corpId = process.env.WJX_CORP_ID;
+        checks.push({
+          check: "WJX_CORP_ID",
+          status: corpId ? "ok" : "info",
+          detail: corpId ? `已设置 (${corpId})` : "未设置（通讯录功能需要）",
+        });
+
+        // 4. WJX_BASE_URL
         const baseUrl = process.env.WJX_BASE_URL || "https://www.wjx.cn";
         checks.push({
           check: "WJX_BASE_URL",
@@ -67,10 +75,10 @@ export function registerDiagnosticCommands(program: Command): void {
           detail: baseUrl,
         });
 
-        // 4. API connectivity
-        if (token) {
+        // 5. API connectivity
+        if (apiKey) {
           try {
-            const creds = { token };
+            const creds = { apiKey };
             const result = await listSurveys({ page_index: 1, page_size: 1 }, creds);
             if (result.result === false) {
               checks.push({
@@ -96,18 +104,18 @@ export function registerDiagnosticCommands(program: Command): void {
           checks.push({
             check: "API 连接",
             status: "skip",
-            detail: "Token 未设置，跳过",
+            detail: "ApiKey 未设置，跳过",
           });
         }
 
-        // 5. SDK version
+        // 6. SDK version
         checks.push({
           check: "wjx-api-sdk",
           status: "ok",
           detail: "v1.0.0",
         });
 
-        const allOk = checks.every((c) => c.status === "ok" || c.status === "skip");
+        const allOk = checks.every((c) => c.status === "ok" || c.status === "skip" || c.status === "info");
         formatOutput({ ok: allOk, checks }, program.opts());
 
         if (!allOk) process.exit(1);

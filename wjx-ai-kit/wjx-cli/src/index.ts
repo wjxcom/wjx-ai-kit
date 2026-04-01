@@ -20,7 +20,7 @@ program
   .name("wjx")
   .description("问卷星 (Wenjuanxing) CLI — AI Agent 原生命令行工具")
   .version("0.1.0")
-  .option("--token <token>", "WJX API Token（或设置 WJX_TOKEN 环境变量）")
+  .option("--api-key <apiKey>", "WJX API Key（或设置 WJX_API_KEY 环境变量）")
   .option("--json", "JSON 输出（默认）")
   .option("--table", "表格输出")
   .option("--verbose", "详细输出")

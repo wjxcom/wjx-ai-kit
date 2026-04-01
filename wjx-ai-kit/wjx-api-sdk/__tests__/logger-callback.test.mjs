@@ -3,7 +3,7 @@ import { describe, it } from "node:test";
 
 import { callWjxApi } from "../dist/index.js";
 
-const credentials = { token: "test-token" };
+const credentials = { apiKey: "test-token" };
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // Logger callback tests

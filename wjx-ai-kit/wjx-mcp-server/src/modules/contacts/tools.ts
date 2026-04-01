@@ -140,7 +140,7 @@ export function registerContactsTools(server: McpServer): void {
             (s) => { try { return Array.isArray(JSON.parse(s)); } catch { return false; } },
             "users 必须是合法的 JSON 数组",
           )
-          .describe("管理员列表 JSON 字符串（数组），每项包含: userid(管理员用户ID,必填)、role(角色,必填: 0=系统管理员, 1=分组管理员, 2=问卷管理员, 3=统计结果查看员, 4=完整结果查看员, 5=部门��理员)，可选: confidential(是否保密账户)、effective_date(有效期,格式yyyy-MM-dd)、remark(备注,最多50字)。一次不能超过100条"),
+          .describe("管理员列表 JSON 字符串（数组），每项包含: userid(管理员用户ID,必填)、role(角色,必填: 0=系统管理员, 1=分组管理员, 2=问卷管理员, 3=统计结果查看员, 4=完整结果查看员, 5=部门管理员)，可选: confidential(是否保密账户)、effective_date(有效期,格式yyyy-MM-dd)、remark(备注,最多50字)。一次不能超过100条"),
       },
       annotations: {
         destructiveHint: false,

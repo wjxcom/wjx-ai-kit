@@ -22,7 +22,7 @@ CLI 已完成 v0.1.0（80 tests）。
 - Node.js >= 20, TypeScript, ESM (`"type": "module"`)
 - Commander.js（CLI 框架）
 - wjx-api-sdk（workspace 依赖，已配置 `"wjx-api-sdk": "*"`）
-- 认证：`WJX_TOKEN` 环境变量，Bearer Token
+- 认证：`WJX_API_KEY` 环境变量，API Key
 
 ## SDK 函数签名模式
 
@@ -38,14 +38,14 @@ export async function listSurveys(
 
 CLI 调用时只需传 input + credentials：
 ```typescript
-const creds = { token: process.env.WJX_TOKEN };
+const creds = { apiKey: process.env.WJX_API_KEY };
 const result = await listSurveys({ page: 1 }, creds);
 ```
 
 ## 测试环境
 
 - `WJX_BASE_URL=https://tanhao.sojump.cn`
-- `WJX_TOKEN` 在 `.env` 文件中（检查 `wjx-ai-kit/wjx-mcp-server/.env` 或 `wjx-ai-kit/.env`）
+- `WJX_API_KEY` 在 `.env` 文件中（检查 `wjx-ai-kit/wjx-mcp-server/.env` 或 `wjx-ai-kit/.env`）
 - 真实 API 调用验证：`wjx survey list` 应返回问卷列表
 
 ## 编码规范
