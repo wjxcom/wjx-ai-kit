@@ -10,20 +10,30 @@ const LABEL_TO_TYPE: Record<string, string> = {
   "下拉单选": "dropdown",
   "多选题": "multi-choice",
   "填空题": "fill-in",
-  "多项填空题": "fill-in",
+  "简答题": "fill-in",
+  "问答题": "fill-in",
+  "多项填空题": "multi-fill",
+  "考试多项填空": "exam-multi-fill",
+  "考试完形填空": "exam-cloze",
+  "完形填空": "exam-cloze",
   "量表题": "scale",
   "评分单选": "scoring-single",
   "评分多选": "scoring-multi",
-  "滑动条": "scale",
+  "滑动条": "slider",
   "排序题": "sort",
   "判断题": "true-false",
+  "商品题": "commodity",
   "矩阵题": "matrix",
-  "矩阵量表题": "matrix",
-  "矩阵单选题": "matrix",
-  "矩阵多选题": "matrix",
-  "矩阵填空题": "matrix",
+  "矩阵量表题": "matrix-scale",
+  "矩阵单选题": "matrix-single",
+  "矩阵多选题": "matrix-multi",
+  "矩阵填空题": "matrix-fill",
   "段落说明": "paragraph",
   "比重题": "weight",
+  "文件上传": "file-upload",
+  "绘图题": "drawing",
+  "多级下拉题": "multi-level-dropdown",
+  "情景题": "scenario",
 };
 
 /** Regex to match a numbered question line: "1. Title[标签]（选填）" */
@@ -171,10 +181,13 @@ function buildQuestion(type: string, title: string, required: boolean, body: str
     case "sort":
     case "true-false":
     case "weight":
+    case "commodity":
+    case "scenario":
       q.options = body.filter((l) => l.length > 0);
       break;
 
     case "scale":
+    case "slider":
       // Scale body is "min~max" on one line
       if (body.length > 0) {
         const rangeLine = body[0];
@@ -186,6 +199,10 @@ function buildQuestion(type: string, title: string, required: boolean, body: str
       break;
 
     case "matrix":
+    case "matrix-scale":
+    case "matrix-single":
+    case "matrix-multi":
+    case "matrix-fill":
       // Matrix body: "行：" header, then "- row1", "- row2", ...
       q.matrixRows = [];
       for (const line of body) {
@@ -197,7 +214,13 @@ function buildQuestion(type: string, title: string, required: boolean, body: str
       break;
 
     case "fill-in":
-      // No body for simple fill-in
+    case "multi-fill":
+    case "exam-multi-fill":
+    case "exam-cloze":
+    case "multi-level-dropdown":
+    case "file-upload":
+    case "drawing":
+      // No body for these types
       break;
 
     case "paragraph":

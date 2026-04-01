@@ -165,10 +165,10 @@ export function registerResponseTools(server: McpServer): void {
     {
       title: "默认报告查询",
       description:
-        "获取问卷的统计报告，包含各题选项频次统计、平均分、总分等聚合数据。",
+        "获取问卷的统计报告，包含各题选项频次统计、平均分、总分等聚合数据。注意：valid 参数建议显式传 true 以确保返回完整报告。",
       inputSchema: {
         vid: z.number().int().positive().describe("问卷编号"),
-        valid: z.boolean().optional().describe("是否查询有效答卷，默认true"),
+        valid: z.boolean().optional().default(true).describe("是否查询有效答卷，默认true。建议始终显式传递此参数"),
         min_index: z.number().int().optional().describe("最小答卷序号"),
         jid: z.string().optional().refine(
           (s) => {
@@ -333,7 +333,8 @@ export function registerResponseTools(server: McpServer): void {
     {
       title: "修改答卷",
       description:
-        "修改答卷数据。当前仅支持修改考试问卷的主观题分数（type=1）。answers 为 JSON 字符串，格式 {题号: 分数}。",
+        "修改答卷数据。当前仅支持修改考试问卷的主观题分数（type=1）。answers 为 JSON 字符串，格式 {题号: 分数}。" +
+        "【重要】题号规则：answers 中的键是内部题号（q_index * 10000），不是题目序号。例如第1题的内部题号是10000，第2题是20000。可先通过 query_responses 查询答卷明细获取正确的内部题号。",
       inputSchema: {
         vid: z.number().int().positive().describe("问卷编号"),
         jid: z.number().int().positive().describe("答卷编号"),
