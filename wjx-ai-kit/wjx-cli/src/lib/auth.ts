@@ -1,9 +1,8 @@
 import type { WjxCredentials } from "wjx-api-sdk";
 import { CliError } from "./errors.js";
-import { loadConfig } from "./config.js";
 
 export function getCredentials(globalOpts: { apiKey?: string }): WjxCredentials {
-  const apiKey = globalOpts.apiKey || process.env.WJX_API_KEY || loadConfig()?.apiKey;
+  const apiKey = globalOpts.apiKey || process.env.WJX_API_KEY;
   if (!apiKey) {
     throw new CliError(
       "AUTH_ERROR",

@@ -774,11 +774,12 @@ WJX_API_KEY=xxx node dist/index.js survey list
 ```
 src/
 ├── index.ts              # 入口 + Commander program
-├── commands/             # 11 个命令模块
+├── commands/             # 12 个命令模块
 │   └── *.ts              # 每个文件导出 register*Commands(program)
 └── lib/
+    ├── config.ts          # ~/.wjxrc 配置文件读写
     ├── command-helpers.ts # executeCommand / strictInt / requireField
-    ├── auth.ts            # API Key 获取
+    ├── auth.ts            # API Key 获取（--api-key > env > config）
     ├── output.ts          # JSON / table 输出
     ├── errors.ts          # CliError + 退出码路由
     └── stdin.ts           # stdin 读取 + source-aware merge

@@ -83,13 +83,13 @@ flowchart LR
 ### 前置条件
 
 - **Node.js >= 20**
-- **问卷星 OpenAPI 凭据**（`appid` + `appkey`）
+- **问卷星 OpenAPI API Key**
 
 #### 获取 API 凭据
 
 1. 登录[问卷星控制台](https://www.wjx.cn)
 2. 进入 **账号设置 → API自动登录** 或联系客户经理开通 OpenAPI 权限
-3. 获取 `appid`（数字 ID）和 `appkey`（签名密钥，与 SSO 密钥相同）
+3. 获取 API Key（一串字母数字组成的密钥）
 
 ### 安装与构建
 
@@ -109,8 +109,7 @@ cp .env.example .env
 编辑 `.env`，填入你的凭据：
 
 ```dotenv
-WJX_APP_ID=your_appid
-WJX_APP_KEY=your_appkey
+WJX_API_KEY=your_api_key
 ```
 
 ### 启动（stdio 模式）
@@ -146,8 +145,7 @@ MCP_TRANSPORT=http PORT=3000 MCP_AUTH_TOKEN=my-secret node dist/index.js
       "command": "node",
       "args": ["./wjx-mcp-server/dist/index.js"],
       "env": {
-        "WJX_APP_ID": "your_appid",
-        "WJX_APP_KEY": "your_appkey"
+        "WJX_API_KEY": "your_api_key"
       }
     }
   }
@@ -173,8 +171,7 @@ claude mcp add wjx -- node ./wjx-mcp-server/dist/index.js
       "command": "node",
       "args": ["./wjx-mcp-server/dist/index.js"],
       "env": {
-        "WJX_APP_ID": "your_appid",
-        "WJX_APP_KEY": "your_appkey"
+        "WJX_API_KEY": "your_api_key"
       }
     }
   }
@@ -187,8 +184,9 @@ claude mcp add wjx -- node ./wjx-mcp-server/dist/index.js
 
 | 环境变量 | 必填 | 默认值 | 说明 |
 |----------|:----:|--------|------|
-| `WJX_APP_ID` | **是** | — | 问卷星 OpenAPI 开发者 ID |
-| `WJX_APP_KEY` | **是** | — | 问卷星 OpenAPI 签名密钥（与 SSO 密钥相同） |
+| `WJX_API_KEY` | **是** | — | 问卷星 OpenAPI API Key |
+| `WJX_CORP_ID` | 否 | — | 企业通讯录 ID（通讯录相关操作需要） |
+| `WJX_BASE_URL` | 否 | `https://www.wjx.cn` | 自定义 API 基础域名 |
 | `MCP_TRANSPORT` | 否 | `stdio` | 设为 `http` 启用 HTTP 传输 |
 | `PORT` | 否 | `3000` | HTTP 模式监听端口 |
 | `MCP_AUTH_TOKEN` | 否 | — | HTTP 模式的 Bearer token 认证 |

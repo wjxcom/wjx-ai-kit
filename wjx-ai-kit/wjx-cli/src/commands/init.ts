@@ -5,6 +5,8 @@ import { listSurveys } from "wjx-api-sdk";
 import { loadConfig, saveConfig, CONFIG_PATH } from "../lib/config.js";
 import type { WjxConfig } from "../lib/config.js";
 
+const DEFAULT_BASE_URL = "https://www.wjx.cn";
+
 function mask(value: string): string {
   if (value.length <= 4) return "****";
   return value.slice(0, 4) + "****" + value.slice(-4);
@@ -37,7 +39,7 @@ export function registerInitCommands(program: Command): void {
         }
 
         // 2. Base URL (optional)
-        const defaultUrl = currentBaseUrl || "https://www.wjx.cn";
+        const defaultUrl = currentBaseUrl || DEFAULT_BASE_URL;
         const baseUrlInput = await rl.question(`  WJX_BASE_URL [${defaultUrl}]: `);
         const baseUrl = baseUrlInput.trim() || defaultUrl;
 
@@ -47,8 +49,10 @@ export function registerInitCommands(program: Command): void {
         const corpId = corpIdInput.trim() || currentCorpId || undefined;
 
         // Apply base URL before validation so SDK uses the correct endpoint
-        if (baseUrl !== "https://www.wjx.cn") {
+        if (baseUrl !== DEFAULT_BASE_URL) {
           process.env.WJX_BASE_URL = baseUrl;
+        } else {
+          delete process.env.WJX_BASE_URL;
         }
 
         // Validate API Key
@@ -71,7 +75,7 @@ export function registerInitCommands(program: Command): void {
 
         // Save
         const newConfig: WjxConfig = { apiKey };
-        if (baseUrl !== "https://www.wjx.cn") newConfig.baseUrl = baseUrl;
+        if (baseUrl !== DEFAULT_BASE_URL) newConfig.baseUrl = baseUrl;
         if (corpId) newConfig.corpId = corpId;
         saveConfig(newConfig);
 

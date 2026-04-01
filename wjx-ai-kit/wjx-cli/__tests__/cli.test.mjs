@@ -51,7 +51,7 @@ describe("wjx CLI", () => {
 
   it("shows version", () => {
     const out = run(["--version"]);
-    assert.match(out, /0\.1\.0/);
+    assert.match(out, /\d+\.\d+\.\d+/);
   });
 
   it("survey --help lists all subcommands", () => {
@@ -334,7 +334,7 @@ describe("whoami", () => {
 
   it("whoami --help shows description", () => {
     const out = run(["whoami", "--help"]);
-    assert.match(out, /Token|验证/);
+    assert.match(out, /ApiKey|验证/);
   });
 });
 
@@ -347,7 +347,7 @@ describe("doctor", () => {
     const result = await runFull(["doctor"], {
       env: { WJX_API_KEY: "", PATH: process.env.PATH, ...NO_CONFIG },
     });
-    // Should exit 1 since token is missing
+    // Should exit 1 since api-key is missing
     assert.equal(result.exitCode, 1);
     const parsed = JSON.parse(result.stdout.trim());
     assert.equal(parsed.ok, false);

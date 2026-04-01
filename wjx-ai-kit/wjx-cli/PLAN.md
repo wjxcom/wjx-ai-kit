@@ -12,7 +12,7 @@ wjx <noun> <verb> [options]
 
 - **默认输出**: JSON（管道友好）
 - **可选输出**: `--table`（人类友好）
-- **认证**: `WJX_API_KEY` 环境变量 或 `--api-key` 参数
+- **认证**: `--api-key` 参数 > `WJX_API_KEY` 环境变量 > `~/.wjxrc` 配置文件（`wjx init` 初始化）
 - **CLI 框架**: Commander.js
 - **依赖**: wjx-api-sdk（workspace 链接，已配置）
 
@@ -23,6 +23,8 @@ wjx-cli/
   src/
     index.ts              # 入口，#!/usr/bin/env node + Commander program
     commands/
+      init.ts             # wjx init（交互式配置向导）
+      diagnostics.ts      # wjx whoami / wjx doctor
       survey.ts           # wjx survey <verb>
       response.ts         # wjx response <verb>
       contacts.ts         # wjx contacts <verb>
@@ -34,8 +36,11 @@ wjx-cli/
       sso.ts              # wjx sso <verb>
       analytics.ts        # wjx analytics <verb>
     lib/
+      auth.ts             # API Key 读取（--api-key > env > ~/.wjxrc）
+      config.ts           # ~/.wjxrc 配置文件读写 + applyConfigToEnv()
+      command-helpers.ts  # executeCommand()、strictInt()、requireField()
+      stdin.ts            # stdin JSON 读取 + source-aware merge
       output.ts           # JSON / table 格式化
-      auth.ts             # token 读取（env > --api-key > ~/.wjxrc）
       errors.ts           # 统一错误处理 + exit code
   tsconfig.json
   __tests__/
@@ -45,7 +50,7 @@ wjx-cli/
 
 ## 命令映射
 
-### survey (12 verbs)
+### survey (14 verbs)
 | 命令 | SDK 函数 | 必填参数 |
 |------|---------|---------|
 | `wjx survey create --title "标题"` | createSurvey | title |
@@ -61,7 +66,7 @@ wjx-cli/
 | `wjx survey upload --vid 123 --file x` | uploadFile | vid, base64/file |
 | `wjx survey url --vid 123` | buildSurveyUrl | vid |
 
-### response (10 verbs)
+### response (11 verbs)
 | 命令 | SDK 函数 | 必填参数 |
 |------|---------|---------|
 | `wjx response query --vid 123` | queryResponses | vid |
@@ -196,7 +201,7 @@ export function registerSurveyCommands(program: Command): void {
     .option("--page_size <n>", "每页数量", parseInt)
     .action(async (opts) => {
       try {
-        const creds = getCredentials(program.opts());
+      const creds = getCredentials(program.opts());
         const result = await listSurveys(
           { page: opts.page, page_size: opts.page_size },
           creds,

@@ -5,6 +5,28 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.6] - 2026-04-01
+
+### Added
+
+- **`wjx init` 命令**: 交互式引导配置 API Key、Base URL、Corp ID，保存到 `~/.wjxrc`
+  - `*` 标记必填项，方括号脱敏显示当前值，回车保留
+  - 自动探测环境变量和配置文件中的现有值作为默认值
+  - 验证时使用用户输入的 Base URL
+- **配置文件支持**: CLI 启动时自动读取 `~/.wjxrc`，凭据解析优先级: `--api-key` > 环境变量 > 配置文件
+- `doctor` 命令新增「配置文件」检查项
+
+### Fixed
+
+- 版本号从 package.json 动态读取，不再硬编码
+- `doctor` 中 SDK 版本从 `wjx-api-sdk/package.json` 动态读取
+- `strictInt("")` 不再静默返回 0，改为抛出 INPUT_ERROR
+- stdin 输入为数组时错误信息正确显示 "got array" 而非 "got object"
+- 移除未使用的 `--verbose` 选项和相关代码
+- `auth.ts` 移除冗余的 `loadConfig()` 回退（`applyConfigToEnv()` 已在启动时处理）
+- `diagnostics.ts` API Key 脱敏格式统一为 4+****+4
+- PLAN.md 更新为当前实际状态（目录结构、命令数量、认证方式）
+
 ## [0.1.5] - 2026-04-01
 
 ### Added

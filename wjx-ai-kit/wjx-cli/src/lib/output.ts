@@ -1,7 +1,6 @@
 export interface OutputOpts {
   json?: boolean;
   table?: boolean;
-  verbose?: boolean;
 }
 
 export function formatOutput(data: unknown, opts: OutputOpts): void {
