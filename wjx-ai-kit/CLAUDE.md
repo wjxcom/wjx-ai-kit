@@ -26,7 +26,7 @@ npm run build --workspace=wjx-cli
 # Test (from monorepo root)
 npm test --workspace=wjx-api-sdk        # ~598 tests
 npm test --workspace=wjx-mcp-server     # ~222 tests
-npm test --workspace=wjx-cli            # ~82 tests
+npm test --workspace=wjx-cli            # ~96 tests
 
 # Run a single test file (must build first)
 cd wjx-api-sdk && npm run build && node --test __tests__/survey.test.mjs
@@ -90,9 +90,10 @@ Registration pattern: both MCP server and CLI use `register<Module>Xxx(parent)` 
 - **MCP entry**: `wjx-mcp-server/src/index.ts` → `src/server.ts` (`createServer()`) → stdio or HTTP transport
 - **MCP context**: `wjx-mcp-server/src/core/context.ts` — AsyncLocalStorage for per-request credentials
 - **MCP helpers**: `wjx-mcp-server/src/helpers.ts` — `toolResult()`/`toolError()` used by all tool handlers
-- **CLI entry**: `wjx-cli/src/index.ts` — Commander program with preAction hook, loads `~/.wjxrc` via `applyConfigToEnv()`
+- **CLI entry**: `wjx-cli/src/index.ts` — Commander program with preAction hook, loads `~/.wjxrc` via `applyConfigToEnv()`, `--get-completions` short-circuit
 - **CLI config**: `wjx-cli/src/lib/config.ts` — `~/.wjxrc` read/write, `applyConfigToEnv()` injects config into `process.env`
-- **CLI helpers**: `wjx-cli/src/lib/command-helpers.ts` — `executeCommand()`, `strictInt()`, `requireField()`
+- **CLI helpers**: `wjx-cli/src/lib/command-helpers.ts` — `executeCommand()`, `strictInt()`, `requireField()`, `createCapturingFetch()` for dry-run
+- **CLI completions**: `wjx-cli/src/lib/completions.ts` — `getCompletions()` walks Commander tree for shell auto-complete
 
 ## Environment Variables
 

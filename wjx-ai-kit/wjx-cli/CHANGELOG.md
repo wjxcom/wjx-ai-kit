@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.7] - 2026-04-01
+
+### Added
+
+- **`wjx completion` 命令**: Shell 自动补全脚本生成
+  - `wjx completion bash/zsh/fish` 输出对应 Shell 的补全脚本
+  - `wjx completion install` 自动安装到 Shell 配置文件（检测重复）
+  - 隐藏 `--get-completions` 回调端点，动态补全命令、子命令、选项
+- **`--dry-run` 全局选项**: 预览 API 请求（不实际发送）
+  - 注入捕获式 fetchImpl，显示完整 HTTP 请求（method/url/headers/body）
+  - Authorization header 自动脱敏
+  - noAuth 命令（sso/analytics）显示输入预览
+  - 输出到 stderr，不污染 stdout JSON 协议
+
 ## [0.1.6] - 2026-04-01
 
 ### Added

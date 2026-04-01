@@ -17,7 +17,7 @@ import {
 import { CliError, handleError } from "../lib/errors.js";
 import { mergeStdinWithOpts } from "../lib/stdin.js";
 import { getCredentials } from "../lib/auth.js";
-import { executeCommand, strictInt, requireField } from "../lib/command-helpers.js";
+import { executeCommand, strictInt, requireField, createCapturingFetch, printDryRunPreview } from "../lib/command-helpers.js";
 
 export function registerSurveyCommands(program: Command): void {
   const survey = program.command("survey").description("问卷管理");
@@ -216,6 +216,14 @@ export function registerSurveyCommands(program: Command): void {
         requireField(merged, "vid");
 
         const creds = getCredentials(program.opts());
+
+        if (program.opts().dryRun) {
+          const { fetchImpl, getCapturedRequest } = createCapturingFetch();
+          await getSurvey({ vid: merged.vid as number }, creds, fetchImpl);
+          printDryRunPreview(getCapturedRequest());
+          return;
+        }
+
         const result = await getSurvey({ vid: merged.vid as number }, creds);
 
         if (result.result === false) {

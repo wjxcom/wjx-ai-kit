@@ -5,7 +5,7 @@
 [![license](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 [![node](https://img.shields.io/badge/node-%3E%3D20-green)](https://nodejs.org/)
 [![npm](https://img.shields.io/npm/v/wjx-cli)](https://www.npmjs.com/package/wjx-cli)
-[![tests](https://img.shields.io/badge/tests-82%20passing-brightgreen)](__tests__/cli.test.mjs)
+[![tests](https://img.shields.io/badge/tests-96%20passing-brightgreen)](__tests__/cli.test.mjs)
 
 wjx-cli 是 [`wjx-ai-kit`](../) monorepo 的命令行入口，将 [wjx-api-sdk](../wjx-api-sdk/) 的 50+ 函数直接暴露为终端命令。设计目标：**让 AI Agent 和人类开发者都能用一行命令操作问卷星 OpenAPI**。
 
@@ -50,6 +50,8 @@ wjx-cli 是 [`wjx-ai-kit`](../) monorepo 的命令行入口，将 [wjx-api-sdk](
 - **表格输出** — `--table` 切换为人类可读的 `console.table` 格式
 - **56 个子命令** — 覆盖问卷、答卷、通讯录、部门、管理员、标签、用户体系、子账号、SSO、数据分析
 - **9 个本地命令** — SSO URL 生成和 analytics 计算无需 API Key，离线可用
+- **Shell 补全** — `wjx completion bash/zsh/fish` 生成自动补全脚本
+- **Dry-run 预览** — `--dry-run` 预览 API 请求（URL/Headers/Body）不实��发送
 - **基于 wjx-api-sdk** — 直接调用 SDK 函数，类型安全，行为与 API 一致
 
 ---
@@ -125,8 +127,9 @@ wjx-ai-kit/                     # monorepo root
 └── wjx-cli/                     # ← 本项目
     ├── src/
     │   ├── index.ts             # Commander 入口 + 全局 preAction hook
-    │   ├── commands/            # 12 个命令模块（每模块 1 个 register 函数）
+    │   ├── commands/            # 13 个命令模块（每模块 1 个 register 函数）
     │   │   ├── init.ts          # wjx init 交互式配置向导
+    │   │   ├── completion.ts    # wjx completion bash/zsh/fish
     │   │   ├── survey.ts        # 14 subcommands
     │   │   ├── response.ts      # 11 subcommands
     │   │   ├── contacts.ts      # 3 subcommands
@@ -140,13 +143,14 @@ wjx-ai-kit/                     # monorepo root
     │   │   └── diagnostics.ts   # 2 subcommands（whoami + doctor）
     │   └── lib/
     │       ├── config.ts           # ~/.wjxrc 配置文件读写 + applyConfigToEnv
-    │       ├── command-helpers.ts  # executeCommand + strictInt + requireField
+    │       ├── command-helpers.ts  # executeCommand + strictInt + requireField + dry-run
     │       ├── auth.ts             # API Key 获取（--api-key > env > config）
     │       ├── output.ts           # JSON / table 格式化
     │       ├── errors.ts           # CliError + exit code 路由
-    │       └── stdin.ts            # stdin JSON 读取 + source-aware merge
+    │       ├── stdin.ts            # stdin JSON 读取 + source-aware merge
+    │       └── completions.ts      # Shell 补全候选项生成
     └── __tests__/
-        └── cli.test.mjs         # 82 个端到端测试
+        └── cli.test.mjs         # 96 个端到端测试
 ```
 
 **数据流：** `CLI args / stdin` → `Commander parse` → `executeCommand()` → `wjx-api-sdk function` → `stdout JSON / stderr error`
@@ -160,8 +164,8 @@ wjx-ai-kit/                     # monorepo root
 | `--api-key <apiKey>` | WJX API Key（或设置 `WJX_API_KEY` 环境变量） |
 | `--json` | JSON 输出（默认） |
 | `--table` | 表格输出（`console.table` 格式） |
-| `--verbose` | 详细输出 |
 | `--stdin` | 从 stdin 读取 JSON 参数（见 [stdin 管道输入](#stdin-管道输入)） |
+| `--dry-run` | 预览 API 请求（不实际发送，输出到 stderr） |
 | `--version` | 显示版本号 |
 | `--help` | 显示帮助信息 |
 
@@ -550,6 +554,34 @@ wjx whoami    # 验证 API Key 并显示账号信息
 wjx doctor    # 环境诊断（配置文件、Node 版本、API Key、API 连接、SDK 版本）
 ```
 
+### Shell 补全
+
+```bash
+wjx completion bash    # 输出 Bash 补全脚本
+wjx completion zsh     # 输出 Zsh 补全脚本
+wjx completion fish    # 输出 Fish 补全脚本
+wjx completion install # 自动安装到 Shell 配置文件
+
+# 手动安装示例（Bash）
+eval "$(wjx completion bash)"
+```
+
+### Dry-run 预览
+
+```bash
+wjx survey list --dry-run --api-key your_key
+# 输出到 stderr：
+# {
+#   "dry_run": true,
+#   "request": {
+#     "method": "POST",
+#     "url": "https://www.wjx.cn/openapi/...",
+#     "headers": { "Authorization": "Bearer your****_key" },
+#     "body": "{...}"
+#   }
+# }
+```
+
 ---
 
 ## stdin 管道输入
@@ -774,11 +806,12 @@ WJX_API_KEY=xxx node dist/index.js survey list
 ```
 src/
 ├── index.ts              # 入口 + Commander program
-├── commands/             # 12 个命令模块
+├── commands/             # 13 个命令模块
 │   └── *.ts              # 每个文件导出 register*Commands(program)
 └── lib/
     ├── config.ts          # ~/.wjxrc 配置文件读写
-    ├── command-helpers.ts # executeCommand / strictInt / requireField
+    ├── command-helpers.ts # executeCommand / strictInt / requireField / dry-run
+    ├── completions.ts     # Shell 补全候选项生成
     ├── auth.ts            # API Key 获取（--api-key > env > config）
     ├── output.ts          # JSON / table 输出
     ├── errors.ts          # CliError + 退出码路由
