@@ -6,6 +6,8 @@ import { fileURLToPath } from "node:url";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const CLI = resolve(__dirname, "..", "dist", "index.js");
+// Point to a non-existent config file so tests don't pick up a real ~/.wjxrc
+const NO_CONFIG = { WJX_CONFIG_PATH: resolve(__dirname, "..", "__no_such_wjxrc__") };
 
 function run(args, env = {}) {
   return execFileSync("node", [CLI, ...args], {
@@ -68,7 +70,7 @@ describe("wjx CLI", () => {
 
   it("exits with error when no api-key provided", async () => {
     const result = await runFull(["survey", "list"], {
-      env: { WJX_API_KEY: "", PATH: process.env.PATH },
+      env: { WJX_API_KEY: "", PATH: process.env.PATH, ...NO_CONFIG },
     });
     assert.notEqual(result.exitCode, 0);
   });
@@ -89,7 +91,7 @@ describe("output formatting", () => {
 describe("errors: exit code routing", () => {
   it("AUTH_ERROR → exit 1 + stderr JSON", async () => {
     const result = await runFull(["survey", "list"], {
-      env: { WJX_API_KEY: "", PATH: process.env.PATH },
+      env: { WJX_API_KEY: "", PATH: process.env.PATH, ...NO_CONFIG },
     });
     assert.equal(result.exitCode, 1);
     const err = JSON.parse(result.stderr.trim());
@@ -127,7 +129,7 @@ describe("errors: exit code routing", () => {
 
   it("stderr is valid JSON, stdout is empty on error", async () => {
     const result = await runFull(["survey", "list"], {
-      env: { WJX_API_KEY: "", PATH: process.env.PATH },
+      env: { WJX_API_KEY: "", PATH: process.env.PATH, ...NO_CONFIG },
     });
     // stdout should be empty on error
     assert.equal(result.stdout.trim(), "");
@@ -275,7 +277,7 @@ describe("--stdin flag", () => {
 describe("contract: error output schema", () => {
   it("error output has all required fields", async () => {
     const result = await runFull(["survey", "list"], {
-      env: { WJX_API_KEY: "", PATH: process.env.PATH },
+      env: { WJX_API_KEY: "", PATH: process.env.PATH, ...NO_CONFIG },
     });
     const err = JSON.parse(result.stderr.trim());
     // Required fields
@@ -305,7 +307,7 @@ describe("contract: exit codes", () => {
 
   it("auth error → exit 1", async () => {
     const result = await runFull(["survey", "list"], {
-      env: { WJX_API_KEY: "", PATH: process.env.PATH },
+      env: { WJX_API_KEY: "", PATH: process.env.PATH, ...NO_CONFIG },
     });
     assert.equal(result.exitCode, 1);
   });
@@ -323,7 +325,7 @@ describe("contract: exit codes", () => {
 describe("whoami", () => {
   it("whoami without api-key → AUTH_ERROR exit 1", async () => {
     const result = await runFull(["whoami"], {
-      env: { WJX_API_KEY: "", PATH: process.env.PATH },
+      env: { WJX_API_KEY: "", PATH: process.env.PATH, ...NO_CONFIG },
     });
     assert.equal(result.exitCode, 1);
     const err = JSON.parse(result.stderr.trim());
@@ -343,7 +345,7 @@ describe("whoami", () => {
 describe("doctor", () => {
   it("doctor without api-key → reports fail check", async () => {
     const result = await runFull(["doctor"], {
-      env: { WJX_API_KEY: "", PATH: process.env.PATH },
+      env: { WJX_API_KEY: "", PATH: process.env.PATH, ...NO_CONFIG },
     });
     // Should exit 1 since token is missing
     assert.equal(result.exitCode, 1);
@@ -532,7 +534,7 @@ describe("department", () => {
 
   it("department list without api-key → AUTH_ERROR exit 1", async () => {
     const result = await runFull(["department", "list"], {
-      env: { WJX_API_KEY: "", PATH: process.env.PATH },
+      env: { WJX_API_KEY: "", PATH: process.env.PATH, ...NO_CONFIG },
     });
     assert.equal(result.exitCode, 1);
     const err = JSON.parse(result.stderr.trim());
@@ -654,7 +656,7 @@ describe("account", () => {
 
   it("account list without api-key → AUTH_ERROR exit 1", async () => {
     const result = await runFull(["account", "list"], {
-      env: { WJX_API_KEY: "", PATH: process.env.PATH },
+      env: { WJX_API_KEY: "", PATH: process.env.PATH, ...NO_CONFIG },
     });
     assert.equal(result.exitCode, 1);
     const err = JSON.parse(result.stderr.trim());
@@ -762,5 +764,21 @@ describe("analytics", () => {
     assert.equal(result.exitCode, 2);
     const err = JSON.parse(result.stderr.trim());
     assert.ok(err.message.includes("payload"));
+  });
+});
+
+// ═══════════════════════════════════════
+// init command
+// ═══════════════════════════════════════
+
+describe("init", () => {
+  it("init --help shows description", () => {
+    const out = run(["init", "--help"]);
+    assert.match(out, /初始化|配置|init/);
+  });
+
+  it("init is listed in main --help", () => {
+    const out = run(["--help"]);
+    assert.match(out, /init/);
   });
 });

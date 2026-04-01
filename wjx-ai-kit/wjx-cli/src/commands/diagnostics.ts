@@ -3,6 +3,7 @@ import { listSurveys } from "wjx-api-sdk";
 import { getCredentials } from "../lib/auth.js";
 import { formatOutput } from "../lib/output.js";
 import { handleError } from "../lib/errors.js";
+import { loadConfig, CONFIG_PATH } from "../lib/config.js";
 
 export function registerDiagnosticCommands(program: Command): void {
   // --- whoami ---
@@ -42,6 +43,14 @@ export function registerDiagnosticCommands(program: Command): void {
       try {
         const checks: Array<{ check: string; status: string; detail: string }> = [];
 
+        // 0. Config file
+        const config = loadConfig();
+        checks.push({
+          check: "配置文件",
+          status: config ? "ok" : "info",
+          detail: config ? CONFIG_PATH : `未找到 (运行 wjx init 创建)`,
+        });
+
         // 1. Node version
         const nodeVersion = process.version;
         const major = parseInt(nodeVersion.slice(1), 10);
@@ -52,7 +61,7 @@ export function registerDiagnosticCommands(program: Command): void {
         });
 
         // 2. WJX_API_KEY set?
-        const apiKey = program.opts().apiKey || process.env.WJX_API_KEY;
+        const apiKey = program.opts().apiKey || process.env.WJX_API_KEY || config?.apiKey;
         checks.push({
           check: "WJX_API_KEY",
           status: apiKey ? "ok" : "fail",
@@ -60,7 +69,7 @@ export function registerDiagnosticCommands(program: Command): void {
         });
 
         // 3. WJX_CORP_ID
-        const corpId = process.env.WJX_CORP_ID;
+        const corpId = process.env.WJX_CORP_ID || config?.corpId;
         checks.push({
           check: "WJX_CORP_ID",
           status: corpId ? "ok" : "info",
@@ -68,7 +77,7 @@ export function registerDiagnosticCommands(program: Command): void {
         });
 
         // 4. WJX_BASE_URL
-        const baseUrl = process.env.WJX_BASE_URL || "https://www.wjx.cn";
+        const baseUrl = process.env.WJX_BASE_URL || config?.baseUrl || "https://www.wjx.cn";
         checks.push({
           check: "WJX_BASE_URL",
           status: "ok",

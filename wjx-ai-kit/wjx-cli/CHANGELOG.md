@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.5] - 2026-04-01
+
+### Added
+
+- **`wjx init` 命令**: 交互式引导配置 API Key、Base URL、Corp ID，保存到 `~/.wjxrc`
+  - `*` 标记必填项，方括号脱敏显示当前值，回车保留
+  - 自动探测环境变量和配置文件中的现有值作为默认值
+  - 验证时使用用户输入的 Base URL
+- **配置文件支持**: CLI 启动时自动读取 `~/.wjxrc`，凭据解析优先级: `--api-key` > 环境变量 > 配置文件
+- `doctor` 命令新增「配置文件」检查项
+
 ## [0.1.2] - 2026-03-31
 
 ### Changed
@@ -27,9 +38,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `tag` (4): list, add, modify, delete
   - `user-system` (6): add-participants, modify-participants, delete-participants, bind, query-binding, query-surveys
   - `account` (5): list, add, modify, delete, restore
-  - `sso` (3): subaccount-url, user-system-url, partner-url (无需 Token)
-  - `analytics` (6): decode, nps, csat, anomalies, compare, decode-push (本地计算，无需 Token)
-- **诊断工具**: `whoami`(Token 验证) + `doctor`(环境诊断: Node 版本、Token、API 连接、SDK 版本)
+  - `sso` (3): subaccount-url, user-system-url, partner-url (无需 API Key)
+  - `analytics` (6): decode, nps, csat, anomalies, compare, decode-push (本地计算，无需 API Key)
+- **诊断工具**: `whoami`(API Key 验证) + `doctor`(环境诊断: Node 版本、API Key、API 连接、SDK 版本)
 - **stdin 管道输入**: `--stdin` 标志支持从管道读取 JSON 参数，source-aware merge 确保 CLI 显式值优先于 stdin
 - **结构化错误协议**: stderr JSON 输出 `{error, message, code, exitCode}`，退出码区分错误类型 (0=成功, 1=API/认证错误, 2=输入错误)
 - **双输出格式**: 默认 JSON (stdout) + `--table` 表格模式 (console.table)

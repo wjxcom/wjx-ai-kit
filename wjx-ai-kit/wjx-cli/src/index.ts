@@ -11,8 +11,13 @@ import { registerUserSystemCommands } from "./commands/user-system.js";
 import { registerAccountCommands } from "./commands/account.js";
 import { registerSsoCommands } from "./commands/sso.js";
 import { registerAnalyticsCommands } from "./commands/analytics.js";
+import { registerInitCommands } from "./commands/init.js";
 import { readStdin, mergeStdinWithOpts } from "./lib/stdin.js";
 import { handleError } from "./lib/errors.js";
+import { applyConfigToEnv } from "./lib/config.js";
+
+// Load ~/.wjxrc config into process.env (env vars take precedence)
+applyConfigToEnv();
 
 const program = new Command();
 
@@ -52,6 +57,7 @@ registerUserSystemCommands(program);
 registerAccountCommands(program);
 registerSsoCommands(program);
 registerAnalyticsCommands(program);
+registerInitCommands(program);
 
 (async () => {
   try {

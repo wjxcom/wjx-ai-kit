@@ -1,6 +1,6 @@
 # wjx-cli 快速开始
 
-> 一行命令安装，一行命令上手。
+> 一行命令安装，一行命令配置。
 
 ---
 
@@ -22,9 +22,31 @@ wjx --version
 
 ---
 
-## 配置 API Key
+## 配置
 
-大多数命令需要问卷星 API Key。API Key 就是你的"通行证"，告诉问卷星"我是谁"。
+```bash
+wjx init
+```
+
+按提示输入 API Key、Base URL、Corp ID，配置保存到 `~/.wjxrc`。
+
+```
+问卷星 CLI 配置向导
+配置文件: ~/.wjxrc
+
+* WJX_API_KEY: sk-wjx-xxxxxxxx
+  WJX_BASE_URL [https://www.wjx.cn]:
+  WJX_CORP_ID:
+
+验证 API Key... OK
+
+已保存到 ~/.wjxrc
+提示: 也可以直接编辑该文件修改配置。
+```
+
+- `*` 标记必填项，无星号为可选
+- 方括号内为当前值，直接回车保留
+- 已配置过的项会脱敏显示当前值
 
 ### 获取 API Key
 
@@ -34,23 +56,22 @@ wjx --version
 
 > 没有找到？联系问卷星客服或客户经理开通 OpenAPI 权限。
 
-### 设置 API Key
+### 其他配置方式
+
+除了 `wjx init`，还可以通过环境变量或命令行参数配置：
 
 ```bash
-# macOS / Linux
-export WJX_API_KEY=你的ApiKey粘贴在这里
+# 环境变量
+export WJX_API_KEY=你的ApiKey
 
-# Windows PowerShell
-$env:WJX_API_KEY="你的ApiKey粘贴在这里"
+# 命令行参数（单次使用）
+wjx --api-key 你的ApiKey survey list
+
+# 直接编辑配置文件
+vi ~/.wjxrc
 ```
 
-> `export` 只在当前终端窗口有效。要永久生效，把这行加到 `~/.bashrc` 或 `~/.zshrc` 末尾。
-
-也可以写 `.env` 文件：
-
-```bash
-echo "WJX_API_KEY=你的ApiKey" > .env
-```
+凭据解析优先级：`--api-key` 参数 > 环境变量 > `~/.wjxrc` 配置文件。
 
 ---
 
@@ -104,7 +125,7 @@ wjx survey list > my-surveys.json
 | 报错 | 解决 |
 |------|------|
 | `command not found: wjx` | 重新运行 `npm install -g wjx-cli` |
-| `WJX_API_KEY 未设置` | `export WJX_API_KEY=你的ApiKey` |
+| `WJX_API_KEY 未设置` | 运行 `wjx init` 配置 |
 | `Invalid integer: xxx` | `--vid` 后面只接纯数字 |
 | API 返回错误 | 运行 `wjx doctor` 查看诊断 |
 
