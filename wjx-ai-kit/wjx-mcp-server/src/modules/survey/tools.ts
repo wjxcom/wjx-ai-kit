@@ -17,6 +17,7 @@ import {
 } from "./client.js";
 import type { SurveyDetail, ParsedQuestion } from "./client.js";
 import { toolResult, toolError } from "../../helpers.js";
+import { QUESTION_TYPES } from "../../resources/survey-reference.js";
 
 export function registerSurveyTools(server: McpServer): void {
   // ─── create_survey ────────────────────────────────────────────────
@@ -25,14 +26,17 @@ export function registerSurveyTools(server: McpServer): void {
     {
       title: "创建问卷",
       description:
-        "通过问卷星 OpenAPI 创建新问卷。支持两种模式：1) 全新创建：需传 atype/desc/questions；2) 复制已有问卷：传 source_vid 即可。",
+        "通过问卷星 OpenAPI 创建新问卷。支持两种模式：1) 全新创建：需传 atype/desc/questions；2) 复制已有问卷：传 source_vid 即可。" +
+        "【重要】考试问卷必须设置 atype=6，考试中的单选/多选/填空题与普通题型使用相同的 q_type，区别在于问卷类型(atype)为6。" +
+        "创建考试问卷后，需单独调用 update_survey_settings 的 time_setting 设置考试时间限制（exam_min_seconds/exam_max_seconds）。" +
+        "不要在 q_title 中包含题型标记（如[单选题]、[考试单选]等），题型由 q_type/q_subtype 决定。",
       inputSchema: {
         title: z.string().min(1).describe("问卷名称"),
         atype: z
           .number()
           .int()
           .optional()
-          .describe("问卷类型：1=调查, 2=测评, 3=投票, 6=考试, 7=表单。注意：4(360度评估)、5(360评估无测评关系)、8(用户体系)、9(教学评估)、11(民主评议) 不支持通过 API 创建。不使用 source_vid 时必填"),
+          .describe("问卷类型：1=调查（默认）, 2=测评, 3=投票, 6=考试, 7=表单。考试问卷必须设为6，考试中的单选/多选/填空自动变为考试题型。注意：4(360度评估)、5(360评估无测评关系)、8(用户体系)、9(教学评估)、11(民主评议) 不支持通过 API 创建。不使用 source_vid 时必填"),
         desc: z.string().optional().describe("问卷描述。不使用 source_vid 时必填"),
         publish: z.boolean().optional().default(false).describe("是否立即发布"),
         questions: z
@@ -40,10 +44,13 @@ export function registerSurveyTools(server: McpServer): void {
           .min(2)
           .optional()
           .describe(
-            "题目列表 JSON 字符串。不使用 source_vid 时必填。每个题目包含 q_index（题号）和 q_type（主题型）。" +
-            "【主题型】3=单选, 4=多选, 5=填空, 6=多项填空, 7=矩阵, 8=文件上传, 9=比重, 10=滑动条, 1=分页, 2=段落。" +
-            "【重要：子类型 q_subtype】301=下拉框, 302=量表题, 303=评分单选, 305=判断题, 401=评分多选, 402=排序题, 601=考试多项填空, 602=考试完型填空。" +
-            "选择题需包含 items 数组。示例：[{\"q_index\":1,\"q_type\":3,\"q_subtype\":301,\"q_title\":\"城市\",\"items\":[{\"q_index\":1,\"item_index\":1,\"item_title\":\"北京\"},{\"q_index\":1,\"item_index\":2,\"item_title\":\"上海\"}]}]",
+            "题目列表 JSON 字符串。不使用 source_vid 时必填。每个题目必须包含 q_index（题号）、q_type（主题型）和 q_subtype（子类型，必填）。" +
+            "【主题型 q_type】3=单选, 4=多选, 5=填空, 6=多项填空, 7=矩阵, 8=文件��传, 9=比重, 10=滑动条, 1=分页, 2=段落。" +
+            "【子类型 q_subtype（必填！）】3=普通单选, 301=下拉框, 302=量表题, 303=评分单选, 305=判断题, 4=普通多选, 401=评分多选, 402=排序题, 403=商品题, 5=普通填空, 501=多���下拉, 6=普通多项填空, 601=考试多项填空, 602=考试完形填空, 8=文件上传, 801=绘图题, 9=比重, 10=滑动条。" +
+            "【考试题型说明】考试单选=atype:6+q_type:3+q_subtype:3, 考试多选=atype:6+q_type:4+q_subtype:4, 考试单项填空=atype:6+q_type:5+q_subtype:5, 考试多项填空=q_type:6+q_subtype:601, 考试完形填空=q_type:6+q_subtype:602, 简答题=q_type:5+q_subtype:5。" +
+            "【多项填空特殊要求】q_type=6 的多项填空题，q_title 中必须包含填空占位符 {_}（如：'姓名{_}，年龄{_}'），否则创建失败。" +
+            "选���题需包含 items 数组，q_title 不要包含题型标记。" +
+            "示例：[{\"q_index\":1,\"q_type\":3,\"q_subtype\":301,\"q_title\":\"城市\",\"items\":[{\"q_index\":1,\"item_index\":1,\"item_title\":\"北京\"},{\"q_index\":1,\"item_index\":2,\"item_title\":\"上海\"}]}]",
           ),
         source_vid: z
           .string()
@@ -73,7 +80,7 @@ export function registerSurveyTools(server: McpServer): void {
       try {
         const result = await createSurvey({
           title: args.title,
-          type: args.atype ?? 0,
+          type: args.atype ?? 1,
           description: args.desc ?? "",
           publish: args.publish,
           questions: args.questions ?? "",
@@ -210,7 +217,7 @@ export function registerSurveyTools(server: McpServer): void {
           .number()
           .int()
           .optional()
-          .describe("问卷类型筛选：1=调查, 2=测评, 3=投票, 4=360度评估, 5=360评估无测评关系, 6=考试, 7=表单, 8=用户体系, 9=教学评估, 11=民主评议"),
+          .describe("问卷类型筛选：1=调查, 2=测评, 3=投票, 4=360度评估, 5=360评估无测评关系, 6=考试, 7=表单, 8=用户体系, 9=教学评估, 10=量表, 11=民主评议"),
         name_like: z
           .string()
           .max(10)
@@ -502,6 +509,15 @@ export function registerSurveyTools(server: McpServer): void {
     async (args) => {
       try {
         const result = await getTagDetails({ tag_id: args.tag_id });
+        // Enrich q_type with human-readable description
+        if (result.result !== false && Array.isArray(result.data)) {
+          for (const item of result.data as Array<Record<string, unknown>>) {
+            const qType = Number(item.q_type);
+            if (!isNaN(qType) && QUESTION_TYPES[qType]) {
+              item.q_type_name = QUESTION_TYPES[qType].name;
+            }
+          }
+        }
         return toolResult(result, result.result === false);
       } catch (error) {
         return toolError(error);
@@ -578,7 +594,10 @@ export function registerSurveyTools(server: McpServer): void {
       title: "用 DSL 文本创建问卷",
       description:
         "通过人类可读的 DSL 文本创建问卷。文本格式与 get_survey(format='dsl') 输出一致。" +
-        "支持 12 种题型标签：[单选题]、[下拉框]/[下拉单选]、[多选题]、[填空题]、[量表题]、[评分单选]、[评分多选]、[排序题]、[判断题]、[比重题]、[矩阵题]、[段落说明]。" +
+        "支持题型标签：[单选题]、[下拉框]/[下拉单选]、[多选题]、[填空题]、[简答题]/[问答题]、[多项填空题]、[量表题]、[评分单选]、[评分多选]、[排序题]、[判断题]、[比重题]、[滑动条]、[矩阵题]、[矩阵量表题]、[矩阵单选题]、[矩阵多选题]、[矩阵填空题]、[文���上传]、[绘图题]、[段落说明]、[商品题]、[多级下拉题]、[考试多项填空]、[考试完形填空]。" +
+        "【考试题型】创建考试问卷时设 atype=6，考试中的单选/多选/填空自动变为考试题型。" +
+        "【多项填空/考试填空】题目标题中必须包含填空占位符 {_}，如：'The boy {_} a student'。" +
+        "q_title 不要包含题型标记。" +
         "输入示例：\n" +
         "用户满意度调查\n\n" +
         "请认真填写\n\n" +
@@ -637,14 +656,27 @@ const TYPE_MAP: Record<string, { q_type: number; q_subtype: number }> = {
   "dropdown": { q_type: 3, q_subtype: 301 },
   "multi-choice": { q_type: 4, q_subtype: 4 },
   "fill-in": { q_type: 5, q_subtype: 5 },
+  "multi-fill": { q_type: 6, q_subtype: 6 },
+  "exam-multi-fill": { q_type: 6, q_subtype: 601 },
+  "exam-cloze": { q_type: 6, q_subtype: 602 },
   "scale": { q_type: 3, q_subtype: 302 },
   "scoring-single": { q_type: 3, q_subtype: 303 },
   "scoring-multi": { q_type: 4, q_subtype: 401 },
   "sort": { q_type: 4, q_subtype: 402 },
+  "commodity": { q_type: 4, q_subtype: 403 },
   "true-false": { q_type: 3, q_subtype: 305 },
   "weight": { q_type: 9, q_subtype: 9 },
+  "slider": { q_type: 10, q_subtype: 10 },
   "matrix": { q_type: 7, q_subtype: 7 },
+  "matrix-scale": { q_type: 7, q_subtype: 701 },
+  "matrix-single": { q_type: 7, q_subtype: 702 },
+  "matrix-multi": { q_type: 7, q_subtype: 703 },
+  "matrix-fill": { q_type: 7, q_subtype: 704 },
   "paragraph": { q_type: 2, q_subtype: 2 },
+  "file-upload": { q_type: 8, q_subtype: 8 },
+  "drawing": { q_type: 8, q_subtype: 801 },
+  "multi-level-dropdown": { q_type: 5, q_subtype: 501 },
+  "scenario": { q_type: 3, q_subtype: 304 },
 };
 
 interface WireQuestion {
@@ -681,6 +713,14 @@ function parsedQuestionsToWire(questions: ParsedQuestion[]): WireQuestion[] {
       q_title: q.title,
       is_requir: q.required,
     };
+
+    // Multi-fill types (q_type=6) require {_} placeholders in q_title
+    if (typeInfo.q_type === 6 && !wq.q_title.includes("{_}")) {
+      // Auto-insert placeholders based on options count or default to 2
+      const count = (q.options && q.options.length > 0) ? q.options.length : 2;
+      const placeholders = Array.from({ length: count }, () => "{_}").join("，");
+      wq.q_title = `${wq.q_title}：${placeholders}`;
+    }
 
     // Convert options to items
     if (q.options && q.options.length > 0) {

@@ -1,6 +1,6 @@
 {
   "name": "wjx-api-sdk",
-  "version": "0.1.1",
+  "version": "0.1.1-beta.1",
   "description": "问卷星 (Wenjuanxing) OpenAPI SDK — 零 MCP 依赖的 API 客户端",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -11,9 +11,10 @@
     "node": ">=20"
   },
   "scripts": {
-    "build": "tsc -p tsconfig.json",
+    "build": "npx -p typescript tsc -p tsconfig.json",
     "test": "npm run build && node --test __tests__/*.test.mjs",
-    "clean": "rm -rf dist"
+    "clean": "rm -rf dist",
+    "prepublishOnly": "npm run build"
   },
   "keywords": [
     "wjx",

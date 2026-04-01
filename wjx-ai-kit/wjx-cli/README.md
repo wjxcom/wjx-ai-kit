@@ -4,6 +4,7 @@
 
 [![license](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 [![node](https://img.shields.io/badge/node-%3E%3D20-green)](https://nodejs.org/)
+[![npm](https://img.shields.io/npm/v/wjx-cli)](https://www.npmjs.com/package/wjx-cli)
 [![tests](https://img.shields.io/badge/tests-80%20passing-brightgreen)](__tests__/cli.test.mjs)
 
 wjx-cli 是 [`wjx-ai-kit`](../) monorepo 的命令行入口，将 [wjx-api-sdk](../wjx-api-sdk/) 的 50+ 函数直接暴露为终端命令。设计目标：**让 AI Agent 和人类开发者都能用一行命令操作问卷星 OpenAPI**。
@@ -13,7 +14,7 @@ wjx-cli 是 [`wjx-ai-kit`](../) monorepo 的命令行入口，将 [wjx-api-sdk](
 ## 目录
 
 - [特性](#特性)
-- [前置条件](#前置条件)
+- [**快速开始**](#快速开始)
 - [安装](#安装)
 - [认证](#认证)
 - [架构](#架构)
@@ -53,17 +54,32 @@ wjx-cli 是 [`wjx-ai-kit`](../) monorepo 的命令行入口，将 [wjx-api-sdk](
 
 ---
 
+## 快速开始
+
+```bash
+npm install -g wjx-cli
+export WJX_TOKEN=你的Token
+wjx survey list
+```
+
+> **新手？** 阅读 [快速开始教程](docs/getting-started.md)，含 [Node.js 安装指引](docs/install-nodejs.md)。
+
+---
+
 ## 前置条件
 
-- **Node.js >= 20**（使用内置 `fetch`，无需 polyfill）
-- **npm >= 9**（workspace 支持）
+- **Node.js >= 20**（[安装指引](docs/install-nodejs.md)）
 - **问卷星 OpenAPI Token**（[申请方式](https://www.wjx.cn/openapi/)）
 
 ---
 
 ## 安装
 
-wjx-cli 是 `wjx-ai-kit` monorepo 的一部分：
+```bash
+npm install -g wjx-cli
+```
+
+### 从源码安装（开发者）
 
 ```bash
 git clone <your-repo-url>
@@ -71,19 +87,7 @@ cd wjx-ai-kit
 npm install
 npm run build --workspace=wjx-api-sdk
 npm run build --workspace=wjx-cli
-```
-
-### 全局可用（可选）
-
-```bash
 npm link --workspace=wjx-cli
-wjx --help
-```
-
-### 直接运行（无需全局安装）
-
-```bash
-node wjx-cli/dist/index.js --help
 ```
 
 ---

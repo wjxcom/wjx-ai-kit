@@ -46,7 +46,7 @@ export function registerResources(server: McpServer): void {
   server.resource(
     "survey-statuses",
     "wjx://reference/survey-statuses",
-    { description: "问卷状态与审核状态编码说明", mimeType: "application/json" },
+    { description: "问卷状态编码说明：0=未发布, 1=已发布, 2=已暂停, 3=已删除, 4=彻底删除, 5=被审核", mimeType: "application/json" },
     async () => ({
       contents: [{
         uri: "wjx://reference/survey-statuses",

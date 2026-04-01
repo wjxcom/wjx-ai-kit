@@ -10,7 +10,7 @@ import {
 
 test("SURVEY_TYPES", async (t) => {
   await t.test("should contain all standard survey types", () => {
-    assert.equal(SURVEY_TYPES[1], "问卷调查");
+    assert.equal(SURVEY_TYPES[1], "调查");
     assert.equal(SURVEY_TYPES[2], "测评");
     assert.equal(SURVEY_TYPES[3], "投票");
     assert.equal(SURVEY_TYPES[6], "考试");
@@ -58,19 +58,20 @@ test("QUESTION_TYPES", async (t) => {
 
 test("SURVEY_STATUSES", async (t) => {
   await t.test("should contain all status codes", () => {
-    assert.equal(SURVEY_STATUSES[0], "设计中");
-    assert.equal(SURVEY_STATUSES[1], "收集中");
+    assert.equal(SURVEY_STATUSES[0], "未发布");
+    assert.equal(SURVEY_STATUSES[1], "已发布");
     assert.equal(SURVEY_STATUSES[2], "已暂停");
-    assert.equal(SURVEY_STATUSES[3], "已删除(回收站)");
+    assert.equal(SURVEY_STATUSES[3], "已删除");
     assert.equal(SURVEY_STATUSES[4], "彻底删除");
+    assert.equal(SURVEY_STATUSES[5], "被审核");
   });
 });
 
 test("VERIFY_STATUSES", async (t) => {
   await t.test("should contain all verify status codes", () => {
-    assert.equal(VERIFY_STATUSES[0], "未审核");
-    assert.equal(VERIFY_STATUSES[1], "审核通过");
+    assert.equal(VERIFY_STATUSES[1], "已通过");
     assert.equal(VERIFY_STATUSES[2], "审核中");
-    assert.equal(VERIFY_STATUSES[3], "审核未通过");
+    assert.equal(VERIFY_STATUSES[3], "未通过");
+    assert.equal(VERIFY_STATUSES[4], "待实名");
   });
 });

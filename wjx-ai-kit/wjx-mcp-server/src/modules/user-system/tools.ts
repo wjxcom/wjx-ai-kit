@@ -17,9 +17,9 @@ export function registerUserSystemTools(server: McpServer): void {
     {
       title: "[已过时] 批量添加参与者",
       description:
-        "[Deprecated] 向用户系统批量添加参与者（每次最多100人）。users 为 JSON 数组字符串，每个对象包含 uid、uname、upass、udept、uextf 字段。",
+        "[Deprecated] 向用户系统批量添加参与者（每次最多100人）。users 为 JSON 数组字符串，每个对象包含: uid(参与者唯一编号,必填)、uname(参与者姓名,必填)、upass(初始登录密码,必填)、udept(部门,选填)、uextf(附加信息,选填)。注意：username 是主账号登录名，用于 API 鉴权。",
       inputSchema: {
-        username: z.string().min(1).describe("主账户用户名"),
+        username: z.string().min(1).describe("问卷星主账号登录名（用于 API 鉴权）"),
         users: z
           .string()
           .min(2)
@@ -59,9 +59,9 @@ export function registerUserSystemTools(server: McpServer): void {
     {
       title: "[已过时] 批量修改参与者",
       description:
-        "[Deprecated] 批量修改用户系统中参与者的信息。users 为 JSON 数组字符串，每个对象包含 uid、uname、upass、udept、uextf 字段。",
+        "[Deprecated] 批量修改用户系统中参与者的信息。users 为 JSON 数组字符串，每个对象包含: uid(参与者唯一编号,必填)、uname(姓名)、upass(密码)、udept(部门)、uextf(附加信息)。注意：username 是主账号登录名，用于 API 鉴权；auto_create_udept 可在部门不存在时自动创建。",
       inputSchema: {
-        username: z.string().min(1).describe("主账户用户名"),
+        username: z.string().min(1).describe("问卷星主账号登录名（用于 API 鉴权）"),
         users: z
           .string()
           .min(2)
@@ -193,16 +193,16 @@ export function registerUserSystemTools(server: McpServer): void {
     {
       title: "[已过时] 查询问卷用户绑定",
       description:
-        "[Deprecated] 查询问卷与用户系统的绑定关系，返回绑定的参与者列表，支持分页。",
+        "[Deprecated] 查询问卷与用户系统的绑定关系，返回绑定的参与者列表。支持按参与状态(join_status)、日期(day)、周(week)、月(month)筛选，可选择是否强制获取参与次数(force_join_times)。",
       inputSchema: {
-        username: z.string().min(1).describe("主账户用户名"),
+        username: z.string().min(1).describe("问卷星主账号登录名"),
         vid: z.number().int().positive().describe("问卷编号"),
         usid: z.number().int().positive().describe("用户系统 ID"),
-        join_status: z.number().int().optional().describe("参与状态筛选，0=全部"),
-        day: z.string().optional().describe("按日期筛选，格式 yyyyMMdd（8位）"),
-        week: z.string().optional().describe("按周筛选，格式 yyyyWW（6位）"),
-        month: z.string().optional().describe("按月筛选，格式 yyyyMM（6位）"),
-        force_join_times: z.boolean().optional().describe("是否强制获取参与次数"),
+        join_status: z.number().int().optional().describe("按参与状态筛选：0=全部（默认）。当用户要求按参与状态查询时必须传递此参数"),
+        day: z.string().optional().describe("按日期筛选，格式 yyyyMMdd（8位），如 '20260331'。当用户要求按天查询时必须传递此参数"),
+        week: z.string().optional().describe("按周筛选，格式 yyyyWW（6位），如 '202614'。当用户要求按周查询时必须传递此参数"),
+        month: z.string().optional().describe("按月筛选，格式 yyyyMM（6位），如 '202603'。当用户要求按月查询时必须传递此参数"),
+        force_join_times: z.boolean().optional().describe("是否强制获取参与次数。当用户要求查看参与次数时设为 true"),
       },
       annotations: {
         destructiveHint: false,
