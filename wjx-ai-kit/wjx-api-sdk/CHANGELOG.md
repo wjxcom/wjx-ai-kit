@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.1.2] - 2026-03-31
+
+### Changed
+
+- **环境变量重命名**: `WJX_TOKEN` → `WJX_API_KEY`
+- **类型重命名**: `WjxCredentials.token` → `WjxCredentials.apiKey`
+- 新增 `WJX_CORP_ID` 环境变量支持（通讯录相关操作）
+
 ## [0.1.1] - 2026-03-30
 
 ### Fixed

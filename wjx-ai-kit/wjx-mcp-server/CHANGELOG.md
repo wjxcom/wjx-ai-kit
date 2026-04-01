@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.2] - 2026-03-31
+
+### Changed
+
+- **环境变量重命名**: `WJX_TOKEN` → `WJX_API_KEY`
+- **凭据类型**: `{ token }` → `{ apiKey }` 与 SDK 保持一致
+- 新增 `WJX_CORP_ID` 环境变量文档
+
 ## [0.1.1] - 2026-03-30
 
 ### Fixed
