@@ -250,7 +250,7 @@ export function registerSurveyTools(server: McpServer): void {
           .number()
           .int()
           .optional()
-          .describe("审核状态筛选：0=未审核, 1=审核通过, 2=审核中, 3=审核未通过"),
+          .describe("审核状态筛选：1=已通过, 2=审核中, 3=未通过, 4=待实名"),
         time_type: z
           .number()
           .int()
@@ -732,7 +732,7 @@ function parsedQuestionsToWire(questions: ParsedQuestion[]): WireQuestion[] {
     }
 
     // Scale: convert scaleRange to items
-    if (q.type === "scale" && q.scaleRange) {
+    if ((q.type === "scale" || q.type === "slider") && q.scaleRange) {
       const [min, max] = q.scaleRange;
       const minNum = parseInt(min, 10);
       const maxNum = parseInt(max, 10);
@@ -751,7 +751,7 @@ function parsedQuestionsToWire(questions: ParsedQuestion[]): WireQuestion[] {
     }
 
     // Matrix: convert matrixRows to items
-    if (q.type === "matrix" && q.matrixRows && q.matrixRows.length > 0) {
+    if (q.type.startsWith("matrix") && q.matrixRows && q.matrixRows.length > 0) {
       wq.items = q.matrixRows.map((row, i) => ({
         q_index: qIdx,
         item_index: i + 1,

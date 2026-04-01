@@ -201,7 +201,7 @@ test("server exposes all 56 tools, 8 resources, and 12 prompts over stdio", asyn
     const typesResource = await client.readResource({ uri: "wjx://reference/survey-types" });
     assert.ok(typesResource.contents.length > 0);
     const parsed = JSON.parse(typesResource.contents[0].text);
-    assert.equal(parsed["1"], "问卷调查");
+    assert.equal(parsed["1"], "调查");
 
     // ─── Prompts ───────────────────────────────────────────────────
     const promptsResult = await client.listPrompts();
