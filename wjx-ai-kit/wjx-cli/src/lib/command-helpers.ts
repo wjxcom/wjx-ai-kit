@@ -9,6 +9,9 @@ import { mergeStdinWithOpts } from "./stdin.js";
  * Strict integer parser. Rejects garbage like "123abc".
  */
 export function strictInt(v: string): number {
+  if (v === "") {
+    throw new CliError("INPUT_ERROR", `Invalid integer: ""`);
+  }
   const n = Number(v);
   if (!Number.isInteger(n)) {
     throw new CliError("INPUT_ERROR", `Invalid integer: "${v}"`);

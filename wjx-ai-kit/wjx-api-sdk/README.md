@@ -90,7 +90,7 @@ const result = await listSurveys({ page_index: 1 });
 import { setCredentialProvider } from "wjx-api-sdk";
 
 setCredentialProvider(() => ({
-  apiKey: getTokenFromVault(),
+  apiKey: getApiKeyFromVault(),
 }));
 
 // 后续调用自动使用 provider

@@ -6,7 +6,7 @@ export function getCredentials(globalOpts: { apiKey?: string }): WjxCredentials 
   if (!apiKey) {
     throw new CliError(
       "AUTH_ERROR",
-      "WJX_API_KEY 未设置。请通过 --api-key 参数或 WJX_API_KEY 环境变量提供。",
+      "WJX_API_KEY 未设置。请通过 --api-key 参数、WJX_API_KEY 环境变量、或运行 wjx init 配置。",
     );
   }
   return { apiKey };

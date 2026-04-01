@@ -1,8 +1,18 @@
 import { Command } from "commander";
+import { createRequire } from "node:module";
 import { listSurveys } from "wjx-api-sdk";
 import { getCredentials } from "../lib/auth.js";
 import { formatOutput } from "../lib/output.js";
 import { handleError } from "../lib/errors.js";
+import { loadConfig, CONFIG_PATH } from "../lib/config.js";
+
+const require = createRequire(import.meta.url);
+const sdkPkg = require("wjx-api-sdk/package.json");
+
+function maskApiKey(value: string): string {
+  if (value.length <= 4) return "****";
+  return value.slice(0, 4) + "****" + value.slice(-4);
+}
 
 export function registerDiagnosticCommands(program: Command): void {
   // --- whoami ---
@@ -18,7 +28,7 @@ export function registerDiagnosticCommands(program: Command): void {
         );
 
         if (result.result === false) {
-          // Token invalid or API error
+          // API Key invalid or API error
           formatOutput({ authenticated: false, error: result.errormsg || "ApiKey 无效" }, program.opts());
           process.exit(1);
         }
@@ -42,6 +52,14 @@ export function registerDiagnosticCommands(program: Command): void {
       try {
         const checks: Array<{ check: string; status: string; detail: string }> = [];
 
+        // 0. Config file
+        const config = loadConfig();
+        checks.push({
+          check: "配置文件",
+          status: config ? "ok" : "info",
+          detail: config ? CONFIG_PATH : `未找到 (运行 wjx init 创建)`,
+        });
+
         // 1. Node version
         const nodeVersion = process.version;
         const major = parseInt(nodeVersion.slice(1), 10);
@@ -52,15 +70,15 @@ export function registerDiagnosticCommands(program: Command): void {
         });
 
         // 2. WJX_API_KEY set?
-        const apiKey = program.opts().apiKey || process.env.WJX_API_KEY;
+        const apiKey = program.opts().apiKey || process.env.WJX_API_KEY || config?.apiKey;
         checks.push({
           check: "WJX_API_KEY",
           status: apiKey ? "ok" : "fail",
-          detail: apiKey ? `已设置 (${apiKey.slice(0, 8)}...)` : "未设置",
+          detail: apiKey ? `已设置 (${maskApiKey(apiKey)})` : "未设置",
         });
 
         // 3. WJX_CORP_ID
-        const corpId = process.env.WJX_CORP_ID;
+        const corpId = process.env.WJX_CORP_ID || config?.corpId;
         checks.push({
           check: "WJX_CORP_ID",
           status: corpId ? "ok" : "info",
@@ -68,7 +86,7 @@ export function registerDiagnosticCommands(program: Command): void {
         });
 
         // 4. WJX_BASE_URL
-        const baseUrl = process.env.WJX_BASE_URL || "https://www.wjx.cn";
+        const baseUrl = process.env.WJX_BASE_URL || config?.baseUrl || "https://www.wjx.cn";
         checks.push({
           check: "WJX_BASE_URL",
           status: "ok",
@@ -112,7 +130,7 @@ export function registerDiagnosticCommands(program: Command): void {
         checks.push({
           check: "wjx-api-sdk",
           status: "ok",
-          detail: "v1.0.0",
+          detail: `v${sdkPkg.version}`,
         });
 
         const allOk = checks.every((c) => c.status === "ok" || c.status === "skip" || c.status === "info");

@@ -22,7 +22,10 @@ export async function readStdin(): Promise<Record<string, unknown>> {
 
   try {
     const parsed = JSON.parse(raw);
-    if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) {
+    if (Array.isArray(parsed)) {
+      throw new CliError("INPUT_ERROR", "stdin JSON must be an object, got array");
+    }
+    if (typeof parsed !== "object" || parsed === null) {
       throw new CliError("INPUT_ERROR", "stdin JSON must be an object, got " + typeof parsed);
     }
     return parsed as Record<string, unknown>;
@@ -48,7 +51,7 @@ export function mergeStdinWithOpts(
 
   for (const key of Object.keys(opts)) {
     // Skip internal flags
-    if (key === "stdin" || key === "apiKey" || key === "json" || key === "table" || key === "verbose") {
+    if (key === "stdin" || key === "apiKey" || key === "json" || key === "table") {
       continue;
     }
     const source = command.getOptionValueSource(key);
