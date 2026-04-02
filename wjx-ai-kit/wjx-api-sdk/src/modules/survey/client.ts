@@ -1,8 +1,10 @@
 import type { WjxApiResponse, WjxCredentials, FetchLike } from "../../core/types.js";
 import { Action } from "../../core/constants.js";
 import { callWjxApi, getWjxCredentials, validateQuestionsJson } from "../../core/api-client.js";
+export { textToSurvey, parsedQuestionsToWire } from "./text-to-survey.js";
 import type {
   CreateSurveyInput,
+  CreateSurveyByTextInput,
   GetSurveyInput,
   ListSurveysInput,
   UpdateSurveyStatusInput,
@@ -13,7 +15,6 @@ import type {
   GetTagDetailsInput,
   ClearRecycleBinInput,
   UploadFileInput,
-  CreateSurveyByTextInput,
 } from "./types.js";
 
 export async function createSurvey<T = unknown>(
@@ -186,6 +187,9 @@ export async function clearRecycleBin<T = unknown>(
   return callWjxApi<T>(params, { credentials, fetchImpl, maxRetries: 0 });
 }
 
+/**
+ * 通过 DSL 文本创建问卷（调用 action 1000105，服务端解析 DSL）。
+ */
 export async function createSurveyByText<T = unknown>(
   input: CreateSurveyByTextInput,
   credentials: WjxCredentials = getWjxCredentials(),
@@ -193,9 +197,10 @@ export async function createSurveyByText<T = unknown>(
 ): Promise<WjxApiResponse<T>> {
   const params: Record<string, unknown> = {
     action: Action.CREATE_SURVEY_BY_TEXT,
-    survey_data: input.survey_data,
-    title: input.title,
+    survey_data: input.text,
   };
+  if (input.title !== undefined) params.title = input.title;
+  if (input.atype !== undefined) params.atype = input.atype;
   params.publish = input.publish ?? false;
   if (input.creater !== undefined) params.creater = input.creater;
 

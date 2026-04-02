@@ -38,6 +38,7 @@ export {
 // Survey module
 export {
   createSurvey,
+  createSurveyByText,
   getSurvey,
   listSurveys,
   updateSurveyStatus,
@@ -48,12 +49,13 @@ export {
   getTagDetails,
   clearRecycleBin,
   uploadFile,
-  createSurveyByText,
 } from "./modules/survey/client.js";
 export { surveyToText, typeToLabel, stripHtml } from "./modules/survey/survey-to-text.js";
-export { textToSurvey } from "./modules/survey/text-to-survey.js";
+export { textToSurvey, parsedQuestionsToWire } from "./modules/survey/text-to-survey.js";
+export type { WireQuestion } from "./modules/survey/text-to-survey.js";
 export type {
   CreateSurveyInput,
+  CreateSurveyByTextInput,
   GetSurveyInput,
   ListSurveysInput,
   UpdateSurveyStatusInput,
@@ -64,7 +66,6 @@ export type {
   GetTagDetailsInput,
   ClearRecycleBinInput,
   UploadFileInput,
-  CreateSurveyByTextInput,
   SurveyQuestionItem,
   SurveyQuestion,
   SurveyDetail,

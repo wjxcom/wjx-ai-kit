@@ -768,6 +768,132 @@ describe("analytics", () => {
 });
 
 // ═══════════════════════════════════════
+// survey create-by-text
+// ═══════════════════════════════════════
+
+describe("survey create-by-text", () => {
+  it("survey --help lists create-by-text", () => {
+    const out = run(["survey", "--help"]);
+    assert.match(out, /create-by-text/);
+  });
+
+  it("create-by-text without --text or --file → INPUT_ERROR exit 2", async () => {
+    const result = await runFull(["survey", "create-by-text"]);
+    assert.equal(result.exitCode, 2);
+    const err = JSON.parse(result.stderr.trim());
+    assert.equal(err.code, "INPUT_ERROR");
+    assert.ok(err.message.includes("--text") || err.message.includes("--file"));
+  });
+
+  it("create-by-text --file with nonexistent file → INPUT_ERROR exit 2", async () => {
+    const result = await runFull(["survey", "create-by-text", "--file", "/tmp/__no_such_file_12345.txt"]);
+    assert.equal(result.exitCode, 2);
+    const err = JSON.parse(result.stderr.trim());
+    assert.equal(err.code, "INPUT_ERROR");
+    assert.ok(err.message.includes("无法读取"));
+  });
+
+  it("create-by-text --dry-run parses DSL and shows preview", async () => {
+    const dsl = "测试问卷\n\n1. 你喜欢什么颜色？[单选题]\nA. 红色\nB. 蓝色\nC. 绿色";
+    const result = await runFull(
+      ["survey", "create-by-text", "--text", dsl, "--dry-run"],
+      { env: { WJX_API_KEY: "fake-key-1234567890", ...NO_CONFIG } },
+    );
+    assert.equal(result.exitCode, 0);
+    const preview = JSON.parse(result.stderr);
+    assert.equal(preview.dry_run, true);
+    assert.equal(preview.parsed_title, "测试问卷");
+    assert.equal(preview.question_count, 1);
+    assert.ok(Array.isArray(preview.wire_questions));
+    assert.equal(preview.wire_questions.length, 1);
+  });
+
+  it("create-by-text --dry-run with multi-question DSL", async () => {
+    const dsl = [
+      "英语考试",
+      "",
+      "1. What is the capital of France?[单选题]",
+      "A. London",
+      "B. Paris",
+      "C. Berlin",
+      "",
+      "2. Select all prime numbers[多选题]",
+      "A. 2",
+      "B. 4",
+      "C. 7",
+      "",
+      "3. Fill in: The sun is a {_}[填空题]",
+    ].join("\n");
+    const result = await runFull(
+      ["survey", "create-by-text", "--text", dsl, "--type", "6", "--dry-run"],
+      { env: { WJX_API_KEY: "fake-key-1234567890", ...NO_CONFIG } },
+    );
+    assert.equal(result.exitCode, 0);
+    const preview = JSON.parse(result.stderr);
+    assert.equal(preview.question_count, 3);
+    assert.equal(preview.parsed_title, "英语考试");
+  });
+
+  it("create-by-text without api-key → AUTH_ERROR exit 1", async () => {
+    const dsl = "标题\n\n1. Q1[单选题]\nA. a\nB. b";
+    const result = await runFull(
+      ["survey", "create-by-text", "--text", dsl],
+      { env: { WJX_API_KEY: "", PATH: process.env.PATH, ...NO_CONFIG } },
+    );
+    assert.equal(result.exitCode, 1);
+    const err = JSON.parse(result.stderr.trim());
+    assert.equal(err.code, "AUTH_ERROR");
+  });
+});
+
+// ═══════════════════════════════════════
+// reference command
+// ═══════════════════════════════════════
+
+describe("reference", () => {
+  it("reference is listed in main --help", () => {
+    const out = run(["--help"]);
+    assert.match(out, /reference/);
+  });
+
+  it("reference without topic lists available topics", () => {
+    const out = run(["reference"]);
+    assert.match(out, /dsl/);
+    assert.match(out, /question-types/);
+    assert.match(out, /survey/);
+    assert.match(out, /response/);
+    assert.match(out, /analytics/);
+  });
+
+  it("reference dsl outputs DSL syntax guide", () => {
+    const out = run(["reference", "dsl"]);
+    assert.match(out, /DSL/);
+    assert.match(out, /单选题/);
+    assert.match(out, /create-by-text/);
+  });
+
+  it("reference question-types outputs type mapping", () => {
+    const out = run(["reference", "question-types"]);
+    assert.match(out, /q_type/);
+    assert.match(out, /atype/);
+    assert.match(out, /考试/);
+  });
+
+  it("reference survey outputs survey commands", () => {
+    const out = run(["reference", "survey"]);
+    assert.match(out, /survey list/);
+    assert.match(out, /survey create/);
+    assert.match(out, /--vid/);
+  });
+
+  it("reference unknown-topic → exit 2", async () => {
+    const result = await runFull(["reference", "nonexistent"]);
+    assert.equal(result.exitCode, 2);
+    assert.match(result.stderr, /未知主题/);
+  });
+});
+
+// ═══════════════════════════════════════
 // init command
 // ═══════════════════════════════════════
 

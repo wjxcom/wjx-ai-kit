@@ -5,6 +5,32 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.8] - 2026-04-02
+
+### Added
+
+- **`wjx survey create-by-text` 命令**: 用 DSL 文本创建问卷，无需手写 JSON
+  - `--text <s>` 直接传入 DSL 文本
+  - `--file <path>` 从文件读取 DSL 文本
+  - `--type <n>` 问卷类型（1=调查, 6=考试）
+  - `--publish` 创建后发布
+  - `--dry-run` 预览解析结果（不调用 API）
+  - 调用 SDK 的 `createSurveyByText()` 函数
+- **`wjx reference` 命令**: 输出命令参考文档
+  - `wjx reference` 列出可用主题
+  - `wjx reference dsl` DSL 文本语法参考
+  - `wjx reference question-types` 题型/问卷类型映射表
+  - `wjx reference survey` survey 模块命令参考
+  - `wjx reference response` response 模块命令参考
+  - `wjx reference analytics` analytics 分析命令参考
+- **Claude Code Skill**: `.claude/skills/wjx-cli-use/` 渐进式披露 CLI 使用指南
+
+### Changed
+
+- SDK 新增 `createSurveyByText()`、`parsedQuestionsToWire()` 导出
+- MCP Server 去除重复的 `parsedQuestionsToWire`，改为从 SDK 导入
+- 测试数从 96 增加到 108
+
 ## [0.1.7] - 2026-04-01
 
 ### Added

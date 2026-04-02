@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
-import { textToSurvey, surveyToText } from "../dist/index.js";
+import { textToSurvey, surveyToText, parsedQuestionsToWire } from "../dist/index.js";
 
 // ─── Helpers ────────────────────────────────────────────────────────
 
@@ -357,5 +357,72 @@ describe("textToSurvey: new question type labels", () => {
 
   it("parses [多级下拉题] as multi-level-dropdown", () => {
     assert.equal(parseSingle("[多级下拉题]").type, "multi-level-dropdown");
+  });
+});
+
+// ─── parsedQuestionsToWire: col_items for matrix ────────────────────
+
+describe("parsedQuestionsToWire", () => {
+  it("converts matrix question with matrixColumns to col_items", () => {
+    const questions = [{
+      title: "请评价以下方面",
+      type: "matrix-single",
+      required: true,
+      matrixRows: ["服务态度", "响应速度"],
+      matrixColumns: ["非常满意", "满意", "一般", "不满意"],
+    }];
+    const wire = parsedQuestionsToWire(questions);
+
+    assert.equal(wire.length, 1);
+    assert.equal(wire[0].q_type, 7);
+    assert.equal(wire[0].q_subtype, 702);
+    assert.deepEqual(wire[0].items, [
+      { q_index: 1, item_index: 1, item_title: "服务态度" },
+      { q_index: 1, item_index: 2, item_title: "响应速度" },
+    ]);
+    assert.deepEqual(wire[0].col_items, [
+      { q_index: 1, item_index: 1, item_title: "非常满意" },
+      { q_index: 1, item_index: 2, item_title: "满意" },
+      { q_index: 1, item_index: 3, item_title: "一般" },
+      { q_index: 1, item_index: 4, item_title: "不满意" },
+    ]);
+  });
+
+  it("does not add col_items for non-matrix questions", () => {
+    const questions = [{
+      title: "选择",
+      type: "single-choice",
+      required: true,
+      options: ["A", "B"],
+    }];
+    const wire = parsedQuestionsToWire(questions);
+    assert.equal(wire[0].col_items, undefined);
+  });
+
+  it("handles matrix without matrixColumns (no col_items)", () => {
+    const questions = [{
+      title: "评价",
+      type: "matrix",
+      required: true,
+      matrixRows: ["行1", "行2"],
+    }];
+    const wire = parsedQuestionsToWire(questions);
+    assert.equal(wire[0].col_items, undefined);
+    assert.deepEqual(wire[0].items, [
+      { q_index: 1, item_index: 1, item_title: "行1" },
+      { q_index: 1, item_index: 2, item_title: "行2" },
+    ]);
+  });
+
+  it("throws on unsupported question type", () => {
+    const questions = [{
+      title: "未知题",
+      type: "unknown-type",
+      required: true,
+    }];
+    assert.throws(
+      () => parsedQuestionsToWire(questions),
+      /不支持的题型/,
+    );
   });
 });
