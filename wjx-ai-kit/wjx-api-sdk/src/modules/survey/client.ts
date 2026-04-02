@@ -13,6 +13,7 @@ import type {
   GetTagDetailsInput,
   ClearRecycleBinInput,
   UploadFileInput,
+  CreateSurveyByTextInput,
 } from "./types.js";
 
 export async function createSurvey<T = unknown>(
@@ -181,6 +182,22 @@ export async function clearRecycleBin<T = unknown>(
     username: input.username,
   };
   if (input.vid !== undefined) params.vid = input.vid;
+
+  return callWjxApi<T>(params, { credentials, fetchImpl, maxRetries: 0 });
+}
+
+export async function createSurveyByText<T = unknown>(
+  input: CreateSurveyByTextInput,
+  credentials: WjxCredentials = getWjxCredentials(),
+  fetchImpl: FetchLike = fetch,
+): Promise<WjxApiResponse<T>> {
+  const params: Record<string, unknown> = {
+    action: Action.CREATE_SURVEY_BY_TEXT,
+    survey_data: input.survey_data,
+    title: input.title,
+  };
+  params.publish = input.publish ?? false;
+  if (input.creater !== undefined) params.creater = input.creater;
 
   return callWjxApi<T>(params, { credentials, fetchImpl, maxRetries: 0 });
 }

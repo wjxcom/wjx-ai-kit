@@ -36,8 +36,8 @@ const LABEL_TO_TYPE: Record<string, string> = {
   "情景题": "scenario",
 };
 
-/** Regex to match a numbered question line: "1. Title[标签]（选填）" */
-const Q_LINE_RE = /^(\d+)\.\s+(.+?)(\[([^\]]+)\])(\s*（选填）)?\s*$/;
+/** Regex to match a numbered question line: "1. Title[标签]（选填）" or "1.Title [标签]" */
+const Q_LINE_RE = /^(\d+)\.\s*(.+?)\s*(\[([^\]]+)\])(\s*（选填）)?\s*$/;
 
 /** Regex to match a DSL type label inside brackets: [单选题], [量表题], etc. */
 const LABEL_RE = /\[([^\]]+)\]/;
@@ -166,6 +166,25 @@ function parseQuestionBody(
   return { question, nextCursor: cursor };
 }
 
+/** Regex to strip letter prefix from option lines: "A 选项" → "选项" */
+const OPTION_PREFIX_RE = /^[A-Za-z]\s+/;
+
+/**
+ * Strip leading letter prefix (e.g. "A ", "B ") from an option string.
+ */
+function stripOptionPrefix(option: string): string {
+  return option.replace(OPTION_PREFIX_RE, "");
+}
+
+/**
+ * Detect if a line looks like space-separated column headers for a matrix question.
+ * Heuristic: 3+ tokens separated by spaces, none starting with "- ".
+ */
+function isMatrixColumnHeader(line: string): boolean {
+  const tokens = line.split(/\s+/).filter(Boolean);
+  return tokens.length >= 3;
+}
+
 /**
  * Build a ParsedQuestion from type, title, and body lines.
  */
@@ -183,17 +202,20 @@ function buildQuestion(type: string, title: string, required: boolean, body: str
     case "weight":
     case "commodity":
     case "scenario":
-      q.options = body.filter((l) => l.length > 0);
+      q.options = body.filter((l) => l.length > 0).map(stripOptionPrefix);
       break;
 
     case "scale":
     case "slider":
-      // Scale body is "min~max" on one line
+      // Scale body is "min~max" on one line, or individual option lines
       if (body.length > 0) {
         const rangeLine = body[0];
         const parts = rangeLine.split("~");
         if (parts.length === 2) {
           q.scaleRange = [parts[0].trim(), parts[1].trim()];
+        } else {
+          // AI may output scale options as individual lines (e.g. NPS 0-10)
+          q.options = body.filter((l) => l.length > 0).map(stripOptionPrefix);
         }
       }
       break;
@@ -203,12 +225,33 @@ function buildQuestion(type: string, title: string, required: boolean, body: str
     case "matrix-single":
     case "matrix-multi":
     case "matrix-fill":
-      // Matrix body: "行：" header, then "- row1", "- row2", ...
+      // Matrix body: two formats supported
+      // Format 1 (DSL): "行：" header, then "- row1", "- row2", ...
+      // Format 2 (AI): space-separated column headers on first line, then plain row lines
       q.matrixRows = [];
-      for (const line of body) {
-        if (line === "行：") continue;
-        if (line.startsWith("- ")) {
-          q.matrixRows.push(line.slice(2).trim());
+      if (body.length > 0 && body[0] === "行：") {
+        // Format 1: DSL format
+        for (const line of body) {
+          if (line === "行：") continue;
+          if (line.startsWith("- ")) {
+            q.matrixRows.push(line.slice(2).trim());
+          }
+        }
+      } else if (body.length >= 2 && isMatrixColumnHeader(body[0])) {
+        // Format 2: AI format - first line is column headers
+        q.matrixColumns = body[0].split(/\s+/).filter(Boolean);
+        for (let i = 1; i < body.length; i++) {
+          const row = body[i].trim();
+          if (row) q.matrixRows.push(row);
+        }
+      } else {
+        // Fallback: treat all lines as rows
+        for (const line of body) {
+          if (line.startsWith("- ")) {
+            q.matrixRows.push(line.slice(2).trim());
+          } else if (line.trim()) {
+            q.matrixRows.push(line.trim());
+          }
         }
       }
       break;

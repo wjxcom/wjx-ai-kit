@@ -686,6 +686,7 @@ interface WireQuestion {
   q_title: string;
   is_requir: boolean;
   items?: { q_index: number; item_index: number; item_title: string }[];
+  col_items?: { q_index: number; item_index: number; item_title: string }[];
 }
 
 function parsedQuestionsToWire(questions: ParsedQuestion[]): WireQuestion[] {
@@ -757,6 +758,15 @@ function parsedQuestionsToWire(questions: ParsedQuestion[]): WireQuestion[] {
         q_index: qIdx,
         item_index: i + 1,
         item_title: row,
+      }));
+    }
+
+    // Matrix: convert matrixColumns to col_items
+    if (q.type.startsWith("matrix") && q.matrixColumns && q.matrixColumns.length > 0) {
+      wq.col_items = q.matrixColumns.map((col: string, i: number) => ({
+        q_index: qIdx,
+        item_index: i + 1,
+        item_title: col,
       }));
     }
 

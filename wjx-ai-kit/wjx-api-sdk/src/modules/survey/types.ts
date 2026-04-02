@@ -15,6 +15,13 @@ export interface UploadFileInput {
   file: string;
 }
 
+export interface CreateSurveyByTextInput {
+  survey_data: string;
+  title?: string;
+  creater?: string;
+  publish?: boolean;
+}
+
 export interface GetSurveyInput {
   vid: number;
   get_questions?: boolean;
@@ -100,6 +107,8 @@ export interface ParsedQuestion {
   scaleRange?: [string, string];
   /** Matrix row labels. */
   matrixRows?: string[];
+  /** Matrix column labels (e.g. rating headers like "很不满意 不满意 一般 满意 很满意"). */
+  matrixColumns?: string[];
 }
 
 /** Parsed survey structure from DSL text. */

@@ -48,6 +48,7 @@ export {
   getTagDetails,
   clearRecycleBin,
   uploadFile,
+  createSurveyByText,
 } from "./modules/survey/client.js";
 export { surveyToText, typeToLabel, stripHtml } from "./modules/survey/survey-to-text.js";
 export { textToSurvey } from "./modules/survey/text-to-survey.js";
@@ -63,6 +64,7 @@ export type {
   GetTagDetailsInput,
   ClearRecycleBinInput,
   UploadFileInput,
+  CreateSurveyByTextInput,
   SurveyQuestionItem,
   SurveyQuestion,
   SurveyDetail,
