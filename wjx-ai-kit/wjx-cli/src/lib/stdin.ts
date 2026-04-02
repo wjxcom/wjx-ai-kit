@@ -51,7 +51,7 @@ export function mergeStdinWithOpts(
 
   for (const key of Object.keys(opts)) {
     // Skip internal flags
-    if (key === "stdin" || key === "apiKey" || key === "json" || key === "table") {
+    if (key === "stdin" || key === "apiKey" || key === "json" || key === "table" || key === "dryRun") {
       continue;
     }
     const source = command.getOptionValueSource(key);

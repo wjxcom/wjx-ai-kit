@@ -782,3 +782,127 @@ describe("init", () => {
     assert.match(out, /init/);
   });
 });
+
+// ═══════════════════════════════════════
+// --dry-run
+// ═══════════════════════════════════════
+
+describe("--dry-run", () => {
+  it("survey list --dry-run outputs request preview to stderr", async () => {
+    const result = await runFull(
+      ["survey", "list", "--dry-run"],
+      { env: { WJX_API_KEY: "test-key-1234567890", ...NO_CONFIG } },
+    );
+    assert.equal(result.exitCode, 0);
+    assert.equal(result.stdout, "");
+    const preview = JSON.parse(result.stderr);
+    assert.equal(preview.dry_run, true);
+    assert.ok(preview.request);
+    assert.equal(preview.request.method, "POST");
+    assert.match(preview.request.url, /action=/);
+    assert.match(preview.request.headers.Authorization, /\*\*\*\*/);
+    assert.ok(preview.request.body);
+  });
+
+  it("noAuth command dry-run shows input only", async () => {
+    const result = await runFull(
+      ["sso", "subaccount-url", "--subuser", "test", "--dry-run"],
+    );
+    assert.equal(result.exitCode, 0);
+    const preview = JSON.parse(result.stderr);
+    assert.equal(preview.dry_run, true);
+    assert.ok(preview.note);
+    assert.ok(preview.input);
+  });
+
+  it("dry-run does not make actual API calls", async () => {
+    const result = await runFull(
+      ["survey", "list", "--dry-run"],
+      { env: { WJX_API_KEY: "fake", WJX_BASE_URL: "http://localhost:1", ...NO_CONFIG } },
+    );
+    assert.equal(result.exitCode, 0);
+    const preview = JSON.parse(result.stderr);
+    assert.equal(preview.dry_run, true);
+  });
+
+  it("dry-run exit code is always 0", async () => {
+    const result = await runFull(
+      ["survey", "get", "--vid", "123", "--dry-run"],
+      { env: { WJX_API_KEY: "fake", ...NO_CONFIG } },
+    );
+    assert.equal(result.exitCode, 0);
+  });
+
+  it("--dry-run is listed in main --help", () => {
+    const out = run(["--help"]);
+    assert.match(out, /dry-run/);
+  });
+
+  it("export-text --dry-run outputs request preview", async () => {
+    const result = await runFull(
+      ["survey", "export-text", "--vid", "123", "--dry-run"],
+      { env: { WJX_API_KEY: "fake-key-1234567890", ...NO_CONFIG } },
+    );
+    assert.equal(result.exitCode, 0);
+    const preview = JSON.parse(result.stderr);
+    assert.equal(preview.dry_run, true);
+    assert.ok(preview.request);
+    assert.equal(preview.request.method, "POST");
+  });
+});
+
+// ═══════════════════════════════════════
+// completion
+// ═══════════════════════════════════════
+
+describe("completion", () => {
+  it("completion bash outputs a bash script", () => {
+    const out = run(["completion", "bash"]);
+    assert.match(out, /complete.*_wjx_completions.*wjx/);
+    assert.match(out, /COMP_WORDS/);
+  });
+
+  it("completion zsh outputs a zsh script", () => {
+    const out = run(["completion", "zsh"]);
+    assert.match(out, /compdef/);
+  });
+
+  it("completion fish outputs a fish script", () => {
+    const out = run(["completion", "fish"]);
+    assert.match(out, /complete -c wjx/);
+  });
+
+  it("--get-completions returns top-level commands", async () => {
+    const result = await runFull(["--get-completions", "4", "wjx "]);
+    assert.equal(result.exitCode, 0);
+    assert.match(result.stdout, /survey/);
+    assert.match(result.stdout, /response/);
+    assert.match(result.stdout, /completion/);
+  });
+
+  it("--get-completions returns subcommands for survey", async () => {
+    const result = await runFull(["--get-completions", "11", "wjx survey "]);
+    assert.equal(result.exitCode, 0);
+    assert.match(result.stdout, /list/);
+    assert.match(result.stdout, /get/);
+    assert.match(result.stdout, /create/);
+  });
+
+  it("--get-completions filters by partial", async () => {
+    const result = await runFull(["--get-completions", "7", "wjx sur"]);
+    assert.equal(result.exitCode, 0);
+    assert.match(result.stdout, /survey/);
+    assert.ok(!result.stdout.includes("response"));
+  });
+
+  it("--get-completions returns options when typing --", async () => {
+    const result = await runFull(["--get-completions", "20", "wjx survey list --pa"]);
+    assert.equal(result.exitCode, 0);
+    assert.match(result.stdout, /--page/);
+  });
+
+  it("completion is listed in main --help", () => {
+    const out = run(["--help"]);
+    assert.match(out, /completion/);
+  });
+});

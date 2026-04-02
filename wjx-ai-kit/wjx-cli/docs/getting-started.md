@@ -104,6 +104,9 @@ wjx survey get --vid 12345               # 查看问卷详情
 wjx survey create --title "我的问卷"      # 创建新问卷
 wjx survey export-text --vid 12345 --raw # 导出为纯文本
 
+# Dry-run 预览（不实际调 API）
+wjx survey list --dry-run
+
 # 答卷操作
 wjx response count --vid 12345           # 答卷总数
 wjx response query --vid 12345           # 查询答卷
@@ -116,6 +119,9 @@ wjx analytics csat --scores "[4,5,3,5,2,4,5]"
 # 管道和导出
 wjx survey list | jq '.data.activitys'
 wjx survey list > my-surveys.json
+
+# Shell 补全（安装后输入 wjx 按 Tab 自动补全命令）
+wjx completion install
 ```
 
 ---

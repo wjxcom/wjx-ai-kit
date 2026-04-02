@@ -174,11 +174,11 @@ wjx-cli/
 4. src/commands/analytics.ts（6 个 verb）
 5. 测试
 
-### Phase 4: DX 增强（可选）
-1. `wjx completion`（bash/zsh/fish 自动补全）
-2. `wjx config`（配置文件管理）
-3. `--dry-run` 预览
-4. stdin 管道输入
+### Phase 4: DX 增强 ✅
+1. `wjx completion`（bash/zsh/fish 自动补全）— ✅ 已完成
+2. `wjx init`（交互式配置向导）— ✅ 已完成
+3. `--dry-run` 预览 — ✅ 已完成
+4. stdin 管道输入 — ✅ 已完成
 
 ## 每个命令的实现模式
 

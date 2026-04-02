@@ -1,5 +1,5 @@
 import { Command } from "commander";
-import type { WjxApiResponse } from "wjx-api-sdk";
+import type { WjxApiResponse, FetchLike } from "wjx-api-sdk";
 import { getCredentials } from "./auth.js";
 import { formatOutput } from "./output.js";
 import { CliError, handleError } from "./errors.js";
@@ -30,6 +30,51 @@ export function requireField(merged: Record<string, unknown>, field: string, lab
 
 interface ExecuteOpts {
   noAuth?: boolean;
+}
+
+export interface CapturedRequest {
+  method: string;
+  url: string;
+  headers: Record<string, string>;
+  body: string;
+}
+
+// "Bearer " prefix is 7 chars; preserve prefix + first 4 key chars, mask middle, keep last 4
+function maskAuthHeader(value: string): string {
+  if (value.length <= 12) return "****";
+  return value.slice(0, 11) + "****" + value.slice(-4);
+}
+
+export function createCapturingFetch(): {
+  fetchImpl: FetchLike;
+  getCapturedRequest: () => CapturedRequest | null;
+} {
+  let captured: CapturedRequest | null = null;
+
+  const fetchImpl: FetchLike = async (url, init) => {
+    const headers: Record<string, string> = {};
+    if (init?.headers) {
+      for (const [k, v] of Object.entries(init.headers as Record<string, string>)) {
+        headers[k] = k.toLowerCase() === "authorization" ? maskAuthHeader(String(v)) : String(v);
+      }
+    }
+    captured = {
+      method: init?.method ?? "GET",
+      url: String(url),
+      headers,
+      body: init?.body ? String(init.body) : "",
+    };
+    return new Response(JSON.stringify({ result: true, data: {} }), {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
+    });
+  };
+
+  return { fetchImpl, getCapturedRequest: () => captured };
+}
+
+export function printDryRunPreview(request: CapturedRequest | null): void {
+  process.stderr.write(JSON.stringify({ dry_run: true, request }, null, 2) + "\n");
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -64,16 +109,33 @@ export async function executeCommand(
     }
 
     const input = buildInput(merged);
+    const globalOpts = program.opts();
 
     if (opts.noAuth) {
+      if (globalOpts.dryRun) {
+        process.stderr.write(JSON.stringify({
+          dry_run: true,
+          note: "本地命令，不会发送 API 请求",
+          input,
+        }, null, 2) + "\n");
+        return;
+      }
       // Local commands (e.g. buildSurveyUrl) — call with input only
       const localFn = sdkFn as unknown as (input: Record<string, unknown>) => unknown;
       const result = localFn(input);
-      formatOutput(result, program.opts());
+      formatOutput(result, globalOpts);
       return;
     }
 
-    const creds = getCredentials(program.opts());
+    const creds = getCredentials(globalOpts);
+
+    if (globalOpts.dryRun) {
+      const { fetchImpl, getCapturedRequest } = createCapturingFetch();
+      await sdkFn(input, creds, fetchImpl);
+      printDryRunPreview(getCapturedRequest());
+      return;
+    }
+
     const result = await sdkFn(input, creds);
 
     // P0 fix: detect SDK API failure response
@@ -84,7 +146,7 @@ export async function executeCommand(
       );
     }
 
-    formatOutput(result, program.opts());
+    formatOutput(result, globalOpts);
   } catch (e) {
     handleError(e);
   }
