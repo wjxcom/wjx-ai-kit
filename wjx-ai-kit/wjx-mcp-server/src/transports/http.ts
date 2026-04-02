@@ -23,6 +23,23 @@ function extractBearerToken(req: IncomingMessage): string | undefined {
   return match ? match[1] : undefined;
 }
 
+/**
+ * Extract the client IP from the incoming request.
+ * Respects reverse-proxy headers: X-Forwarded-For, X-Real-Ip, then socket.remoteAddress.
+ */
+function getClientIp(req: IncomingMessage): string | undefined {
+  const forwarded = req.headers["x-forwarded-for"];
+  if (forwarded) {
+    const first = (Array.isArray(forwarded) ? forwarded[0] : forwarded).split(",")[0].trim();
+    if (first) return first;
+  }
+  const realIp = req.headers["x-real-ip"];
+  if (realIp) {
+    return Array.isArray(realIp) ? realIp[0] : realIp;
+  }
+  return req.socket.remoteAddress;
+}
+
 /** Read the full request body as a string, then JSON.parse it. */
 function readBody(req: IncomingMessage): Promise<unknown> {
   return new Promise((resolve, reject) => {
@@ -83,9 +100,10 @@ export async function startHttpTransport(
       }
     }
 
-    // Build per-request WjxCredentials from Bearer token
+    // Build per-request WjxCredentials from Bearer token + client IP
+    const clientIp = getClientIp(req);
     const clientCreds: WjxCredentials | undefined = bearerToken
-      ? { apiKey: bearerToken }
+      ? { apiKey: bearerToken, ...(clientIp ? { clientIp } : {}) }
       : undefined;
 
     if (url.pathname !== "/mcp") {

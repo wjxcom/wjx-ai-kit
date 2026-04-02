@@ -1,5 +1,6 @@
 export interface WjxCredentials {
   apiKey: string;
+  clientIp?: string;
 }
 
 export interface WjxApiSuccess<T = unknown> {

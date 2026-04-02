@@ -114,12 +114,17 @@ async function _callApi<T = unknown>(
 
       let response: Response;
       try {
+        const headers: Record<string, string> = {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${credentials.apiKey}`,
+        };
+        if (credentials.clientIp) {
+          headers["X-Forwarded-For"] = credentials.clientIp;
+        }
+
         response = await fetchImpl(url, {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "Authorization": `Bearer ${credentials.apiKey}`,
-          },
+          headers,
           body: JSON.stringify(params),
           signal: controller.signal,
         });
