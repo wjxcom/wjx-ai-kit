@@ -23,6 +23,13 @@ All notable changes to this project will be documented in this file.
 
 - **评分量表 0 分被覆写**: text-to-survey 解析器不再将 `item_score=0` 视为未设置
 
+## [0.1.4] - 2026-04-01
+
+### Added
+
+- 导出 `LABEL_TO_TYPE` 和 `TYPE_MAP` 供消费方动态生成参考文档
+- 导出类型 `WireQuestion`
+
 ## [0.1.3] - 2026-04-01
 
 ### Added

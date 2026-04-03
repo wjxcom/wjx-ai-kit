@@ -147,7 +147,7 @@ npm run build --workspace=wjx-cli
 
 # 运行所有测试
 npm test --workspace=wjx-api-sdk      # ~623 tests
-npm test --workspace=wjx-mcp-server   # ~280 tests
+npm test --workspace=wjx-mcp-server   # ~282 tests
 npm test --workspace=wjx-cli          # ~122 tests
 ```
 

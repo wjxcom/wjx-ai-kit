@@ -139,6 +139,6 @@ wjx completion install
 
 ## 下一步
 
-- [README.md](../README.md) — 全部 55 个子命令参考
+- [README.md](../README.md) — 全部 67 个子命令参考
 - [wjx-api-sdk](../../wjx-api-sdk/) — 在 Node.js 项目中调用 API
 - [wjx-mcp-server](../../wjx-mcp-server/) — 接入 Claude / Cursor 等 AI 客户端

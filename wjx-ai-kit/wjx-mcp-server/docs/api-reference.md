@@ -4,9 +4,11 @@
 
 ## 概览
 
-- Tools: 54 个，分为 7 个模块
-- Resources: 7 个
-- Prompts: 10 个
+- Tools: 57 个，分为 7 个模块
+- Resources: 8 个
+- Prompts: 19 个
+
+> **注意：** 本文档可能落后于最新代码。以 `src/modules/*/tools.ts` 中的 Zod schema 定义为准。
 - 参数字段、必填项与默认值以源码中的 Zod schema 为准
 - 返回值说明为调用语义摘要，实际响应字段仍以问卷星 OpenAPI 返回为准
 

@@ -228,6 +228,7 @@ wjx survey url --mode create             # 生成创建/编辑 URL
 | | `--file` | **是*** | string | 从文件读取 DSL 文本 |
 | | `--type` | | int | 问卷类型（1=调查, 6=考试，默认 1） |
 | | `--publish` | | flag | 创建后立即发布 |
+| | `--creater` | | string | 创建者子账号 |
 | **url** | `--mode` | | string | `create` 或 `edit`（默认 create） |
 | | `--name` | | string | 问卷名称（create 模式） |
 | | `--activity` | | int | 问卷 vid（edit 模式必填） |

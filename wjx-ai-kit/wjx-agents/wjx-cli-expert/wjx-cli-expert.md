@@ -60,9 +60,9 @@ wjx doctor
 
 ### 考试问卷注意事项
 
-- 创建考试问卷时 `--atype 6`，考试中的单选/多选/填空自动变为考试题型
+- 创建考试问卷时 `--type 6`，考试中的单选/多选/填空自动变为考试题型
 - **API 限制**：考试的正确答案和每题分值无法通过 API 设置，创建后必须提供 `wjx survey url --mode edit --activity N` 编辑链接，指引用户在网页端手动配置答案与评分
-- 创建考试后使用 `wjx survey update-settings --vid N --time-setting '...'` 设置考试时间限制
+- 创建考试后使用 `wjx survey update-settings --vid N --time_setting '...'` 设置考试时间限制
 
 ### 查询数据
 

@@ -226,7 +226,7 @@ async function sdkFunction(
 | `calculateCsat(responses)` | 计算 CSAT 客户满意度 |
 | `detectAnomalies(responses)` | 检测异常答卷 |
 | `compareMetrics(baseline, current)` | 指标对比分析 |
-| `decodePushPayload(payload)` | 解码推送回调数据 |
+| `decodePushPayload(encryptedData, appKey, signature?, rawBody?)` | 解码推送回调数据 |
 
 ---
 

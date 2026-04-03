@@ -266,6 +266,7 @@ wjx-mcp-server/
 ├── tests/                        # 集成测试
 ├── docs/
 │   ├── architecture.md           # 架构设计文档
+│   ├── api-reference.md          # API 参考
 │   └── wjx-openapi-spec.md      # 问卷星 OpenAPI 参考
 ├── .env.example                  # 环境变量模板
 ├── CHANGELOG.md                  # 版本历史
