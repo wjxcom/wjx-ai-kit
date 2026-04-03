@@ -3,14 +3,10 @@ import { createInterface } from "node:readline/promises";
 import { stdin, stderr } from "node:process";
 import { listSurveys } from "wjx-api-sdk";
 import { loadConfig, saveConfig, CONFIG_PATH } from "../lib/config.js";
+import { maskApiKey } from "../lib/mask.js";
 import type { WjxConfig } from "../lib/config.js";
 
 const DEFAULT_BASE_URL = "https://www.wjx.cn";
-
-function mask(value: string): string {
-  if (value.length <= 4) return "****";
-  return value.slice(0, 4) + "****" + value.slice(-4);
-}
 
 export function registerInitCommands(program: Command): void {
   program
@@ -30,7 +26,7 @@ export function registerInitCommands(program: Command): void {
         // 1. API Key (required *)
         let apiKey = "";
         while (!apiKey) {
-          const hint = currentApiKey ? ` [${mask(currentApiKey)}]` : "";
+          const hint = currentApiKey ? ` [${maskApiKey(currentApiKey)}]` : "";
           const input = await rl.question(`* WJX_API_KEY${hint}: `);
           apiKey = input.trim() || currentApiKey;
           if (!apiKey) {

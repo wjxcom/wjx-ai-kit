@@ -5,14 +5,10 @@ import { getCredentials } from "../lib/auth.js";
 import { formatOutput } from "../lib/output.js";
 import { handleError } from "../lib/errors.js";
 import { loadConfig, CONFIG_PATH } from "../lib/config.js";
+import { maskApiKey } from "../lib/mask.js";
 
 const require = createRequire(import.meta.url);
-const sdkPkg = require("wjx-api-sdk/package.json");
-
-function maskApiKey(value: string): string {
-  if (value.length <= 4) return "****";
-  return value.slice(0, 4) + "****" + value.slice(-4);
-}
+const sdkPkg = require("wjx-api-sdk/package.json") as { version: string };
 
 export function registerDiagnosticCommands(program: Command): void {
   // --- whoami ---

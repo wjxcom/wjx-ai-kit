@@ -22,11 +22,9 @@ export async function readStdin(): Promise<Record<string, unknown>> {
 
   try {
     const parsed = JSON.parse(raw);
-    if (Array.isArray(parsed)) {
-      throw new CliError("INPUT_ERROR", "stdin JSON must be an object, got array");
-    }
-    if (typeof parsed !== "object" || parsed === null) {
-      throw new CliError("INPUT_ERROR", "stdin JSON must be an object, got " + typeof parsed);
+    if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) {
+      throw new CliError("INPUT_ERROR",
+        `stdin JSON must be an object, got ${Array.isArray(parsed) ? "array" : typeof parsed}`);
     }
     return parsed as Record<string, unknown>;
   } catch (e) {

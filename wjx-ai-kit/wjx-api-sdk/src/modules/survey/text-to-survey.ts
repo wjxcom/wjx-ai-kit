@@ -312,7 +312,12 @@ function stripOptionPrefix(option: string): string {
 
 /**
  * Detect if a line looks like space-separated column headers for a matrix question.
- * Heuristic: 3+ tokens separated by spaces, none starting with "- ".
+ * Heuristic: 3+ tokens separated by spaces.
+ *
+ * NOTE: This heuristic is intentionally loose — it is ONLY called inside the
+ * matrix case branch of buildQuestion(), so non-matrix questions never reach it.
+ * In a matrix context, a first body line with 3+ space-separated tokens is very
+ * likely to be column headers (e.g. "非常不满意 不满意 一般 满意 非常满意").
  */
 function isMatrixColumnHeader(line: string): boolean {
   const tokens = line.split(/\s+/).filter(Boolean);

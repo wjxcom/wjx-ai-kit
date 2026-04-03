@@ -117,7 +117,6 @@ export function registerSurveyCommands(program: Command): void {
         }
 
         const globalOpts = program.opts();
-        const creds = getCredentials(globalOpts);
 
         if (globalOpts.dryRun) {
           const parsed = textToSurvey(dslText);
@@ -132,6 +131,7 @@ export function registerSurveyCommands(program: Command): void {
           return;
         }
 
+        const creds = getCredentials(globalOpts);
         const result = await createSurveyByText({
           text: dslText,
           atype: merged.type as number | undefined,
