@@ -4,6 +4,7 @@ import { getCredentials } from "./auth.js";
 import { formatOutput } from "./output.js";
 import { CliError, handleError } from "./errors.js";
 import { mergeStdinWithOpts } from "./stdin.js";
+import { maskAuthHeader } from "./mask.js";
 
 /**
  * Strict integer parser. Rejects garbage like "123abc".
@@ -37,12 +38,6 @@ export interface CapturedRequest {
   url: string;
   headers: Record<string, string>;
   body: string;
-}
-
-// "Bearer " prefix is 7 chars; preserve prefix + first 4 key chars, mask middle, keep last 4
-function maskAuthHeader(value: string): string {
-  if (value.length <= 12) return "****";
-  return value.slice(0, 11) + "****" + value.slice(-4);
 }
 
 export function createCapturingFetch(): {

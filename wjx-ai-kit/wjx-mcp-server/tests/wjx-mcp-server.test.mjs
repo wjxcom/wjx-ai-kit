@@ -56,7 +56,7 @@ test("createSurvey sends a JSON POST with Bearer auth to WJX", async () => {
   assert.equal("traceid" in parsedBody, false, "traceid should not be in POST body");
 });
 
-test("server exposes all 56 tools, 8 resources, and 12 prompts over stdio", async () => {
+test("server exposes all 56 tools, 8 resources, and 19 prompts over stdio", async () => {
   const transport = new StdioClientTransport({
     command: "node",
     args: [serverEntry],
@@ -215,6 +215,13 @@ test("server exposes all 56 tools, 8 resources, and 12 prompts over stdio", asyn
       "cross-tabulation",
       "csat-analysis",
       "design-survey",
+      "generate-360-evaluation",
+      "generate-engagement-survey",
+      "generate-exam-from-document",
+      "generate-exam-from-knowledge",
+      "generate-nps-survey",
+      "generate-satisfaction-survey",
+      "generate-survey",
       "nps-analysis",
       "sentiment-analysis",
       "survey-health-check",

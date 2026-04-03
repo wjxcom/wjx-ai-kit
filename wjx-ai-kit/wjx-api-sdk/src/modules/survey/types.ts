@@ -10,6 +10,19 @@ export interface CreateSurveyInput {
   is_string?: boolean;
 }
 
+export interface CreateSurveyByTextInput {
+  /** DSL 格式的问卷文本内容，传给 API 的 survey_data 参数 */
+  text: string;
+  /** 问卷标题（可选，不传则从 DSL 文本第一行提取） */
+  title?: string;
+  /** 问卷类型：1=调查, 2=测评, 3=投票, 6=考试, 7=表单 */
+  atype?: number;
+  /** 是否立即发布 */
+  publish?: boolean;
+  /** 创建者子账号用户名 */
+  creater?: string;
+}
+
 export interface UploadFileInput {
   file_name: string;
   file: string;
@@ -100,6 +113,8 @@ export interface ParsedQuestion {
   scaleRange?: [string, string];
   /** Matrix row labels. */
   matrixRows?: string[];
+  /** Matrix column labels (e.g. rating headers like "很不满意 不满意 一般 满意 很满意"). */
+  matrixColumns?: string[];
 }
 
 /** Parsed survey structure from DSL text. */

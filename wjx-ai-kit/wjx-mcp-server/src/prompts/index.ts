@@ -1,6 +1,7 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { registerAnalysisPrompts } from "./analysis.js";
+import { registerSurveyGenerationPrompts } from "./survey-generation.js";
 
 export function registerPrompts(server: McpServer): void {
   server.prompt(
@@ -259,4 +260,7 @@ Use survey type 1 (survey) and output the create_survey tool call with properly 
 
   // ═══ Analysis Prompts ══════════════════════════════════════════════════
   registerAnalysisPrompts(server);
+
+  // ═══ Survey Generation Prompts ════════════════════════════════════════
+  registerSurveyGenerationPrompts(server);
 }

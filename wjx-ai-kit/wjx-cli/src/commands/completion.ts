@@ -120,8 +120,12 @@ export function registerCompletionCommands(program: Command): void {
           // Profile unreadable — proceed to append
         }
 
+        const isNew = !existsSync(profilePath);
         const snippet = `\n${marker}\n${evalLine}\n`;
         writeFileSync(profilePath, snippet, { flag: "a" });
+        if (isNew) {
+          process.stderr.write(`已创建新文件 ${profilePath}\n`);
+        }
         process.stderr.write(`已添加到 ${profilePath}\n`);
         process.stderr.write(`运行以下命令立即生效:\n  source ${profilePath}\n`);
       } catch (e) {

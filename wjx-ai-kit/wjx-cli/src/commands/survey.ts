@@ -1,6 +1,8 @@
+import { readFileSync } from "node:fs";
 import { Command } from "commander";
 import {
   createSurvey,
+  createSurveyByText,
   getSurvey,
   listSurveys,
   updateSurveyStatus,
@@ -13,6 +15,8 @@ import {
   uploadFile,
   buildSurveyUrl,
   surveyToText,
+  textToSurvey,
+  parsedQuestionsToWire,
 } from "wjx-api-sdk";
 import { CliError, handleError } from "../lib/errors.js";
 import { mergeStdinWithOpts } from "../lib/stdin.js";
@@ -75,6 +79,75 @@ export function registerSurveyCommands(program: Command): void {
           publish: m.publish,
         };
       });
+    });
+
+  // --- create-by-text ---
+  survey
+    .command("create-by-text")
+    .description("用 DSL 文本创建问卷（推荐 AI Agent 使用）")
+    .option("--text <s>", "DSL 格式问卷文本")
+    .option("--file <path>", "从文件读取 DSL 文本")
+    .option("--type <n>", "问卷类型：1=调查, 6=考试", strictInt)
+    .option("--publish", "创建后发布")
+    .option("--creater <s>", "创建者子账号")
+    .action(async (_opts, cmd) => {
+      try {
+        const stdinData = (cmd as unknown as Record<string, unknown>).__stdinData as Record<string, unknown> | undefined;
+        let merged: Record<string, unknown>;
+        if (stdinData && Object.keys(stdinData).length > 0) {
+          merged = mergeStdinWithOpts(stdinData, cmd);
+        } else {
+          merged = { ...cmd.opts() };
+        }
+
+        // Resolve DSL text: --text > --file > stdin.text
+        let dslText: string | undefined;
+        if (typeof merged.text === "string" && merged.text) {
+          dslText = merged.text;
+        } else if (typeof merged.file === "string" && merged.file) {
+          try {
+            dslText = readFileSync(merged.file as string, "utf8");
+          } catch {
+            throw new CliError("INPUT_ERROR", `无法读取文件: ${merged.file}`);
+          }
+        }
+
+        if (!dslText) {
+          throw new CliError("INPUT_ERROR", "必须提供 --text 或 --file 参数");
+        }
+
+        const globalOpts = program.opts();
+
+        if (globalOpts.dryRun) {
+          const parsed = textToSurvey(dslText);
+          const wireQuestions = parsedQuestionsToWire(parsed.questions);
+          process.stderr.write(JSON.stringify({
+            dry_run: true,
+            parsed_title: parsed.title,
+            parsed_description: parsed.description,
+            question_count: parsed.questions.length,
+            wire_questions: wireQuestions,
+          }, null, 2) + "\n");
+          return;
+        }
+
+        const creds = getCredentials(globalOpts);
+        const result = await createSurveyByText({
+          text: dslText,
+          atype: merged.type as number | undefined,
+          publish: merged.publish as boolean | undefined,
+          creater: merged.creater as string | undefined,
+        }, creds);
+
+        if (result.result === false) {
+          throw new CliError("API_ERROR", result.errormsg || "API request failed");
+        }
+
+        const { formatOutput } = await import("../lib/output.js");
+        formatOutput(result, globalOpts);
+      } catch (e) {
+        handleError(e);
+      }
     });
 
   // --- delete ---

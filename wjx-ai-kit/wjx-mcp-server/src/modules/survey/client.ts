@@ -1,5 +1,6 @@
 export {
   createSurvey,
+  createSurveyByText,
   getSurvey,
   listSurveys,
   updateSurveyStatus,
@@ -12,5 +13,6 @@ export {
   uploadFile,
   surveyToText,
   textToSurvey,
+  parsedQuestionsToWire,
 } from "wjx-api-sdk";
 export type { SurveyDetail, ParsedSurvey, ParsedQuestion } from "wjx-api-sdk";

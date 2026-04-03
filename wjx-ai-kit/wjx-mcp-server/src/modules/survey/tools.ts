@@ -2,6 +2,7 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import {
   createSurvey,
+  createSurveyByText,
   getSurvey,
   listSurveys,
   updateSurveyStatus,
@@ -13,9 +14,8 @@ import {
   clearRecycleBin,
   uploadFile,
   surveyToText,
-  textToSurvey,
 } from "./client.js";
-import type { SurveyDetail, ParsedQuestion } from "./client.js";
+import type { SurveyDetail } from "./client.js";
 import { toolResult, toolError } from "../../helpers.js";
 import { QUESTION_TYPES } from "../../resources/survey-reference.js";
 
@@ -624,21 +624,10 @@ export function registerSurveyTools(server: McpServer): void {
     },
     async (args) => {
       try {
-        const parsed = textToSurvey(args.text);
-        if (!parsed.title) {
-          return toolError("DSL 文本缺少标题（第一行应为问卷标题）");
-        }
-        if (parsed.questions.length === 0) {
-          return toolError("DSL 文本中未找到任何题目");
-        }
-
-        const questions = parsedQuestionsToWire(parsed.questions);
-        const result = await createSurvey({
-          title: parsed.title,
-          type: args.atype ?? 1,
-          description: parsed.description,
+        const result = await createSurveyByText({
+          text: args.text,
+          atype: args.atype,
           publish: args.publish,
-          questions: JSON.stringify(questions),
           creater: args.creater,
         });
         return toolResult(result, result.result === false);
@@ -647,122 +636,4 @@ export function registerSurveyTools(server: McpServer): void {
       }
     },
   );
-}
-
-// ─── ParsedQuestion → API wire format conversion ──────────────────
-
-const TYPE_MAP: Record<string, { q_type: number; q_subtype: number }> = {
-  "single-choice": { q_type: 3, q_subtype: 3 },
-  "dropdown": { q_type: 3, q_subtype: 301 },
-  "multi-choice": { q_type: 4, q_subtype: 4 },
-  "fill-in": { q_type: 5, q_subtype: 5 },
-  "multi-fill": { q_type: 6, q_subtype: 6 },
-  "exam-multi-fill": { q_type: 6, q_subtype: 601 },
-  "exam-cloze": { q_type: 6, q_subtype: 602 },
-  "scale": { q_type: 3, q_subtype: 302 },
-  "scoring-single": { q_type: 3, q_subtype: 303 },
-  "scoring-multi": { q_type: 4, q_subtype: 401 },
-  "sort": { q_type: 4, q_subtype: 402 },
-  "commodity": { q_type: 4, q_subtype: 403 },
-  "true-false": { q_type: 3, q_subtype: 305 },
-  "weight": { q_type: 9, q_subtype: 9 },
-  "slider": { q_type: 10, q_subtype: 10 },
-  "matrix": { q_type: 7, q_subtype: 7 },
-  "matrix-scale": { q_type: 7, q_subtype: 701 },
-  "matrix-single": { q_type: 7, q_subtype: 702 },
-  "matrix-multi": { q_type: 7, q_subtype: 703 },
-  "matrix-fill": { q_type: 7, q_subtype: 704 },
-  "paragraph": { q_type: 2, q_subtype: 2 },
-  "file-upload": { q_type: 8, q_subtype: 8 },
-  "drawing": { q_type: 8, q_subtype: 801 },
-  "multi-level-dropdown": { q_type: 5, q_subtype: 501 },
-  "scenario": { q_type: 3, q_subtype: 304 },
-};
-
-interface WireQuestion {
-  q_index: number;
-  q_type: number;
-  q_subtype: number;
-  q_title: string;
-  is_requir: boolean;
-  items?: { q_index: number; item_index: number; item_title: string }[];
-}
-
-function parsedQuestionsToWire(questions: ParsedQuestion[]): WireQuestion[] {
-  const unsupported = questions
-    .filter((q) => !TYPE_MAP[q.type])
-    .map((q) => `"${q.title}" (type: ${q.type})`);
-  if (unsupported.length > 0) {
-    const supported = Object.keys(TYPE_MAP).join(", ");
-    throw new Error(
-      `DSL 包含不支持的题型，无法创建：${unsupported.join("；")}。` +
-      `骨架支持的题型：${supported}`,
-    );
-  }
-
-  const wire: WireQuestion[] = [];
-  let qIdx = 1;
-
-  for (const q of questions) {
-    const typeInfo = TYPE_MAP[q.type]!;
-
-    const wq: WireQuestion = {
-      q_index: qIdx,
-      q_type: typeInfo.q_type,
-      q_subtype: typeInfo.q_subtype,
-      q_title: q.title,
-      is_requir: q.required,
-    };
-
-    // Multi-fill types (q_type=6) require {_} placeholders in q_title
-    if (typeInfo.q_type === 6 && !wq.q_title.includes("{_}")) {
-      // Auto-insert placeholders based on options count or default to 2
-      const count = (q.options && q.options.length > 0) ? q.options.length : 2;
-      const placeholders = Array.from({ length: count }, () => "{_}").join("，");
-      const separator = /[：:，,、。.；;）)》>\s]$/.test(wq.q_title) ? "" : "：";
-      wq.q_title = `${wq.q_title}${separator}${placeholders}`;
-    }
-
-    // Convert options to items
-    if (q.options && q.options.length > 0) {
-      wq.items = q.options.map((opt, i) => ({
-        q_index: qIdx,
-        item_index: i + 1,
-        item_title: opt,
-      }));
-    }
-
-    // Scale: convert scaleRange to items
-    if ((q.type === "scale" || q.type === "slider") && q.scaleRange) {
-      const [min, max] = q.scaleRange;
-      const minNum = parseInt(min, 10);
-      const maxNum = parseInt(max, 10);
-      if (!isNaN(minNum) && !isNaN(maxNum)) {
-        wq.items = [];
-        for (let v = minNum; v <= maxNum; v++) {
-          wq.items.push({ q_index: qIdx, item_index: v - minNum + 1, item_title: String(v) });
-        }
-      } else {
-        // Non-numeric scale labels (e.g. "非常不满意~非常满意")
-        wq.items = [
-          { q_index: qIdx, item_index: 1, item_title: min },
-          { q_index: qIdx, item_index: 2, item_title: max },
-        ];
-      }
-    }
-
-    // Matrix: convert matrixRows to items
-    if (q.type.startsWith("matrix") && q.matrixRows && q.matrixRows.length > 0) {
-      wq.items = q.matrixRows.map((row, i) => ({
-        q_index: qIdx,
-        item_index: i + 1,
-        item_title: row,
-      }));
-    }
-
-    wire.push(wq);
-    qIdx++;
-  }
-
-  return wire;
 }

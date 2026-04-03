@@ -2,6 +2,7 @@
 import "./core/load-env.js"; // Must be first — populates process.env before other modules read it
 
 import { realpathSync } from "node:fs";
+import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
@@ -57,11 +58,9 @@ export async function main(): Promise<void> {
 
 function isMainModule(): boolean {
   try {
-    const scriptUrl = new URL(process.argv[1], "file:");
-    return (
-      realpathSync(fileURLToPath(scriptUrl)) ===
-      realpathSync(fileURLToPath(import.meta.url))
-    );
+    const scriptPath = realpathSync(resolve(process.argv[1]));
+    const modulePath = realpathSync(fileURLToPath(import.meta.url));
+    return scriptPath === modulePath;
   } catch {
     return false;
   }

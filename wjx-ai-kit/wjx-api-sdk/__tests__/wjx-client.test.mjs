@@ -3,6 +3,7 @@ import { describe, it } from "node:test";
 
 import {
   createSurvey,
+  createSurveyByText,
   getSurvey,
   listSurveys,
   updateSurveyStatus,
@@ -867,5 +868,71 @@ describe("querySubAccounts mobile", () => {
 
     const body = JSON.parse(fetch.captured().init.body);
     assert.equal("mobile" in body, false);
+  });
+});
+
+// ─── createSurveyByText ────────────────────────────────────────────
+
+describe("createSurveyByText", () => {
+  it("should POST with action 1000105 and survey_data", async () => {
+    const fetch = mockFetch({ result: true, data: { vid: 888 } });
+    await createSurveyByText({ text: "问卷标题\n\n1. 问题[单选题]\nA\nB" }, credentials, fetch);
+
+    const body = JSON.parse(fetch.captured().init.body);
+    assert.equal(body.action, "1000105");
+    assert.equal(body.survey_data, "问卷标题\n\n1. 问题[单选题]\nA\nB");
+    assertBearerAuth(fetch.captured().init, body);
+  });
+
+  it("should default publish to false", async () => {
+    const fetch = mockFetch({ result: true, data: {} });
+    await createSurveyByText({ text: "标题" }, credentials, fetch);
+
+    const body = JSON.parse(fetch.captured().init.body);
+    assert.equal(body.publish, false);
+  });
+
+  it("should pass optional title, atype, publish, creater", async () => {
+    const fetch = mockFetch({ result: true, data: {} });
+    await createSurveyByText(
+      { text: "内容", title: "自定义标题", atype: 6, publish: true, creater: "sub1" },
+      credentials, fetch,
+    );
+
+    const body = JSON.parse(fetch.captured().init.body);
+    assert.equal(body.title, "自定义标题");
+    assert.equal(body.atype, 6);
+    assert.equal(body.publish, true);
+    assert.equal(body.creater, "sub1");
+  });
+
+  it("should not include optional fields when not provided", async () => {
+    const fetch = mockFetch({ result: true, data: {} });
+    await createSurveyByText({ text: "内容" }, credentials, fetch);
+
+    const body = JSON.parse(fetch.captured().init.body);
+    assert.equal("title" in body, false);
+    assert.equal("atype" in body, false);
+    assert.equal("creater" in body, false);
+  });
+
+  it("should NOT retry on 500 (maxRetries=0)", async () => {
+    let callCount = 0;
+    const fetch = async () => {
+      callCount++;
+      return new Response("err", { status: 500, statusText: "Error" });
+    };
+
+    await assert.rejects(
+      () => createSurveyByText({ text: "标题" }, credentials, fetch),
+      /WJX API request failed with 500/,
+    );
+    assert.equal(callCount, 1);
+  });
+
+  it("should return parsed API response", async () => {
+    const mockResponse = { result: true, data: { vid: 999, title: "测试" } };
+    const result = await createSurveyByText({ text: "内容" }, credentials, mockFetch(mockResponse));
+    assert.deepEqual(result, mockResponse);
   });
 });

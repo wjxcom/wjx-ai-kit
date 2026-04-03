@@ -8,6 +8,11 @@ export interface WjxConfig {
   corpId?: string;
 }
 
+/**
+ * Evaluated once at module load time. Setting process.env.WJX_CONFIG_PATH
+ * after import will NOT change this value. Tests override it by passing the
+ * env var to child processes (e.g. via execFileSync env option).
+ */
 export const CONFIG_PATH = process.env.WJX_CONFIG_PATH || join(homedir(), ".wjxrc");
 
 export function loadConfig(): WjxConfig | null {

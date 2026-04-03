@@ -180,6 +180,11 @@ wjx-cli/
 3. `--dry-run` 预览 — ✅ 已完成
 4. stdin 管道输入 — ✅ 已完成
 
+### Phase 5: AI Agent 增强 ✅
+1. `wjx survey create-by-text`（DSL 文本创建问卷）— ✅ 已完成
+2. `wjx reference`（命令参考文档输出）— ✅ 已完成
+3. Claude Code Skill `.claude/skills/wjx-cli-use/` — ✅ 已完成
+
 ## 每个命令的实现模式
 
 所有命令遵循同一模式：
