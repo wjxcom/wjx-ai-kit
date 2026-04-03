@@ -431,7 +431,7 @@ describe("survey export-text", () => {
 describe("response subcommands", () => {
   it("response --help lists all subcommands", () => {
     const out = run(["response", "--help"]);
-    for (const cmd of ["count", "query", "realtime", "download", "submit", "modify", "clear", "report", "files", "winners", "360-report"]) {
+    for (const cmd of ["count", "query", "realtime", "download", "submit", "modify", "clear", "report", "winners", "360-report"]) {
       assert.match(out, new RegExp(cmd), `missing subcommand: ${cmd}`);
     }
   });
@@ -461,13 +461,6 @@ describe("response subcommands", () => {
     assert.equal(result.exitCode, 2);
     const err = JSON.parse(result.stderr.trim());
     assert.ok(err.message.includes("username"));
-  });
-
-  it("response files without --file_keys → INPUT_ERROR exit 2", async () => {
-    const result = await runFull(["response", "files", "--vid", "123"]);
-    assert.equal(result.exitCode, 2);
-    const err = JSON.parse(result.stderr.trim());
-    assert.ok(err.message.includes("file_keys"));
   });
 });
 
@@ -613,15 +606,15 @@ describe("user-system", () => {
     }
   });
 
-  it("user-system add-participants without --username → INPUT_ERROR exit 2", async () => {
+  it("user-system add-participants without --users → INPUT_ERROR exit 2", async () => {
     const result = await runFull(["user-system", "add-participants"]);
     assert.equal(result.exitCode, 2);
     const err = JSON.parse(result.stderr.trim());
-    assert.ok(err.message.includes("username"));
+    assert.ok(err.message.includes("users"));
   });
 
   it("user-system bind without --vid → INPUT_ERROR exit 2", async () => {
-    const result = await runFull(["user-system", "bind", "--username", "x", "--sysid", "1", "--uids", "a"]);
+    const result = await runFull(["user-system", "bind", "--sysid", "1", "--uids", "a"]);
     assert.equal(result.exitCode, 2);
     const err = JSON.parse(result.stderr.trim());
     assert.ok(err.message.includes("vid"));

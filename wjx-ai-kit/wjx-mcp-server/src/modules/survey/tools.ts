@@ -28,8 +28,10 @@ export function registerSurveyTools(server: McpServer): void {
       description:
         "通过问卷星 OpenAPI 创建新问卷。支持两种模式：1) 全新创建：需传 atype/desc/questions；2) 复制已有问卷：传 source_vid 即可。" +
         "【重要】考试问卷必须设置 atype=6，考试中的单选/多选/填空题与普通题型使用相同的 q_type，区别在于问卷类型(atype)为6。" +
-        "创建考试问卷后，需单独调用 update_survey_settings 的 time_setting 设置考试时间限制（exam_min_seconds/exam_max_seconds）。" +
-        "不要在 q_title 中包含题型标记（如[单选题]、[考试单选]等），题型由 q_type/q_subtype 决定。",
+        "创建考试问卷后，需单独调用 update_survey_settings 的 time_setting 设置考试时间限制（max_answer_seconds=最长作答秒数）。" +
+        "不要在 q_title 中包含题型标记（如[单选题]、[考试单选]等），题型由 q_type/q_subtype 决定。" +
+        "【请勿创建测试问卷】每次调用都会创建真实问卷，直接按用户要求创建最终版本。" +
+        "【OpenAPI 限制】多级下拉(501)和绘图(801)创建时可能回落为基础类型，建议创建后在页面手动调整。",
       inputSchema: {
         title: z.string().min(1).describe("问卷名称"),
         atype: z
@@ -78,12 +80,44 @@ export function registerSurveyTools(server: McpServer): void {
     },
     async (args) => {
       try {
+        let questionsStr = args.questions ?? "";
+        // Auto-fix questions JSON before sending to API
+        if (questionsStr) {
+          try {
+            const questions = JSON.parse(questionsStr);
+            if (Array.isArray(questions)) {
+              let modified = false;
+              for (const q of questions) {
+                // Auto-insert {_} placeholders for multi-fill questions (q_type=6)
+                if (q.q_type === 6 && q.q_title && !q.q_title.includes("{_}")) {
+                  const count = (q.items && q.items.length > 0) ? q.items.length : 2;
+                  const placeholders = Array.from({ length: count }, () => "{_}").join("，");
+                  const sep = /[：:，,、。.；;）)》>\s]$/.test(q.q_title) ? "" : "：";
+                  q.q_title = `${q.q_title}${sep}${placeholders}`;
+                  modified = true;
+                }
+                // Auto-assign item_score for scoring subtypes (量表302, 评分单选303, 评分多选401)
+                if ([302, 303, 401].includes(q.q_subtype) && Array.isArray(q.items)) {
+                  for (const item of q.items) {
+                    if (item.item_score === undefined) {
+                      item.item_score = item.item_index ?? 1;
+                      modified = true;
+                    }
+                  }
+                }
+              }
+              if (modified) {
+                questionsStr = JSON.stringify(questions);
+              }
+            }
+          } catch { /* keep original string if parse fails */ }
+        }
         const result = await createSurvey({
           title: args.title,
           type: args.atype ?? 1,
           description: args.desc ?? "",
           publish: args.publish,
-          questions: args.questions ?? "",
+          questions: questionsStr,
           source_vid: args.source_vid,
           creater: args.creater,
           compress_img: args.compress_img,
@@ -344,9 +378,9 @@ export function registerSurveyTools(server: McpServer): void {
         additional_setting: z
           .string()
           .optional()
-          .default("[1000,1001,1002,1003,1004,1005]")
+          .default("[1000,1001,1002,1003,1004,1005,1006,1007]")
           .describe(
-            "要获取的设置类别 JSON 数组字符串。默认获取全部：1000=基本信息, 1001=提交后设置, 1002=时间设置, 1003=消息推送, 1004=参数设置, 1005=API设置",
+            "要获取的设置类别 JSON 数组字符串。默认获取全部：1000=时间设置, 1001=提交后设置, 1002=成绩单设置, 1003=维度设置, 1004=自定义参数设置, 1005=奖品设置, 1006=数据推送设置, 1007=问卷文件夹",
           ),
       },
       annotations: {
@@ -378,15 +412,15 @@ export function registerSurveyTools(server: McpServer): void {
         api_setting: z.string().refine(
           (s) => { try { JSON.parse(s); return true; } catch { return false; } },
           "api_setting 必须是合法的 JSON 字符串",
-        ).optional().describe("API请求次数限制设置 JSON，格式示例：{\"max_times\":100,\"pass_score\":60,\"pass_no_allow\":true}"),
+        ).optional().describe("API参与次数限制设置 JSON，格式：{\"limit_type\":<int>,\"passing_score\":<int>}。limit_type 值: 0=不限, 1=只许填写一次, -1=每天填写一次, -9999=及格后不允许再作答。passing_score: 及格分数（默认60），仅 limit_type=-9999 时生效"),
         after_submit_setting: z.string().refine(
           (s) => { try { JSON.parse(s); return true; } catch { return false; } },
           "after_submit_setting 必须是合法的 JSON 字符串",
-        ).optional().describe("作答后跳转设置 JSON，格式示例：{\"type\":1,\"url\":\"https://example.com\",\"thank_word\":\"感谢参与\",\"jump_tip\":\"即将跳转\"} (type: 0=显示感谢信息, 1=跳转到指定页面)"),
+        ).optional().describe("提交后设置 JSON。跳转到指定页面：{\"go_redirect\":true,\"redirect_url\":\"https://example.com\",\"redirect_words\":\"即将跳转\"}。显示感谢信息：{\"show_thanks\":true,\"thank_words\":\"感谢参与\"}。注意：go_redirect 和 show_thanks 不能同时为 true"),
         msg_setting: z.string().refine(
           (s) => { try { JSON.parse(s); return true; } catch { return false; } },
           "msg_setting 必须是合法的 JSON 字符串",
-        ).optional().describe("数据推送设置 JSON，格式示例：{\"push_url\":\"https://example.com/webhook\",\"quick_post\":true,\"retry\":true,\"is_encrypt\":0} (注意：必须同时传完整配置，否则未传字段可能被清空)"),
+        ).optional().describe("数据推送设置 JSON，格式：{\"post_url\":\"https://example.com/webhook\",\"quick_post\":true,\"retry\":true}。【重要】此接口为全量覆盖，必须先通过 get_survey_settings（additional_setting 含 1006）获取当前完整推送配置，在现有配置基础上修改后再提交完整 JSON，否则未传字段（如 post_url）将被清空"),
         sojumpparm_setting: z.string().refine(
           (s) => { try { JSON.parse(s); return true; } catch { return false; } },
           "sojumpparm_setting 必须是合法的 JSON 字符串",
@@ -394,7 +428,7 @@ export function registerSurveyTools(server: McpServer): void {
         time_setting: z.string().refine(
           (s) => { try { JSON.parse(s); return true; } catch { return false; } },
           "time_setting 必须是合法的 JSON 字符串",
-        ).optional().describe("时间设置 JSON，格式示例：{\"start_time\":\"2026-04-01 00:00\",\"end_time\":\"2026-12-31 23:59\",\"exam_min_seconds\":60,\"exam_max_seconds\":3600} (考试时间限制：exam_min_seconds=最短作答秒数, exam_max_seconds=最长作答秒数)"),
+        ).optional().describe("时间设置 JSON，格式：{\"begin_time\":\"2026-04-01 00:00\",\"end_time\":\"2026-12-31 23:59\",\"max_answer_seconds\":3600,\"max_no_operat_seconds\":300,\"max_tab_screen_count\":3}。max_answer_seconds=最长作答秒数, max_no_operat_seconds=最长无操作自动交卷秒数, max_tab_screen_count=允许切屏最大次数。注意：OpenAPI 不支持设置最短作答时间"),
       },
       annotations: {
         destructiveHint: true,

@@ -244,7 +244,7 @@ Use survey type 1 (survey) and output the create_survey tool call with properly 
 
 ### 步骤 5：查询参与状态
 - query_survey_binding: 查看绑定状态和参与情况
-  - join_status: 0=未参与, 1=已参与
+  - join_status: 0=全部（默认）, 1=待参与, 2=已参与
   - 支持按日/周/月筛选
 - query_user_surveys: 查看用户可参与的问卷列表
 

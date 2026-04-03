@@ -4,7 +4,6 @@ export {
   downloadResponses,
   getReport,
   submitResponse,
-  getFileLinks,
   getWinners,
   modifyResponse,
   get360Report,

@@ -6,7 +6,6 @@ import {
   downloadResponses,
   getReport,
   submitResponse,
-  getFileLinks,
   getWinners,
   modifyResponse,
   get360Report,
@@ -254,41 +253,7 @@ export function registerResponseTools(server: McpServer): void {
     },
   );
 
-  // ─── get_file_links ───────────────────────────────────────────────
-  server.registerTool(
-    "get_file_links",
-    {
-      title: "获取文件链接",
-      description:
-        "获取答卷中文件上传题的文件访问和下载链接（仅限混合云/私有化场景）。",
-      inputSchema: {
-        vid: z.number().int().positive().describe("问卷编号"),
-        file_keys: z.string().min(1).refine(
-          (s) => { try { JSON.parse(s); return true; } catch { return false; } },
-          "file_keys 必须是合法的 JSON 字符串",
-        ).describe("文件键值列表 JSON 字符串，一次最多100个"),
-        file_view_expires: z.number().int().optional().describe("链接有效期（小时），默认1"),
-      },
-      annotations: {
-        destructiveHint: false,
-        idempotentHint: true,
-        openWorldHint: true,
-        title: "获取文件链接",
-      },
-    },
-    async (args) => {
-      try {
-        const result = await getFileLinks({
-          vid: args.vid,
-          file_keys: args.file_keys,
-          file_view_expires: args.file_view_expires,
-        });
-        return toolResult(result, result.result === false);
-      } catch (error) {
-        return toolError(error);
-      }
-    },
-  );
+  // ─── get_file_links (已移除 — 仅限混合云/私有化场景，公有云不可用) ──
 
   // ─── get_winners ──────────────────────────────────────────────────
   server.registerTool(
