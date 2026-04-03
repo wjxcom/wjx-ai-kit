@@ -258,32 +258,8 @@ describe("analytics tools via MCP", () => {
     });
   });
 
-  // ── decode_push_payload ───────────────────────────────────────────
-  describe("decode_push_payload", () => {
-    it("rejects missing encrypted_data", async () => {
-      const result = await client.callTool({
-        name: "decode_push_payload",
-        arguments: { app_key: "test-key" },
-      });
-      assert.equal(result.isError, true);
-    });
-
-    it("rejects missing app_key", async () => {
-      const result = await client.callTool({
-        name: "decode_push_payload",
-        arguments: { encrypted_data: "dGVzdA==" },
-      });
-      assert.equal(result.isError, true);
-    });
-
-    it("rejects empty arguments", async () => {
-      const result = await client.callTool({
-        name: "decode_push_payload",
-        arguments: {},
-      });
-      assert.equal(result.isError, true);
-    });
-  });
+  // NOTE: decode_push_payload 未作为 MCP 工具注册。
+  // SDK 提供 decodePushPayload() 函数，但 MCP 不暴露独立工具。
 });
 
 // ═══════════════════════════════════════════════════════════════════════════════

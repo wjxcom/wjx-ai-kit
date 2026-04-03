@@ -477,13 +477,13 @@ describe("prompts content correctness", () => {
       assert.ok(text.includes("X-Wjx-Signature"));
     });
 
-    it("references decode_push_payload tool", async () => {
+    it("references SDK decodePushPayload for decryption", async () => {
       const result = await client.getPrompt({
         name: "configure-webhook",
         arguments: { vid: "1" },
       });
       const text = result.messages[0].content.text;
-      assert.ok(text.includes("decode_push_payload"));
+      assert.ok(text.includes("decodePushPayload"));
     });
   });
 });

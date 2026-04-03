@@ -11,12 +11,7 @@ import {
   get360Report,
   clearResponses,
 } from "./client.js";
-import { toolResult, toolError } from "../../helpers.js";
-
-/** 校验字符串是否为合法 JSON，在 handler 中调用（避免 Zod .refine() 导致 MCP 挂起） */
-function assertJson(value: string, fieldName: string): void {
-  try { JSON.parse(value); } catch { throw new Error(`${fieldName} 必须是合法的 JSON 字符串`); }
-}
+import { toolResult, toolError, assertJson } from "../../helpers.js";
 
 export function registerResponseTools(server: McpServer): void {
   // ─── query_responses ──────────────────────────────────────────────
@@ -54,6 +49,9 @@ export function registerResponseTools(server: McpServer): void {
     async (args) => {
       try {
         if (args.conds !== undefined) assertJson(args.conds, "conds");
+        if (args.jid !== undefined && args.jid.split(",").length > 50) throw new Error("jid 最多允许传入50个");
+        if (args.sojumpparm !== undefined && args.sojumpparm.split(",").length > 50) throw new Error("sojumpparm 最多允许传入50个");
+        if (args.qid !== undefined && args.qid.split(",").length > 50) throw new Error("qid 最多允许传入50个");
         const result = await queryResponses({
           vid: args.vid,
           valid: args.valid,
@@ -190,6 +188,8 @@ export function registerResponseTools(server: McpServer): void {
     async (args) => {
       try {
         if (args.conds !== undefined) assertJson(args.conds, "conds");
+        if (args.jid !== undefined && args.jid.split(",").length > 50) throw new Error("jid 最多允许传入50个");
+        if (args.sojumpparm !== undefined && args.sojumpparm.split(",").length > 50) throw new Error("sojumpparm 最多允许传入50个");
         const result = await getReport({
           vid: args.vid,
           valid: args.valid,

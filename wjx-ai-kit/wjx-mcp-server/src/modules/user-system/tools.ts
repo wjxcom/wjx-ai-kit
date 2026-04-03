@@ -8,14 +8,7 @@ import {
   querySurveyBinding,
   queryUserSurveys,
 } from "./client.js";
-import { toolResult, toolError } from "../../helpers.js";
-
-/** 校验字符串是否为合法 JSON 数组，在 handler 中调用（避免 Zod .refine() 导致 MCP 挂起） */
-function assertJsonArray(value: string, fieldName: string): void {
-  let parsed: unknown;
-  try { parsed = JSON.parse(value); } catch { throw new Error(`${fieldName} 必须是合法的 JSON 字符串`); }
-  if (!Array.isArray(parsed)) throw new Error(`${fieldName} 必须是 JSON 数组`);
-}
+import { toolResult, toolError, assertJsonArray } from "../../helpers.js";
 
 export function registerUserSystemTools(server: McpServer): void {
   // ─── add_participants ─────────────────────────────────────────────
