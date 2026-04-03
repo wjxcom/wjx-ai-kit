@@ -14,7 +14,7 @@
 ```
 wjx-ai-kit/
 ├── wjx-api-sdk/       # 零依赖 TypeScript SDK（50+ API 函数）
-├── wjx-mcp-server/    # MCP Server（56 Tools / 8 Resources / 12 Prompts）
+├── wjx-mcp-server/    # MCP Server（55 Tools / 8 Resources / 12 Prompts）
 ├── wjx-cli/           # 命令行工具（AI Agent 原生 CLI）
 └── package.json       # workspace 根配置
 ```

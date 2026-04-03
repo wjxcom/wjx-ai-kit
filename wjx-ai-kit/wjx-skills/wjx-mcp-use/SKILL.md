@@ -1,18 +1,18 @@
 ---
 name: wjx-mcp-use
-description: Guide for using wjx-mcp-server MCP tools to interact with the Wenjuanxing (问卷星) platform. Use when the user wants to create surveys, query responses, analyze data, manage contacts, or generate SSO links via MCP protocol. Covers 56 tools, 8 resources, and 19 prompts.
+description: Guide for using wjx-mcp-server MCP tools to interact with the Wenjuanxing (问卷星) platform. Use when the user wants to create surveys, query responses, analyze data, manage contacts, or generate SSO links via MCP protocol. Covers 55 tools, 8 resources, and 19 prompts.
 ---
 
 # wjx-mcp-server Usage Guide
 
-wjx-mcp-server 提供 56 个 MCP 工具、8 个参考资源和 12 个 prompt 模板，覆盖问卷星 OpenAPI 的全部能力。
+wjx-mcp-server 提供 55 个 MCP 工具、8 个参考资源和 12 个 prompt 模板，覆盖问卷星 OpenAPI 的全部能力。
 
-## 工具总览（56 tools）
+## 工具总览（55 tools）
 
 | 模块 | 工具数 | 说明 |
 |------|--------|------|
 | 问卷管理 | 12 | create_survey, create_survey_by_text, get_survey, list_surveys, update_survey_status, get/update_survey_settings, delete_survey, get_question_tags, get_tag_details, upload_file, clear_recycle_bin |
-| 答卷数据 | 10 | query_responses, query_responses_realtime, download_responses, get_report, submit_response, get_file_links, get_winners, modify_response, get_360_report, clear_responses |
+| 答卷数据 | 9 | query_responses, query_responses_realtime, download_responses, get_report, submit_response, get_winners, modify_response, get_360_report, clear_responses |
 | 通讯录 | 14 | query/add/delete_contacts, add/delete/restore_admin, list/add/modify/delete_departments, list/add/modify/delete_tags |
 | 子账号 | 5 | add/modify/delete/restore/query_sub_accounts |
 | SSO | 4 | sso_subaccount_url, sso_user_system_url, sso_partner_url, build_survey_url |
@@ -99,5 +99,5 @@ DSL 语法详见 `wjx://reference/dsl-syntax` 资源，或 [references/dsl-and-t
 
 - [DSL 语法与题型](references/dsl-and-types.md) — DSL 格式、25+ 题型标签、q_type/q_subtype 映射表
 - [问卷工具详解](references/tools-survey.md) — 12 个问卷管理工具的完整参数
-- [答卷工具详解](references/tools-response.md) — 10 个答卷数据工具的完整参数
+- [答卷工具详解](references/tools-response.md) — 9 个答卷数据工具的完整参数
 - [其他工具详解](references/tools-other.md) — 通讯录、子账号、SSO、分析、推送工具参数

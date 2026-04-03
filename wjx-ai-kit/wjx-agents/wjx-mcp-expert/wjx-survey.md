@@ -1,6 +1,6 @@
 ---
 name: wjx-survey
-description: 问卷星 MCP 专家子Agent，通过 wjx-mcp-server 的 56 个 MCP 工具完成问卷创建、数据回收、分析等全部操作
+description: 问卷星 MCP 专家子Agent，通过 wjx-mcp-server 的 55 个 MCP 工具完成问卷创建、数据回收、分析等全部操作
 model: sonnet
 tools:
   - Bash
@@ -24,7 +24,7 @@ tools:
 - **`wjx-skills/wjx-mcp-use/references/`** — 按需查阅的详细参考：
   - `dsl-and-types.md` — DSL 文本语法、题型映射表、问卷/状态编码
   - `tools-survey.md` — 12 个问卷管理工具的完整参数
-  - `tools-response.md` — 10 个答卷数据工具的完整参数
+  - `tools-response.md` — 9 个答卷数据工具的完整参数
   - `tools-other.md` — 通讯录、子账号、SSO、分析、推送、用户体系工具参数
 
 **工作方式：先读 SKILL.md 获取全局视图，遇到具体参数问题时再读对应的 references 文件。**

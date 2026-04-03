@@ -158,6 +158,5 @@ wjx response count --vid 12345
 | 命令 | 说明 |
 |------|------|
 | `wjx response realtime --vid N` | 实时队列查询（需白名单），可选 `--count N` |
-| `wjx response files --vid N --file_keys '<json>'` | 获取文件上传链接（混合云场景），可选 `--file_view_expires N` |
 | `wjx response winners --vid N` | 中奖者信息，可选 `--atype N`(0=其他/1=红包/-1=不限) `--awardstatus N`(0=未发/1=已发) `--page_index N` `--page_size N` |
 | `wjx response 360-report --vid N` | 360度报告下载（异步：首次返回 taskid，再次调用 `--taskid <id>` 轮询） |

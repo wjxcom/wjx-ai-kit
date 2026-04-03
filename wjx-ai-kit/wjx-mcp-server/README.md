@@ -6,18 +6,18 @@
 [![license](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 [![node](https://img.shields.io/badge/node-%3E%3D20-green)](https://nodejs.org/)
 
-通过 Claude、Cursor 或任何 MCP 兼容的 AI 客户端，以自然语言创建、管理和分析问卷。服务器封装了问卷星 OpenAPI，提供 **56 个 Tools**、**8 个 Resources** 和 **12 个 Prompts**。
+通过 Claude、Cursor 或任何 MCP 兼容的 AI 客户端，以自然语言创建、管理和分析问卷。服务器封装了问卷星 OpenAPI，提供 **55 个 Tools**、**8 个 Resources** 和 **12 个 Prompts**。
 
 ---
 
 ## 功能特性
 
-### 7 大模块 · 56 个 Tools
+### 7 大模块 · 55 个 Tools
 
 | 模块 | 工具数 | 说明 |
 |------|:------:|------|
 | **Survey** 问卷管理 | 12 | 创建、查询、列表、状态变更、设置读写、删除、题目标签、回收站、文本创建、预览 |
-| **Response** 答卷数据 | 10 | 查询、实时查询、下载、统计报告、代填提交、文件链接、中奖者、改分、360° 报告、清空 |
+| **Response** 答卷数据 | 9 | 查询、实时查询、下载、统计报告、代填提交、中奖者、改分、360° 报告、清空 |
 | **Contacts** 通讯录 | 14 | 成员管理、管理员管理、部门管理、标签管理 |
 | **SSO** 免登录 | 4 | 生成子账号 / 用户系统 / 合作伙伴 / 问卷创建编辑的 SSO 链接 |
 | **User System** 用户体系 | 5 | 参与者增删改、绑定查询、分配查询 |
@@ -56,10 +56,10 @@ flowchart LR
 
     Server --> R[Resources ×8]
     Server --> P[Prompts ×12]
-    Server --> Tools[Tools ×56]
+    Server --> Tools[Tools ×55]
 
     Tools --> S1[survey ×12]
-    Tools --> S2[response ×10]
+    Tools --> S2[response ×9]
     Tools --> S3[contacts ×14]
     Tools --> S4[sso ×4]
     Tools --> S5[user-system ×5]
@@ -249,7 +249,7 @@ wjx-mcp-server/
 │   │   └── types.ts              # 共享类型定义
 │   ├── modules/
 │   │   ├── survey/               # 问卷管理（12 tools）
-│   │   ├── response/             # 答卷数据（10 tools）
+│   │   ├── response/             # 答卷数据（9 tools）
 │   │   ├── contacts/             # 通讯录（14 tools）
 │   │   ├── sso/                  # 免登录 URL（4 tools）
 │   │   ├── user-system/          # 用户体系（5 tools）

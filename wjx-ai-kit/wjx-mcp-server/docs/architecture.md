@@ -137,7 +137,6 @@ flowchart TD
 - `download_responses`
 - `get_report`
 - `submit_response`
-- `get_file_links`
 - `get_winners`
 - `modify_response`
 - `get_360_report`

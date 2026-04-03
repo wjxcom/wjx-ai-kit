@@ -268,7 +268,6 @@
 
 | 参数 | 类型 | 必填 | 说明 |
 |------|------|------|------|
-| `username` | string | 是 | 主账号登录名 |
 | `users` | string | 是 | 参与者列表 JSON 数组，每项含 `uid`, `uname`, `upass`, `udept`, `uextf` |
 | `usid` | number | 是 | 用户系统 ID |
 
@@ -276,7 +275,6 @@
 
 | 参数 | 类型 | 必填 | 说明 |
 |------|------|------|------|
-| `username` | string | 是 | 主账号登录名 |
 | `users` | string | 是 | 参与者列表 JSON 数组 |
 | `usid` | number | 是 | 用户系统 ID |
 | `auto_create_udept` | boolean | 否 | 自动创建不存在的部门 |
@@ -285,7 +283,6 @@
 
 | 参数 | 类型 | 必填 | 说明 |
 |------|------|------|------|
-| `username` | string | 是 | 主账号用户名 |
 | `uids` | string | 是 | 参与者 ID 列表 JSON 数组 |
 | `usid` | number | 是 | 用户系统 ID |
 
@@ -293,7 +290,6 @@
 
 | 参数 | 类型 | 必填 | 说明 |
 |------|------|------|------|
-| `username` | string | 是 | 主账号用户名 |
 | `vid` | number | 是 | 问卷编号 |
 | `usid` | number | 是 | 用户系统 ID |
 | `uids` | string | 是 | 参与者 ID 列表 JSON 数组 |
@@ -306,7 +302,6 @@
 
 | 参数 | 类型 | 必填 | 说明 |
 |------|------|------|------|
-| `username` | string | 是 | 主账号登录名 |
 | `vid` | number | 是 | 问卷编号 |
 | `usid` | number | 是 | 用户系统 ID |
 | `join_status` | number | 否 | 参与状态筛选（0=全部） |
@@ -319,6 +314,5 @@
 
 | 参数 | 类型 | 必填 | 说明 |
 |------|------|------|------|
-| `username` | string | 是 | 主账号用户名 |
 | `uid` | string | 是 | 参与者 ID |
 | `usid` | number | 是 | 用户系统 ID |

@@ -151,7 +151,7 @@ async function sdkFunction(
 | `typeToLabel(type)` | 题型代码转可读标签 |
 | `stripHtml(html)` | 去除 HTML 标签 |
 
-### Response — 答卷数据（10 函数）
+### Response — 答卷数据（9 函数）
 
 | 函数 | 说明 |
 |------|------|
@@ -160,7 +160,6 @@ async function sdkFunction(
 | `downloadResponses(input)` | 下载答卷数据 |
 | `getReport(input)` | 获取统计报告 |
 | `submitResponse(input)` | 代填提交答卷 |
-| `getFileLinks(input)` | 获取文件链接 |
 | `getWinners(input)` | 获取中奖者 |
 | `modifyResponse(input)` | 修改答卷分数 |
 | `get360Report(input)` | 获取 360 报告 |
