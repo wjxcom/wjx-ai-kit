@@ -38,7 +38,7 @@ function assertBearerAuth(init, body) {
 // ─── addParticipants ────────────────────────────────────────────────
 
 describe("addParticipants", () => {
-  const input = { username: "user1", users: '[{"uid":"u1","name":"Alice"}]', sysid: 100 };
+  const input = { users: '[{"uid":"u1","name":"Alice"}]', sysid: 100 };
 
   it("should POST to usersystem endpoint with Bearer auth", async () => {
     const fetch = mockFetch({ result: true, data: {} });
@@ -59,12 +59,12 @@ describe("addParticipants", () => {
     assert.equal(body.action, "1002001");
   });
 
-  it("should include username, users, and sysid in body", async () => {
+  it("should include users and sysid in body (no username)", async () => {
     const fetch = mockFetch({ result: true, data: {} });
     await addParticipants(input, credentials, fetch);
 
     const body = JSON.parse(fetch.captured().init.body);
-    assert.equal(body.username, "user1");
+    assert.equal("username" in body, false, "username should not be in body");
     assert.equal(body.users, '[{"uid":"u1","name":"Alice"}]');
     assert.equal(body.sysid, 100);
   });
@@ -133,7 +133,7 @@ describe("addParticipants", () => {
 // ─── modifyParticipants ─────────────────────────────────────────────
 
 describe("modifyParticipants", () => {
-  const input = { username: "user2", users: '[{"uid":"u2","name":"Bob"}]', sysid: 200 };
+  const input = { users: '[{"uid":"u2","name":"Bob"}]', sysid: 200 };
 
   it("should use action 1002002 with Bearer auth", async () => {
     const fetch = mockFetch({ result: true, data: {} });
@@ -145,12 +145,12 @@ describe("modifyParticipants", () => {
     assertBearerAuth(fetch.captured().init, body);
   });
 
-  it("should include username, users, and sysid in body", async () => {
+  it("should include users and sysid in body (no username)", async () => {
     const fetch = mockFetch({ result: true, data: {} });
     await modifyParticipants(input, credentials, fetch);
 
     const body = JSON.parse(fetch.captured().init.body);
-    assert.equal(body.username, "user2");
+    assert.equal("username" in body, false, "username should not be in body");
     assert.equal(body.users, '[{"uid":"u2","name":"Bob"}]');
     assert.equal(body.sysid, 200);
   });
@@ -179,7 +179,7 @@ describe("modifyParticipants", () => {
 // ─── deleteParticipants ─────────────────────────────────────────────
 
 describe("deleteParticipants", () => {
-  const input = { username: "user3", uids: '["uid1","uid2","uid3"]', sysid: 300 };
+  const input = { uids: '["uid1","uid2","uid3"]', sysid: 300 };
 
   it("should use action 1002003 with Bearer auth", async () => {
     const fetch = mockFetch({ result: true, data: {} });
@@ -191,12 +191,12 @@ describe("deleteParticipants", () => {
     assertBearerAuth(fetch.captured().init, body);
   });
 
-  it("should include username, uids, and sysid in body", async () => {
+  it("should include uids and sysid in body (no username)", async () => {
     const fetch = mockFetch({ result: true, data: {} });
     await deleteParticipants(input, credentials, fetch);
 
     const body = JSON.parse(fetch.captured().init.body);
-    assert.equal(body.username, "user3");
+    assert.equal("username" in body, false, "username should not be in body");
     assert.equal(body.uids, '["uid1","uid2","uid3"]');
     assert.equal(body.sysid, 300);
   });
@@ -228,7 +228,7 @@ describe("deleteParticipants", () => {
 // ─── querySurveyBinding ─────────────────────────────────────────────
 
 describe("querySurveyBinding", () => {
-  const input = { username: "user4", vid: 12345, sysid: 400 };
+  const input = { vid: 12345, sysid: 400 };
 
   it("should use action 1002005 with Bearer auth", async () => {
     const fetch = mockFetch({ result: true, data: {} });
@@ -240,12 +240,12 @@ describe("querySurveyBinding", () => {
     assertBearerAuth(fetch.captured().init, body);
   });
 
-  it("should include username, vid, and sysid in body", async () => {
+  it("should include vid and sysid in body (no username)", async () => {
     const fetch = mockFetch({ result: true, data: {} });
     await querySurveyBinding(input, credentials, fetch);
 
     const body = JSON.parse(fetch.captured().init.body);
-    assert.equal(body.username, "user4");
+    assert.equal("username" in body, false, "username should not be in body");
     assert.equal(body.vid, 12345);
     assert.equal(body.sysid, 400);
   });
@@ -281,7 +281,7 @@ describe("querySurveyBinding", () => {
 // ─── queryUserSurveys ───────────────────────────────────────────────
 
 describe("queryUserSurveys", () => {
-  const input = { username: "user5", uid: "uid-abc-123", sysid: 500 };
+  const input = { uid: "uid-abc-123", sysid: 500 };
 
   it("should use action 1002006 with Bearer auth", async () => {
     const fetch = mockFetch({ result: true, data: {} });
@@ -293,12 +293,12 @@ describe("queryUserSurveys", () => {
     assertBearerAuth(fetch.captured().init, body);
   });
 
-  it("should include username, uid, and sysid in body", async () => {
+  it("should include uid and sysid in body (no username)", async () => {
     const fetch = mockFetch({ result: true, data: {} });
     await queryUserSurveys(input, credentials, fetch);
 
     const body = JSON.parse(fetch.captured().init.body);
-    assert.equal(body.username, "user5");
+    assert.equal("username" in body, false, "username should not be in body");
     assert.equal(body.uid, "uid-abc-123");
     assert.equal(body.sysid, 500);
   });

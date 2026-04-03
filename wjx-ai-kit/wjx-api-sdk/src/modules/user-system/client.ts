@@ -18,7 +18,6 @@ export async function addParticipants<T = unknown>(
   return callWjxUserSystemApi<T>(
     {
       action: Action.ADD_PARTICIPANTS,
-      username: input.username,
       users: input.users,
       sysid: input.sysid,
     },
@@ -33,7 +32,6 @@ export async function modifyParticipants<T = unknown>(
 ): Promise<WjxApiResponse<T>> {
   const params: Record<string, unknown> = {
     action: Action.MODIFY_PARTICIPANTS,
-    username: input.username,
     users: input.users,
     sysid: input.sysid,
   };
@@ -50,7 +48,6 @@ export async function deleteParticipants<T = unknown>(
   return callWjxUserSystemApi<T>(
     {
       action: Action.DELETE_PARTICIPANTS,
-      username: input.username,
       uids: input.uids,
       sysid: input.sysid,
     },
@@ -65,7 +62,6 @@ export async function bindActivity<T = unknown>(
 ): Promise<WjxApiResponse<T>> {
   const params: Record<string, unknown> = {
     action: Action.BIND_ACTIVITY,
-    username: input.username,
     vid: input.vid,
     sysid: input.sysid,
     uids: input.uids,
@@ -85,7 +81,6 @@ export async function querySurveyBinding<T = unknown>(
 ): Promise<WjxApiResponse<T>> {
   const params: Record<string, unknown> = {
     action: Action.QUERY_SURVEY_BINDING,
-    username: input.username,
     vid: input.vid,
     sysid: input.sysid,
   };
@@ -105,7 +100,6 @@ export async function queryUserSurveys<T = unknown>(
 ): Promise<WjxApiResponse<T>> {
   const params: Record<string, unknown> = {
     action: Action.QUERY_USER_SURVEYS,
-    username: input.username,
     uid: input.uid,
     sysid: input.sysid,
   };

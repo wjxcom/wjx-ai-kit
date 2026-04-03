@@ -17,9 +17,8 @@ export function registerUserSystemTools(server: McpServer): void {
     {
       title: "[已过时] 批量添加参与者",
       description:
-        "[Deprecated] 向用户系统批量添加参与者（每次最多100人）。users 为 JSON 数组字符串，每个对象包含: uid(参与者唯一编号,必填)、uname(参与者姓名,必填)、upass(初始登录密码,必填)、udept(部门,选填)、uextf(附加信息,选填)。注意：username 是主账号登录名，用于 API 鉴权。",
+        "[Deprecated] 向用户系统批量添加参与者（每次最多100人）。users 为 JSON 数组字符串，每个对象包含: uid(参与者唯一编号,必填)、uname(参与者姓名,选填)、upass(初始登录密码,选填)、udept(部门,选填,必须是数组如[\"部门1\"])、uextf(附加信息,选填,必须是数组如[\"信息1\"])。",
       inputSchema: {
-        username: z.string().min(1).describe("问卷星主账号登录名（用于 API 鉴权）"),
         users: z
           .string()
           .min(2)
@@ -28,9 +27,9 @@ export function registerUserSystemTools(server: McpServer): void {
             "users 必须是合法的 JSON 数组",
           )
           .describe(
-            "参与者列表 JSON 字符串（数组），每项包含: uid(用户ID), uname(姓名), upass(密码), udept(部门), uextf(扩展字段)",
+            "参与者列表 JSON 字符串（数组），每项包含: uid(用户ID,必填), uname(姓名), upass(密码), udept(部门,数组格式如[\"部门1\"]), uextf(附加信息,数组格式如[\"信息1\"])",
           ),
-        usid: z.number().int().positive().describe("用户系统 ID"),
+        usid: z.number().int().positive().describe("用户系统 ID（sysid）"),
       },
       annotations: {
         destructiveHint: false,
@@ -42,7 +41,6 @@ export function registerUserSystemTools(server: McpServer): void {
     async (args) => {
       try {
         const result = await addParticipants({
-          username: args.username,
           users: args.users,
           sysid: args.usid,
         });
@@ -59,9 +57,8 @@ export function registerUserSystemTools(server: McpServer): void {
     {
       title: "[已过时] 批量修改参与者",
       description:
-        "[Deprecated] 批量修改用户系统中参与者的信息。users 为 JSON 数组字符串，每个对象包含: uid(参与者唯一编号,必填)、uname(姓名)、upass(密码)、udept(部门)、uextf(附加信息)。注意：username 是主账号登录名，用于 API 鉴权；auto_create_udept 可在部门不存在时自动创建。",
+        "[Deprecated] 批量修改用户系统中参与者的信息。users 为 JSON 数组字符串，每个对象包含: uid(参与者唯一编号,必填)、uname(姓名)、upass(密码)、udept(部门,必须是数组格式如[\"部门1\"])、uextf(附加信息,必须是数组格式如[\"信息1\"])。auto_create_udept 可在部门不存在时自动创建。",
       inputSchema: {
-        username: z.string().min(1).describe("问卷星主账号登录名（用于 API 鉴权）"),
         users: z
           .string()
           .min(2)
@@ -70,9 +67,9 @@ export function registerUserSystemTools(server: McpServer): void {
             "users 必须是合法的 JSON 数组",
           )
           .describe(
-            "参与者列表 JSON 字符串（数组），每项包含: uid(用户ID), uname(姓名), upass(密码), udept(部门), uextf(扩展字段)",
+            "参与者列表 JSON 字符串（数组），每项包含: uid(用户ID,必填), uname(姓名), upass(密码), udept(部门,数组格式如[\"部门1\"]), uextf(附加信息,数组格式如[\"信息1\"])",
           ),
-        usid: z.number().int().positive().describe("用户系统 ID"),
+        usid: z.number().int().positive().describe("用户系统 ID（sysid）"),
         auto_create_udept: z.boolean().optional().describe("部门不存在时是否自动创建"),
       },
       annotations: {
@@ -85,7 +82,6 @@ export function registerUserSystemTools(server: McpServer): void {
     async (args) => {
       try {
         const result = await modifyParticipants({
-          username: args.username,
           users: args.users,
           sysid: args.usid,
           auto_create_udept: args.auto_create_udept,
@@ -105,7 +101,6 @@ export function registerUserSystemTools(server: McpServer): void {
       description:
         "[Deprecated] 从用户系统中批量删除参与者。此操作不可逆，请谨慎使用！uids 为 JSON 数组字符串，如 [\"uid1\",\"uid2\"]。",
       inputSchema: {
-        username: z.string().min(1).describe("主账户用户名"),
         uids: z
           .string()
           .min(2)
@@ -114,7 +109,7 @@ export function registerUserSystemTools(server: McpServer): void {
             "uids 必须是合法的 JSON 数组",
           )
           .describe("参与者 ID 列表 JSON 字符串（数组），如 [\"uid1\",\"uid2\"]"),
-        usid: z.number().int().positive().describe("用户系统 ID"),
+        usid: z.number().int().positive().describe("用户系统 ID（sysid）"),
       },
       annotations: {
         destructiveHint: true,
@@ -126,7 +121,6 @@ export function registerUserSystemTools(server: McpServer): void {
     async (args) => {
       try {
         const result = await deleteParticipants({
-          username: args.username,
           uids: args.uids,
           sysid: args.usid,
         });
@@ -145,9 +139,8 @@ export function registerUserSystemTools(server: McpServer): void {
       description:
         "[Deprecated] 将问卷绑定到用户体系，并指定参与者。可设置作答次数限制、是否允许修改答案等。",
       inputSchema: {
-        username: z.string().min(1).describe("主账户用户名"),
         vid: z.number().int().positive().describe("问卷编号"),
-        usid: z.number().int().positive().describe("用户系统 ID"),
+        usid: z.number().int().positive().describe("用户系统 ID（sysid）"),
         uids: z
           .string()
           .min(2)
@@ -171,7 +164,6 @@ export function registerUserSystemTools(server: McpServer): void {
     async (args) => {
       try {
         const result = await bindActivity({
-          username: args.username,
           vid: args.vid,
           sysid: args.usid,
           uids: args.uids,
@@ -195,10 +187,9 @@ export function registerUserSystemTools(server: McpServer): void {
       description:
         "[Deprecated] 查询问卷与用户系统的绑定关系，返回绑定的参与者列表。支持按参与状态(join_status)、日期(day)、周(week)、月(month)筛选，可选择是否强制获取参与次数(force_join_times)。",
       inputSchema: {
-        username: z.string().min(1).describe("问卷星主账号登录名"),
         vid: z.number().int().positive().describe("问卷编号"),
-        usid: z.number().int().positive().describe("用户系统 ID"),
-        join_status: z.number().int().optional().describe("按参与状态筛选：0=全部（默认）。当用户要求按参与状态查询时必须传递此参数"),
+        usid: z.number().int().positive().describe("用户系统 ID（sysid）"),
+        join_status: z.number().int().optional().describe("按参与状态筛选：0=全部（默认）, 1=待参与, 2=已参与"),
         day: z.string().optional().describe("按日期筛选，格式 yyyyMMdd（8位），如 '20260331'。当用户要求按天查询时必须传递此参数"),
         week: z.string().optional().describe("按周筛选，格式 yyyyWW（6位），如 '202614'。当用户要求按周查询时必须传递此参数"),
         month: z.string().optional().describe("按月筛选，格式 yyyyMM（6位），如 '202603'。当用户要求按月查询时必须传递此参数"),
@@ -214,7 +205,6 @@ export function registerUserSystemTools(server: McpServer): void {
     async (args) => {
       try {
         const result = await querySurveyBinding({
-          username: args.username,
           vid: args.vid,
           sysid: args.usid,
           join_status: args.join_status,
@@ -238,9 +228,8 @@ export function registerUserSystemTools(server: McpServer): void {
       description:
         "[Deprecated] 查询指定参与者被分配的问卷列表，支持分页。",
       inputSchema: {
-        username: z.string().min(1).describe("主账户用户名"),
         uid: z.string().min(1).describe("参与者 ID"),
-        usid: z.number().int().positive().describe("用户系统 ID"),
+        usid: z.number().int().positive().describe("用户系统 ID（sysid）"),
       },
       annotations: {
         destructiveHint: false,
@@ -252,7 +241,6 @@ export function registerUserSystemTools(server: McpServer): void {
     async (args) => {
       try {
         const result = await queryUserSurveys({
-          username: args.username,
           uid: args.uid,
           sysid: args.usid,
         });

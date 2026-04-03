@@ -701,23 +701,7 @@ describe("response tools validation via MCP", () => {
     });
   });
 
-  describe("get_file_links", () => {
-    it("rejects empty arguments", async () => {
-      const result = await client.callTool({
-        name: "get_file_links",
-        arguments: {},
-      });
-      assert.equal(result.isError, true);
-    });
-
-    it("rejects invalid JSON file_keys", async () => {
-      const result = await client.callTool({
-        name: "get_file_links",
-        arguments: { vid: 1, file_keys: "not json" },
-      });
-      assert.equal(result.isError, true);
-    });
-  });
+  // get_file_links 已移除 — 仅限混合云/私有化场景
 
   describe("get_winners", () => {
     it("rejects empty arguments", async () => {

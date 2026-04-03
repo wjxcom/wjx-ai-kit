@@ -283,7 +283,7 @@ test("getSurveySettings", async (t) => {
     const body = parsedBody(mock);
     assert.equal(body.action, Action.GET_SETTINGS);
     assert.equal(body.vid, 500);
-    assert.equal(body.additional_setting, "[1000,1001,1002,1003,1004,1005]");
+    assert.equal(body.additional_setting, "[1000,1001,1002,1003,1004,1005,1006,1007]");
     assertBearerAuth(mock.getInit(), body);
   });
 

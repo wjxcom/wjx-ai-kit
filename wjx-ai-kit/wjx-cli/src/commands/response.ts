@@ -5,7 +5,6 @@ import {
   downloadResponses,
   getReport,
   submitResponse,
-  getFileLinks,
   getWinners,
   modifyResponse,
   get360Report,
@@ -208,24 +207,7 @@ export function registerResponseCommands(program: Command): void {
       });
     });
 
-  // --- files ---
-  response
-    .command("files")
-    .description("获取文件下载链接")
-    .option("--vid <n>", "问卷ID", strictInt)
-    .option("--file_keys <s>", "文件Key列表")
-    .option("--file_view_expires <n>", "链接有效期", strictInt)
-    .action(async (_opts, cmd) => {
-      await executeCommand(program, cmd, getFileLinks, (m) => {
-        requireField(m, "vid");
-        requireField(m, "file_keys");
-        return {
-          vid: m.vid,
-          file_keys: m.file_keys,
-          file_view_expires: m.file_view_expires,
-        };
-      });
-    });
+  // --- files (已移除 — 仅限混合云/私有化场景) ---
 
   // --- winners ---
   response

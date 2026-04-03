@@ -1,24 +1,20 @@
 export interface AddParticipantsInput {
-  username: string;
   users: string;
   sysid: number;
 }
 
 export interface ModifyParticipantsInput {
-  username: string;
   users: string;
   sysid: number;
   auto_create_udept?: boolean;
 }
 
 export interface DeleteParticipantsInput {
-  username: string;
   uids: string; // JSON array of user IDs
   sysid: number;
 }
 
 export interface BindActivityInput {
-  username: string;
   vid: number;
   sysid: number;
   uids: string;
@@ -29,7 +25,6 @@ export interface BindActivityInput {
 }
 
 export interface QuerySurveyBindingInput {
-  username: string;
   vid: number;
   sysid: number;
   join_status?: number;
@@ -40,7 +35,6 @@ export interface QuerySurveyBindingInput {
 }
 
 export interface QueryUserSurveysInput {
-  username: string;
   uid: string;
   sysid: number;
 }

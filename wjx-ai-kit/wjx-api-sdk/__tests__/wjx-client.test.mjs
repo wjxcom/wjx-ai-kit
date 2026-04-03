@@ -769,13 +769,12 @@ describe("bindActivity", () => {
   it("should POST with action BIND_ACTIVITY and required params", async () => {
     const fetch = mockFetch({ result: true, data: {} });
     await bindActivity(
-      { username: "admin", vid: 100, sysid: 1, uids: '["u1","u2"]' },
+      { vid: 100, sysid: 1, uids: '["u1","u2"]' },
       credentials, fetch,
     );
 
     const body = JSON.parse(fetch.captured().init.body);
     assert.equal(body.action, Action.BIND_ACTIVITY);
-    assert.equal(body.username, "admin");
     assert.equal(body.vid, 100);
     assert.equal(body.sysid, 1);
     assert.equal(body.uids, '["u1","u2"]');
@@ -786,7 +785,7 @@ describe("bindActivity", () => {
     const fetch = mockFetch({ result: true, data: {} });
     await bindActivity(
       {
-        username: "admin", vid: 100, sysid: 1, uids: '["u1"]',
+        vid: 100, sysid: 1, uids: '["u1"]',
         answer_times: 3, can_chg_answer: true, can_view_result: false, can_hide_qlist: 1,
       },
       credentials, fetch,
@@ -802,7 +801,7 @@ describe("bindActivity", () => {
   it("should not include optional params when not provided", async () => {
     const fetch = mockFetch({ result: true, data: {} });
     await bindActivity(
-      { username: "admin", vid: 100, sysid: 1, uids: '["u1"]' },
+      { vid: 100, sysid: 1, uids: '["u1"]' },
       credentials, fetch,
     );
 
@@ -821,7 +820,7 @@ describe("querySurveyBinding new params", () => {
     const fetch = mockFetch({ result: true, data: {} });
     await querySurveyBinding(
       {
-        username: "admin", vid: 100, sysid: 1,
+        vid: 100, sysid: 1,
         join_status: 1, day: "20260329", week: "202613", month: "202603", force_join_times: true,
       },
       credentials, fetch,
@@ -838,7 +837,7 @@ describe("querySurveyBinding new params", () => {
   it("should not include new params when not provided", async () => {
     const fetch = mockFetch({ result: true, data: {} });
     await querySurveyBinding(
-      { username: "admin", vid: 100, sysid: 1 },
+      { vid: 100, sysid: 1 },
       credentials, fetch,
     );
 
