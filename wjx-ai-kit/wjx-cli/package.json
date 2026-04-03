@@ -1,6 +1,6 @@
 {
   "name": "wjx-cli",
-  "version": "0.1.8",
+  "version": "0.1.9",
   "description": "问卷星 (Wenjuanxing) CLI — AI Agent 原生命令行工具",
   "main": "dist/index.js",
   "bin": {

@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.1.3] - 2026-04-03
+
+### Changed
+
+- **移除 `username` 参数**: user-system 模块的 6 个接口（addParticipants、modifyParticipants、deleteParticipants、addUserMapping、deleteUserMapping、bindUserMapping）不再接受 `username`，与 C# 服务端对齐
+- **移除 `clientIp` 凭据字段**: WjxCredentials 不再包含 clientIp
+- **扩展 `additional_setting` 默认值**: getSurveySettings 默认从 `[1000-1005]` 扩展为 `[1000-1007]`（新增 1006=数据推送, 1007=文件夹）
+
+### Fixed
+
+- **评分量表 0 分被覆写**: text-to-survey 解析器不再将 `item_score=0` 视为未设置
+
 ## [0.1.2] - 2026-03-31
 
 ### Changed
