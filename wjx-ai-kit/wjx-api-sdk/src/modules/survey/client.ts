@@ -189,7 +189,8 @@ export async function clearRecycleBin<T = unknown>(
 }
 
 /**
- * 通过 DSL 文本创建问卷（调用 action 1000105，服务端解析 DSL）。
+ * 通过 DSL 文本创建问卷（客户端解析 DSL 后调用 createSurvey API）。
+ * 段落说明题会被自动过滤（API 不支持 q_type=2）。
  */
 export async function createSurveyByText<T = unknown>(
   input: CreateSurveyByTextInput,
