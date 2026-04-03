@@ -4,6 +4,7 @@ import { stdin, stderr } from "node:process";
 import { listSurveys } from "wjx-api-sdk";
 import { loadConfig, saveConfig, CONFIG_PATH } from "../lib/config.js";
 import { maskApiKey } from "../lib/mask.js";
+import { installSkill } from "../lib/install-skill.js";
 import type { WjxConfig } from "../lib/config.js";
 
 const DEFAULT_BASE_URL = "https://www.wjx.cn";
@@ -77,6 +78,18 @@ export function registerInitCommands(program: Command): void {
 
         stderr.write(`\n已保存到 ${CONFIG_PATH}\n`);
         stderr.write("提示: 也可以直接编辑该文件修改配置。\n");
+
+        // 4. Skill installation
+        stderr.write("\n");
+        const installAnswer = await rl.question(
+          "推荐安装 wjx-cli-use 技能以获取完整体验？(y/n) ",
+        );
+        if (installAnswer.trim().toLowerCase() === "y") {
+          const result = installSkill(process.cwd(), { force: true });
+          if (result.status === "error") {
+            stderr.write(`技能安装失败: ${result.message}\n`);
+          }
+        }
       } finally {
         rl.close();
       }
