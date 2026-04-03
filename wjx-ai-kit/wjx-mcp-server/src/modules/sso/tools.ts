@@ -5,6 +5,7 @@ import {
   buildSsoUserSystemUrl,
   buildSsoPartnerUrl,
   buildSurveyUrl,
+  buildPreviewUrl,
 } from "./client.js";
 import { toolResult, toolError } from "../../helpers.js";
 
@@ -216,6 +217,40 @@ export function registerSsoTools(server: McpServer): void {
           activity: args.activity,
           editmode: args.editmode,
           runprotect: args.runprotect,
+        });
+        return toolResult({ result: true, url }, false);
+      } catch (error) {
+        return toolError(error);
+      }
+    },
+  );
+
+  // ─── build_preview_url ────────────────────────────────────────────
+  server.registerTool(
+    "build_preview_url",
+    {
+      title: "生成问卷预览链接",
+      description:
+        "生成问卷预览链接（无需签名），可在浏览器中预览问卷效果。创建问卷后推荐使用此工具返回预览地址。",
+      inputSchema: {
+        vid: z.number().int().positive().describe("问卷编号"),
+        source: z
+          .string()
+          .optional()
+          .describe("来源标识（可选，用于追踪）"),
+      },
+      annotations: {
+        destructiveHint: false,
+        idempotentHint: true,
+        openWorldHint: false,
+        title: "生成问卷预览链接",
+      },
+    },
+    async (args) => {
+      try {
+        const url = buildPreviewUrl({
+          vid: args.vid,
+          source: args.source,
         });
         return toolResult({ result: true, url }, false);
       } catch (error) {

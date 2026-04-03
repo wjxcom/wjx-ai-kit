@@ -89,5 +89,7 @@ export const Action = {
 } as const;
 
 export const DEFAULT_TIMEOUT_MS = 15_000;
+/** 耗时操作（下载、报告生成等）使用更长的超时时间 */
+export const LONG_TIMEOUT_MS = 120_000;
 export const DEFAULT_MAX_RETRIES = 2;
 export const RETRY_DELAY_MS = 1000;

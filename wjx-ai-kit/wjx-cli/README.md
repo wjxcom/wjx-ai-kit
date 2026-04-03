@@ -5,7 +5,7 @@
 [![license](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 [![node](https://img.shields.io/badge/node-%3E%3D20-green)](https://nodejs.org/)
 [![npm](https://img.shields.io/npm/v/wjx-cli)](https://www.npmjs.com/package/wjx-cli)
-[![tests](https://img.shields.io/badge/tests-96%20passing-brightgreen)](__tests__/cli.test.mjs)
+[![tests](https://img.shields.io/badge/tests-122%20passing-brightgreen)](__tests__/cli.test.mjs)
 
 wjx-cli 是 [`wjx-ai-kit`](../) monorepo 的命令行入口，将 [wjx-api-sdk](../wjx-api-sdk/) 的 50+ 函数直接暴露为终端命令。设计目标：**让 AI Agent 和人类开发者都能用一行命令操作问卷星 OpenAPI**。
 
@@ -48,7 +48,7 @@ wjx-cli 是 [`wjx-ai-kit`](../) monorepo 的命令行入口，将 [wjx-api-sdk](
 - **AI Agent 原生** — 默认 JSON stdout + 结构化 JSON stderr，退出码区分错误类型，适合程序解析
 - **stdin pipe** — `echo '{"vid":123}' | wjx --stdin survey get`，参数通过管道传入
 - **表格输出** — `--table` 切换为人类可读的 `console.table` 格式
-- **55 个子命令** — 覆盖问卷、答卷、通讯录、部门、管理员、标签、用户体系、子账号、SSO、数据分析
+- **67 个子命令** — 覆盖问卷、答卷、通讯录、部门、管理员、标签、用户体系、子账号、SSO、数据分析
 - **9 个本地命令** — SSO URL 生成和 analytics 计算无需 API Key，离线可用
 - **Shell 补全** — `wjx completion bash/zsh/fish` 生成自动补全脚本
 - **Dry-run 预览** — `--dry-run` 预览 API 请求（URL/Headers/Body）不实��发送
@@ -85,8 +85,8 @@ npm install -g wjx-cli
 ### 从源码安装（开发者）
 
 ```bash
-git clone <your-repo-url>
-cd wjx-ai-kit
+git clone https://codeup.aliyun.com/6445da2d020eabef3107e22e/wjxfc/wjxagents.git
+cd wjxagents/wjx-ai-kit
 npm install
 npm run build --workspace=wjx-api-sdk
 npm run build --workspace=wjx-cli
@@ -123,7 +123,7 @@ cat ~/.wjxrc
 ```
 wjx-ai-kit/                     # monorepo root
 ├── wjx-api-sdk/                 # TypeScript SDK（50+ 函数，零依赖）
-├── wjx-mcp-server/              # MCP Server（55 tools，供 Claude/Cursor 使用）
+├── wjx-mcp-server/              # MCP Server（56 tools，供 Claude/Cursor 使用）
 └── wjx-cli/                     # ← 本项目
     ├── src/
     │   ├── index.ts             # Commander 入口 + 全局 preAction hook
@@ -150,7 +150,7 @@ wjx-ai-kit/                     # monorepo root
     │       ├── stdin.ts            # stdin JSON 读取 + source-aware merge
     │       └── completions.ts      # Shell 补全候选项生成
     └── __tests__/
-        └── cli.test.mjs         # 96 个端到端测试
+        └── cli.test.mjs         # ~122 个端到端测试
 ```
 
 **数据流：** `CLI args / stdin` → `Commander parse` → `executeCommand()` → `wjx-api-sdk function` → `stdout JSON / stderr error`
@@ -181,6 +181,7 @@ wjx-ai-kit/                     # monorepo root
 wjx survey list                          # 列出问卷
 wjx survey get --vid 12345               # 获取详情
 wjx survey create --title "新问卷"         # 创建问卷
+wjx survey create-by-text --text "..."   # 用 DSL 文本创建问卷
 wjx survey status --vid 12345 --state 1  # 发布（1=发布, 2=暂停, 3=删除）
 wjx survey export-text --vid 12345       # 导出为纯文本
 wjx survey url --mode create             # 生成创建/编辑 URL
@@ -223,6 +224,10 @@ wjx survey url --mode create             # 生成创建/编辑 URL
 | | `--file` | **是** | string | 文件 Base64 内容 |
 | **export-text** | `--vid` | **是** | int | 问卷 ID |
 | | `--raw` | | flag | 输出纯文本（不包裹 JSON） |
+| **create-by-text** | `--text` | **是*** | string | DSL 文本（与 `--file` 二选一） |
+| | `--file` | **是*** | string | 从文件读取 DSL 文本 |
+| | `--type` | | int | 问卷类型（1=调查, 6=考试，默认 1） |
+| | `--publish` | | flag | 创建后立即发布 |
 | **url** | `--mode` | | string | `create` 或 `edit`（默认 create） |
 | | `--name` | | string | 问卷名称（create 模式） |
 | | `--activity` | | int | 问卷 vid（edit 模式必填） |
@@ -540,9 +545,10 @@ wjx analytics decode-push --payload "..." --app_key "key"
 ### 配置与诊断
 
 ```bash
-wjx init      # 交互式引导配置（API Key、Base URL、Corp ID → ~/.wjxrc）
-wjx whoami    # 验证 API Key 并显示账号信息
-wjx doctor    # 环境诊断（配置文件、Node 版本、API Key、API 连接、SDK 版本）
+wjx init         # 交互式引导配置（API Key、Base URL、Corp ID → ~/.wjxrc）
+wjx whoami       # 验证 API Key 并显示账号信息
+wjx doctor       # 环境诊断（配置文件、Node 版本、API Key、API 连接、SDK 版本）
+wjx reference    # 输出命令参考文档（dsl / question-types / survey / response / analytics）
 ```
 
 ### Shell 补全
@@ -758,7 +764,7 @@ echo '{"title":"调查","type":0,"questions":"[]"}' | wjx --stdin survey create
 | Claude Desktop / Cursor 等 MCP 客户端 | `wjx-mcp-server` |
 | 终端 / shell 脚本 / CI/CD | `wjx-cli` |
 | 自定义 Agent（Python/Node/Go） | `wjx-cli`（子进程）或 `wjx-api-sdk`（直接导入） |
-| 需要 55 个 MCP tools + resources + prompts | `wjx-mcp-server` |
+| 需要 56 个 MCP tools + resources + prompts | `wjx-mcp-server` |
 | 需要简单的 JSON in / JSON out | `wjx-cli` |
 
 ---
@@ -783,7 +789,7 @@ echo '{"title":"调查","type":0,"questions":"[]"}' | wjx --stdin survey create
 cd wjx-ai-kit/wjx-cli
 
 npm run build    # TypeScript 编译 → dist/
-npm test         # 构建 + 运行 82 个测试
+npm test         # 构建 + 运行 ~122 个测试
 npm run clean    # 清理 dist/
 
 # 手动测试
@@ -871,7 +877,7 @@ export WJX_BASE_URL=https://your-test-server.com
 |------|------|
 | [wjx-ai-kit](../) | Monorepo 根目录 |
 | [wjx-api-sdk](../wjx-api-sdk/) | TypeScript SDK（50+ 函数，零依赖） |
-| [wjx-mcp-server](../wjx-mcp-server/) | MCP Server（55 tools，供 Claude/Cursor 使用） |
+| [wjx-mcp-server](../wjx-mcp-server/) | MCP Server（56 tools，供 Claude/Cursor 使用） |
 
 ---
 

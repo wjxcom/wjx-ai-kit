@@ -2,6 +2,7 @@ import type { WjxApiResponse, WjxCredentials, FetchLike } from "../../core/types
 import { Action } from "../../core/constants.js";
 import { callWjxApi, getWjxCredentials, validateQuestionsJson } from "../../core/api-client.js";
 export { textToSurvey, parsedQuestionsToWire } from "./text-to-survey.js";
+import { textToSurvey, parsedQuestionsToWire } from "./text-to-survey.js";
 import type {
   CreateSurveyInput,
   CreateSurveyByTextInput,
@@ -195,16 +196,24 @@ export async function createSurveyByText<T = unknown>(
   credentials: WjxCredentials = getWjxCredentials(),
   fetchImpl: FetchLike = fetch,
 ): Promise<WjxApiResponse<T>> {
-  const params: Record<string, unknown> = {
-    action: Action.CREATE_SURVEY_BY_TEXT,
-    survey_data: input.text,
-  };
-  if (input.title !== undefined) params.title = input.title;
-  if (input.atype !== undefined) params.atype = input.atype;
-  params.publish = input.publish ?? false;
-  if (input.creater !== undefined) params.creater = input.creater;
+  // 解析 DSL 文本为结构化数据，然后通过 createSurvey API 创建
+  const parsed = textToSurvey(input.text);
+  const { questions: wireQuestions } = parsedQuestionsToWire(parsed.questions);
+  const title = input.title ?? parsed.title;
+  const description = parsed.description ?? "";
 
-  return callWjxApi<T>(params, { credentials, fetchImpl, maxRetries: 0 });
+  return createSurvey<T>(
+    {
+      title,
+      type: input.atype ?? 1,
+      description,
+      questions: JSON.stringify(wireQuestions),
+      publish: input.publish,
+      creater: input.creater,
+    },
+    credentials,
+    fetchImpl,
+  );
 }
 
 export async function uploadFile<T = unknown>(

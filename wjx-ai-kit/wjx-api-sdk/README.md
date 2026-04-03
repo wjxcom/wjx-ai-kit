@@ -29,8 +29,8 @@ npm install wjx-api-sdk
 ### 从源码安装（开发者）
 
 ```bash
-git clone <your-repo-url>
-cd wjx-ai-kit
+git clone https://codeup.aliyun.com/6445da2d020eabef3107e22e/wjxfc/wjxagents.git
+cd wjxagents/wjx-ai-kit
 npm install
 npm run build --workspace=wjx-api-sdk
 ```
@@ -142,10 +142,12 @@ async function sdkFunction(
 | `clearRecycleBin(input)` | 清空回收站 |
 | `uploadFile(input)` | 上传文件 |
 
-### Survey — DSL 转换器
+### Survey — DSL 转换与文本创建
 
 | 函数 | 说明 |
 |------|------|
+| `createSurveyByText(input)` | 用 DSL 文本创建问卷（解析→结构化→调 API） |
+| `parsedQuestionsToWire(questions)` | 将 `ParsedQuestion[]` 转为 API 兼容的 `WireQuestion[]` |
 | `surveyToText(survey)` | 将问卷结构转为纯文本 DSL |
 | `textToSurvey(text)` | 将纯文本 DSL 解析为 `ParsedSurvey` |
 | `typeToLabel(type)` | 题型代码转可读标签 |
@@ -219,7 +221,7 @@ async function sdkFunction(
 
 | 函数 | 说明 |
 |------|------|
-| `decodeResponses(responses, questions)` | 解码答卷原始数据为可读结构 |
+| `decodeResponses(submitdata)` | 解码答卷提交数据为可读结构 |
 | `calculateNps(responses)` | 计算 NPS 净推荐值 |
 | `calculateCsat(responses)` | 计算 CSAT 客户满意度 |
 | `detectAnomalies(responses)` | 检测异常答卷 |
@@ -294,7 +296,7 @@ console.log(parsed.questions); // ParsedQuestion[]
 cd wjx-ai-kit/wjx-api-sdk
 
 npm run build    # tsc 编译
-npm test         # 运行全部测试（598 tests）
+npm test         # 运行全部测试（~623 tests）
 npm run clean    # 清理 dist/
 ```
 

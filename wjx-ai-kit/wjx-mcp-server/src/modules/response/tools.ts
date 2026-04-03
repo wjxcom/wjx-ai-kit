@@ -13,6 +13,11 @@ import {
 } from "./client.js";
 import { toolResult, toolError } from "../../helpers.js";
 
+/** 校验字符串是否为合法 JSON，在 handler 中调用（避免 Zod .refine() 导致 MCP 挂起） */
+function assertJson(value: string, fieldName: string): void {
+  try { JSON.parse(value); } catch { throw new Error(`${fieldName} 必须是合法的 JSON 字符串`); }
+}
+
 export function registerResponseTools(server: McpServer): void {
   // ─── query_responses ──────────────────────────────────────────────
   server.registerTool(
@@ -37,10 +42,7 @@ export function registerResponseTools(server: McpServer): void {
         query_note: z.boolean().optional().describe("是否查询标注信息"),
         distinct_user: z.boolean().optional().describe("是否仅返回用户最新答卷"),
         distinct_sojumpparm: z.boolean().optional().describe("是否仅返回自定义参数最新答卷"),
-        conds: z.string().refine(
-          (s) => { try { JSON.parse(s); return true; } catch { return false; } },
-          "conds 必须是合法的 JSON 字符串",
-        ).optional().describe("题目查询条件 JSON 字符串，最多2个条件，AND关系"),
+        conds: z.string().optional().describe("题目查询条件 JSON 字符串，最多2个条件，AND关系"),
       },
       annotations: {
         destructiveHint: false,
@@ -51,6 +53,7 @@ export function registerResponseTools(server: McpServer): void {
     },
     async (args) => {
       try {
+        if (args.conds !== undefined) assertJson(args.conds, "conds");
         const result = await queryResponses({
           vid: args.vid,
           valid: args.valid,
@@ -169,22 +172,13 @@ export function registerResponseTools(server: McpServer): void {
         vid: z.number().int().positive().describe("问卷编号"),
         valid: z.boolean().optional().default(true).describe("是否查询有效答卷，默认true。建议始终显式传递此参数"),
         min_index: z.number().int().optional().describe("最小答卷序号"),
-        jid: z.string().optional().refine(
-          (s) => {
-            if (s === undefined) return true;
-            return s.split(",").length <= 50;
-          },
-          "jid 最多允许传入50个，用逗号分隔",
-        ).describe("答卷编号，多个用逗号分隔，最多50个"),
+        jid: z.string().optional().describe("答卷编号，多个用逗号分隔，最多50个"),
         sojumpparm: z.string().optional().describe("自定义链接参数，多个用逗号分隔"),
         begin_time: z.number().int().optional().describe("查询开始时间（Unix毫秒时间戳）"),
         end_time: z.number().int().optional().describe("查询结束时间（Unix毫秒时间戳）"),
         distinct_user: z.boolean().optional().describe("是否仅用户最新答卷"),
         distinct_sojumpparm: z.boolean().optional().describe("是否仅自定义参数最新答卷"),
-        conds: z.string().refine(
-          (s) => { try { JSON.parse(s); return true; } catch { return false; } },
-          "conds 必须是合法的 JSON 字符串",
-        ).optional().describe("题目查询条件 JSON 字符串"),
+        conds: z.string().optional().describe("题目查询条件 JSON 字符串"),
       },
       annotations: {
         destructiveHint: false,
@@ -195,6 +189,7 @@ export function registerResponseTools(server: McpServer): void {
     },
     async (args) => {
       try {
+        if (args.conds !== undefined) assertJson(args.conds, "conds");
         const result = await getReport({
           vid: args.vid,
           valid: args.valid,
@@ -304,10 +299,7 @@ export function registerResponseTools(server: McpServer): void {
         vid: z.number().int().positive().describe("问卷编号"),
         jid: z.number().int().positive().describe("答卷编号"),
         type: z.literal(1).describe("修改类型：1=修改分数（目前仅支持1）"),
-        answers: z.string().min(1).refine(
-          (s) => { try { JSON.parse(s); return true; } catch { return false; } },
-          "answers 必须是合法的 JSON 字符串",
-        ).describe("分数修改 JSON 字符串，格式：{\"题号\":\"分数\"}"),
+        answers: z.string().min(1).describe("分数修改 JSON 字符串，格式：{\"题号\":\"分数\"}"),
       },
       annotations: {
         destructiveHint: true,
@@ -318,6 +310,7 @@ export function registerResponseTools(server: McpServer): void {
     },
     async (args) => {
       try {
+        assertJson(args.answers, "answers");
         const result = await modifyResponse({
           vid: args.vid,
           jid: args.jid,

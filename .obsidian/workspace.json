@@ -1,0 +1,225 @@
+{
+  "main": {
+    "id": "032fca9c76d904a7",
+    "type": "split",
+    "children": [
+      {
+        "id": "0581e1bd805a5ac0",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "f00e0cf6ef310286",
+            "type": "leaf",
+            "state": {
+              "type": "markdown",
+              "state": {
+                "file": "wjx-ai-kit/wjx-cli/docs/install-nodejs.md",
+                "mode": "source",
+                "source": false
+              },
+              "icon": "lucide-file",
+              "title": "install-nodejs"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "vertical"
+  },
+  "left": {
+    "id": "95a0337aa3133f5d",
+    "type": "split",
+    "children": [
+      {
+        "id": "c6ebc094da1c765c",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "bc3eead34dd3ebca",
+            "type": "leaf",
+            "state": {
+              "type": "file-explorer",
+              "state": {
+                "sortOrder": "alphabetical",
+                "autoReveal": false
+              },
+              "icon": "lucide-folder-closed",
+              "title": "文件列表"
+            }
+          },
+          {
+            "id": "5cb2ab551bc8c9a4",
+            "type": "leaf",
+            "state": {
+              "type": "search",
+              "state": {
+                "query": "",
+                "matchingCase": false,
+                "explainSearch": false,
+                "collapseAll": false,
+                "extraContext": false,
+                "sortOrder": "alphabetical"
+              },
+              "icon": "lucide-search",
+              "title": "搜索"
+            }
+          },
+          {
+            "id": "a3232f1d0019fe25",
+            "type": "leaf",
+            "state": {
+              "type": "bookmarks",
+              "state": {},
+              "icon": "lucide-bookmark",
+              "title": "书签"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "horizontal",
+    "width": 300
+  },
+  "right": {
+    "id": "710d2f11ba2927a3",
+    "type": "split",
+    "children": [
+      {
+        "id": "51e01a761b5c67e1",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "70817d5bbd4f454a",
+            "type": "leaf",
+            "state": {
+              "type": "backlink",
+              "state": {
+                "file": "wjx-ai-kit/wjx-cli/docs/install-nodejs.md",
+                "collapseAll": false,
+                "extraContext": false,
+                "sortOrder": "alphabetical",
+                "showSearch": false,
+                "searchQuery": "",
+                "backlinkCollapsed": false,
+                "unlinkedCollapsed": true
+              },
+              "icon": "links-coming-in",
+              "title": "install-nodejs 的反向链接列表"
+            }
+          },
+          {
+            "id": "aaacaa8272fecba1",
+            "type": "leaf",
+            "state": {
+              "type": "outgoing-link",
+              "state": {
+                "file": "wjx-ai-kit/wjx-cli/docs/install-nodejs.md",
+                "linksCollapsed": false,
+                "unlinkedCollapsed": true
+              },
+              "icon": "links-going-out",
+              "title": "install-nodejs 的出链列表"
+            }
+          },
+          {
+            "id": "7481b453a8eda552",
+            "type": "leaf",
+            "state": {
+              "type": "tag",
+              "state": {
+                "sortOrder": "frequency",
+                "useHierarchy": true,
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-tags",
+              "title": "标签"
+            }
+          },
+          {
+            "id": "c3fa236193eafb83",
+            "type": "leaf",
+            "state": {
+              "type": "all-properties",
+              "state": {
+                "sortOrder": "frequency",
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-archive",
+              "title": "添加笔记属性"
+            }
+          },
+          {
+            "id": "1cad81acb3101318",
+            "type": "leaf",
+            "state": {
+              "type": "outline",
+              "state": {
+                "file": "wjx-ai-kit/wjx-cli/docs/install-nodejs.md",
+                "followCursor": false,
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-list",
+              "title": "install-nodejs 的大纲"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "horizontal",
+    "width": 300,
+    "collapsed": true
+  },
+  "left-ribbon": {
+    "hiddenItems": {
+      "switcher:打开快速切换": false,
+      "graph:查看关系图谱": false,
+      "canvas:新建白板": false,
+      "daily-notes:打开/创建今天的日记": false,
+      "templates:插入模板": false,
+      "command-palette:打开命令面板": false,
+      "bases:新建数据库": false
+    }
+  },
+  "active": "f00e0cf6ef310286",
+  "lastOpenFiles": [
+    "wjx-ai-kit/wjx-mcp-server/docs/survey-mcp-deep-research.md",
+    "wjx-ai-kit/wjx-mcp-server/docs/phase1-implementation-plan.md",
+    "wjx-ai-kit/wjx-mcp-server/docs/eng-review-findings.md",
+    "wjx-ai-kit/wjx-mcp-server/docs/competitive-analysis-tencent-survey.md",
+    "wjx-ai-kit/wjx-cli/TODOS.md",
+    "wjx-ai-kit/wjx-cli/SESSION_PROMPT.md",
+    "wjx-ai-kit/wjx-cli/PLAN.md",
+    "wjx-ai-kit/wjx-agents/wjx-mcp-expert/wjx-survey.md",
+    "wjx-ai-kit/wjx-agents/wjx-cli-expert/wjx-cli.md",
+    "wjx-ai-kit/README.md.tmp.17836.1775200912288",
+    "wjx-ai-kit/wjx-mcp-server/src/modules/response/tools.ts.tmp.17836.1775200177636",
+    "wjx-ai-kit/wjx-api-sdk/src/modules/survey/client.ts.tmp.17836.1775200151333",
+    "wjx-ai-kit/wjx-cli/README.md.tmp.17836.1775199098222",
+    "wjx-ai-kit/wjx-cli/src/commands/reference.ts.tmp.17836.1775198698298",
+    "wjx-ai-kit/wjx-agents/wjx-cli-expert/wjx-cli-expert.md.tmp.17836.1775198680422",
+    "wjx-ai-kit/wjx-agents/wjx-cli-expert/wjx-cli-expert.md.tmp.17836.1775198675634",
+    "wjx-ai-kit/SECURITY.md",
+    "wjx-ai-kit/CONTRIBUTING.md",
+    "wjx-ai-kit/wjx-skills/wjx-cli-use/references/response-commands.md.tmp.17836.1775194126341",
+    "wjx-ai-kit/wjx-skills/wjx-mcp-use/references/tools-other.md.tmp.17836.1775194105394",
+    "wjx-ai-kit/wjx-agents/wjx-mcp-expert/README.md.tmp.17836.1775193873375",
+    "wjx-ai-kit/wjx-agents/wjx-cli-expert/wjx-cli-expert.md",
+    "wjx-ai-kit/wjx-agents/wjx-mcp-expert/wjx-mcp-expert.md",
+    "wjx-ai-kit/wjx-agents/wjx-mcp-expert/wjx-mcp.md",
+    "wjx-ai-kit/wjx-mcp-server/agents/wjx-survey.md",
+    "wjx-ai-kit/wjx-skills/wjx-mcp-use/references/tools-other.md",
+    "wjx-ai-kit/wjx-skills/wjx-mcp-use/references/tools-response.md",
+    "wjx-ai-kit/wjx-skills/wjx-mcp-use/references/tools-survey.md",
+    "wjx-ai-kit/wjx-skills/wjx-mcp-use/references/dsl-and-types.md",
+    "wjx-ai-kit/wjx-skills/wjx-mcp-use/SKILL.md",
+    "wjx-ai-kit/wjx-agents/wjx-cli-expert/README.md",
+    "wjx-ai-kit/wjx-skills/wjx-mcp-use/references/survey-commands.md",
+    "wjx-ai-kit/wjx-skills/wjx-mcp-use/references/response-commands.md",
+    "wjx-ai-kit/wjx-skills/wjx-mcp-use/references/question-types.md",
+    "wjx-ai-kit/wjx-skills/wjx-mcp-use/references/dsl-syntax.md",
+    "wjx-ai-kit/wjx-skills/wjx-mcp-use/references/contacts-commands.md"
+  ]
+}

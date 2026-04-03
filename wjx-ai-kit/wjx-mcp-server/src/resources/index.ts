@@ -4,6 +4,7 @@ import {
   QUESTION_TYPES,
   SURVEY_STATUSES,
   VERIFY_STATUSES,
+  STATUS_TRANSITIONS,
 } from "./survey-reference.js";
 import {
   ANALYSIS_METHODS,
@@ -51,7 +52,7 @@ export function registerResources(server: McpServer): void {
       contents: [{
         uri: "wjx://reference/survey-statuses",
         mimeType: "application/json",
-        text: formatResource({ survey_statuses: SURVEY_STATUSES, verify_statuses: VERIFY_STATUSES }),
+        text: formatResource({ survey_statuses: SURVEY_STATUSES, verify_statuses: VERIFY_STATUSES, status_transitions: STATUS_TRANSITIONS }),
       }],
     }),
   );

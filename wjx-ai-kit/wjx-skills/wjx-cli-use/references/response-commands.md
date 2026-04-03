@@ -153,6 +153,8 @@ wjx response count --vid 12345
 |------|------|------|
 | `--vid <n>` | 是 | 问卷编号 |
 
+输出格式：`{ "result": true, "data": { "vid": N, "total_count": N, "join_times": N } }`
+
 ## 其他 Response 命令
 
 | 命令 | 说明 |

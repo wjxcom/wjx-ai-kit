@@ -364,7 +364,9 @@ ${examCountInstruction(single_count, multi_count, truefalse_count, fillin_count)
 
 请等待用户提供资料文档后再生成题目。${DSL_FORMAT_INSTRUCTIONS}
 
-${examFormatInstructions("期末考试")}`,
+${examFormatInstructions("期末考试")}
+
+【重要提示】考试问卷的正确答案和每题分值无法通过 API 设置。创建考试后请使用 build_preview_url 或 build_survey_url(mode=edit) 提供链接，指引用户在网页端设置答案与评分。`,
         },
       }],
     }),
@@ -392,7 +394,9 @@ ${EXAM_QUALITY_REQUIREMENTS}
 
 ${examCountInstruction(single_count, multi_count, truefalse_count, fillin_count)}${DSL_FORMAT_INSTRUCTIONS}
 
-${examFormatInstructions(`${knowledge_scope} - 考试`)}`,
+${examFormatInstructions(`${knowledge_scope} - 考试`)}
+
+【重要提示】考试问卷的正确答案和每题分值无法通过 API 设置。创建考试后请使用 build_preview_url 或 build_survey_url(mode=edit) 提供链接，指引用户在网页端设置答案与评分。`,
         },
       }],
     }),

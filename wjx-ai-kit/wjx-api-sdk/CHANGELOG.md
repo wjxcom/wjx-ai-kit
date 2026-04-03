@@ -2,17 +2,33 @@
 
 All notable changes to this project will be documented in this file.
 
-## [0.1.3] - 2026-04-03
+## [0.1.5] - 2026-04-02
+
+### Added
+
+- 导出 `createSurveyByText()`、`parsedQuestionsToWire()`、`LABEL_TO_TYPE`、`TYPE_MAP`
+- 导出类型 `WireQuestion`、`WireConversionResult`
 
 ### Changed
 
-- **移除 `username` 参数**: user-system 模块的 6 个接口（addParticipants、modifyParticipants、deleteParticipants、addUserMapping、deleteUserMapping、bindUserMapping）不再接受 `username`，与 C# 服务端对齐
+- `createSurveyByText` 重写：客户端解析 DSL 后调用 `createSurvey`（action 1000101），不再发送原始文本到 API
+- `parsedQuestionsToWire()` 返回 `WireConversionResult { questions, skippedParagraphs }`，自动过滤段落说明
+- 矩阵题 body 解析支持跨空行收集行/列选项
+- Format 1（`行：`/`Rows:`）解析支持 scaleRange 和列选项
+- **移除 `username` 参数**: user-system 模块的 6 个接口不再接受 `username`，与 C# 服务端对齐
 - **移除 `clientIp` 凭据字段**: WjxCredentials 不再包含 clientIp
-- **扩展 `additional_setting` 默认值**: getSurveySettings 默认从 `[1000-1005]` 扩展为 `[1000-1007]`（新增 1006=数据推送, 1007=文件夹）
+- **扩展 `additional_setting` 默认值**: getSurveySettings 默认从 `[1000-1005]` 扩展为 `[1000-1007]`
 
 ### Fixed
 
 - **评分量表 0 分被覆写**: text-to-survey 解析器不再将 `item_score=0` 视为未设置
+
+## [0.1.3] - 2026-04-01
+
+### Added
+
+- 导出 `textToSurvey`、`parsedQuestionsToWire` 供 CLI 和 MCP Server 使用
+- DSL 解析器扩展：支持 `行：`/`Rows:` 兼容写法
 
 ## [0.1.2] - 2026-03-31
 

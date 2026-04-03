@@ -1,13 +1,13 @@
 ---
 name: wjx-mcp-use
-description: Guide for using wjx-mcp-server MCP tools to interact with the Wenjuanxing (问卷星) platform. Use when the user wants to create surveys, query responses, analyze data, manage contacts, or generate SSO links via MCP protocol. Covers 55 tools, 8 resources, and 19 prompts.
+description: Guide for using wjx-mcp-server MCP tools to interact with the Wenjuanxing (问卷星) platform. Use when the user wants to create surveys, query responses, analyze data, manage contacts, or generate SSO links via MCP protocol. Covers 56 tools, 8 resources, and 19 prompts.
 ---
 
 # wjx-mcp-server Usage Guide
 
-wjx-mcp-server 提供 55 个 MCP 工具、8 个参考资源和 12 个 prompt 模板，覆盖问卷星 OpenAPI 的全部能力。
+wjx-mcp-server 提供 56 个 MCP 工具、8 个参考资源和 19 个 prompt 模板，覆盖问卷星 OpenAPI 的全部能力。
 
-## 工具总览（55 tools）
+## 工具总览（56 tools）
 
 | 模块 | 工具数 | 说明 |
 |------|--------|------|
@@ -15,10 +15,9 @@ wjx-mcp-server 提供 55 个 MCP 工具、8 个参考资源和 12 个 prompt 模
 | 答卷数据 | 9 | query_responses, query_responses_realtime, download_responses, get_report, submit_response, get_winners, modify_response, get_360_report, clear_responses |
 | 通讯录 | 14 | query/add/delete_contacts, add/delete/restore_admin, list/add/modify/delete_departments, list/add/modify/delete_tags |
 | 子账号 | 5 | add/modify/delete/restore/query_sub_accounts |
-| SSO | 4 | sso_subaccount_url, sso_user_system_url, sso_partner_url, build_survey_url |
+| SSO | 5 | sso_subaccount_url, sso_user_system_url, sso_partner_url, build_survey_url, build_preview_url |
 | 分析计算 | 5 | decode_responses, calculate_nps, calculate_csat, detect_anomalies, compare_metrics |
-| 推送解码 | 1 | decode_push_payload |
-| 用户体系 | 6 | add/modify/delete_participants, bind_activity, query_survey_binding, query_user_surveys（已过时） |
+| 用户体系 | 6 | add/modify/delete_participants, bind_activity, query_survey_binding, query_user_surveys |
 
 详细参数见 [references/tools-survey.md](references/tools-survey.md)、[references/tools-response.md](references/tools-response.md)、[references/tools-other.md](references/tools-other.md)。
 
@@ -67,24 +66,43 @@ DSL 语法详见 `wjx://reference/dsl-syntax` 资源，或 [references/dsl-and-t
 | `wjx://reference/user-roles` | 子账号角色编码 |
 | `wjx://reference/push-format` | 数据推送格式和加密说明 |
 
-## Prompt 模板（12 个）
+## Prompt 模板（19 个）
 
 可直接使用的预定义工作流：
+
+**通用/运维（6）：**
 
 | Prompt | 用途 |
 |--------|------|
 | `design-survey` | 引导设计问卷结构 |
-| `create-nps-survey` | 一键创建 NPS 问卷 |
 | `analyze-results` | 获取并分析问卷数据 |
+| `create-nps-survey` | 一键创建 NPS 问卷 |
+| `configure-webhook` | 配置数据推送 |
+| `anomaly-detection` | 异常答卷检测 |
+| `user-system-workflow` | 用户体系完整流程 |
+
+**分析（6）：**
+
+| Prompt | 用途 |
+|--------|------|
 | `nps-analysis` | NPS 完整分析（得分、分布、建议） |
 | `csat-analysis` | CSAT 满意度分析 |
 | `cross-tabulation` | 交叉分析 |
 | `sentiment-analysis` | 开放题情感分析 |
 | `survey-health-check` | 问卷质量诊断 |
 | `comparative-analysis` | 跨问卷对比分析 |
-| `anomaly-detection` | 异常答卷检测 |
-| `configure-webhook` | 配置数据推送 |
-| `user-system-workflow` | 用户体系完整流程 |
+
+**问卷生成（7）：**
+
+| Prompt | 用途 |
+|--------|------|
+| `generate-survey` | 通用问卷生成 |
+| `generate-nps-survey` | NPS 问卷生成 |
+| `generate-360-evaluation` | 360 度评估问卷生成 |
+| `generate-satisfaction-survey` | 满意度调查生成 |
+| `generate-engagement-survey` | 员工敬业度调查生成 |
+| `generate-exam-from-document` | 从文档生成考试 |
+| `generate-exam-from-knowledge` | 从知识点生成考试 |
 
 ## 常用枚举值
 

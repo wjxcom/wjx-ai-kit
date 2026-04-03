@@ -160,7 +160,7 @@
 
 ---
 
-## SSO 链接生成（4 tools）
+## SSO 链接生成（5 tools）
 
 ### sso_subaccount_url — 子账号 SSO 登录链接
 
@@ -210,6 +210,14 @@
 | `editmode` | number | 否 | 编辑模式 |
 | `runprotect` | number | 否 | 运行保护标志 |
 
+### build_preview_url — 问卷预览链接
+
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| `vid` | number | 是 | 问卷编号 |
+
+返回问卷的预览 URL，可在浏览器中查看问卷效果。
+
 ---
 
 ## 分析计算（5 tools，纯本地计算，无需 API Key）
@@ -252,17 +260,7 @@
 
 ---
 
-## 推送解码（1 tool）
-
-### decode_push_payload — 解码推送数据
-
-解码问卷星数据推送的加密 payload。
-
----
-
-## 用户体系（6 tools，已过时）
-
-> 这些工具已标记 [Deprecated]，优先使用通讯录模块。仅在用户明确要求时使用。
+## 用户体系（6 tools）
 
 ### add_participants — 批量添加参与者
 

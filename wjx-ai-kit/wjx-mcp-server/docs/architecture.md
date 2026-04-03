@@ -235,7 +235,7 @@ flowchart TD
 
 `src/core/api-client.ts` 是远程调用总入口，承担：
 
-1. 读取环境变量中的 `WJX_APP_ID` / `WJX_APP_KEY`
+1. 读取凭据中的 `WJX_API_KEY`
 2. 生成 Unix 时间戳
 3. 生成 32 位无连字符 `traceid`
 4. 为请求附加 `appid`、`ts`、`traceid`

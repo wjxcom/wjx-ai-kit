@@ -18,6 +18,7 @@ import {
   textToSurvey,
   parsedQuestionsToWire,
 } from "wjx-api-sdk";
+import { formatOutput } from "../lib/output.js";
 import { CliError, handleError } from "../lib/errors.js";
 import { mergeStdinWithOpts } from "../lib/stdin.js";
 import { getCredentials } from "../lib/auth.js";
@@ -120,12 +121,15 @@ export function registerSurveyCommands(program: Command): void {
 
         if (globalOpts.dryRun) {
           const parsed = textToSurvey(dslText);
-          const wireQuestions = parsedQuestionsToWire(parsed.questions);
+          const { questions: wireQuestions, skippedParagraphs } = parsedQuestionsToWire(parsed.questions);
           process.stderr.write(JSON.stringify({
             dry_run: true,
             parsed_title: parsed.title,
             parsed_description: parsed.description,
-            question_count: parsed.questions.length,
+            question_count: wireQuestions.length,
+            skipped_paragraphs: skippedParagraphs.length > 0
+              ? skippedParagraphs.map((q) => q.title)
+              : undefined,
             wire_questions: wireQuestions,
           }, null, 2) + "\n");
           return;
@@ -143,7 +147,6 @@ export function registerSurveyCommands(program: Command): void {
           throw new CliError("API_ERROR", result.errormsg || "API request failed");
         }
 
-        const { formatOutput } = await import("../lib/output.js");
         formatOutput(result, globalOpts);
       } catch (e) {
         handleError(e);
@@ -324,7 +327,7 @@ export function registerSurveyCommands(program: Command): void {
   survey
     .command("url")
     .description("生成问卷 URL（创建/编辑）")
-    .option("--mode <s>", "模式: create 或 edit", "create")
+    .option("--mode <s>", "模式: create 或 edit")
     .option("--name <s>", "问卷名称（create模式）")
     .option("--activity <n>", "问卷vid（edit模式必填）", strictInt)
     .action(async (_opts, cmd) => {
@@ -338,8 +341,14 @@ export function registerSurveyCommands(program: Command): void {
           merged = { ...cmd.opts() };
         }
 
+        const mode = (merged.mode as string) ?? "create";
+        const validModes = ["create", "edit"];
+        if (!validModes.includes(mode)) {
+          throw new CliError("INPUT_ERROR", `无效的 mode: "${mode}"，可选值: ${validModes.join(", ")}`);
+        }
+
         const url = buildSurveyUrl({
-          mode: (merged.mode as "create" | "edit") ?? "create",
+          mode: mode as "create" | "edit",
           name: merged.name as string | undefined,
           activity: merged.activity as number | undefined,
         });
