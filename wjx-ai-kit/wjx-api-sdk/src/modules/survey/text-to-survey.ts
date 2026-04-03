@@ -30,15 +30,25 @@ const TYPE_MAP: Record<string, { q_type: number; q_subtype: number }> = {
   "scenario": { q_type: 3, q_subtype: 304 },
 };
 
+export interface WireQuestionItem {
+  q_index: number;
+  item_index: number;
+  item_title: string;
+  item_score?: number;
+}
+
 export interface WireQuestion {
   q_index: number;
   q_type: number;
   q_subtype: number;
   q_title: string;
   is_requir: boolean;
-  items?: { q_index: number; item_index: number; item_title: string }[];
-  col_items?: { q_index: number; item_index: number; item_title: string }[];
+  items?: WireQuestionItem[];
+  col_items?: WireQuestionItem[];
 }
+
+/** Subtypes that need auto-incrementing item_score (1, 2, 3, ...) */
+const SCORING_SUBTYPES = new Set([302, 303, 401]);
 
 /**
  * Convert ParsedQuestion array to API wire format (question JSON for createSurvey).
@@ -121,6 +131,15 @@ export function parsedQuestionsToWire(questions: ParsedQuestion[]): WireQuestion
         item_index: i + 1,
         item_title: col,
       }));
+    }
+
+    // Auto-assign incrementing item_score for scoring subtypes (量表302, 评分单选303, 评分多选401)
+    if (SCORING_SUBTYPES.has(typeInfo.q_subtype) && wq.items) {
+      for (const item of wq.items) {
+        if (item.item_score === undefined) {
+          item.item_score = item.item_index;
+        }
+      }
     }
 
     wire.push(wq);

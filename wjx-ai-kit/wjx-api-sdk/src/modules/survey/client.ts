@@ -112,7 +112,7 @@ export async function getSurveySettings<T = unknown>(
     {
       action: Action.GET_SETTINGS,
       vid: input.vid,
-      additional_setting: input.additional_setting ?? "[1000,1001,1002,1003,1004,1005]",
+      additional_setting: input.additional_setting ?? "[1000,1001,1002,1003,1004,1005,1006,1007]",
     },
     { credentials, fetchImpl },
   );
