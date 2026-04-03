@@ -473,4 +473,57 @@ describe("SSO tools via MCP", () => {
       assert.equal(result.isError, true, "缺少 mode 应报错");
     });
   });
+
+  // ═══ 5. build_preview_url ═════════════════════════════════════════════════
+
+  describe("build_preview_url", () => {
+    it("5.1 基本参数: 仅 vid", async () => {
+      const result = await client.callTool({
+        name: "build_preview_url",
+        arguments: { vid: 203725 },
+      });
+      assert.equal(result.isError, false);
+      const data = JSON.parse(result.content[0].text);
+      assert.equal(data.result, true);
+      assert.ok(data.url, "应返回预览 URL");
+      assert.ok(data.url.includes("203725"), "URL 应包含问卷 vid");
+      console.log("  预览 URL:", data.url);
+    });
+
+    it("5.2 完整参数: vid + source", async () => {
+      const result = await client.callTool({
+        name: "build_preview_url",
+        arguments: { vid: 203725, source: "test" },
+      });
+      assert.equal(result.isError, false);
+      const data = JSON.parse(result.content[0].text);
+      assert.equal(data.result, true);
+      assert.ok(data.url.includes("203725"), "URL 应包含 vid");
+      assert.ok(data.url.includes("source=test"), "URL 应包含 source 参数");
+    });
+
+    it("5.3 缺少必填参数 vid 应报错", async () => {
+      const result = await client.callTool({
+        name: "build_preview_url",
+        arguments: {},
+      });
+      assert.equal(result.isError, true, "缺少 vid 应报错");
+    });
+
+    it("5.4 vid=0 应报错", async () => {
+      const result = await client.callTool({
+        name: "build_preview_url",
+        arguments: { vid: 0 },
+      });
+      assert.equal(result.isError, true, "vid=0 应报错");
+    });
+
+    it("5.5 vid 为负数应报错", async () => {
+      const result = await client.callTool({
+        name: "build_preview_url",
+        arguments: { vid: -1 },
+      });
+      assert.equal(result.isError, true, "负数 vid 应报错");
+    });
+  });
 });
