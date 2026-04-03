@@ -7,7 +7,7 @@ import { LABEL_TO_TYPE, TYPE_MAP } from "wjx-api-sdk";
 function buildDslLabelSection(): string {
   // Group by primary label (skip aliases)
   const seen = new Set<string>();
-  const lines: string[] = [];
+  const entries: { label: string; typeStr: string; aliasStr: string }[] = [];
 
   for (const [label, internalType] of Object.entries(LABEL_TO_TYPE)) {
     if (seen.has(internalType)) continue;
@@ -16,7 +16,6 @@ function buildDslLabelSection(): string {
     const typeInfo = TYPE_MAP[internalType];
     if (!typeInfo) continue;
 
-    // Find aliases (other labels mapping to same internal type)
     const aliases = Object.entries(LABEL_TO_TYPE)
       .filter(([l, t]) => t === internalType && l !== label)
       .map(([l]) => l);
@@ -29,10 +28,13 @@ function buildDslLabelSection(): string {
       ? `（别名：${aliases.map(a => `[${a}]`).join("、")}）`
       : "";
 
-    lines.push(`  [${label}]${" ".repeat(Math.max(1, 14 - label.length))}→ ${typeStr}${aliasStr}`);
+    entries.push({ label, typeStr, aliasStr });
   }
 
-  return lines.join("\n");
+  const maxLen = Math.max(...entries.map(e => e.label.length));
+  return entries
+    .map(e => `  [${e.label}]${" ".repeat(Math.max(1, maxLen - e.label.length + 2))}→ ${e.typeStr}${e.aliasStr}`)
+    .join("\n");
 }
 
 // ─── Inline reference data ───
@@ -359,8 +361,8 @@ DSL 不支持：逻辑跳转、验证规则、计分规则、随机化、自定�
 ## wjx analytics csat
   计算 CSAT（客户满意度）。
   --scores <json>   评分数组（必填）
-  --threshold <n>   满意阈值（默认 4）
-  CSAT = 评分>=阈值的比例 × 100
+  --scale <s>       量表类型：5-point（默认）或 7-point
+  CSAT = 满意评分的比例 × 100
   行业基准：>80% 良好, >90% 优秀
 
 ## wjx analytics anomalies
@@ -377,7 +379,9 @@ DSL 不支持：逻辑跳转、验证规则、计分规则、随机化、自定�
 ## wjx analytics decode-push
   解密数据推送载荷。
   --payload <s>     加密的 payload（必填）
-  --key <s>         AppKey / 解密密钥（必填）
+  --app_key <s>     AppKey（必填）
+  --signature <s>   签名（可选）
+  --raw_body <s>    原始请求体（可选）
   加密方式：AES-128-CBC，密钥=MD5(appKey)前16位`,
   },
 

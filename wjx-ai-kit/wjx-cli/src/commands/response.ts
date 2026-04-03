@@ -10,10 +10,7 @@ import {
   get360Report,
   clearResponses,
 } from "wjx-api-sdk";
-import { CliError, handleError } from "../lib/errors.js";
 import { executeCommand, strictInt, requireField } from "../lib/command-helpers.js";
-import { getCredentials } from "../lib/auth.js";
-import { mergeStdinWithOpts } from "../lib/stdin.js";
 
 export function registerResponseCommands(program: Command): void {
   const response = program.command("response").description("答卷管理");
@@ -24,36 +21,21 @@ export function registerResponseCommands(program: Command): void {
     .description("获取问卷答卷总数")
     .option("--vid <n>", "问卷ID", strictInt)
     .action(async (_opts, cmd) => {
-      try {
-        const stdinData = (cmd as unknown as Record<string, unknown>).__stdinData as Record<string, unknown> | undefined;
-        let merged: Record<string, unknown>;
-        if (stdinData && Object.keys(stdinData).length > 0) {
-          merged = mergeStdinWithOpts(stdinData, cmd);
-        } else {
-          merged = { ...cmd.opts() };
-        }
-        requireField(merged, "vid");
-
-        const globalOpts = program.opts();
-        const creds = getCredentials(globalOpts);
-        const result = await queryResponses({ vid: merged.vid as number, page_size: 1 }, creds);
-
-        if (result.result === false) {
-          throw new CliError("API_ERROR", result.errormsg || "API request failed");
-        }
-
-        const data = (result as unknown as Record<string, unknown>).data as Record<string, unknown> | undefined;
-        const summary = {
-          vid: merged.vid,
-          total_count: data?.total_count ?? 0,
-          join_times: data?.join_times ?? 0,
-        };
-
-        const { formatOutput } = await import("../lib/output.js");
-        formatOutput({ result: true, data: summary }, globalOpts);
-      } catch (e) {
-        handleError(e);
-      }
+      await executeCommand(program, cmd, queryResponses, (m) => {
+        requireField(m, "vid");
+        return { vid: m.vid, page_size: 1 };
+      }, {
+        transformResult: (result) => {
+          const data = (result as unknown as Record<string, unknown>).data as Record<string, unknown> | undefined;
+          return {
+            result: true,
+            data: {
+              total_count: data?.total_count ?? 0,
+              join_times: data?.join_times ?? 0,
+            },
+          };
+        },
+      });
     });
 
   // --- query ---

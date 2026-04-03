@@ -31,6 +31,8 @@ export function requireField(merged: Record<string, unknown>, field: string, lab
 
 interface ExecuteOpts {
   noAuth?: boolean;
+  /** 在输出前转换 API 返回结果（用于提取/重塑数据） */
+  transformResult?: (result: WjxApiResponse<unknown>) => unknown;
 }
 
 export interface CapturedRequest {
@@ -141,7 +143,8 @@ export async function executeCommand(
       );
     }
 
-    formatOutput(result, globalOpts);
+    const output = opts.transformResult ? opts.transformResult(result) : result;
+    formatOutput(output, globalOpts);
   } catch (e) {
     handleError(e);
   }
