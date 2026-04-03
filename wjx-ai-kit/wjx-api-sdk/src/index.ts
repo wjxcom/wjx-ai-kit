@@ -12,6 +12,7 @@ export {
   getWjxSurveyEditUrl,
   Action,
   DEFAULT_TIMEOUT_MS,
+  LONG_TIMEOUT_MS,
   DEFAULT_MAX_RETRIES,
   RETRY_DELAY_MS,
 } from "./core/constants.js";
@@ -51,8 +52,8 @@ export {
   uploadFile,
 } from "./modules/survey/client.js";
 export { surveyToText, typeToLabel, stripHtml } from "./modules/survey/survey-to-text.js";
-export { textToSurvey, parsedQuestionsToWire } from "./modules/survey/text-to-survey.js";
-export type { WireQuestion } from "./modules/survey/text-to-survey.js";
+export { textToSurvey, parsedQuestionsToWire, LABEL_TO_TYPE, TYPE_MAP } from "./modules/survey/text-to-survey.js";
+export type { WireQuestion, WireConversionResult } from "./modules/survey/text-to-survey.js";
 export type {
   CreateSurveyInput,
   CreateSurveyByTextInput,

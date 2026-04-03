@@ -371,7 +371,7 @@ describe("parsedQuestionsToWire", () => {
       matrixRows: ["服务态度", "响应速度"],
       matrixColumns: ["非常满意", "满意", "一般", "不满意"],
     }];
-    const wire = parsedQuestionsToWire(questions);
+    const { questions: wire } = parsedQuestionsToWire(questions);
 
     assert.equal(wire.length, 1);
     assert.equal(wire[0].q_type, 7);
@@ -395,7 +395,7 @@ describe("parsedQuestionsToWire", () => {
       required: true,
       options: ["A", "B"],
     }];
-    const wire = parsedQuestionsToWire(questions);
+    const { questions: wire } = parsedQuestionsToWire(questions);
     assert.equal(wire[0].col_items, undefined);
   });
 
@@ -406,7 +406,7 @@ describe("parsedQuestionsToWire", () => {
       required: true,
       matrixRows: ["行1", "行2"],
     }];
-    const wire = parsedQuestionsToWire(questions);
+    const { questions: wire } = parsedQuestionsToWire(questions);
     assert.equal(wire[0].col_items, undefined);
     assert.deepEqual(wire[0].items, [
       { q_index: 1, item_index: 1, item_title: "行1" },
@@ -424,5 +424,20 @@ describe("parsedQuestionsToWire", () => {
       () => parsedQuestionsToWire(questions),
       /不支持的题型/,
     );
+  });
+
+  it("filters out paragraph questions and returns them in skippedParagraphs", () => {
+    const questions = [
+      { title: "段落说明内容", type: "paragraph", required: false },
+      { title: "姓名", type: "fill-in", required: true },
+      { title: "另一个段落", type: "paragraph", required: false },
+    ];
+    const { questions: wire, skippedParagraphs } = parsedQuestionsToWire(questions);
+    assert.equal(wire.length, 1);
+    assert.equal(wire[0].q_title, "姓名");
+    assert.equal(wire[0].q_index, 1);
+    assert.equal(skippedParagraphs.length, 2);
+    assert.equal(skippedParagraphs[0].title, "段落说明内容");
+    assert.equal(skippedParagraphs[1].title, "另一个段落");
   });
 });

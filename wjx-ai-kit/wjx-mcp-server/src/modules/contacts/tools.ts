@@ -16,7 +16,7 @@ import {
   modifyTag,
   deleteTag,
 } from "./client.js";
-import { toolResult, toolError } from "../../helpers.js";
+import { toolResult, toolError, assertJsonArray } from "../../helpers.js";
 
 export function registerContactsTools(server: McpServer): void {
   // ─── query_contacts ──────────────────────────────────────────────
@@ -25,7 +25,7 @@ export function registerContactsTools(server: McpServer): void {
     {
       title: "查询通讯录成员",
       description:
-        "按用户编号查询通讯录中的指定联系人信息。corpid 可选，未提供时从 WJX_CORP_ID 环境变量获取。",
+        "按用户编号（uid）精确查询通讯录中的指定联系人信息。注意：uid 必须完全匹配，不支持模糊搜索或通配符。corpid 可选，未提供时从 WJX_CORP_ID 环境变量获取。",
       inputSchema: {
         corpid: z.string().optional().describe("通讯录编号（可选，未提供时使用 WJX_CORP_ID 环境变量）"),
         uid: z.string().min(1).describe("用户编号（用户唯一标识）"),
@@ -62,10 +62,6 @@ export function registerContactsTools(server: McpServer): void {
         users: z
           .string()
           .min(2)
-          .refine(
-            (s) => { try { return Array.isArray(JSON.parse(s)); } catch { return false; } },
-            "users 必须是合法的 JSON 数组",
-          )
           .describe(
             "用户列表 JSON 字符串（数组），每项包含: userid(用户ID), name(姓名), nickname(昵称), mobile(手机号), email(邮箱), department(部门,用/分隔层级), tags(标签,格式:组/标签), birthday(生日), gender(性别:0保密/1男/2女), pwd(登录密码)等",
           ),
@@ -81,6 +77,7 @@ export function registerContactsTools(server: McpServer): void {
     },
     async (args) => {
       try {
+        assertJsonArray(args.users, "users");
         const result = await addContacts({
           corpid: args.corpid,
           users: args.users,
@@ -136,10 +133,6 @@ export function registerContactsTools(server: McpServer): void {
         users: z
           .string()
           .min(2)
-          .refine(
-            (s) => { try { return Array.isArray(JSON.parse(s)); } catch { return false; } },
-            "users 必须是合法的 JSON 数组",
-          )
           .describe("管理员列表 JSON 字符串（数组），每项包含: userid(管理员用户ID,必填)、role(角色,必填: 0=系统管理员, 1=分组管理员, 2=问卷管理员, 3=统计结果查看员, 4=完整结果查看员, 5=部门管理员)，可选: confidential(是否保密账户)、effective_date(有效期,格式yyyy-MM-dd)、remark(备注,最多50字)。一次不能超过100条"),
       },
       annotations: {
@@ -151,6 +144,7 @@ export function registerContactsTools(server: McpServer): void {
     },
     async (args) => {
       try {
+        assertJsonArray(args.users, "users");
         const result = await addAdmin({
           corpid: args.corpid,
           users: args.users,
@@ -261,10 +255,6 @@ export function registerContactsTools(server: McpServer): void {
         depts: z
           .string()
           .min(2)
-          .refine(
-            (s) => { try { return Array.isArray(JSON.parse(s)); } catch { return false; } },
-            "depts 必须是合法的 JSON 数组",
-          )
           .describe("部门路径列表 JSON 字符串，如 [\"研发部/后端\", \"产品部\"]"),
       },
       annotations: {
@@ -276,6 +266,7 @@ export function registerContactsTools(server: McpServer): void {
     },
     async (args) => {
       try {
+        assertJsonArray(args.depts, "depts");
         const result = await addDepartment({
           corpid: args.corpid,
           depts: args.depts,
@@ -298,10 +289,6 @@ export function registerContactsTools(server: McpServer): void {
         depts: z
           .string()
           .min(2)
-          .refine(
-            (s) => { try { return Array.isArray(JSON.parse(s)); } catch { return false; } },
-            "depts 必须是合法的 JSON 数组",
-          )
           .describe("部门列表 JSON 字符串（数组），每项包含: id(部门ID), name(部门名称), order(排序序号，须为>0且<999999的整数)，一次最多100条"),
       },
       annotations: {
@@ -313,6 +300,7 @@ export function registerContactsTools(server: McpServer): void {
     },
     async (args) => {
       try {
+        assertJsonArray(args.depts, "depts");
         const result = await modifyDepartment({
           corpid: args.corpid,
           depts: args.depts,
@@ -332,17 +320,10 @@ export function registerContactsTools(server: McpServer): void {
       description: "批量删除部门。type 指定删除方式：1=按ID删除，2=按名称删除。depts 为 JSON 数组字符串，包含要删除的部门标识列表。",
       inputSchema: {
         corpid: z.string().optional().describe("通讯录编号（可选）"),
-        type: z.string().refine(
-          (s) => s === "1" || s === "2",
-          "type 必须为 \"1\"(按ID) 或 \"2\"(按名称)",
-        ).describe("删除方式：1=按ID删除，2=按名称删除"),
+        type: z.enum(["1", "2"]).describe("删除方式：1=按ID删除，2=按名称删除"),
         depts: z
           .string()
           .min(2)
-          .refine(
-            (s) => { try { return Array.isArray(JSON.parse(s)); } catch { return false; } },
-            "depts 必须是合法的 JSON 数组",
-          )
           .describe("要删除的部门标识列表 JSON 字符串（数组），type=1时为ID列表，type=2时为名称列表"),
         del_child: z.boolean().optional().describe("是否同时删除子部门"),
       },
@@ -355,6 +336,7 @@ export function registerContactsTools(server: McpServer): void {
     },
     async (args) => {
       try {
+        assertJsonArray(args.depts, "depts");
         const result = await deleteDepartment({
           corpid: args.corpid,
           type: args.type,
@@ -407,10 +389,6 @@ export function registerContactsTools(server: McpServer): void {
         child_names: z
           .string()
           .min(2)
-          .refine(
-            (s) => { try { return Array.isArray(JSON.parse(s)); } catch { return false; } },
-            "child_names 必须是合法的 JSON 数组",
-          )
           .describe("标签列表 JSON 字符串，格式: [\"组/标签\", ...], 如 [\"学历/本科\", \"年龄/18-35\"]"),
         is_radio: z
           .boolean()
@@ -426,6 +404,7 @@ export function registerContactsTools(server: McpServer): void {
     },
     async (args) => {
       try {
+        assertJsonArray(args.child_names, "child_names");
         const result = await addTag({
           corpid: args.corpid,
           child_names: args.child_names,
@@ -451,10 +430,6 @@ export function registerContactsTools(server: McpServer): void {
         child_names: z
           .string()
           .optional()
-          .refine(
-            (s) => { if (s === undefined) return true; try { return Array.isArray(JSON.parse(s)); } catch { return false; } },
-            "child_names 必须是合法的 JSON 数组",
-          )
           .describe("子标签 JSON 数组字符串，每项包含标签对象（如 [{\"id\":\"xxx\",\"name\":\"新名称\"}]）"),
       },
       annotations: {
@@ -466,6 +441,7 @@ export function registerContactsTools(server: McpServer): void {
     },
     async (args) => {
       try {
+        if (args.child_names !== undefined) assertJsonArray(args.child_names, "child_names");
         const result = await modifyTag({
           corpid: args.corpid,
           tp_id: args.tp_id,
@@ -487,17 +463,10 @@ export function registerContactsTools(server: McpServer): void {
       description: "批量删除通讯录标签。type 指定删除方式：1=按ID删除，2=按名称删除。tags 为 JSON 数组字符串，包含要删除的标签标识列表。",
       inputSchema: {
         corpid: z.string().optional().describe("通讯录编号（可选）"),
-        type: z.string().refine(
-          (s) => s === "1" || s === "2",
-          "type 必须为 \"1\"(按ID) 或 \"2\"(按名称)",
-        ).describe("删除方式：1=按ID删除，2=按名称删除"),
+        type: z.enum(["1", "2"]).describe("删除方式：1=按ID删除，2=按名称删除"),
         tags: z
           .string()
           .min(2)
-          .refine(
-            (s) => { try { return Array.isArray(JSON.parse(s)); } catch { return false; } },
-            "tags 必须是合法的 JSON 数组",
-          )
           .describe("要删除的标签标识列表 JSON 字符串（数组），type=1时为ID列表，type=2时为名称列表"),
       },
       annotations: {
@@ -509,6 +478,7 @@ export function registerContactsTools(server: McpServer): void {
     },
     async (args) => {
       try {
+        assertJsonArray(args.tags, "tags");
         const result = await deleteTag({
           corpid: args.corpid,
           type: args.type,

@@ -1,6 +1,6 @@
 ---
-name: wjx-survey
-description: 问卷星 MCP 专家子Agent，通过 wjx-mcp-server 的 56 个 MCP 工具完成问卷创建、数据回收、分析等全部操作
+name: wjx-mcp-expert
+description: 问卷星 MCP 专家子Agent，通过 wjx-mcp-server 的 57 个 MCP 工具完成问卷创建、数据回收、分析等全部操作
 model: sonnet
 tools:
   - Bash
@@ -44,7 +44,13 @@ tools:
 1. 优先使用 `create_survey_by_text`（DSL 文本方式）— 需要 DSL 语法时读 `references/dsl-and-types.md`
 2. 创建前先查阅 `wjx://reference/dsl-syntax` MCP 资源确认语法
 3. 创建后调用 `get_survey` 验证问卷内容
-4. 主动使用 `build_survey_url` 提供编辑链接
+4. 主动使用 `build_preview_url` 提供预览链接，使用 `build_survey_url` 提供编辑链接
+
+### 考试问卷注意事项
+
+- 创建考试问卷时 `atype=6`，考试中的单选/多选/填空自动变为考试题型
+- **API 限制**：考试的正确答案和每题分值无法通过 API 设置，创建后必须提供 `build_survey_url(mode=edit)` 编辑链接，指引用户在网页端手动配置答案与评分
+- 创建考试后使用 `update_survey_settings` 的 `time_setting` 设置考试时间限制
 
 ### 查询数据
 
@@ -71,3 +77,14 @@ tools:
 - 返回数据用表格或结构化格式呈现
 - 操作结果报告关键信息（vid、URL、数量等）
 - 分析结论附带数据支撑，不做无依据推断
+
+## 常见错误与处理
+
+| 错误信息 | 原因 | 处理方式 |
+|---------|------|---------|
+| "该问卷没有题目" | 尝试发布空问卷 | 先用 `create_survey` 或 `create_survey_by_text` 添加题目，再发布 |
+| "状态不能直接更新到X" | 违反状态转换规则 | 遵循合法路径：0→1→2↔1, 1/2→3。不可跳过中间状态 |
+| "username参数有误" | 用户名不匹配 | 从 `list_surveys` 返回的 `creater` 字段获取正确用户名 |
+| 下载/报告请求超时 | 大数据量生成耗时 | 耗时操作已使用120s超时，可重试一次 |
+| `query_contacts` 返回空 | uid 不精确 | uid 必须完全匹配，不支持模糊搜索或通配符 |
+| 多项填空创建失败 | 缺少填空占位符 | q_title 中必须包含 `{_}` 占位符 |

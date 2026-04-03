@@ -1,17 +1,17 @@
 # wjx-mcp-server 架构设计
 
-> 版本基线：`v0.1.0`
+> 版本基线：`v0.1.4`
 > 技术栈：Node.js `>=20`、TypeScript、`@modelcontextprotocol/sdk`、Zod
 
 ## 1. 概述
 
 `wjx-mcp-server` 是一个围绕问卷星 OpenAPI 构建的 MCP Server。它把问卷管理、答卷查询、通讯录/用户体系管理、SSO 快速集成，以及本地分析能力统一暴露为 MCP 的三类原语：
 
-- Tools：54 个
-- Resources：7 个
-- Prompts：10 个
+- Tools：57 个
+- Resources：8 个
+- Prompts：19 个
 
-整体设计遵循“入口层选择传输、MCP Server 统一注册能力、模块层封装业务、核心层处理签名/重试/超时”的分层思路。54 个 tools 中，`survey`/`response`/`contacts`/`user-system`/`multi-user` 主要访问问卷星远程接口，`sso` 与 `analytics` 则以内存计算和 URL 组装为主，不依赖远程 OpenAPI。
+整体设计遵循”入口层选择传输、MCP Server 统一注册能力、模块层封装业务、核心层处理签名/重试/超时”的分层思路。57 个 tools 中，`survey`/`response`/`contacts`/`user-system`/`multi-user` 主要访问问卷星远程接口，`sso` 与 `analytics` 则以内存计算和 URL 组装为主，不依赖远程 OpenAPI。
 
 ## 2. 整体架构
 
@@ -27,9 +27,9 @@ flowchart TD
     E --> F
 
     F --> G[McpServer]
-    G --> H[Resources 7]
-    G --> I[Prompts 10]
-    G --> J[Tools 54]
+    G --> H[Resources 8]
+    G --> I[Prompts 19]
+    G --> J[Tools 57]
 
     J --> M1[survey]
     J --> M2[response]
@@ -97,15 +97,15 @@ flowchart TD
 
 | 模块 | Tool 数量 | 主要职责 | 核心 API / 入口 |
 | --- | ---: | --- | --- |
-| `survey` | 10 | 问卷 CRUD、设置读取/更新、标签、回收站 | `createSurvey()`、`getSurvey()`、`updateSurveySettings()`、`clearRecycleBin()` |
+| `survey` | 12 | 问卷 CRUD、设置读写、标签、回收站、文本创建、文件上传 | `createSurvey()`、`createSurveyByText()`、`getSurvey()`、`updateSurveySettings()`、`clearRecycleBin()` |
 | `response` | 10 | 答卷查询、下载、报告、提交、修改、清空 | `queryResponses()`、`downloadResponses()`、`getReport()`、`submitResponse()` |
-| `contacts` | 14 | 通讯录成员、管理员、部门、标签管理 | `queryContacts()`、`manageContacts()`、`listDepartments()`、`listTags()` |
-| `sso` | 4 | 子账号 SSO、用户体系 SSO、代理商 SSO、问卷创建/编辑链接 | `buildSsoSubaccountUrl()`、`buildSsoUserSystemUrl()`、`buildSsoPartnerUrl()`、`buildSurveyUrl()` |
-| `user-system` | 5 | 参与者管理、问卷绑定查询、用户关联问卷查询 | `addParticipants()`、`querySurveyBinding()`、`queryUserSurveys()` |
+| `contacts` | 14 | 通讯录成员、管理员、部门、标签管理 | `queryContacts()`、`addContacts()`、`listDepartments()`、`listTags()` |
+| `sso` | 5 | 子账号 SSO、用户体系 SSO、代理商 SSO、问卷创建/编辑/预览链接 | `buildSsoSubaccountUrl()`、`buildSsoUserSystemUrl()`、`buildSsoPartnerUrl()`、`buildSurveyUrl()`、`buildPreviewUrl()` |
+| `user-system` | 6 | 参与者管理、活动绑定、问卷绑定查询、用户关联问卷查询 | `addParticipants()`、`bindActivity()`、`querySurveyBinding()`、`queryUserSurveys()` |
 | `multi-user` | 5 | 子账号创建、修改、删除、恢复、查询 | `addSubAccount()`、`modifySubAccount()`、`querySubAccounts()` |
-| `analytics` | 6 | 答卷解码、NPS/CSAT、本地异常检测、推送解密 | `decodeResponses()`、`calculateNps()`、`detectAnomalies()`、`decodePushPayload()` |
+| `analytics` | 5 | 答卷解码、NPS/CSAT、本地异常检测、指标对比 | `decodeResponses()`、`calculateNps()`、`calculateCsat()`、`detectAnomalies()`、`compareMetrics()` |
 
-表内 Tool 数量直接对应各 `src/modules/*/tools.ts` 中 `server.registerTool()` 的出现次数，总计 `10 + 10 + 14 + 4 + 5 + 5 + 6 = 54`。
+表内 Tool 数量直接对应各 `src/modules/*/tools.ts` 中 `server.registerTool()` 的出现次数，总计 `12 + 10 + 14 + 5 + 6 + 5 + 5 = 57`。
 
 ### 5.2 survey 模块
 
@@ -137,7 +137,6 @@ flowchart TD
 - `download_responses`
 - `get_report`
 - `submit_response`
-- `get_file_links`
 - `get_winners`
 - `modify_response`
 - `get_360_report`
@@ -236,7 +235,7 @@ flowchart TD
 
 `src/core/api-client.ts` 是远程调用总入口，承担：
 
-1. 读取环境变量中的 `WJX_APP_ID` / `WJX_APP_KEY`
+1. 读取凭据中的 `WJX_API_KEY`
 2. 生成 Unix 时间戳
 3. 生成 32 位无连字符 `traceid`
 4. 为请求附加 `appid`、`ts`、`traceid`
@@ -309,7 +308,7 @@ server.registerTool("tool_name", { inputSchema }, async (args) => {
 
 ### 8.1 Resources
 
-当前注册了 7 个只读资源：
+当前注册了 8 个只读资源：
 
 - `wjx://reference/survey-types`
 - `wjx://reference/question-types`
@@ -318,17 +317,19 @@ server.registerTool("tool_name", { inputSchema }, async (args) => {
 - `wjx://reference/response-format`
 - `wjx://reference/user-roles`
 - `wjx://reference/push-format`
+- `wjx://reference/dsl-syntax`
 
 资源层的作用是把稳定字典、格式规范和分析基准放进 MCP 上下文，而不是每次让模型重复猜测编码意义。
 
 ### 8.2 Prompts
 
-当前注册了 10 个 prompts，分为两类：
+当前注册了 19 个 prompts，分为三组：
 
-- 通用业务 prompts：`design-survey`、`analyze-results`、`create-nps-survey`、`configure-webhook`
-- 分析型 prompts：`nps-analysis`、`csat-analysis`、`cross-tabulation`、`sentiment-analysis`、`survey-health-check`、`comparative-analysis`
+- 通用/运维 prompts（6）：`design-survey`、`analyze-results`、`create-nps-survey`、`configure-webhook`、`anomaly-detection`、`user-system-workflow`
+- 分析型 prompts（6）：`nps-analysis`、`csat-analysis`、`cross-tabulation`、`sentiment-analysis`、`survey-health-check`、`comparative-analysis`
+- 问卷生成 prompts（7）：`generate-survey`、`generate-nps-survey`、`generate-360-evaluation`、`generate-satisfaction-survey`、`generate-engagement-survey`、`generate-exam-from-document`、`generate-exam-from-knowledge`
 
-这些 prompts 本质上是“最佳实践工作流模板”，把工具调用顺序、分页要求、分析口径提前固化。
+这些 prompts 本质上是”最佳实践工作流模板”，把工具调用顺序、分页要求、分析口径提前固化。
 
 ## 9. 安全设计
 

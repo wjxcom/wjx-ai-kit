@@ -6,7 +6,7 @@
 [![license](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 [![node](https://img.shields.io/badge/node-%3E%3D20-green)](https://nodejs.org/)
 
-通过 Claude、Cursor 或任何 MCP 兼容的 AI 客户端，以自然语言创建、管理和分析问卷。服务器封装了问卷星 OpenAPI，提供 **56 个 Tools**、**8 个 Resources** 和 **12 个 Prompts**。
+通过 Claude、Cursor 或任何 MCP 兼容的 AI 客户端，以自然语言创建、管理和分析问卷。服务器封装了问卷星 OpenAPI，提供 **56 个 Tools**、**8 个 Resources** 和 **19 个 Prompts**。
 
 ---
 
@@ -17,20 +17,24 @@
 | 模块 | 工具数 | 说明 |
 |------|:------:|------|
 | **Survey** 问卷管理 | 12 | 创建、查询、列表、状态变更、设置读写、删除、题目标签、回收站、文本创建、预览 |
-| **Response** 答卷数据 | 10 | 查询、实时查询、下载、统计报告、代填提交、文件链接、中奖者、改分、360° 报告、清空 |
+| **Response** 答卷数据 | 9 | 查询、实时查询、下载、统计报告、代填提交、中奖者、改分、360° 报告、清空 |
 | **Contacts** 通讯录 | 14 | 成员管理、管理员管理、部门管理、标签管理 |
-| **SSO** 免登录 | 4 | 生成子账号 / 用户系统 / 合作伙伴 / 问卷创建编辑的 SSO 链接 |
-| **User System** 用户体系 | 5 | 参与者增删改、绑定查询、分配查询 |
+| **SSO** 免登录 | 5 | 生成子账号 / 用户系统 / 合作伙伴 / 问卷创建编辑 / 预览的 SSO 链接 |
+| **User System** 用户体系 | 6 | 参与者增删改、活动绑定、绑定查询、用户问卷查询 |
 | **Multi-User** 多用户管理 | 5 | 子账号增删改恢复、子账号列表 |
-| **Analytics** 本地分析 | 6 | 解码答卷、NPS 计算、CSAT 计算、异常检测、指标对比、推送解密 |
+| **Analytics** 本地分析 | 5 | 解码答卷、NPS 计算、CSAT 计算、异常检测、指标对比 |
 
 ### 8 个 MCP Resources
 
 AI 客户端可直接读取的参考数据：`survey-types`、`question-types`、`survey-statuses`、`analysis-methods`、`response-format`、`user-roles`、`push-format`、`dsl-syntax`。
 
-### 12 个 MCP Prompts
+### 19 个 MCP Prompts
 
-预置工作流模板：`design-survey`、`analyze-results`、`create-nps-survey`、`configure-webhook`、`nps-analysis`、`csat-analysis`、`cross-tabulation`、`sentiment-analysis`、`survey-health-check`、`comparative-analysis`、`create-survey-by-text`、`batch-export`。
+预置工作流模板，分三组：
+
+- **通用/运维**（6）：`design-survey`、`analyze-results`、`create-nps-survey`、`configure-webhook`、`anomaly-detection`、`user-system-workflow`
+- **分析**（6）：`nps-analysis`、`csat-analysis`、`cross-tabulation`、`sentiment-analysis`、`survey-health-check`、`comparative-analysis`
+- **问卷生成**（7）：`generate-survey`、`generate-nps-survey`、`generate-360-evaluation`、`generate-satisfaction-survey`、`generate-engagement-survey`、`generate-exam-from-document`、`generate-exam-from-knowledge`
 
 ### 生产级特性
 
@@ -55,16 +59,16 @@ flowchart LR
     HTTP --> Server
 
     Server --> R[Resources ×8]
-    Server --> P[Prompts ×12]
+    Server --> P[Prompts ×19]
     Server --> Tools[Tools ×56]
 
     Tools --> S1[survey ×12]
-    Tools --> S2[response ×10]
+    Tools --> S2[response ×9]
     Tools --> S3[contacts ×14]
-    Tools --> S4[sso ×4]
-    Tools --> S5[user-system ×5]
+    Tools --> S4[sso ×5]
+    Tools --> S5[user-system ×6]
     Tools --> S6[multi-user ×5]
-    Tools --> S7[analytics ×6]
+    Tools --> S7[analytics ×5]
 
     S1 & S2 & S3 & S5 & S6 --> API[api-client.ts]
     API --> Sign[SHA1 签名]
@@ -94,8 +98,8 @@ flowchart LR
 ### 安装与构建
 
 ```bash
-git clone <your-repo-url>
-cd wjx-ai-kit/wjx-mcp-server
+git clone https://codeup.aliyun.com/6445da2d020eabef3107e22e/wjxfc/wjxagents.git
+cd wjxagents/wjx-ai-kit/wjx-mcp-server
 npm install
 npm run build
 ```
@@ -249,19 +253,20 @@ wjx-mcp-server/
 │   │   └── types.ts              # 共享类型定义
 │   ├── modules/
 │   │   ├── survey/               # 问卷管理（12 tools）
-│   │   ├── response/             # 答卷数据（10 tools）
+│   │   ├── response/             # 答卷数据（9 tools）
 │   │   ├── contacts/             # 通讯录（14 tools）
-│   │   ├── sso/                  # 免登录 URL（4 tools）
-│   │   ├── user-system/          # 用户体系（5 tools）
+│   │   ├── sso/                  # 免登录 URL（5 tools）
+│   │   ├── user-system/          # 用户体系（6 tools）
 │   │   ├── multi-user/           # 多用户管理（5 tools）
-│   │   └── analytics/            # 本地分析（6 tools）
+│   │   └── analytics/            # 本地分析（5 tools）
 │   ├── resources/                # 8 个 MCP Resources
-│   ├── prompts/                  # 12 个 MCP Prompts
+│   ├── prompts/                  # 19 个 MCP Prompts
 │   └── transports/http.ts        # Streamable HTTP 传输
 ├── __tests__/                    # 单元测试（node:test）
 ├── tests/                        # 集成测试
 ├── docs/
 │   ├── architecture.md           # 架构设计文档
+│   ├── api-reference.md          # API 参考
 │   └── wjx-openapi-spec.md      # 问卷星 OpenAPI 参考
 ├── .env.example                  # 环境变量模板
 ├── CHANGELOG.md                  # 版本历史

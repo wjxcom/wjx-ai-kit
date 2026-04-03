@@ -8,7 +8,7 @@ wjx-ai-kit is a monorepo (npm workspaces) wrapping the Wenjuanxing (问卷星) O
 
 - **wjx-api-sdk** — Zero-dependency TypeScript SDK (50+ functions, foundation layer)
 - **wjx-mcp-server** — MCP Server (56 tools, 8 resources, 19 prompts) for AI clients
-- **wjx-cli** — Commander.js CLI (56 subcommands) designed for AI Agent consumption
+- **wjx-cli** — Commander.js CLI (67 subcommands) designed for AI Agent consumption
 
 ## Build & Test Commands
 
@@ -24,9 +24,9 @@ npm run build --workspace=wjx-mcp-server
 npm run build --workspace=wjx-cli
 
 # Test (from monorepo root)
-npm test --workspace=wjx-api-sdk        # ~598 tests
-npm test --workspace=wjx-mcp-server     # ~222 tests
-npm test --workspace=wjx-cli            # ~96 tests
+npm test --workspace=wjx-api-sdk        # ~623 tests
+npm test --workspace=wjx-mcp-server     # ~282 tests
+npm test --workspace=wjx-cli            # ~122 tests
 
 # Run a single test file (must build first)
 cd wjx-api-sdk && npm run build && node --test __tests__/survey.test.mjs
@@ -122,3 +122,23 @@ MCP server has its own .env parser (`src/core/load-env.ts`, no dotenv dependency
 - **Git**: branch `develop`, remote on Aliyun Codeup (no `gh`/`glab` CLI available)
 - **CLI output protocol**: JSON to stdout, structured errors to stderr, exit codes 0 (success), 1 (API/auth error), 2 (input error)
 - **沟通语言**: 使用中文与用户沟通，包括代码注释、提交信息和对话回复
+
+## Skill routing
+
+When the user's request matches an available skill, ALWAYS invoke it using the Skill
+tool as your FIRST action. Do NOT answer directly, do NOT use other tools first.
+The skill has specialized workflows that produce better results than ad-hoc answers.
+
+Key routing rules:
+- Product ideas, "is this worth building", brainstorming → invoke office-hours
+- Bugs, errors, "why is this broken", 500 errors → invoke investigate
+- Ship, deploy, push, create PR → invoke ship
+- QA, test the site, find bugs → invoke qa
+- Code review, check my diff → invoke review
+- Update docs after shipping → invoke document-release
+- Weekly retro → invoke retro
+- Design system, brand → invoke design-consultation
+- Visual audit, design polish → invoke design-review
+- Architecture review → invoke plan-eng-review
+- Save progress, checkpoint, resume → invoke checkpoint
+- Code quality, health check → invoke health

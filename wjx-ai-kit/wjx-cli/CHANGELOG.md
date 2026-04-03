@@ -5,12 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.1.9] - 2026-04-03
+## [0.1.10] - 2026-04-02
+
+### Fixed
+
+- `create-by-text` 使用 SDK 重写的 `createSurveyByText()`（客户端解析 DSL，不再发送原始文本到 API）
+- `survey url` 新增 mode 验证，仅接受 `create` 或 `edit`
+- `reference` 命令改为从 SDK 的 `LABEL_TO_TYPE` 动态生成 DSL 标签参考（单一数据源）
+- `response count` 重写，仅返回 `{ vid, total_count, join_times }`
 
 ### Changed
 
 - **移除 `response files` 子命令**: `get_file_links` API 已从服务端移除
 - **移除 `--username` 选项**: user-system 命令不再接受 `--username`，与 API 对齐
+
+## [0.1.9] - 2026-04-02
+
+### Fixed
+
+- 修复 `create-by-text` DSL 解析：矩阵题 body 跨空行、Format 1 scaleRange 解析、段落说明过滤
 
 ## [0.1.8] - 2026-04-02
 

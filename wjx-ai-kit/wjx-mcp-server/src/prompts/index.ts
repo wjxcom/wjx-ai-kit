@@ -136,11 +136,12 @@ Use survey type 1 (survey) and output the create_survey tool call with properly 
 - submitdata 的编码格式：题号$答案}题号$答案
 
 **第四步：解密测试**
-如果启用了加密，可以使用 decode_push_payload 工具对收到的测试推送密文进行解密验证：
+如果启用了加密，需要在接收端实现 AES 解密逻辑来验证推送密文：
 - 加密算法：AES-128-CBC
 - 密钥派生：MD5(appKey) 取前 16 字符
 - 填充方式：PKCS7
 - 密文格式：前 16 字节为 IV，其余为加密数据，整体 Base64 编码
+（SDK 提供 decodePushPayload() 函数可直接解密，无需手动实现）
 
 **第五步：签名验证**
 推送请求在 HTTP 头中携带 X-Wjx-Signature 签名，验证方法：

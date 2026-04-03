@@ -1064,26 +1064,25 @@ describe("create-by-text use cases", () => {
     const p = JSON.parse(result.stderr);
     assert.equal(p.parsed_title, "员工满意度调查");
     assert.equal(p.parsed_description, "请根据您的真实感受作答");
-    assert.equal(p.question_count, 4);
+    assert.equal(p.question_count, 3);
 
-    // 段落说明 → q_type=2
-    assert.equal(p.wire_questions[0].q_type, 2);
-    assert.equal(p.wire_questions[0].q_title, "薪酬福利");
+    // 段落说明被过滤（API 不支持 q_type=2），出现在 skipped_paragraphs
+    assert.deepEqual(p.skipped_paragraphs, ["薪酬福利"]);
 
     // 量表题 → q_type=3, q_subtype=302, 5 个选项
-    assert.equal(p.wire_questions[1].q_type, 3);
-    assert.equal(p.wire_questions[1].q_subtype, 302);
-    assert.equal(p.wire_questions[1].items.length, 5);
+    assert.equal(p.wire_questions[0].q_type, 3);
+    assert.equal(p.wire_questions[0].q_subtype, 302);
+    assert.equal(p.wire_questions[0].items.length, 5);
 
     // 矩阵量表题 → q_type=7, q_subtype=701, 3 行 + 5 列
-    const matrixQ = p.wire_questions[2];
+    const matrixQ = p.wire_questions[1];
     assert.equal(matrixQ.q_type, 7);
     assert.equal(matrixQ.q_subtype, 701);
     assert.equal(matrixQ.items.length, 3);      // 3 行标题
     assert.equal(matrixQ.col_items.length, 5);   // 5 列头
 
     // 填空题 → q_type=5
-    assert.equal(p.wire_questions[3].q_type, 5);
+    assert.equal(p.wire_questions[2].q_type, 5);
   });
 
   // ── UC2: 考试问卷（单选 + 多选 + 判断 + 填空）──

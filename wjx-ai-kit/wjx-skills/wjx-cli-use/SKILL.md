@@ -1,6 +1,6 @@
 ---
 name: wjx-cli-use
-description: Guide for using wjx-cli (Wenjuanxing CLI) to create surveys, query responses, and analyze data. Use when the user wants to interact with the Wenjuanxing (问卷星) platform via CLI commands, including creating surveys with specific question types, querying response data, managing contacts, or performing analytics. Covers all 56 subcommands across 13 modules.
+description: Guide for using wjx-cli (Wenjuanxing CLI) to create surveys, query responses, and analyze data. Use when the user wants to interact with the Wenjuanxing (问卷星) platform via CLI commands, including creating surveys with specific question types, querying response data, managing contacts, or performing analytics. Covers all 55 subcommands across 13 modules.
 ---
 
 # wjx-cli 使用指南
@@ -24,12 +24,12 @@ wjx doctor            # 检查连接状态
 | `--dry-run` | 预览 API 请求，不实际发送 |
 | `--stdin` | 从 stdin 读取 JSON 参数（可访问 SDK 全部参数） |
 
-## 命令总览（13 模块，56 命令）
+## 命令总览（13 模块，55 命令）
 
 | 模块 | 命令 | 说明 |
 |------|------|------|
 | `survey` | list, get, create, create-by-text, delete, status, settings, update-settings, tags, tag-details, clear-bin, upload, export-text, url | 问卷增删改查与配置 |
-| `response` | query, realtime, download, submit, modify, clear, report, files, winners, 360-report, count | 答卷数据操作 |
+| `response` | query, realtime, download, submit, modify, clear, report, winners, 360-report, count | 答卷数据操作 |
 | `contacts` | query, add, delete | 联系人管理（需要 WJX_CORP_ID） |
 | `department` | list, add, modify, delete | 部门管理 |
 | `admin` | add, delete, restore | 管理员管理 |

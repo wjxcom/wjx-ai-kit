@@ -1,0 +1,13 @@
+{
+  "mcpServers": {
+    "wjx": {
+      "command": "node",
+      "args": ["wjx-ai-kit/wjx-mcp-server/dist/index.js"],
+      "env": {
+        "WJX_API_KEY": "sk-wjx-c2fc5a04ae4848709c1861e0f19fd1c4",
+        "WJX_BASE_URL": "https://tanhao.sojump.cn",
+        "WJX_CORP_ID": "org0000000907"
+      }
+    }
+  }
+}

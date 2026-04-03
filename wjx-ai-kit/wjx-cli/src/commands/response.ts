@@ -24,6 +24,17 @@ export function registerResponseCommands(program: Command): void {
       await executeCommand(program, cmd, queryResponses, (m) => {
         requireField(m, "vid");
         return { vid: m.vid, page_size: 1 };
+      }, {
+        transformResult: (result) => {
+          const data = (result as unknown as Record<string, unknown>).data as Record<string, unknown> | undefined;
+          return {
+            result: true,
+            data: {
+              total_count: data?.total_count ?? 0,
+              join_times: data?.join_times ?? 0,
+            },
+          };
+        },
       });
     });
 

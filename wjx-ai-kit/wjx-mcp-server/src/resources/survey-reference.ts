@@ -73,3 +73,14 @@ export const VERIFY_STATUSES: Record<number, string> = {
   3: "未通过",
   4: "待实名",
 };
+
+/**
+ * 问卷状态合法转换路径
+ * 键: 当前状态编码，值: 可转换到的目标状态编码列表
+ */
+export const STATUS_TRANSITIONS: Record<number, { targets: number[]; description: string }> = {
+  0: { targets: [1], description: "未发布 → 已发布" },
+  1: { targets: [2, 3], description: "已发布 → 已暂停 | 已删除" },
+  2: { targets: [1, 3], description: "已暂停 → 已发布 | 已删除" },
+  3: { targets: [], description: "已删除（终态，不可恢复）" },
+};

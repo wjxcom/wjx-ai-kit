@@ -873,13 +873,18 @@ describe("querySubAccounts mobile", () => {
 // ─── createSurveyByText ────────────────────────────────────────────
 
 describe("createSurveyByText", () => {
-  it("should POST with action 1000105 and survey_data", async () => {
+  it("should parse DSL and POST with action 1000101 and questions JSON", async () => {
     const fetch = mockFetch({ result: true, data: { vid: 888 } });
     await createSurveyByText({ text: "问卷标题\n\n1. 问题[单选题]\nA\nB" }, credentials, fetch);
 
     const body = JSON.parse(fetch.captured().init.body);
-    assert.equal(body.action, "1000105");
-    assert.equal(body.survey_data, "问卷标题\n\n1. 问题[单选题]\nA\nB");
+    assert.equal(body.action, "1000101");
+    assert.equal(body.title, "问卷标题");
+    // questions should be a JSON string of wire questions
+    const questions = JSON.parse(body.questions);
+    assert.ok(Array.isArray(questions));
+    assert.equal(questions.length, 1);
+    assert.equal(questions[0].q_title, "问题");
     assertBearerAuth(fetch.captured().init, body);
   });
 
@@ -910,8 +915,9 @@ describe("createSurveyByText", () => {
     await createSurveyByText({ text: "内容" }, credentials, fetch);
 
     const body = JSON.parse(fetch.captured().init.body);
-    assert.equal("title" in body, false);
-    assert.equal("atype" in body, false);
+    // title comes from DSL parsed title, type defaults to 1
+    assert.equal(body.title, "内容");
+    assert.equal(body.atype, 1);
     assert.equal("creater" in body, false);
   });
 

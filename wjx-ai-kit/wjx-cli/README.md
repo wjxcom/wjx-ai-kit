@@ -5,7 +5,7 @@
 [![license](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 [![node](https://img.shields.io/badge/node-%3E%3D20-green)](https://nodejs.org/)
 [![npm](https://img.shields.io/npm/v/wjx-cli)](https://www.npmjs.com/package/wjx-cli)
-[![tests](https://img.shields.io/badge/tests-96%20passing-brightgreen)](__tests__/cli.test.mjs)
+[![tests](https://img.shields.io/badge/tests-122%20passing-brightgreen)](__tests__/cli.test.mjs)
 
 wjx-cli 是 [`wjx-ai-kit`](../) monorepo 的命令行入口，将 [wjx-api-sdk](../wjx-api-sdk/) 的 50+ 函数直接暴露为终端命令。设计目标：**让 AI Agent 和人类开发者都能用一行命令操作问卷星 OpenAPI**。
 
@@ -48,7 +48,7 @@ wjx-cli 是 [`wjx-ai-kit`](../) monorepo 的命令行入口，将 [wjx-api-sdk](
 - **AI Agent 原生** — 默认 JSON stdout + 结构化 JSON stderr，退出码区分错误类型，适合程序解析
 - **stdin pipe** — `echo '{"vid":123}' | wjx --stdin survey get`，参数通过管道传入
 - **表格输出** — `--table` 切换为人类可读的 `console.table` 格式
-- **56 个子命令** — 覆盖问卷、答卷、通讯录、部门、管理员、标签、用户体系、子账号、SSO、数据分析
+- **67 个子命令** — 覆盖问卷、答卷、通讯录、部门、管理员、标签、用户体系、子账号、SSO、数据分析
 - **9 个本地命令** — SSO URL 生成和 analytics 计算无需 API Key，离线可用
 - **Shell 补全** — `wjx completion bash/zsh/fish` 生成自动补全脚本
 - **Dry-run 预览** — `--dry-run` 预览 API 请求（URL/Headers/Body）不实��发送
@@ -85,8 +85,8 @@ npm install -g wjx-cli
 ### 从源码安装（开发者）
 
 ```bash
-git clone <your-repo-url>
-cd wjx-ai-kit
+git clone https://codeup.aliyun.com/6445da2d020eabef3107e22e/wjxfc/wjxagents.git
+cd wjxagents/wjx-ai-kit
 npm install
 npm run build --workspace=wjx-api-sdk
 npm run build --workspace=wjx-cli
@@ -131,7 +131,7 @@ wjx-ai-kit/                     # monorepo root
     │   │   ├── init.ts          # wjx init 交互式配置向导
     │   │   ├── completion.ts    # wjx completion bash/zsh/fish
     │   │   ├── survey.ts        # 14 subcommands
-    │   │   ├── response.ts      # 11 subcommands
+    │   │   ├── response.ts      # 10 subcommands
     │   │   ├── contacts.ts      # 3 subcommands
     │   │   ├── department.ts    # 4 subcommands
     │   │   ├── admin.ts         # 3 subcommands
@@ -150,7 +150,7 @@ wjx-ai-kit/                     # monorepo root
     │       ├── stdin.ts            # stdin JSON 读取 + source-aware merge
     │       └── completions.ts      # Shell 补全候选项生成
     └── __tests__/
-        └── cli.test.mjs         # 96 个端到端测试
+        └── cli.test.mjs         # ~122 个端到端测试
 ```
 
 **数据流：** `CLI args / stdin` → `Commander parse` → `executeCommand()` → `wjx-api-sdk function` → `stdout JSON / stderr error`
@@ -181,6 +181,7 @@ wjx-ai-kit/                     # monorepo root
 wjx survey list                          # 列出问卷
 wjx survey get --vid 12345               # 获取详情
 wjx survey create --title "新问卷"         # 创建问卷
+wjx survey create-by-text --text "..."   # 用 DSL 文本创建问卷
 wjx survey status --vid 12345 --state 1  # 发布（1=发布, 2=暂停, 3=删除）
 wjx survey export-text --vid 12345       # 导出为纯文本
 wjx survey url --mode create             # 生成创建/编辑 URL
@@ -223,6 +224,11 @@ wjx survey url --mode create             # 生成创建/编辑 URL
 | | `--file` | **是** | string | 文件 Base64 内容 |
 | **export-text** | `--vid` | **是** | int | 问卷 ID |
 | | `--raw` | | flag | 输出纯文本（不包裹 JSON） |
+| **create-by-text** | `--text` | **是*** | string | DSL 文本（与 `--file` 二选一） |
+| | `--file` | **是*** | string | 从文件读取 DSL 文本 |
+| | `--type` | | int | 问卷类型（1=调查, 6=考试，默认 1） |
+| | `--publish` | | flag | 创建后立即发布 |
+| | `--creater` | | string | 创建者子账号 |
 | **url** | `--mode` | | string | `create` 或 `edit`（默认 create） |
 | | `--name` | | string | 问卷名称（create 模式） |
 | | `--activity` | | int | 问卷 vid（edit 模式必填） |
@@ -231,7 +237,7 @@ wjx survey url --mode create             # 生成创建/编辑 URL
 
 ### response — 答卷管理
 
-11 个子命令，管理答卷数据的查询、提交、下载和统计。
+10 个子命令，管理答卷数据的查询、提交、下载和统计。
 
 ```bash
 wjx response count --vid 12345              # 获取答卷总数
@@ -297,9 +303,6 @@ wjx response report --vid 12345             # 统计报告
 | | `--distinct_user` | | flag | 去重用户 |
 | | `--distinct_sojumpparm` | | flag | 去重参数 |
 | | `--conds` | | string | 查询条件 |
-| **files** | `--vid` | **是** | int | 问卷 ID |
-| | `--file_keys` | **是** | string | 文件 Key 列表 |
-| | `--file_view_expires` | | int | 链接有效期 |
 | **winners** | `--vid` | **是** | int | 问卷 ID |
 | | `--atype` | | int | 活动类型 |
 | | `--awardstatus` | | int | 领奖状态 |
@@ -395,10 +398,10 @@ wjx tag delete --tags '[{"id":1}]' --type 1
 6 个子命令，管理用户系统中的参与者和问卷绑定。
 
 ```bash
-wjx user-system add-participants --username u1 --sysid 1 --users '[...]'
-wjx user-system bind --username u1 --sysid 1 --uids "a" --vid 12345
-wjx user-system query-binding --username u1 --sysid 1 --vid 12345
-wjx user-system query-surveys --username u1 --sysid 1 --uid "a"
+wjx user-system add-participants --sysid 1 --users '[...]'
+wjx user-system bind --sysid 1 --uids "a" --vid 12345
+wjx user-system query-binding --sysid 1 --vid 12345
+wjx user-system query-surveys --sysid 1 --uid "a"
 ```
 
 <details>
@@ -406,25 +409,20 @@ wjx user-system query-surveys --username u1 --sysid 1 --uid "a"
 
 | 子命令 | 选项 | 必填 | 类型 | 说明 |
 |--------|------|:----:|------|------|
-| **add-participants** | `--username` | **是** | string | 用户名 |
-| | `--users` | **是** | json | 参与者 JSON |
+| **add-participants** | `--users` | **是** | json | 参与者 JSON |
 | | `--sysid` | **是** | int | 系统 ID |
-| **modify-participants** | `--username` | **是** | string | 用户名 |
-| | `--users` | **是** | json | 参与者 JSON |
+| **modify-participants** | `--users` | **是** | json | 参与者 JSON |
 | | `--sysid` | **是** | int | 系统 ID |
-| **delete-participants** | `--username` | **是** | string | 用户名 |
-| | `--uids` | **是** | json | 用户 ID JSON 数组 |
+| **delete-participants** | `--uids` | **是** | json | 用户 ID JSON 数组 |
 | | `--sysid` | **是** | int | 系统 ID |
-| **bind** | `--username` | **是** | string | 用户名 |
-| | `--vid` | **是** | int | 问卷 ID |
+| **bind** | `--vid` | **是** | int | 问卷 ID |
 | | `--sysid` | **是** | int | 系统 ID |
 | | `--uids` | **是** | string | 参与者 ID 列表 |
 | | `--answer_times` | | int | 可答次数 |
 | | `--can_chg_answer` | | flag | 允许修改答案 |
 | | `--can_view_result` | | flag | 允许查看结果 |
 | | `--can_hide_qlist` | | int | 隐藏问卷列表 |
-| **query-binding** | `--username` | **是** | string | 用户名 |
-| | `--vid` | **是** | int | 问卷 ID |
+| **query-binding** | `--vid` | **是** | int | 问卷 ID |
 | | `--sysid` | **是** | int | 系统 ID |
 | | `--page_index` | | int | 页码 |
 | | `--page_size` | | int | 每页数量 |
@@ -433,8 +431,7 @@ wjx user-system query-surveys --username u1 --sysid 1 --uid "a"
 | | `--week` | | string | 按周筛选 |
 | | `--month` | | string | 按月筛选 |
 | | `--force_join_times` | | flag | 强制参与次数 |
-| **query-surveys** | `--username` | **是** | string | 用户名 |
-| | `--uid` | **是** | string | 参与者 ID |
+| **query-surveys** | `--uid` | **是** | string | 参与者 ID |
 | | `--sysid` | **是** | int | 系统 ID |
 | | `--page_index` | | int | 页码 |
 | | `--page_size` | | int | 每页数量 |
@@ -549,9 +546,10 @@ wjx analytics decode-push --payload "..." --app_key "key"
 ### 配置与诊断
 
 ```bash
-wjx init      # 交互式引导配置（API Key、Base URL、Corp ID → ~/.wjxrc）
-wjx whoami    # 验证 API Key 并显示账号信息
-wjx doctor    # 环境诊断（配置文件、Node 版本、API Key、API 连接、SDK 版本）
+wjx init         # 交互式引导配置（API Key、Base URL、Corp ID → ~/.wjxrc）
+wjx whoami       # 验证 API Key 并显示账号信息
+wjx doctor       # 环境诊断（配置文件、Node 版本、API Key、API 连接、SDK 版本）
+wjx reference    # 输出命令参考文档（dsl / question-types / survey / response / analytics）
 ```
 
 ### Shell 补全
@@ -792,7 +790,7 @@ echo '{"title":"调查","type":0,"questions":"[]"}' | wjx --stdin survey create
 cd wjx-ai-kit/wjx-cli
 
 npm run build    # TypeScript 编译 → dist/
-npm test         # 构建 + 运行 82 个测试
+npm test         # 构建 + 运行 ~122 个测试
 npm run clean    # 清理 dist/
 
 # 手动测试

@@ -5,18 +5,30 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.1.3] - 2026-04-03
+## [0.1.4] - 2026-04-02
 
 ### Changed
 
-- **移除 `get_file_links` 工具**: 该工具已从 C# 服务端移除，MCP Server 同步删除
+- 去除重复的 `parsedQuestionsToWire`，改为从 wjx-api-sdk 导入
+- 升级 zod 依赖至 v4
+- **移除 `get_file_links` 工具**: 该工具已从 C# 服务端移除
 - **移除 `username` 参数**: user-system 6 个工具的输入 schema 不再包含 `username`
-- **工具总数**: 56 → 55
+- **工具总数**: 56 → 57（新增 build_preview_url、create_survey_by_text，移除 get_file_links）
 
 ### Fixed
 
+- `create_survey_by_text` 工具使用 SDK 的 `createSurveyByText()` 客户端解析
 - **评分量表 `item_score=0` 被覆写**: create_survey 不再将合法的 0 分自动替换为 item_index
 - **prompt 模板更新**: survey-generation prompts 与 API 参数变更对齐
+
+## [0.1.3] - 2026-04-01
+
+### Added
+
+- `create_survey_by_text` 工具：通过 DSL 文本创建问卷
+- `build_preview_url` SSO 工具：生成问卷预览 URL
+- 7 个问卷生成 Prompts（generate-survey、generate-nps-survey 等）
+- 2 个运维 Prompts（anomaly-detection、user-system-workflow）
 
 ## [0.1.2] - 2026-03-31
 

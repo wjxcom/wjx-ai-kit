@@ -15,9 +15,9 @@
 ### 初始化
 
 ```bash
-# 1. Fork 本仓库，然后克隆你的 fork
-git clone https://github.com/<your-username>/wjx-mcp-server.git
-cd wjx-mcp-server
+# 1. 克隆仓库
+git clone https://codeup.aliyun.com/6445da2d020eabef3107e22e/wjxfc/wjxagents.git
+cd wjxagents/wjx-ai-kit
 
 # 2. 安装依赖
 npm install
@@ -78,21 +78,18 @@ npm run test:integration
 
 ### 测试要求
 
-- 当前测试套件包含 **723+ 用例**，提交前请确保全部通过
+- 当前测试套件包含 **280+ 用例**，提交前请确保全部通过
 - **新增 tool 必须有对应的单元测试**
 - 单元测试放在 `__tests__/` 目录，集成测试放在 `tests/` 目录
 - 测试文件使用 `.test.mjs` 扩展名
 
 ### CI 流水线
 
-PR 会自动触发 GitHub Actions CI，在 Node.js 20 和 22 上运行：
+提交前请确保：
 
-1. `npm ci` — 安装依赖
-2. `npm run build` — 编译 TypeScript
-3. `npm test` — 运行全部测试
-4. `npm audit --omit=dev` — 安全审计
-
-请确保 CI 全部通过后再请求 review。
+1. `npm run build` — 编译 TypeScript
+2. `npm test` — 运行全部测试
+3. `npm audit --omit=dev` — 安全审计
 
 ---
 
@@ -101,9 +98,9 @@ PR 会自动触发 GitHub Actions CI，在 Node.js 20 和 22 上运行：
 ### 1. 创建分支
 
 ```bash
-# 从最新的 main 分支创建特性分支
-git checkout main
-git pull origin main
+# 从最新的 develop 分支创建特性分支
+git checkout develop
+git pull origin develop
 git checkout -b feat/your-feature-name
 ```
 
@@ -138,18 +135,11 @@ git commit -m "docs: update API reference for contacts module"
 git push origin feat/your-feature-name
 ```
 
-在 GitHub 上创建 Pull Request，目标分支为 `main`。PR 描述会自动加载模板，请填写：
+创建 Pull Request，目标分支为 `develop`。请在描述中说明：
 
 - **Summary** — 简要说明变更内容
 - **Changes** — 列出具体修改项
 - **Testing** — 说明测试方式
-- **Checklist** — 确认代码风格、测试、文档
-
-### 4. Review 与合并
-
-- 确保 CI 通过
-- 等待 maintainer review
-- 根据反馈修改后，PR 将被合并
 
 ---
 

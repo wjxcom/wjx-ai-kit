@@ -1,5 +1,5 @@
 import type { WjxApiResponse, WjxCredentials, FetchLike } from "../../core/types.js";
-import { Action } from "../../core/constants.js";
+import { Action, LONG_TIMEOUT_MS } from "../../core/constants.js";
 import { callWjxApi, getWjxCredentials } from "../../core/api-client.js";
 import type {
   QueryResponsesInput,
@@ -77,7 +77,7 @@ export async function downloadResponses<T = unknown>(
   if (input.suffix !== undefined) params.suffix = input.suffix;
   if (input.query_record !== undefined) params.query_record = input.query_record;
 
-  return callWjxApi<T>(params, { credentials, fetchImpl });
+  return callWjxApi<T>(params, { credentials, fetchImpl, timeoutMs: LONG_TIMEOUT_MS });
 }
 
 export async function getReport<T = unknown>(
@@ -180,7 +180,7 @@ export async function get360Report<T = unknown>(
   };
   if (input.taskid !== undefined) params.taskid = input.taskid;
 
-  return callWjxApi<T>(params, { credentials, fetchImpl, maxRetries: 0 });
+  return callWjxApi<T>(params, { credentials, fetchImpl, maxRetries: 0, timeoutMs: LONG_TIMEOUT_MS });
 }
 
 export async function clearResponses<T = unknown>(

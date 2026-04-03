@@ -2,7 +2,8 @@ import type { ParsedSurvey, ParsedQuestion } from "./types.js";
 
 // ─── ParsedQuestion → API wire format conversion ──────────────────
 
-const TYPE_MAP: Record<string, { q_type: number; q_subtype: number }> = {
+/** Internal type → API wire format mapping. Exported for reference tooling. */
+export const TYPE_MAP: Record<string, { q_type: number; q_subtype: number }> = {
   "single-choice": { q_type: 3, q_subtype: 3 },
   "dropdown": { q_type: 3, q_subtype: 301 },
   "multi-choice": { q_type: 4, q_subtype: 4 },
@@ -47,16 +48,34 @@ export interface WireQuestion {
   col_items?: WireQuestionItem[];
 }
 
+export interface WireConversionResult {
+  questions: WireQuestion[];
+  /** 被过滤掉的段落说明题目（API 不支持 q_type=2） */
+  skippedParagraphs: ParsedQuestion[];
+}
+
 /** Subtypes that need auto-incrementing item_score (1, 2, 3, ...) */
 const SCORING_SUBTYPES = new Set([302, 303, 401]);
 
 /**
  * Convert ParsedQuestion array to API wire format (question JSON for createSurvey).
+ * 段落说明（q_type=2）会被过滤掉，因为 questions JSON 创建 API 不支持该题型。
  */
-export function parsedQuestionsToWire(questions: ParsedQuestion[]): WireQuestion[] {
-  const unsupported = questions
-    .filter((q) => !TYPE_MAP[q.type])
-    .map((q) => `"${q.title}" (type: ${q.type})`);
+export function parsedQuestionsToWire(questions: ParsedQuestion[]): WireConversionResult {
+  const unsupported: string[] = [];
+  const skippedParagraphs: ParsedQuestion[] = [];
+  const filteredQuestions: ParsedQuestion[] = [];
+
+  for (const q of questions) {
+    if (!TYPE_MAP[q.type]) {
+      unsupported.push(`"${q.title}" (type: ${q.type})`);
+    } else if (q.type === "paragraph") {
+      skippedParagraphs.push(q);
+    } else {
+      filteredQuestions.push(q);
+    }
+  }
+
   if (unsupported.length > 0) {
     const supported = Object.keys(TYPE_MAP).join(", ");
     throw new Error(
@@ -68,7 +87,7 @@ export function parsedQuestionsToWire(questions: ParsedQuestion[]): WireQuestion
   const wire: WireQuestion[] = [];
   let qIdx = 1;
 
-  for (const q of questions) {
+  for (const q of filteredQuestions) {
     const typeInfo = TYPE_MAP[q.type]!;
 
     const wq: WireQuestion = {
@@ -87,7 +106,6 @@ export function parsedQuestionsToWire(questions: ParsedQuestion[]): WireQuestion
       wq.q_title = `${wq.q_title}${separator}${placeholders}`;
     }
 
-    // Convert options to items
     if (q.options && q.options.length > 0) {
       wq.items = q.options.map((opt, i) => ({
         q_index: qIdx,
@@ -96,7 +114,6 @@ export function parsedQuestionsToWire(questions: ParsedQuestion[]): WireQuestion
       }));
     }
 
-    // Scale: convert scaleRange to items
     if ((q.type === "scale" || q.type === "slider") && q.scaleRange) {
       const [min, max] = q.scaleRange;
       const minNum = parseInt(min, 10);
@@ -115,7 +132,6 @@ export function parsedQuestionsToWire(questions: ParsedQuestion[]): WireQuestion
       }
     }
 
-    // Matrix: convert matrixRows to items
     if (q.type.startsWith("matrix") && q.matrixRows && q.matrixRows.length > 0) {
       wq.items = q.matrixRows.map((row, i) => ({
         q_index: qIdx,
@@ -124,13 +140,25 @@ export function parsedQuestionsToWire(questions: ParsedQuestion[]): WireQuestion
       }));
     }
 
-    // Matrix: convert matrixColumns to col_items
     if (q.type.startsWith("matrix") && q.matrixColumns && q.matrixColumns.length > 0) {
       wq.col_items = q.matrixColumns.map((col, i) => ({
         q_index: qIdx,
         item_index: i + 1,
         item_title: col,
       }));
+    }
+
+    // Matrix-scale: convert scaleRange to col_items (if no matrixColumns already set)
+    if (q.type === "matrix-scale" && q.scaleRange && !wq.col_items) {
+      const [min, max] = q.scaleRange;
+      const minNum = parseInt(min, 10);
+      const maxNum = parseInt(max, 10);
+      if (!isNaN(minNum) && !isNaN(maxNum) && maxNum - minNum + 1 <= 100) {
+        wq.col_items = [];
+        for (let v = minNum; v <= maxNum; v++) {
+          wq.col_items.push({ q_index: qIdx, item_index: v - minNum + 1, item_title: String(v) });
+        }
+      }
     }
 
     // Auto-assign incrementing item_score for scoring subtypes (量表302, 评分单选303, 评分多选401)
@@ -146,7 +174,7 @@ export function parsedQuestionsToWire(questions: ParsedQuestion[]): WireQuestion
     qIdx++;
   }
 
-  return wire;
+  return { questions: wire, skippedParagraphs };
 }
 
 // ─── DSL text → ParsedSurvey ──────────────────────────────────────
@@ -155,7 +183,8 @@ export function parsedQuestionsToWire(questions: ParsedQuestion[]): WireQuestion
  * DSL type label → ParsedQuestion.type mapping.
  * Skeleton: 6 core types. Extend as needed.
  */
-const LABEL_TO_TYPE: Record<string, string> = {
+/** DSL type label → internal type mapping. Exported for reference tooling. */
+export const LABEL_TO_TYPE: Record<string, string> = {
   "单选题": "single-choice",
   "下拉框": "dropdown",
   "下拉单选": "dropdown",
@@ -305,7 +334,11 @@ function parseQuestionBody(
       if (peek >= lines.length || Q_LINE_RE.test(lines[peek].trim()) || lines[peek].trim() === "=== ���页 ===") {
         break;
       }
-      // Otherwise this empty line is within the question body (shouldn't happen in clean DSL)
+      // For matrix types, continue across empty lines to collect scale range / column options
+      if (type.startsWith("matrix")) {
+        cursor++;
+        continue;
+      }
       break;
     }
 
@@ -387,13 +420,27 @@ function buildQuestion(type: string, title: string, required: boolean, body: str
       // Format 1 (DSL): "行：" header, then "- row1", "- row2", ...
       // Format 2 (AI): space-separated column headers on first line, then plain row lines
       q.matrixRows = [];
-      if (body.length > 0 && body[0] === "行：") {
-        // Format 1: DSL format
+      if (body.length > 0 && (body[0] === "行：" || body[0].toLowerCase() === "rows:")) {
+        // Format 1: DSL format — "行：" / "Rows:" header, then "- row" lines,
+        // optionally followed by scale range (1~5) or column option lines
+        const colOptions: string[] = [];
         for (const line of body) {
-          if (line === "行：") continue;
+          if (line === "行：" || line.toLowerCase() === "rows:") continue;
           if (line.startsWith("- ")) {
             q.matrixRows.push(line.slice(2).trim());
+          } else {
+            // Non-row line: could be scale range or column option
+            const scaleParts = line.split("~");
+            if (scaleParts.length === 2 && /^\d+$/.test(scaleParts[0].trim()) && /^\d+$/.test(scaleParts[1].trim())) {
+              q.scaleRange = [scaleParts[0].trim(), scaleParts[1].trim()];
+            } else if (line.trim()) {
+              colOptions.push(stripOptionPrefix(line.trim()));
+            }
           }
+        }
+        // If we collected column options, set them as matrixColumns
+        if (colOptions.length > 0) {
+          q.matrixColumns = colOptions;
         }
       } else if (body.length >= 2 && isMatrixColumnHeader(body[0])) {
         // Format 2: AI format - first line is column headers

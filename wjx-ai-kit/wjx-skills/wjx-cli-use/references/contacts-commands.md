@@ -321,10 +321,10 @@ wjx sso partner-url --username partner1
 > 这些命令已标记 Deprecated，优先使用通讯录模块。仅在用户明确要求时使用。
 
 ```bash
-wjx user-system add-participants --username admin --usid 100 --users '[{"uid":"u1","uname":"Alice","upass":"123"}]'
-wjx user-system modify-participants --username admin --usid 100 --users '[...]'
-wjx user-system delete-participants --username admin --usid 100 --uids '["u1","u2"]'
-wjx user-system bind --username admin --vid 12345 --usid 100 --uids '["u1"]'
-wjx user-system query-binding --username admin --vid 12345 --usid 100
-wjx user-system query-surveys --username admin --usid 100 --uid u1
+wjx user-system add-participants --usid 100 --users '[{"uid":"u1","uname":"Alice","upass":"123"}]'
+wjx user-system modify-participants --usid 100 --users '[...]'
+wjx user-system delete-participants --usid 100 --uids '["u1","u2"]'
+wjx user-system bind --vid 12345 --usid 100 --uids '["u1"]'
+wjx user-system query-binding --vid 12345 --usid 100
+wjx user-system query-surveys --usid 100 --uid u1
 ```

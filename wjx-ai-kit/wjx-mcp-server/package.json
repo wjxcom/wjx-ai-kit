@@ -1,6 +1,6 @@
 {
   "name": "wjx-mcp-server",
-  "version": "0.1.3",
+  "version": "0.1.4",
   "description": "问卷星 (Wenjuanxing) OpenAPI MCP Server — 创建、查询、管理问卷",
   "main": "dist/index.js",
   "bin": {

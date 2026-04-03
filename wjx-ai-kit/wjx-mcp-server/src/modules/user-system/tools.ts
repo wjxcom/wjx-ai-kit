@@ -8,7 +8,7 @@ import {
   querySurveyBinding,
   queryUserSurveys,
 } from "./client.js";
-import { toolResult, toolError } from "../../helpers.js";
+import { toolResult, toolError, assertJsonArray } from "../../helpers.js";
 
 export function registerUserSystemTools(server: McpServer): void {
   // ─── add_participants ─────────────────────────────────────────────
@@ -22,10 +22,6 @@ export function registerUserSystemTools(server: McpServer): void {
         users: z
           .string()
           .min(2)
-          .refine(
-            (s) => { try { return Array.isArray(JSON.parse(s)); } catch { return false; } },
-            "users 必须是合法的 JSON 数组",
-          )
           .describe(
             "参与者列表 JSON 字符串（数组），每项包含: uid(用户ID,必填), uname(姓名), upass(密码), udept(部门,数组格式如[\"部门1\"]), uextf(附加信息,数组格式如[\"信息1\"])",
           ),
@@ -40,6 +36,7 @@ export function registerUserSystemTools(server: McpServer): void {
     },
     async (args) => {
       try {
+        assertJsonArray(args.users, "users");
         const result = await addParticipants({
           users: args.users,
           sysid: args.usid,
@@ -62,10 +59,6 @@ export function registerUserSystemTools(server: McpServer): void {
         users: z
           .string()
           .min(2)
-          .refine(
-            (s) => { try { return Array.isArray(JSON.parse(s)); } catch { return false; } },
-            "users 必须是合法的 JSON 数组",
-          )
           .describe(
             "参与者列表 JSON 字符串（数组），每项包含: uid(用户ID,必填), uname(姓名), upass(密码), udept(部门,数组格式如[\"部门1\"]), uextf(附加信息,数组格式如[\"信息1\"])",
           ),
@@ -81,6 +74,7 @@ export function registerUserSystemTools(server: McpServer): void {
     },
     async (args) => {
       try {
+        assertJsonArray(args.users, "users");
         const result = await modifyParticipants({
           users: args.users,
           sysid: args.usid,
@@ -104,10 +98,6 @@ export function registerUserSystemTools(server: McpServer): void {
         uids: z
           .string()
           .min(2)
-          .refine(
-            (s) => { try { return Array.isArray(JSON.parse(s)); } catch { return false; } },
-            "uids 必须是合法的 JSON 数组",
-          )
           .describe("参与者 ID 列表 JSON 字符串（数组），如 [\"uid1\",\"uid2\"]"),
         usid: z.number().int().positive().describe("用户系统 ID（sysid）"),
       },
@@ -120,6 +110,7 @@ export function registerUserSystemTools(server: McpServer): void {
     },
     async (args) => {
       try {
+        assertJsonArray(args.uids, "uids");
         const result = await deleteParticipants({
           uids: args.uids,
           sysid: args.usid,
@@ -144,10 +135,6 @@ export function registerUserSystemTools(server: McpServer): void {
         uids: z
           .string()
           .min(2)
-          .refine(
-            (s) => { try { return Array.isArray(JSON.parse(s)); } catch { return false; } },
-            "uids 必须是合法的 JSON 数组",
-          )
           .describe("参与者 ID 列表 JSON 字符串（数组），如 [\"uid1\",\"uid2\"]"),
         answer_times: z.number().int().min(0).optional().describe("作答次数限制，0=不限"),
         can_chg_answer: z.boolean().optional().describe("是否允许修改答案"),
@@ -163,6 +150,7 @@ export function registerUserSystemTools(server: McpServer): void {
     },
     async (args) => {
       try {
+        assertJsonArray(args.uids, "uids");
         const result = await bindActivity({
           vid: args.vid,
           sysid: args.usid,
