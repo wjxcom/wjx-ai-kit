@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { execFileSync, execFile } from "node:child_process";
 import { resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
+import { mkdirSync, readFileSync, rmSync } from "node:fs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const CLI = resolve(__dirname, "..", "dist", "index.js");
@@ -899,6 +900,39 @@ describe("init", () => {
   it("init is listed in main --help", () => {
     const out = run(["--help"]);
     assert.match(out, /init/);
+  });
+
+  it("init --help shows --base-url and --no-install-skill options", () => {
+    const out = run(["init", "--help"]);
+    assert.match(out, /--base-url/);
+    assert.match(out, /--no-install-skill/);
+  });
+
+  it("init --api-key saves config (non-interactive)", async () => {
+    const tmpDir = resolve(__dirname, "..", "__tmp_init_test__");
+    const configPath = resolve(tmpDir, ".wjxrc");
+    mkdirSync(tmpDir, { recursive: true });
+    try {
+      const { exitCode, stderr } = await runFull(
+        ["--api-key", "test_key_123", "init", "--no-install-skill"],
+        { env: { ...NO_CONFIG, WJX_CONFIG_PATH: configPath } },
+      );
+      assert.strictEqual(exitCode, 0);
+      assert.match(stderr, /已保存/);
+      const saved = JSON.parse(readFileSync(configPath, "utf8"));
+      assert.strictEqual(saved.apiKey, "test_key_123");
+    } finally {
+      rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
+
+  it("init without --api-key in non-TTY hints parameter mode", async () => {
+    const { exitCode, stderr } = await runFull(
+      ["init"],
+      { env: NO_CONFIG, input: "" },
+    );
+    assert.strictEqual(exitCode, 1);
+    assert.match(stderr, /--api-key/);
   });
 });
 
