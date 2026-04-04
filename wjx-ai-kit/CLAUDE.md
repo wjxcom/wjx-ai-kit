@@ -8,7 +8,7 @@ wjx-ai-kit is a monorepo (npm workspaces) wrapping the Wenjuanxing (问卷星) O
 
 - **wjx-api-sdk** — Zero-dependency TypeScript SDK (50+ functions, foundation layer)
 - **wjx-mcp-server** — MCP Server (56 tools, 8 resources, 19 prompts) for AI clients
-- **wjx-cli** — Commander.js CLI (67 subcommands) designed for AI Agent consumption
+- **wjx-cli** — Commander.js CLI (70 subcommands) designed for AI Agent consumption
 
 ## Build & Test Commands
 
@@ -26,7 +26,7 @@ npm run build --workspace=wjx-cli
 # Test (from monorepo root)
 npm test --workspace=wjx-api-sdk        # ~623 tests
 npm test --workspace=wjx-mcp-server     # ~282 tests
-npm test --workspace=wjx-cli            # ~122 tests
+npm test --workspace=wjx-cli            # ~130 tests
 
 # Run a single test file (must build first)
 cd wjx-api-sdk && npm run build && node --test __tests__/survey.test.mjs

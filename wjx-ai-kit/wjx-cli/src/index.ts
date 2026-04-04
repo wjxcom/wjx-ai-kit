@@ -15,6 +15,8 @@ import { registerAnalyticsCommands } from "./commands/analytics.js";
 import { registerInitCommands } from "./commands/init.js";
 import { registerCompletionCommands } from "./commands/completion.js";
 import { registerReferenceCommands } from "./commands/reference.js";
+import { registerSkillCommands } from "./commands/skill.js";
+import { registerUpdateCommands } from "./commands/update.js";
 import { readStdin, mergeStdinWithOpts } from "./lib/stdin.js";
 import { handleError } from "./lib/errors.js";
 import { applyConfigToEnv } from "./lib/config.js";
@@ -67,6 +69,8 @@ registerAnalyticsCommands(program);
 registerInitCommands(program);
 registerCompletionCommands(program);
 registerReferenceCommands(program);
+registerSkillCommands(program);
+registerUpdateCommands(program);
 
 (async () => {
   try {
