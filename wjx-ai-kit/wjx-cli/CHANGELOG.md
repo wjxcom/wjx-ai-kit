@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.12] - 2026-04-03
+
+### Added
+
+- **`wjx init` 参数模式**: `wjx init --api-key <key>` 跳过交互式向导，AI Agent 可无人值守配置
+  - `--base-url <url>`、`--corp-id <id>` 可选
+  - `--no-install-skill` 跳过技能安装（默认安装）
+  - 非 TTY 环境自动检测已有配置，提示使用参数模式
+- 新增 3 个测试用例（共 133 个）
+
 ## [0.1.11] - 2026-04-03
 
 ### Added
