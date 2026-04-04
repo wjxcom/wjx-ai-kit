@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.11] - 2026-04-03
+
+### Added
+
+- **`wjx skill install/update` 命令组**: 管理 Claude Code 技能安装
+  - `wjx skill install [--force] [--silent]` 安装 wjx-cli-use 技能到当前目录
+  - `wjx skill update [--silent]` 更新已安装的技能文件
+- **`wjx update` 自更新命令**: 执行 `npm update wjx-cli -g`，更新后可选同步更新技能
+- **`wjx init` 集成技能安装**: 配置完成后询问是否安装 wjx-cli-use 技能
+- **bundled/ 目录**: 技能文件和 agent 定义随 npm 包发布，安装时复制到用户项目
+- 所有新命令支持 `--silent` 模式（JSON 输出，适用于 CI/AI Agent）
+- 新增 9 个测试用例（共 130 个）
+
 ## [0.1.10] - 2026-04-02
 
 ### Fixed
