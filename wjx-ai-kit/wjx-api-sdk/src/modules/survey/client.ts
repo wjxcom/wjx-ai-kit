@@ -1,6 +1,6 @@
 import type { WjxApiResponse, WjxCredentials, FetchLike } from "../../core/types.js";
 import { Action } from "../../core/constants.js";
-import { callWjxApi, getWjxCredentials, validateQuestionsJson } from "../../core/api-client.js";
+import { callWjxApi, getWjxCredentials, assignDefined } from "../../core/api-client.js";
 export { textToSurvey, parsedQuestionsToWire } from "./text-to-survey.js";
 import { textToSurvey, parsedQuestionsToWire } from "./text-to-survey.js";
 import type {
@@ -17,6 +17,27 @@ import type {
   ClearRecycleBinInput,
   UploadFileInput,
 } from "./types.js";
+
+export function validateQuestionsJson(questions: string): void {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(questions);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    throw new Error(`questions must be valid JSON: ${message}`);
+  }
+  if (!Array.isArray(parsed)) {
+    throw new Error("questions must be a JSON array");
+  }
+  for (const [i, q] of (parsed as Record<string, unknown>[]).entries()) {
+    if (typeof q.q_index !== "number") {
+      throw new Error(`questions[${i}] missing required field "q_index" (number)`);
+    }
+    if (typeof q.q_type !== "number") {
+      throw new Error(`questions[${i}] missing required field "q_type" (number)`);
+    }
+  }
+}
 
 export async function createSurvey<T = unknown>(
   input: CreateSurveyInput,

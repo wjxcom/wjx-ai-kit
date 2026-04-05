@@ -11,7 +11,7 @@ import {
   get360Report,
   clearResponses,
 } from "./client.js";
-import { toolResult, toolError, assertJson } from "../../helpers.js";
+import { wrapToolHandler, assertJson } from "../../helpers.js";
 
 export function registerResponseTools(server: McpServer): void {
   // ─── query_responses ──────────────────────────────────────────────
@@ -46,35 +46,30 @@ export function registerResponseTools(server: McpServer): void {
         title: "答卷查询",
       },
     },
-    async (args) => {
-      try {
-        if (args.conds !== undefined) assertJson(args.conds, "conds");
-        if (args.jid !== undefined && args.jid.split(",").length > 50) throw new Error("jid 最多允许传入50个");
-        if (args.sojumpparm !== undefined && args.sojumpparm.split(",").length > 50) throw new Error("sojumpparm 最多允许传入50个");
-        if (args.qid !== undefined && args.qid.split(",").length > 50) throw new Error("qid 最多允许传入50个");
-        const result = await queryResponses({
-          vid: args.vid,
-          valid: args.valid,
-          page_index: args.page_index,
-          page_size: args.page_size,
-          sort: args.sort,
-          min_index: args.min_index,
-          jid: args.jid,
-          sojumpparm: args.sojumpparm,
-          qid: args.qid,
-          begin_time: args.begin_time,
-          end_time: args.end_time,
-          file_view_expires: args.file_view_expires,
-          query_note: args.query_note,
-          distinct_user: args.distinct_user,
-          distinct_sojumpparm: args.distinct_sojumpparm,
-          conds: args.conds,
-        });
-        return toolResult(result, result.result === false);
-      } catch (error) {
-        return toolError(error);
-      }
-    },
+    wrapToolHandler(async (args) => {
+      if (args.conds !== undefined) assertJson(args.conds, "conds");
+      if (args.jid !== undefined && args.jid.split(",").length > 50) throw new Error("jid 最多允许传入50个");
+      if (args.sojumpparm !== undefined && args.sojumpparm.split(",").length > 50) throw new Error("sojumpparm 最多允许传入50个");
+      if (args.qid !== undefined && args.qid.split(",").length > 50) throw new Error("qid 最多允许传入50个");
+      return queryResponses({
+        vid: args.vid,
+        valid: args.valid,
+        page_index: args.page_index,
+        page_size: args.page_size,
+        sort: args.sort,
+        min_index: args.min_index,
+        jid: args.jid,
+        sojumpparm: args.sojumpparm,
+        qid: args.qid,
+        begin_time: args.begin_time,
+        end_time: args.end_time,
+        file_view_expires: args.file_view_expires,
+        query_note: args.query_note,
+        distinct_user: args.distinct_user,
+        distinct_sojumpparm: args.distinct_sojumpparm,
+        conds: args.conds,
+      });
+    }),
   );
 
   // ─── query_responses_realtime ─────────────────────────────────────
@@ -95,17 +90,12 @@ export function registerResponseTools(server: McpServer): void {
         title: "答卷实时查询",
       },
     },
-    async (args) => {
-      try {
-        const result = await queryResponsesRealtime({
-          vid: args.vid,
-          count: args.count,
-        });
-        return toolResult(result, result.result === false);
-      } catch (error) {
-        return toolError(error);
-      }
-    },
+    wrapToolHandler(async (args) =>
+      queryResponsesRealtime({
+        vid: args.vid,
+        count: args.count,
+      }),
+    ),
   );
 
   // ─── download_responses ───────────────────────────────────────────
@@ -136,27 +126,22 @@ export function registerResponseTools(server: McpServer): void {
         title: "答卷下载",
       },
     },
-    async (args) => {
-      try {
-        const result = await downloadResponses({
-          vid: args.vid,
-          taskid: args.taskid,
-          valid: args.valid,
-          query_count: args.query_count,
-          begin_time: args.begin_time,
-          end_time: args.end_time,
-          min_index: args.min_index,
-          qid: args.qid,
-          sort: args.sort,
-          query_type: args.query_type,
-          suffix: args.suffix,
-          query_record: args.query_record,
-        });
-        return toolResult(result, result.result === false);
-      } catch (error) {
-        return toolError(error);
-      }
-    },
+    wrapToolHandler(async (args) =>
+      downloadResponses({
+        vid: args.vid,
+        taskid: args.taskid,
+        valid: args.valid,
+        query_count: args.query_count,
+        begin_time: args.begin_time,
+        end_time: args.end_time,
+        min_index: args.min_index,
+        qid: args.qid,
+        sort: args.sort,
+        query_type: args.query_type,
+        suffix: args.suffix,
+        query_record: args.query_record,
+      }),
+    ),
   );
 
   // ─── get_report ───────────────────────────────────────────────────
@@ -185,28 +170,23 @@ export function registerResponseTools(server: McpServer): void {
         title: "默认报告查询",
       },
     },
-    async (args) => {
-      try {
-        if (args.conds !== undefined) assertJson(args.conds, "conds");
-        if (args.jid !== undefined && args.jid.split(",").length > 50) throw new Error("jid 最多允许传入50个");
-        if (args.sojumpparm !== undefined && args.sojumpparm.split(",").length > 50) throw new Error("sojumpparm 最多允许传入50个");
-        const result = await getReport({
-          vid: args.vid,
-          valid: args.valid,
-          min_index: args.min_index,
-          jid: args.jid,
-          sojumpparm: args.sojumpparm,
-          begin_time: args.begin_time,
-          end_time: args.end_time,
-          distinct_user: args.distinct_user,
-          distinct_sojumpparm: args.distinct_sojumpparm,
-          conds: args.conds,
-        });
-        return toolResult(result, result.result === false);
-      } catch (error) {
-        return toolError(error);
-      }
-    },
+    wrapToolHandler(async (args) => {
+      if (args.conds !== undefined) assertJson(args.conds, "conds");
+      if (args.jid !== undefined && args.jid.split(",").length > 50) throw new Error("jid 最多允许传入50个");
+      if (args.sojumpparm !== undefined && args.sojumpparm.split(",").length > 50) throw new Error("sojumpparm 最多允许传入50个");
+      return getReport({
+        vid: args.vid,
+        valid: args.valid,
+        min_index: args.min_index,
+        jid: args.jid,
+        sojumpparm: args.sojumpparm,
+        begin_time: args.begin_time,
+        end_time: args.end_time,
+        distinct_user: args.distinct_user,
+        distinct_sojumpparm: args.distinct_sojumpparm,
+        conds: args.conds,
+      });
+    }),
   );
 
   // ─── submit_response ──────────────────────────────────────────────
@@ -219,7 +199,7 @@ export function registerResponseTools(server: McpServer): void {
       inputSchema: {
         vid: z.number().int().positive().describe("问卷编号"),
         inputcosttime: z.number().int().min(2).describe("填写时间（秒），需>1秒否则视为机器提交"),
-        submitdata: z.string().min(1).describe("答卷内容字符串，格式：题号$答案}题号$答案"),
+        submitdata: z.string().min(1).describe("答卷���容字符串，格式：题号$答案}题号$答案"),
         udsid: z.number().int().optional().describe("自定义来源编号"),
         sojumpparm: z.string().optional().describe("自定义链接参数"),
         submittime: z.string().optional().describe("答卷提交时间，日期时间字符串，默认当前时间"),
@@ -231,21 +211,16 @@ export function registerResponseTools(server: McpServer): void {
         title: "答卷提交",
       },
     },
-    async (args) => {
-      try {
-        const result = await submitResponse({
-          vid: args.vid,
-          inputcosttime: args.inputcosttime,
-          submitdata: args.submitdata,
-          udsid: args.udsid,
-          sojumpparm: args.sojumpparm,
-          submittime: args.submittime,
-        });
-        return toolResult(result, result.result === false);
-      } catch (error) {
-        return toolError(error);
-      }
-    },
+    wrapToolHandler(async (args) =>
+      submitResponse({
+        vid: args.vid,
+        inputcosttime: args.inputcosttime,
+        submitdata: args.submitdata,
+        udsid: args.udsid,
+        sojumpparm: args.sojumpparm,
+        submittime: args.submittime,
+      }),
+    ),
   );
 
   // ─── get_file_links (已移除 — 仅限混合云/私有化场景，公有云不可用) ──
@@ -271,20 +246,15 @@ export function registerResponseTools(server: McpServer): void {
         title: "获取中奖者信息",
       },
     },
-    async (args) => {
-      try {
-        const result = await getWinners({
-          vid: args.vid,
-          atype: args.atype,
-          awardstatus: args.awardstatus,
-          page_index: args.page_index,
-          page_size: args.page_size,
-        });
-        return toolResult(result, result.result === false);
-      } catch (error) {
-        return toolError(error);
-      }
-    },
+    wrapToolHandler(async (args) =>
+      getWinners({
+        vid: args.vid,
+        atype: args.atype,
+        awardstatus: args.awardstatus,
+        page_index: args.page_index,
+        page_size: args.page_size,
+      }),
+    ),
   );
 
   // ─── modify_response ──────────────────────────────────────────────
@@ -308,20 +278,15 @@ export function registerResponseTools(server: McpServer): void {
         title: "修改答卷",
       },
     },
-    async (args) => {
-      try {
-        assertJson(args.answers, "answers");
-        const result = await modifyResponse({
-          vid: args.vid,
-          jid: args.jid,
-          type: args.type,
-          answers: args.answers,
-        });
-        return toolResult(result, result.result === false);
-      } catch (error) {
-        return toolError(error);
-      }
-    },
+    wrapToolHandler(async (args) => {
+      assertJson(args.answers, "answers");
+      return modifyResponse({
+        vid: args.vid,
+        jid: args.jid,
+        type: args.type,
+        answers: args.answers,
+      });
+    }),
   );
 
   // ─── get_360_report ───────────────────────────────────────────────
@@ -342,17 +307,12 @@ export function registerResponseTools(server: McpServer): void {
         title: "360度评估报告下载",
       },
     },
-    async (args) => {
-      try {
-        const result = await get360Report({
-          vid: args.vid,
-          taskid: args.taskid,
-        });
-        return toolResult(result, result.result === false);
-      } catch (error) {
-        return toolError(error);
-      }
-    },
+    wrapToolHandler(async (args) =>
+      get360Report({
+        vid: args.vid,
+        taskid: args.taskid,
+      }),
+    ),
   );
 
   // ─── clear_responses ──────────────────────────────────────────────
@@ -374,17 +334,12 @@ export function registerResponseTools(server: McpServer): void {
         title: "清空答卷数据",
       },
     },
-    async (args) => {
-      try {
-        const result = await clearResponses({
-          username: args.username,
-          vid: args.vid,
-          reset_to_zero: args.reset_to_zero,
-        });
-        return toolResult(result, result.result === false);
-      } catch (error) {
-        return toolError(error);
-      }
-    },
+    wrapToolHandler(async (args) =>
+      clearResponses({
+        username: args.username,
+        vid: args.vid,
+        reset_to_zero: args.reset_to_zero,
+      }),
+    ),
   );
 }

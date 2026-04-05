@@ -74,6 +74,18 @@ export function printDryRunPreview(request: CapturedRequest | null): void {
   process.stderr.write(JSON.stringify({ dry_run: true, request }, null, 2) + "\n");
 }
 
+/**
+ * Merge stdin data with CLI opts (source-aware).
+ * Extracts the common pattern used in both executeCommand and manual handlers.
+ */
+export function getMerged(cmd: Command): Record<string, unknown> {
+  const stdinData = (cmd as unknown as Record<string, unknown>).__stdinData as Record<string, unknown> | undefined;
+  if (stdinData && Object.keys(stdinData).length > 0) {
+    return mergeStdinWithOpts(stdinData, cmd);
+  }
+  return { ...cmd.opts() };
+}
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type SdkFunction = (input: any, creds: any, ...rest: any[]) => Promise<WjxApiResponse<any>>;
 
@@ -94,16 +106,7 @@ export async function executeCommand(
   opts: ExecuteOpts = {},
 ): Promise<void> {
   try {
-    // Source-aware merge: stdin base + CLI-explicit overrides
-    const stdinData = (actionCommand as unknown as Record<string, unknown>).__stdinData as Record<string, unknown> | undefined;
-    const commandOpts = actionCommand.opts();
-    let merged: Record<string, unknown>;
-
-    if (stdinData && Object.keys(stdinData).length > 0) {
-      merged = mergeStdinWithOpts(stdinData, actionCommand);
-    } else {
-      merged = { ...commandOpts };
-    }
+    const merged = getMerged(actionCommand);
 
     const input = buildInput(merged);
     const globalOpts = program.opts();

@@ -52,27 +52,6 @@ export function getWjxCredentials(
   return { apiKey };
 }
 
-export function validateQuestionsJson(questions: string): void {
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(questions);
-  } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    throw new Error(`questions must be valid JSON: ${message}`);
-  }
-  if (!Array.isArray(parsed)) {
-    throw new Error("questions must be a JSON array");
-  }
-  for (const [i, q] of (parsed as Record<string, unknown>[]).entries()) {
-    if (typeof q.q_index !== "number") {
-      throw new Error(`questions[${i}] missing required field "q_index" (number)`);
-    }
-    if (typeof q.q_type !== "number") {
-      throw new Error(`questions[${i}] missing required field "q_type" (number)`);
-    }
-  }
-}
-
 function isRetryable(status: number): boolean {
   return status === 429 || status >= 500;
 }
@@ -217,4 +196,18 @@ export async function callWjxContactsApi<T = unknown>(
 
 export function getCorpId(env: NodeJS.ProcessEnv = process.env): string | undefined {
   return env.WJX_CORP_ID || undefined;
+}
+
+/**
+ * Copy defined (non-undefined) keys from source to target.
+ * Replaces repetitive `if (input.x !== undefined) params.x = input.x` patterns.
+ */
+export function assignDefined<T extends Record<string, unknown>>(
+  target: T, source: Record<string, unknown> | object, keys: string[],
+): T {
+  const src = source as Record<string, unknown>;
+  for (const k of keys) {
+    if (src[k] !== undefined) (target as Record<string, unknown>)[k] = src[k];
+  }
+  return target;
 }

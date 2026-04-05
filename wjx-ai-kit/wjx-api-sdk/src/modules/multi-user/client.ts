@@ -1,6 +1,6 @@
 import type { WjxApiResponse, WjxCredentials, FetchLike } from "../../core/types.js";
 import { Action } from "../../core/constants.js";
-import { callWjxSubuserApi, getWjxCredentials } from "../../core/api-client.js";
+import { callWjxSubuserApi, getWjxCredentials, assignDefined } from "../../core/api-client.js";
 import type {
   AddSubAccountInput,
   ModifySubAccountInput,
@@ -18,11 +18,7 @@ export async function addSubAccount<T = unknown>(
     action: Action.ADD_SUB_ACCOUNT,
     subuser: input.subuser,
   };
-  if (input.password !== undefined) params.password = input.password;
-  if (input.mobile !== undefined) params.mobile = input.mobile;
-  if (input.email !== undefined) params.email = input.email;
-  if (input.role !== undefined) params.role = input.role;
-  if (input.group !== undefined) params.group = input.group;
+  assignDefined(params, input, ["password", "mobile", "email", "role", "group"]);
 
   return callWjxSubuserApi<T>(params, { credentials, fetchImpl, maxRetries: 0 });
 }
@@ -36,10 +32,7 @@ export async function modifySubAccount<T = unknown>(
     action: Action.MODIFY_SUB_ACCOUNT,
     subuser: input.subuser,
   };
-  if (input.mobile !== undefined) params.mobile = input.mobile;
-  if (input.email !== undefined) params.email = input.email;
-  if (input.role !== undefined) params.role = input.role;
-  if (input.group !== undefined) params.group = input.group;
+  assignDefined(params, input, ["mobile", "email", "role", "group"]);
 
   return callWjxSubuserApi<T>(params, { credentials, fetchImpl, maxRetries: 0 });
 }
@@ -67,8 +60,7 @@ export async function restoreSubAccount<T = unknown>(
     action: Action.RESTORE_SUB_ACCOUNT,
     subuser: input.subuser,
   };
-  if (input.mobile !== undefined) params.mobile = input.mobile;
-  if (input.email !== undefined) params.email = input.email;
+  assignDefined(params, input, ["mobile", "email"]);
 
   return callWjxSubuserApi<T>(params, { credentials, fetchImpl, maxRetries: 0 });
 }
@@ -81,12 +73,7 @@ export async function querySubAccounts<T = unknown>(
   const params: Record<string, unknown> = {
     action: Action.QUERY_SUB_ACCOUNTS,
   };
-  if (input.subuser !== undefined) params.subuser = input.subuser;
-  if (input.name_like !== undefined) params.name_like = input.name_like;
-  if (input.role !== undefined) params.role = input.role;
-  if (input.group !== undefined) params.group = input.group;
-  if (input.status !== undefined) params.status = input.status;
-  if (input.mobile !== undefined) params.mobile = input.mobile;
+  assignDefined(params, input, ["subuser", "name_like", "role", "group", "status", "mobile"]);
 
   return callWjxSubuserApi<T>(params, { credentials, fetchImpl });
 }

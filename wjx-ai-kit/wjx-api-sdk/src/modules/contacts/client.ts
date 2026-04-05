@@ -1,6 +1,6 @@
 import type { WjxApiResponse, WjxCredentials, FetchLike } from "../../core/types.js";
 import { Action } from "../../core/constants.js";
-import { callWjxContactsApi, getWjxCredentials, getCorpId } from "../../core/api-client.js";
+import { callWjxContactsApi, getWjxCredentials, getCorpId, assignDefined } from "../../core/api-client.js";
 import type {
   QueryContactsInput,
   AddContactsInput,

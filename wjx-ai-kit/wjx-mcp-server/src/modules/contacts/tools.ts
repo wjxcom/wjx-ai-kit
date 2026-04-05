@@ -16,7 +16,7 @@ import {
   modifyTag,
   deleteTag,
 } from "./client.js";
-import { toolResult, toolError, assertJsonArray } from "../../helpers.js";
+import { wrapToolHandler, assertJsonArray } from "../../helpers.js";
 
 export function registerContactsTools(server: McpServer): void {
   // ─── query_contacts ──────────────────────────────────────────────
@@ -37,17 +37,12 @@ export function registerContactsTools(server: McpServer): void {
         title: "查询通讯录成员",
       },
     },
-    async (args) => {
-      try {
-        const result = await queryContacts({
-          corpid: args.corpid,
-          uid: args.uid,
-        });
-        return toolResult(result, result.result === false);
-      } catch (error) {
-        return toolError(error);
-      }
-    },
+    wrapToolHandler(async (args) =>
+      queryContacts({
+        corpid: args.corpid,
+        uid: args.uid,
+      }),
+    ),
   );
 
   // ─── add_contacts ────────────────────────────────────────────────
@@ -75,20 +70,15 @@ export function registerContactsTools(server: McpServer): void {
         title: "添加或更新通讯录成员",
       },
     },
-    async (args) => {
-      try {
-        assertJsonArray(args.users, "users");
-        const result = await addContacts({
-          corpid: args.corpid,
-          users: args.users,
-          auto_create_udept: args.auto_create_udept,
-          auto_create_tag: args.auto_create_tag,
-        });
-        return toolResult(result, result.result === false);
-      } catch (error) {
-        return toolError(error);
-      }
-    },
+    wrapToolHandler(async (args) => {
+      assertJsonArray(args.users, "users");
+      return addContacts({
+        corpid: args.corpid,
+        users: args.users,
+        auto_create_udept: args.auto_create_udept,
+        auto_create_tag: args.auto_create_tag,
+      });
+    }),
   );
 
   // ─── delete_contacts ───────────────────────────────────────────
@@ -109,17 +99,12 @@ export function registerContactsTools(server: McpServer): void {
         title: "删除通讯录成员",
       },
     },
-    async (args) => {
-      try {
-        const result = await deleteContacts({
-          corpid: args.corpid,
-          uids: args.uids,
-        });
-        return toolResult(result, result.result === false);
-      } catch (error) {
-        return toolError(error);
-      }
-    },
+    wrapToolHandler(async (args) =>
+      deleteContacts({
+        corpid: args.corpid,
+        uids: args.uids,
+      }),
+    ),
   );
 
   // ─── add_admin ───────────────────────────────────────────────────
@@ -142,18 +127,13 @@ export function registerContactsTools(server: McpServer): void {
         title: "添加或修改管理员",
       },
     },
-    async (args) => {
-      try {
-        assertJsonArray(args.users, "users");
-        const result = await addAdmin({
-          corpid: args.corpid,
-          users: args.users,
-        });
-        return toolResult(result, result.result === false);
-      } catch (error) {
-        return toolError(error);
-      }
-    },
+    wrapToolHandler(async (args) => {
+      assertJsonArray(args.users, "users");
+      return addAdmin({
+        corpid: args.corpid,
+        users: args.users,
+      });
+    }),
   );
 
   // ─── delete_admin ────────────────────────────────────────────────
@@ -173,17 +153,12 @@ export function registerContactsTools(server: McpServer): void {
         title: "删除管理员",
       },
     },
-    async (args) => {
-      try {
-        const result = await deleteAdmin({
-          corpid: args.corpid,
-          uids: args.uids,
-        });
-        return toolResult(result, result.result === false);
-      } catch (error) {
-        return toolError(error);
-      }
-    },
+    wrapToolHandler(async (args) =>
+      deleteAdmin({
+        corpid: args.corpid,
+        uids: args.uids,
+      }),
+    ),
   );
 
   // ─── restore_admin ───────────────────────────────────────────────
@@ -203,17 +178,12 @@ export function registerContactsTools(server: McpServer): void {
         title: "恢复管理员",
       },
     },
-    async (args) => {
-      try {
-        const result = await restoreAdmin({
-          corpid: args.corpid,
-          uids: args.uids,
-        });
-        return toolResult(result, result.result === false);
-      } catch (error) {
-        return toolError(error);
-      }
-    },
+    wrapToolHandler(async (args) =>
+      restoreAdmin({
+        corpid: args.corpid,
+        uids: args.uids,
+      }),
+    ),
   );
 
   // ─── list_departments ────────────────────────────────────────────
@@ -232,16 +202,11 @@ export function registerContactsTools(server: McpServer): void {
         title: "查询部门列表",
       },
     },
-    async (args) => {
-      try {
-        const result = await listDepartments({
-          corpid: args.corpid,
-        });
-        return toolResult(result, result.result === false);
-      } catch (error) {
-        return toolError(error);
-      }
-    },
+    wrapToolHandler(async (args) =>
+      listDepartments({
+        corpid: args.corpid,
+      }),
+    ),
   );
 
   // ─── add_department ──────────────────────────────────────────────
@@ -264,18 +229,13 @@ export function registerContactsTools(server: McpServer): void {
         title: "添加部门",
       },
     },
-    async (args) => {
-      try {
-        assertJsonArray(args.depts, "depts");
-        const result = await addDepartment({
-          corpid: args.corpid,
-          depts: args.depts,
-        });
-        return toolResult(result, result.result === false);
-      } catch (error) {
-        return toolError(error);
-      }
-    },
+    wrapToolHandler(async (args) => {
+      assertJsonArray(args.depts, "depts");
+      return addDepartment({
+        corpid: args.corpid,
+        depts: args.depts,
+      });
+    }),
   );
 
   // ─── modify_department ───────────────────────────────────────────
@@ -298,18 +258,13 @@ export function registerContactsTools(server: McpServer): void {
         title: "修改部门",
       },
     },
-    async (args) => {
-      try {
-        assertJsonArray(args.depts, "depts");
-        const result = await modifyDepartment({
-          corpid: args.corpid,
-          depts: args.depts,
-        });
-        return toolResult(result, result.result === false);
-      } catch (error) {
-        return toolError(error);
-      }
-    },
+    wrapToolHandler(async (args) => {
+      assertJsonArray(args.depts, "depts");
+      return modifyDepartment({
+        corpid: args.corpid,
+        depts: args.depts,
+      });
+    }),
   );
 
   // ─── delete_department ───────────────────────────────────────────
@@ -334,20 +289,15 @@ export function registerContactsTools(server: McpServer): void {
         title: "删除部门",
       },
     },
-    async (args) => {
-      try {
-        assertJsonArray(args.depts, "depts");
-        const result = await deleteDepartment({
-          corpid: args.corpid,
-          type: args.type,
-          depts: args.depts,
-          del_child: args.del_child,
-        });
-        return toolResult(result, result.result === false);
-      } catch (error) {
-        return toolError(error);
-      }
-    },
+    wrapToolHandler(async (args) => {
+      assertJsonArray(args.depts, "depts");
+      return deleteDepartment({
+        corpid: args.corpid,
+        type: args.type,
+        depts: args.depts,
+        del_child: args.del_child,
+      });
+    }),
   );
 
   // ─── list_tags ───────────────────────────────────────────────────
@@ -366,16 +316,11 @@ export function registerContactsTools(server: McpServer): void {
         title: "查询标签列表",
       },
     },
-    async (args) => {
-      try {
-        const result = await listTags({
-          corpid: args.corpid,
-        });
-        return toolResult(result, result.result === false);
-      } catch (error) {
-        return toolError(error);
-      }
-    },
+    wrapToolHandler(async (args) =>
+      listTags({
+        corpid: args.corpid,
+      }),
+    ),
   );
 
   // ─── add_tag ─────────────────────────────────────────────────────
@@ -402,19 +347,14 @@ export function registerContactsTools(server: McpServer): void {
         title: "添加标签",
       },
     },
-    async (args) => {
-      try {
-        assertJsonArray(args.child_names, "child_names");
-        const result = await addTag({
-          corpid: args.corpid,
-          child_names: args.child_names,
-          is_radio: args.is_radio,
-        });
-        return toolResult(result, result.result === false);
-      } catch (error) {
-        return toolError(error);
-      }
-    },
+    wrapToolHandler(async (args) => {
+      assertJsonArray(args.child_names, "child_names");
+      return addTag({
+        corpid: args.corpid,
+        child_names: args.child_names,
+        is_radio: args.is_radio,
+      });
+    }),
   );
 
   // ─── modify_tag ──────────────────────────────────────────────────
@@ -439,20 +379,15 @@ export function registerContactsTools(server: McpServer): void {
         title: "修改标签",
       },
     },
-    async (args) => {
-      try {
-        if (args.child_names !== undefined) assertJsonArray(args.child_names, "child_names");
-        const result = await modifyTag({
-          corpid: args.corpid,
-          tp_id: args.tp_id,
-          tp_name: args.tp_name,
-          child_names: args.child_names,
-        });
-        return toolResult(result, result.result === false);
-      } catch (error) {
-        return toolError(error);
-      }
-    },
+    wrapToolHandler(async (args) => {
+      if (args.child_names !== undefined) assertJsonArray(args.child_names, "child_names");
+      return modifyTag({
+        corpid: args.corpid,
+        tp_id: args.tp_id,
+        tp_name: args.tp_name,
+        child_names: args.child_names,
+      });
+    }),
   );
 
   // ─── delete_tag ──────────────────────────────────────────────────
@@ -476,18 +411,13 @@ export function registerContactsTools(server: McpServer): void {
         title: "删除标签",
       },
     },
-    async (args) => {
-      try {
-        assertJsonArray(args.tags, "tags");
-        const result = await deleteTag({
-          corpid: args.corpid,
-          type: args.type,
-          tags: args.tags,
-        });
-        return toolResult(result, result.result === false);
-      } catch (error) {
-        return toolError(error);
-      }
-    },
+    wrapToolHandler(async (args) => {
+      assertJsonArray(args.tags, "tags");
+      return deleteTag({
+        corpid: args.corpid,
+        type: args.type,
+        tags: args.tags,
+      });
+    }),
   );
 }
