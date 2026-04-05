@@ -28,18 +28,19 @@ export type {
 export {
   setCredentialProvider,
   getWjxCredentials,
-  validateQuestionsJson,
   callWjxApi,
   callWjxUserSystemApi,
   callWjxSubuserApi,
   callWjxContactsApi,
   getCorpId,
+  assignDefined,
 } from "./core/api-client.js";
 
 // Survey module
 export {
   createSurvey,
   createSurveyByText,
+  validateQuestionsJson,
   getSurvey,
   listSurveys,
   updateSurveyStatus,

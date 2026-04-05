@@ -1,6 +1,6 @@
 import type { WjxApiResponse, WjxCredentials, FetchLike } from "../../core/types.js";
 import { Action } from "../../core/constants.js";
-import { callWjxUserSystemApi, getWjxCredentials } from "../../core/api-client.js";
+import { callWjxUserSystemApi, getWjxCredentials, assignDefined } from "../../core/api-client.js";
 import type {
   AddParticipantsInput,
   ModifyParticipantsInput,
@@ -66,10 +66,7 @@ export async function bindActivity<T = unknown>(
     sysid: input.sysid,
     uids: input.uids,
   };
-  if (input.answer_times !== undefined) params.answer_times = input.answer_times;
-  if (input.can_chg_answer !== undefined) params.can_chg_answer = input.can_chg_answer;
-  if (input.can_view_result !== undefined) params.can_view_result = input.can_view_result;
-  if (input.can_hide_qlist !== undefined) params.can_hide_qlist = input.can_hide_qlist;
+  assignDefined(params, input, ["answer_times", "can_chg_answer", "can_view_result", "can_hide_qlist"]);
 
   return callWjxUserSystemApi<T>(params, { credentials, fetchImpl, maxRetries: 0 });
 }
@@ -84,11 +81,7 @@ export async function querySurveyBinding<T = unknown>(
     vid: input.vid,
     sysid: input.sysid,
   };
-  if (input.join_status !== undefined) params.join_status = input.join_status;
-  if (input.day !== undefined) params.day = input.day;
-  if (input.week !== undefined) params.week = input.week;
-  if (input.month !== undefined) params.month = input.month;
-  if (input.force_join_times !== undefined) params.force_join_times = input.force_join_times;
+  assignDefined(params, input, ["join_status", "day", "week", "month", "force_join_times"]);
 
   return callWjxUserSystemApi<T>(params, { credentials, fetchImpl });
 }

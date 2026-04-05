@@ -9,19 +9,7 @@ import {
 } from "wjx-api-sdk";
 import { formatOutput } from "../lib/output.js";
 import { CliError, handleError } from "../lib/errors.js";
-import { mergeStdinWithOpts } from "../lib/stdin.js";
-import { requireField } from "../lib/command-helpers.js";
-
-/**
- * Helper to get merged opts from stdin or CLI.
- */
-function getMerged(cmd: Command): Record<string, unknown> {
-  const stdinData = (cmd as unknown as Record<string, unknown>).__stdinData as Record<string, unknown> | undefined;
-  if (stdinData && Object.keys(stdinData).length > 0) {
-    return mergeStdinWithOpts(stdinData, cmd);
-  }
-  return { ...cmd.opts() };
-}
+import { requireField, getMerged } from "../lib/command-helpers.js";
 
 export function registerAnalyticsCommands(program: Command): void {
   const analytics = program.command("analytics").description("数据分析");

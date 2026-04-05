@@ -1,6 +1,6 @@
 import type { WjxApiResponse, WjxCredentials, FetchLike } from "../../core/types.js";
 import { Action, LONG_TIMEOUT_MS } from "../../core/constants.js";
-import { callWjxApi, getWjxCredentials } from "../../core/api-client.js";
+import { callWjxApi, getWjxCredentials, assignDefined } from "../../core/api-client.js";
 import type {
   QueryResponsesInput,
   QueryResponsesRealtimeInput,
@@ -23,21 +23,11 @@ export async function queryResponses<T = unknown>(
     action: Action.QUERY_RESPONSES,
     vid: input.vid,
   };
-  if (input.valid !== undefined) params.valid = input.valid;
-  if (input.page_index !== undefined) params.page_index = input.page_index;
-  if (input.page_size !== undefined) params.page_size = input.page_size;
-  if (input.sort !== undefined) params.sort = input.sort;
-  if (input.min_index !== undefined) params.min_index = input.min_index;
-  if (input.jid !== undefined) params.jid = input.jid;
-  if (input.sojumpparm !== undefined) params.sojumpparm = input.sojumpparm;
-  if (input.qid !== undefined) params.qid = input.qid;
-  if (input.begin_time !== undefined) params.begin_time = input.begin_time;
-  if (input.end_time !== undefined) params.end_time = input.end_time;
-  if (input.file_view_expires !== undefined) params.file_view_expires = input.file_view_expires;
-  if (input.query_note !== undefined) params.query_note = input.query_note;
-  if (input.distinct_user !== undefined) params.distinct_user = input.distinct_user;
-  if (input.distinct_sojumpparm !== undefined) params.distinct_sojumpparm = input.distinct_sojumpparm;
-  if (input.conds !== undefined) params.conds = input.conds;
+  assignDefined(params, input, [
+    "valid", "page_index", "page_size", "sort", "min_index", "jid",
+    "sojumpparm", "qid", "begin_time", "end_time", "file_view_expires",
+    "query_note", "distinct_user", "distinct_sojumpparm", "conds",
+  ]);
 
   return callWjxApi<T>(params, { credentials, fetchImpl });
 }
@@ -65,17 +55,10 @@ export async function downloadResponses<T = unknown>(
     action: Action.DOWNLOAD_RESPONSES,
     vid: input.vid,
   };
-  if (input.taskid !== undefined) params.taskid = input.taskid;
-  if (input.valid !== undefined) params.valid = input.valid;
-  if (input.query_count !== undefined) params.query_count = input.query_count;
-  if (input.begin_time !== undefined) params.begin_time = input.begin_time;
-  if (input.end_time !== undefined) params.end_time = input.end_time;
-  if (input.min_index !== undefined) params.min_index = input.min_index;
-  if (input.qid !== undefined) params.qid = input.qid;
-  if (input.sort !== undefined) params.sort = input.sort;
-  if (input.query_type !== undefined) params.query_type = input.query_type;
-  if (input.suffix !== undefined) params.suffix = input.suffix;
-  if (input.query_record !== undefined) params.query_record = input.query_record;
+  assignDefined(params, input, [
+    "taskid", "valid", "query_count", "begin_time", "end_time",
+    "min_index", "qid", "sort", "query_type", "suffix", "query_record",
+  ]);
 
   return callWjxApi<T>(params, { credentials, fetchImpl, timeoutMs: LONG_TIMEOUT_MS });
 }
@@ -89,15 +72,10 @@ export async function getReport<T = unknown>(
     action: Action.GET_REPORT,
     vid: input.vid,
   };
-  if (input.valid !== undefined) params.valid = input.valid;
-  if (input.min_index !== undefined) params.min_index = input.min_index;
-  if (input.jid !== undefined) params.jid = input.jid;
-  if (input.sojumpparm !== undefined) params.sojumpparm = input.sojumpparm;
-  if (input.begin_time !== undefined) params.begin_time = input.begin_time;
-  if (input.end_time !== undefined) params.end_time = input.end_time;
-  if (input.distinct_user !== undefined) params.distinct_user = input.distinct_user;
-  if (input.distinct_sojumpparm !== undefined) params.distinct_sojumpparm = input.distinct_sojumpparm;
-  if (input.conds !== undefined) params.conds = input.conds;
+  assignDefined(params, input, [
+    "valid", "min_index", "jid", "sojumpparm", "begin_time", "end_time",
+    "distinct_user", "distinct_sojumpparm", "conds",
+  ]);
 
   return callWjxApi<T>(params, { credentials, fetchImpl });
 }
@@ -113,9 +91,7 @@ export async function submitResponse<T = unknown>(
     inputcosttime: input.inputcosttime,
     submitdata: input.submitdata,
   };
-  if (input.udsid !== undefined) params.udsid = input.udsid;
-  if (input.sojumpparm !== undefined) params.sojumpparm = input.sojumpparm;
-  if (input.submittime !== undefined) params.submittime = input.submittime;
+  assignDefined(params, input, ["udsid", "sojumpparm", "submittime"]);
 
   return callWjxApi<T>(params, { credentials, fetchImpl, maxRetries: 0 });
 }
@@ -130,7 +106,7 @@ export async function getFileLinks<T = unknown>(
     vid: input.vid,
     file_keys: input.file_keys,
   };
-  if (input.file_view_expires !== undefined) params.file_view_expires = input.file_view_expires;
+  assignDefined(params, input, ["file_view_expires"]);
 
   return callWjxApi<T>(params, { credentials, fetchImpl });
 }
@@ -144,10 +120,7 @@ export async function getWinners<T = unknown>(
     action: Action.GET_WINNERS,
     vid: input.vid,
   };
-  if (input.atype !== undefined) params.atype = input.atype;
-  if (input.awardstatus !== undefined) params.awardstatus = input.awardstatus;
-  if (input.page_index !== undefined) params.page_index = input.page_index;
-  if (input.page_size !== undefined) params.page_size = input.page_size;
+  assignDefined(params, input, ["atype", "awardstatus", "page_index", "page_size"]);
 
   return callWjxApi<T>(params, { credentials, fetchImpl });
 }
@@ -178,7 +151,7 @@ export async function get360Report<T = unknown>(
     action: Action.GET_360_REPORT,
     vid: input.vid,
   };
-  if (input.taskid !== undefined) params.taskid = input.taskid;
+  assignDefined(params, input, ["taskid"]);
 
   return callWjxApi<T>(params, { credentials, fetchImpl, maxRetries: 0, timeoutMs: LONG_TIMEOUT_MS });
 }

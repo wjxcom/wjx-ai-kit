@@ -17,7 +17,7 @@ import { registerCompletionCommands } from "./commands/completion.js";
 import { registerReferenceCommands } from "./commands/reference.js";
 import { registerSkillCommands } from "./commands/skill.js";
 import { registerUpdateCommands } from "./commands/update.js";
-import { readStdin, mergeStdinWithOpts } from "./lib/stdin.js";
+import { readStdin } from "./lib/stdin.js";
 import { handleError } from "./lib/errors.js";
 import { applyConfigToEnv } from "./lib/config.js";
 import { getCompletions } from "./lib/completions.js";

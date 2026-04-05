@@ -20,9 +20,8 @@ import {
 } from "wjx-api-sdk";
 import { formatOutput } from "../lib/output.js";
 import { CliError, handleError } from "../lib/errors.js";
-import { mergeStdinWithOpts } from "../lib/stdin.js";
 import { getCredentials } from "../lib/auth.js";
-import { executeCommand, strictInt, requireField, createCapturingFetch, printDryRunPreview } from "../lib/command-helpers.js";
+import { executeCommand, strictInt, requireField, getMerged, createCapturingFetch, printDryRunPreview } from "../lib/command-helpers.js";
 
 export function registerSurveyCommands(program: Command): void {
   const survey = program.command("survey").description("问卷管理");
@@ -93,13 +92,7 @@ export function registerSurveyCommands(program: Command): void {
     .option("--creater <s>", "创建者子账号")
     .action(async (_opts, cmd) => {
       try {
-        const stdinData = (cmd as unknown as Record<string, unknown>).__stdinData as Record<string, unknown> | undefined;
-        let merged: Record<string, unknown>;
-        if (stdinData && Object.keys(stdinData).length > 0) {
-          merged = mergeStdinWithOpts(stdinData, cmd);
-        } else {
-          merged = { ...cmd.opts() };
-        }
+        const merged = getMerged(cmd);
 
         // Resolve DSL text: --text > --file > stdin.text
         let dslText: string | undefined;
@@ -281,13 +274,7 @@ export function registerSurveyCommands(program: Command): void {
     .option("--raw", "输出纯文本（不包裹 JSON）")
     .action(async (_opts, cmd) => {
       try {
-        const stdinData = (cmd as unknown as Record<string, unknown>).__stdinData as Record<string, unknown> | undefined;
-        let merged: Record<string, unknown>;
-        if (stdinData && Object.keys(stdinData).length > 0) {
-          merged = mergeStdinWithOpts(stdinData, cmd);
-        } else {
-          merged = { ...cmd.opts() };
-        }
+        const merged = getMerged(cmd);
 
         requireField(merged, "vid");
 
@@ -332,14 +319,7 @@ export function registerSurveyCommands(program: Command): void {
     .option("--activity <n>", "问卷vid（edit模式必填）", strictInt)
     .action(async (_opts, cmd) => {
       try {
-        // Source-aware merge for stdin
-        const stdinData = (cmd as unknown as Record<string, unknown>).__stdinData as Record<string, unknown> | undefined;
-        let merged: Record<string, unknown>;
-        if (stdinData && Object.keys(stdinData).length > 0) {
-          merged = mergeStdinWithOpts(stdinData, cmd);
-        } else {
-          merged = { ...cmd.opts() };
-        }
+        const merged = getMerged(cmd);
 
         const mode = (merged.mode as string) ?? "create";
         const validModes = ["create", "edit"];

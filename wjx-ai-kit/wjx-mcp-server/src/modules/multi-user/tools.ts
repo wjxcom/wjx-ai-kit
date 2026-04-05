@@ -7,7 +7,7 @@ import {
   restoreSubAccount,
   querySubAccounts,
 } from "./client.js";
-import { toolResult, toolError } from "../../helpers.js";
+import { wrapToolHandler } from "../../helpers.js";
 
 export function registerMultiUserTools(server: McpServer): void {
   // ─── add_sub_account ──────────────────────────────────────────────
@@ -38,21 +38,16 @@ export function registerMultiUserTools(server: McpServer): void {
         title: "创建子账号",
       },
     },
-    async (args) => {
-      try {
-        const result = await addSubAccount({
-          subuser: args.subuser,
-          password: args.password,
-          mobile: args.mobile,
-          email: args.email,
-          role: args.role,
-          group: args.group,
-        });
-        return toolResult(result, result.result === false);
-      } catch (error) {
-        return toolError(error);
-      }
-    },
+    wrapToolHandler(async (args) =>
+      addSubAccount({
+        subuser: args.subuser,
+        password: args.password,
+        mobile: args.mobile,
+        email: args.email,
+        role: args.role,
+        group: args.group,
+      }),
+    ),
   );
 
   // ─── modify_sub_account ───────────────────────────────────────────
@@ -82,23 +77,18 @@ export function registerMultiUserTools(server: McpServer): void {
         title: "修改子账号",
       },
     },
-    async (args) => {
-      try {
-        const result = await modifySubAccount({
-          subuser: args.subuser,
-          mobile: args.mobile,
-          email: args.email,
-          role: args.role,
-          group: args.group,
-        });
-        return toolResult(result, result.result === false);
-      } catch (error) {
-        return toolError(error);
-      }
-    },
+    wrapToolHandler(async (args) =>
+      modifySubAccount({
+        subuser: args.subuser,
+        mobile: args.mobile,
+        email: args.email,
+        role: args.role,
+        group: args.group,
+      }),
+    ),
   );
 
-  // ─── delete_sub_account ───────────────────────────────────────────
+  // ─── delete_sub_account ──────────────────────────��────────────────
   server.registerTool(
     "delete_sub_account",
     {
@@ -115,16 +105,11 @@ export function registerMultiUserTools(server: McpServer): void {
         title: "删除子账号",
       },
     },
-    async (args) => {
-      try {
-        const result = await deleteSubAccount({
-          subuser: args.subuser,
-        });
-        return toolResult(result, result.result === false);
-      } catch (error) {
-        return toolError(error);
-      }
-    },
+    wrapToolHandler(async (args) =>
+      deleteSubAccount({
+        subuser: args.subuser,
+      }),
+    ),
   );
 
   // ─── restore_sub_account ──────────────────────────────────────────
@@ -146,18 +131,13 @@ export function registerMultiUserTools(server: McpServer): void {
         title: "恢复子账号",
       },
     },
-    async (args) => {
-      try {
-        const result = await restoreSubAccount({
-          subuser: args.subuser,
-          mobile: args.mobile,
-          email: args.email,
-        });
-        return toolResult(result, result.result === false);
-      } catch (error) {
-        return toolError(error);
-      }
-    },
+    wrapToolHandler(async (args) =>
+      restoreSubAccount({
+        subuser: args.subuser,
+        mobile: args.mobile,
+        email: args.email,
+      }),
+    ),
   );
 
   // ─── query_sub_accounts ───────────────────────────────────────────
@@ -182,20 +162,15 @@ export function registerMultiUserTools(server: McpServer): void {
         title: "查询子账号列表",
       },
     },
-    async (args) => {
-      try {
-        const result = await querySubAccounts({
-          subuser: args.subuser,
-          name_like: args.name_like,
-          role: args.role,
-          group: args.group,
-          status: args.status,
-          mobile: args.mobile,
-        });
-        return toolResult(result, result.result === false);
-      } catch (error) {
-        return toolError(error);
-      }
-    },
+    wrapToolHandler(async (args) =>
+      querySubAccounts({
+        subuser: args.subuser,
+        name_like: args.name_like,
+        role: args.role,
+        group: args.group,
+        status: args.status,
+        mobile: args.mobile,
+      }),
+    ),
   );
 }

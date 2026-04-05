@@ -8,7 +8,7 @@ import {
   querySurveyBinding,
   queryUserSurveys,
 } from "./client.js";
-import { toolResult, toolError, assertJsonArray } from "../../helpers.js";
+import { wrapToolHandler, assertJsonArray } from "../../helpers.js";
 
 export function registerUserSystemTools(server: McpServer): void {
   // ─── add_participants ─────────────────────────────────────────────
@@ -34,18 +34,13 @@ export function registerUserSystemTools(server: McpServer): void {
         title: "[已过时] 批量添加参与者",
       },
     },
-    async (args) => {
-      try {
-        assertJsonArray(args.users, "users");
-        const result = await addParticipants({
-          users: args.users,
-          sysid: args.usid,
-        });
-        return toolResult(result, result.result === false);
-      } catch (error) {
-        return toolError(error);
-      }
-    },
+    wrapToolHandler(async (args) => {
+      assertJsonArray(args.users, "users");
+      return addParticipants({
+        users: args.users,
+        sysid: args.usid,
+      });
+    }),
   );
 
   // ─── modify_participants ──────────────────────────────────────────
@@ -72,19 +67,14 @@ export function registerUserSystemTools(server: McpServer): void {
         title: "[已过时] 批量修改参与者",
       },
     },
-    async (args) => {
-      try {
-        assertJsonArray(args.users, "users");
-        const result = await modifyParticipants({
-          users: args.users,
-          sysid: args.usid,
-          auto_create_udept: args.auto_create_udept,
-        });
-        return toolResult(result, result.result === false);
-      } catch (error) {
-        return toolError(error);
-      }
-    },
+    wrapToolHandler(async (args) => {
+      assertJsonArray(args.users, "users");
+      return modifyParticipants({
+        users: args.users,
+        sysid: args.usid,
+        auto_create_udept: args.auto_create_udept,
+      });
+    }),
   );
 
   // ─── delete_participants ──────────────────────────────────────────
@@ -108,18 +98,13 @@ export function registerUserSystemTools(server: McpServer): void {
         title: "[已过时] 批量删除参与者",
       },
     },
-    async (args) => {
-      try {
-        assertJsonArray(args.uids, "uids");
-        const result = await deleteParticipants({
-          uids: args.uids,
-          sysid: args.usid,
-        });
-        return toolResult(result, result.result === false);
-      } catch (error) {
-        return toolError(error);
-      }
-    },
+    wrapToolHandler(async (args) => {
+      assertJsonArray(args.uids, "uids");
+      return deleteParticipants({
+        uids: args.uids,
+        sysid: args.usid,
+      });
+    }),
   );
 
   // ─── bind_activity ───────────────────────────────────────────────
@@ -148,23 +133,18 @@ export function registerUserSystemTools(server: McpServer): void {
         title: "[已过时] 绑定问卷到用户体系",
       },
     },
-    async (args) => {
-      try {
-        assertJsonArray(args.uids, "uids");
-        const result = await bindActivity({
-          vid: args.vid,
-          sysid: args.usid,
-          uids: args.uids,
-          answer_times: args.answer_times,
-          can_chg_answer: args.can_chg_answer,
-          can_view_result: args.can_view_result,
-          can_hide_qlist: args.can_hide_qlist,
-        });
-        return toolResult(result, result.result === false);
-      } catch (error) {
-        return toolError(error);
-      }
-    },
+    wrapToolHandler(async (args) => {
+      assertJsonArray(args.uids, "uids");
+      return bindActivity({
+        vid: args.vid,
+        sysid: args.usid,
+        uids: args.uids,
+        answer_times: args.answer_times,
+        can_chg_answer: args.can_chg_answer,
+        can_view_result: args.can_view_result,
+        can_hide_qlist: args.can_hide_qlist,
+      });
+    }),
   );
 
   // ─── query_survey_binding ─────────────────────────────────────────
@@ -190,22 +170,17 @@ export function registerUserSystemTools(server: McpServer): void {
         title: "[已过时] 查询问卷用户绑定",
       },
     },
-    async (args) => {
-      try {
-        const result = await querySurveyBinding({
-          vid: args.vid,
-          sysid: args.usid,
-          join_status: args.join_status,
-          day: args.day,
-          week: args.week,
-          month: args.month,
-          force_join_times: args.force_join_times,
-        });
-        return toolResult(result, result.result === false);
-      } catch (error) {
-        return toolError(error);
-      }
-    },
+    wrapToolHandler(async (args) =>
+      querySurveyBinding({
+        vid: args.vid,
+        sysid: args.usid,
+        join_status: args.join_status,
+        day: args.day,
+        week: args.week,
+        month: args.month,
+        force_join_times: args.force_join_times,
+      }),
+    ),
   );
 
   // ─── query_user_surveys ───────────────────────────────────────────
@@ -226,16 +201,11 @@ export function registerUserSystemTools(server: McpServer): void {
         title: "[已过时] 查询用户关联问卷",
       },
     },
-    async (args) => {
-      try {
-        const result = await queryUserSurveys({
-          uid: args.uid,
-          sysid: args.usid,
-        });
-        return toolResult(result, result.result === false);
-      } catch (error) {
-        return toolError(error);
-      }
-    },
+    wrapToolHandler(async (args) =>
+      queryUserSurveys({
+        uid: args.uid,
+        sysid: args.usid,
+      }),
+    ),
   );
 }

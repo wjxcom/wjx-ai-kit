@@ -4,7 +4,6 @@ export type {
   DownloadResponsesInput,
   GetReportInput,
   SubmitResponseInput,
-  GetFileLinksInput,
   GetWinnersInput,
   ModifyResponseInput,
   Get360ReportInput,
