@@ -1,21 +1,21 @@
-## Summary
+## 概要
 
-Brief description of the changes.
+简要描述本次变更。
 
-## Changes
+## 变更内容
 
 - ...
 
-## Testing
+## 测试
 
-How were the changes tested?
+如何验证本次变更？
 
-- [ ] `npm test` passes
-- [ ] `npm run build` succeeds
-- [ ] Manual testing (describe below)
+- [ ] `npm test` 通过
+- [ ] `npm run build` 成功
+- [ ] 手动测试（请在下方描述）
 
-## Checklist
+## 检查清单
 
-- [ ] Code follows the project's style
-- [ ] Tests added/updated as needed
-- [ ] Documentation updated if applicable
+- [ ] 代码符合项目风格
+- [ ] 已添加或更新测试
+- [ ] 已更新相关文档

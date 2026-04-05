@@ -197,7 +197,7 @@ URL参数如下
 | redirecturl  |  编辑完成后将跳转到指定链接 |
 | newdesign  |  newdesign=1表示新版编辑页，老用户如跳转为旧版编辑页需要填写该参数，新用户默认为1 |
 
-2、移动端链接： `http://xiajinhu.natapp1.cc/mobile/createnew.aspx`
+2、移动端链接： `http://test.example.com/mobile/createnew.aspx`
 
 URL参数如下
 
@@ -226,9 +226,9 @@ URL参数如下
 ## 快速登录
 如提示未登录，请使用SSO创建和登录接口配合完成，[点击此处链接详情](https://openapi.wjx.cn/web/#/5/27 &quot;点击此处链接详情&quot;)，SSO创建和登录参数URL填写创建或者编辑问卷的地址，这样就完成了自动登录立即跳转到问卷的创建或编辑
 
-示例：http://testwjx.natapp1.cc/zunxiang/login.aspx?appid=907&amp;ts=123456789&amp;sign=422f895c7d9a407ce276f87653d2b8c5690d8711&amp;subuser=xia&amp;url=http://testwjx.natapp1.cc/newwjx/mysojump/createblankNew.aspx?name=SSO登录快速创建问卷&amp;osa=1&amp;qt=1
+示例：http://test.example.com/zunxiang/login.aspx?appid=10001&amp;ts=123456789&amp;sign=422f895c7d9a407ce276f87653d2b8c5690d8711&amp;subuser=xia&amp;url=http://test.example.com/newwjx/mysojump/createblankNew.aspx?name=SSO登录快速创建问卷&amp;osa=1&amp;qt=1
 
-注意：`http://testwjx.natapp1.cc`在生产环境请换成`https://www.wjx.cn`，如果有自定义域名请换成自定义域名。参数说明可参考[SSO创建和登录接口](https://openapi.wjx.cn/web/#/5/27 &quot;SSO创建和登录接口&quot;)，参数url是本接口快速创建问卷地址，如果带有参数，请使用urlencode编码参数再传递（示例为了清楚写明参数未做编码）
+注意：`http://test.example.com`在生产环境请换成`https://www.wjx.cn`，如果有自定义域名请换成自定义域名。参数说明可参考[SSO创建和登录接口](https://openapi.wjx.cn/web/#/5/27 &quot;SSO创建和登录接口&quot;)，参数url是本接口快速创建问卷地址，如果带有参数，请使用urlencode编码参数再传递（示例为了清楚写明参数未做编码）
 
 ## 参数透传
 
@@ -817,7 +817,7 @@ string jsonData = Encoding.UTF8.GetString(byteData);
 ![](http://openapi.wjx.cn/server/index.php?s=/api/attachment/visitFile/sign/863f4faaa8e95f98c7fe662039538862)
 推送形式：
 ```csharp
-"q11":"http://pubuserqiniu.paperol.cn/22913715_2_q11_-bMdVn-C60qTgxjbRU5Bqg.png?download/2_11_logo.png&e=1524571072&token=-kY3jr8KMC7l3KkIN3OcIs8Q4s40OfGgUHr1Rg4D:su2PbUDBsALS9lbLzKAniWeEiys="
+"q11":"http://cdn.example.com/22913715_2_q11_-bMdVn-C60qTgxjbRU5Bqg.png?download/2_11_logo.png&e=1524571072&token=YOUR_QINIU_TOKEN"
 ```
 其中q11表示的是第十一题，后面的链接为上传文件的下载地址。
 ## NPS量表题测试：
@@ -1385,7 +1385,7 @@ public class Main {
 Content-Type:application/json
 {
     "action": "1002001",
-    "appid": "907",
+    "appid": "10001",
     "auto_create_udept": "1",
     "sign": "75a6656da9a76e8fa379c50e47011a01d80f737a",
     "sysid": "103658",
@@ -1422,7 +1422,7 @@ Content-Type:application/json
 Content-Type:application/json
 {
     "action": "1002002",
-    "appid": "907",
+    "appid": "10001",
     "auto_create_udept": "1",
     "sign": "75a6656da9a76e8fa379c50e47011a01d80f737a",
     "sysid": "103658",
@@ -1462,7 +1462,7 @@ Content-Type:application/json
 Content-Type:application/json
 {
     &quot;action&quot;: &quot;1002003&quot;,
-    &quot;appid&quot;: &quot;907&quot;,
+    &quot;appid&quot;: &quot;10001&quot;,
     &quot;sign&quot;: &quot;b0019bdcf7557b8bf834f867628518238617fbaf&quot;,
     &quot;sysid&quot;: &quot;101496&quot;,
     &quot;ts&quot;: &quot;1593340939&quot;,
@@ -1505,7 +1505,7 @@ Content-Type:application/json
 Content-Type:application/json
 {
     &quot;action&quot;: &quot;1002004&quot;,
-    &quot;appid&quot;: &quot;907&quot;,
+    &quot;appid&quot;: &quot;10001&quot;,
     &quot;sign&quot;: &quot;b0019bdcf7557b8bf834f867628518238617fbaf&quot;,
     &quot;ts&quot;: &quot;1593340939&quot;,
     &quot;sysid&quot;: &quot;101186&quot;,
@@ -1553,7 +1553,7 @@ Content-Type:application/json
 Content-Type:application/json
 {
     &quot;action&quot;: &quot;1002005&quot;,
-    &quot;appid&quot;: &quot;907&quot;,
+    &quot;appid&quot;: &quot;10001&quot;,
     &quot;sign&quot;: &quot;b0019bdcf7557b8bf834f867628518238617fbaf&quot;,
     &quot;ts&quot;: &quot;1593340939&quot;,
     &quot;sysid&quot;: &quot;101186&quot;,
@@ -1598,7 +1598,7 @@ Content-Type:application/json
 Content-Type:application/json
 {
     "action": "1002005",
-    "appid": "907",
+    "appid": "10001",
     "sign": "b0019bdcf7557b8bf834f867628518238617fbaf",
     "ts": "1593340939",
     "sysid": "101186",
@@ -1683,12 +1683,12 @@ Content-Type:application/json
 Content-Type:application/json
 {
     &quot;action&quot;: &quot;1003001&quot;,
-    &quot;appid&quot;: &quot;907&quot;,
+    &quot;appid&quot;: &quot;10001&quot;,
     &quot;sign&quot;: &quot;2bca944acdfaba29fb56844487e9d54a45c3ac87&quot;,
     &quot;ts&quot;: &quot;1593340621&quot;,
-    &quot;subuser&quot;: &quot;xia2&quot;,
-    &quot;password&quot;: &quot;xiajinhu2&quot;,
-    &quot;email&quot;: &quot;xia2@wjx.cn&quot;,
+    &quot;subuser&quot;: &quot;demo_user&quot;,
+    &quot;password&quot;: &quot;MyP@ssw0rd123&quot;,
+    &quot;email&quot;: &quot;user@example.com&quot;,
     &quot;mobile&quot;: &quot;15688888891&quot;,
     &quot;role&quot;: &quot;2&quot;
 }
@@ -1739,11 +1739,11 @@ Content-Type:application/json
 Content-Type:application/json
 {
     &quot;action&quot;: &quot;1003002&quot;,
-    &quot;appid&quot;: &quot;907&quot;,
+    &quot;appid&quot;: &quot;10001&quot;,
     &quot;sign&quot;: &quot;2bca944acdfaba29fb56844487e9d54a45c3ac87&quot;,
     &quot;ts&quot;: &quot;1593340621&quot;,
-    &quot;subuser&quot;: &quot;xia2&quot;,
-    &quot;email&quot;: &quot;xia2@wjx.cn&quot;,
+    &quot;subuser&quot;: &quot;demo_user&quot;,
+    &quot;email&quot;: &quot;user@example.com&quot;,
     &quot;mobile&quot;: &quot;15688888881&quot;,
     &quot;role&quot;: &quot;3&quot;
 }
@@ -1791,10 +1791,10 @@ Content-Type:application/json
 Content-Type:application/json
 {
     &quot;action&quot;: &quot;1003003&quot;,
-    &quot;appid&quot;: &quot;907&quot;,
+    &quot;appid&quot;: &quot;10001&quot;,
     &quot;sign&quot;: &quot;2bca944acdfaba29fb56844487e9d54a45c3ac87&quot;,
     &quot;ts&quot;: &quot;1593340621&quot;,
-    &quot;subuser&quot;: &quot;xia2&quot;
+    &quot;subuser&quot;: &quot;demo_user&quot;
 }
 ```
 
@@ -1841,10 +1841,10 @@ Content-Type:application/json
 Content-Type:application/json
 {
     &quot;action&quot;: &quot;1003004&quot;,
-    &quot;appid&quot;: &quot;907&quot;,
+    &quot;appid&quot;: &quot;10001&quot;,
     &quot;sign&quot;: &quot;2bca944acdfaba29fb56844487e9d54a45c3ac87&quot;,
     &quot;ts&quot;: &quot;1593340621&quot;,
-    &quot;subuser&quot;: &quot;xia2&quot;
+    &quot;subuser&quot;: &quot;demo_user&quot;
 }
 ```
 
@@ -1894,7 +1894,7 @@ Content-Type:application/json
 Content-Type:application/json
 {
     &quot;action&quot;: &quot;1003005&quot;,
-    &quot;appid&quot;: &quot;907&quot;,
+    &quot;appid&quot;: &quot;10001&quot;,
     &quot;sign&quot;: &quot;2bca944acdfaba29fb56844487e9d54a45c3ac87&quot;,
     &quot;ts&quot;: &quot;1593340621&quot;,
     &quot;role&quot;: &quot;2&quot;
@@ -1949,10 +1949,10 @@ Content-Type:application/json
 Content-Type:application/json
 {
     "action": "1005001",
-    "appid": "907",
+    "appid": "10001",
     "sign": "2bca944acdfaba29fb56844487e9d54a45c3ac87",
     "ts": "1593340621",
-    "corpid": "mul0000000907",
+    "corpid": "mul0000010001",
     "uid": "xia"
 }
 ```
@@ -2054,8 +2054,8 @@ Content-Type:application/json
 Content-Type:application/json
 {
  &quot;action&quot;: &quot;1005002&quot;,
-  &quot;corpid&quot;: &quot;org0000000907&quot;,
- &quot;appid&quot;: &quot;907&quot;,
+  &quot;corpid&quot;: &quot;org0000010001&quot;,
+ &quot;appid&quot;: &quot;10001&quot;,
  &quot;auto_create_udept&quot;: &quot;1&quot;,
  &quot;auto_create_tag&quot;: &quot;1&quot;,
  &quot;sign&quot;: &quot;75a6656da9a76e8fa379c50e47011a01d80f737a&quot;,
@@ -2109,10 +2109,10 @@ Content-Type:application/json
 Content-Type:application/json
 {
     "action": "1005003",
-    "appid": "907",
+    "appid": "10001",
     "sign": "2bca944acdfaba29fb56844487e9d54a45c3ac87",
     "ts": "1593340621",
-    "corpid": "mul0000000907",
+    "corpid": "mul0000010001",
     "uids": "xia,xia1"
 }
 ```
@@ -2169,8 +2169,8 @@ Content-Type:application/json
 ```csharp
 Content-Type:application/json
 {
-    &quot;appid&quot;: &quot;907&quot;,
-    &quot;corpid&quot;: &quot;org0000000907&quot;,
+    &quot;appid&quot;: &quot;10001&quot;,
+    &quot;corpid&quot;: &quot;org0000010001&quot;,
     &quot;users&quot;: &quot;[{\&quot;userid\&quot;:\&quot;19111112222\&quot;,\&quot;role\&quot;:1,\&quot;confidential\&quot;:1,\&quot;effective_date\&quot;:\&quot;2024-12-25\&quot;,\&quot;remark\&quot;:\&quot;123\&quot;},{\&quot;userid\&quot;:\&quot;205783\&quot;,\&quot;role\&quot;:2,\&quot;confidential\&quot;:0,\&quot;effective_date\&quot;:\&quot;2024-12-26\&quot;,\&quot;remark\&quot;:\&quot;33331\&quot;}]&quot;,
     &quot;sign&quot;: &quot;d2050d70204bc2fd98e60cfe34cd6f2501500078&quot;,
     &quot;action&quot;: &quot;1005004&quot;,
@@ -2223,8 +2223,8 @@ Content-Type:application/json
 ```csharp
 Content-Type:application/json
 {
-    &quot;appid&quot;: &quot;907&quot;,
-    &quot;corpid&quot;: &quot;org0000000907&quot;,
+    &quot;appid&quot;: &quot;10001&quot;,
+    &quot;corpid&quot;: &quot;org0000010001&quot;,
     &quot;uids&quot;: &quot;20222,18758920057&quot;,
     &quot;sign&quot;: &quot;d2050d70204bc2fd98e60cfe34cd6f2501500078&quot;,
     &quot;action&quot;: &quot;1005005&quot;,
@@ -2277,8 +2277,8 @@ Content-Type:application/json
 ```csharp
 Content-Type:application/json
 {
-    &quot;appid&quot;: &quot;907&quot;,
-    &quot;corpid&quot;: &quot;org0000000907&quot;,
+    &quot;appid&quot;: &quot;10001&quot;,
+    &quot;corpid&quot;: &quot;org0000010001&quot;,
     &quot;uids&quot;: &quot;20222,18758920057&quot;,
     &quot;sign&quot;: &quot;d2050d70204bc2fd98e60cfe34cd6f2501500078&quot;,
     &quot;action&quot;: &quot;1005006&quot;,
@@ -2331,8 +2331,8 @@ Content-Type:application/json
 ```csharp
 Content-Type:application/json
 {
-  &quot;appid&quot;: &quot;907&quot;,
-  &quot;corpid&quot;: &quot;org0000000907&quot;,
+  &quot;appid&quot;: &quot;10001&quot;,
+  &quot;corpid&quot;: &quot;org0000010001&quot;,
   &quot;sign&quot;: &quot;e3647ce8c121089ff5adbc5f22701ea84a417d65&quot;,
   &quot;action&quot;: &quot;1005101&quot;,
   &quot;ts&quot;: 1583812686
@@ -2522,8 +2522,8 @@ Content-Type:application/json
 ```csharp
 Content-Type:application/json
 {
-  &quot;appid&quot;: &quot;907&quot;,
-  &quot;corpid&quot;: &quot;org0000000907&quot;,
+  &quot;appid&quot;: &quot;10001&quot;,
+  &quot;corpid&quot;: &quot;org0000010001&quot;,
   &quot;depts&quot;: &quot;[\&quot;研发/研发1\&quot;,\&quot;客服/客服1\&quot;]&quot;,
   &quot;sign&quot;: &quot;e3647ce8c121089ff5adbc5f22701ea84a417d65&quot;,
   &quot;action&quot;: &quot;1005102&quot;,
@@ -2584,8 +2584,8 @@ Content-Type:application/json
 ```csharp
 Content-Type:application/json
 {
-  &quot;appid&quot;: &quot;907&quot;,
-  &quot;corpid&quot;: &quot;org0000000907&quot;,
+  &quot;appid&quot;: &quot;10001&quot;,
+  &quot;corpid&quot;: &quot;org0000010001&quot;,
   &quot;depts&quot;: &quot;[{\&quot;id\&quot;:\&quot;ec935ece40164b46ba7689e6bd08760c\&quot;,\&quot;name\&quot;:\&quot;研发2\&quot;,\&quot;order\&quot;:\&quot;1\&quot;},{\&quot;id\&quot;:\&quot;6b18257cff9648d2a340b956d510d248\&quot;,\&quot;客服2\&quot;:\&quot;10031\&quot;,\&quot;order\&quot;:\&quot;1\&quot;}]&quot;,
   &quot;sign&quot;: &quot;e3647ce8c121089ff5adbc5f22701ea84a417d65&quot;,
   &quot;action&quot;: &quot;1005103&quot;,
@@ -2642,8 +2642,8 @@ Content-Type:application/json
 ```csharp
 Content-Type:application/json
 {
-  &quot;appid&quot;: &quot;907&quot;,
-  &quot;corpid&quot;: &quot;org0000000907&quot;,
+  &quot;appid&quot;: &quot;10001&quot;,
+  &quot;corpid&quot;: &quot;org0000010001&quot;,
   &quot;type&quot;: &quot;1&quot;,
   &quot;depts&quot;: &quot;[\&quot;ec935ece40164b46ba7689e6bd08760c\&quot;,\&quot;ec935ece40164b46ba7689e6bd08760c\&quot;]&quot;,
   &quot;sign&quot;: &quot;e3647ce8c121089ff5adbc5f22701ea84a417d65&quot;,
@@ -2656,8 +2656,8 @@ Content-Type:application/json
 ```csharp
 Content-Type:application/json
 {
-  &quot;appid&quot;: &quot;907&quot;,
-  &quot;corpid&quot;: &quot;org0000000907&quot;,
+  &quot;appid&quot;: &quot;10001&quot;,
+  &quot;corpid&quot;: &quot;org0000010001&quot;,
   &quot;type&quot;: &quot;1&quot;,
   &quot;depts&quot;: &quot;[\&quot;研发/研发一部\&quot;,\&quot;客服/客服1\&quot;]&quot;,
   &quot;sign&quot;: &quot;e3647ce8c121089ff5adbc5f22701ea84a417d65&quot;,
@@ -2713,8 +2713,8 @@ Content-Type:application/json
 ```csharp
 Content-Type:application/json
 {
-  &quot;appid&quot;: &quot;907&quot;,
-  &quot;corpid&quot;: &quot;org0000000907&quot;,
+  &quot;appid&quot;: &quot;10001&quot;,
+  &quot;corpid&quot;: &quot;org0000010001&quot;,
   &quot;sign&quot;: &quot;e3647ce8c121089ff5adbc5f22701ea84a417d65&quot;,
   &quot;action&quot;: &quot;1005201&quot;,
   &quot;ts&quot;: 1583812686
@@ -2881,8 +2881,8 @@ Content-Type:application/json
 ```csharp
 Content-Type:application/json
 {
-  &quot;appid&quot;: &quot;907&quot;,
-  &quot;corpid&quot;: &quot;org0000000907&quot;,
+  &quot;appid&quot;: &quot;10001&quot;,
+  &quot;corpid&quot;: &quot;org0000010001&quot;,
   &quot;is_radio&quot;: &quot;1&quot;,
   &quot;child_names&quot;: &quot;[\&quot;123/1002\&quot;,\&quot;123/1004\&quot;]&quot;,
   &quot;sign&quot;: &quot;e3647ce8c121089ff5adbc5f22701ea84a417d65&quot;,
@@ -2947,8 +2947,8 @@ Content-Type:application/json
 ```csharp
 Content-Type:application/json
 {
-  &quot;appid&quot;: &quot;907&quot;,
-  &quot;corpid&quot;: &quot;org0000000907&quot;,
+  &quot;appid&quot;: &quot;10001&quot;,
+  &quot;corpid&quot;: &quot;org0000010001&quot;,
   &quot;tp_id&quot;: &quot;1590adc3e21a4744bfd68c3631732589&quot;,
   &quot;tp_name&quot;: &quot;12345&quot;,
   &quot;child_names&quot;: &quot;[{\&quot;id\&quot;:\&quot;ad36992a0514418d93df3e50cadce3d7\&quot;,\&quot;name\&quot;:\&quot;10021\&quot;},{\&quot;id\&quot;:\&quot;eb56962b66fb424eb2044976fbf610f7\&quot;,\&quot;name\&quot;:\&quot;10031\&quot;}]&quot;,
@@ -3008,8 +3008,8 @@ Content-Type:application/json
 ```csharp
 Content-Type:application/json
 {
-  &quot;appid&quot;: &quot;907&quot;,
-  &quot;corpid&quot;: &quot;org0000000907&quot;,
+  &quot;appid&quot;: &quot;10001&quot;,
+  &quot;corpid&quot;: &quot;org0000010001&quot;,
   &quot;type&quot;: &quot;1&quot;,
   &quot;tags&quot;: &quot;[\&quot;ec935ece40164b46ba7689e6bd08760c\&quot;,\&quot;ec935ece40164b46ba7689e6bd08760c\&quot;]&quot;,
   &quot;sign&quot;: &quot;e3647ce8c121089ff5adbc5f22701ea84a417d65&quot;,
@@ -3022,8 +3022,8 @@ Content-Type:application/json
 ```csharp
 Content-Type:application/json
 {
-  &quot;appid&quot;: &quot;907&quot;,
-  &quot;corpid&quot;: &quot;org0000000907&quot;,
+  &quot;appid&quot;: &quot;10001&quot;,
+  &quot;corpid&quot;: &quot;org0000010001&quot;,
   &quot;type&quot;: &quot;2&quot;,
   &quot;tags&quot;: &quot;[\&quot;12345\&quot;,\&quot;爱好/足球\&quot;]&quot;,
   &quot;sign&quot;: &quot;e3647ce8c121089ff5adbc5f22701ea84a417d65&quot;,
@@ -3089,9 +3089,9 @@ Content-Type:application/json
 
 
 示例1（未带参数）：
-`https://www.wjx.cn/openapi/shortlink.aspx?url=https://drunkyong.natapp4.cc/vm/w4GZh.aspx`
+`https://www.wjx.cn/openapi/shortlink.aspx?url=https://demo.example.com/vm/w4GZh.aspx`
 示例1（带入参数）：
-`https://www.wjx.cn/openapi/shortlink.aspx?url=https%3A%2F%2Fdrunkyong.natapp4.cc%2Fvm%2FPJn0P.aspx%3Fsojumpparm%3D234%26parmsign%3Dc8432440b620eb9abd32fa46cf11f19845f5508f`
+`https://www.wjx.cn/openapi/shortlink.aspx?url=https%3A%2F%2Fdemo.example.com%2Fvm%2FPJn0P.aspx%3Fsojumpparm%3D234%26parmsign%3Dc8432440b620eb9abd32fa46cf11f19845f5508f`
 
 提示：url带入的参数需要URLEncode编码。 
 
@@ -3100,7 +3100,7 @@ Content-Type:application/json
 {
     &quot;success&quot;: true,
     &quot;msg&quot;: null,
-    &quot;data&quot;: &quot;https://drunkyong.natapp4.cc/s/jv&quot;
+    &quot;data&quot;: &quot;https://demo.example.com/s/jv&quot;
 }
 ```
 

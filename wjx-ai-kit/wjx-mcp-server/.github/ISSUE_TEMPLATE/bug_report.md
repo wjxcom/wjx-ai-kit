@@ -1,36 +1,36 @@
 ---
-name: Bug Report
-about: Report a bug to help us improve
+name: Bug 报告
+about: 报告 Bug 帮助我们改进
 title: '[Bug] '
 labels: bug
 assignees: ''
 ---
 
-## Description
+## 问题描述
 
-A clear description of the bug.
+请清晰描述遇到的 Bug。
 
-## Steps to Reproduce
+## 复现步骤
 
 1. ...
 2. ...
 3. ...
 
-## Expected Behavior
+## 期望行为
 
-What you expected to happen.
+你期望发生什么。
 
-## Actual Behavior
+## 实际行为
 
-What actually happened.
+实际发生了什么。
 
-## Environment
+## 环境信息
 
-- Node.js version:
-- OS:
-- wjx-mcp-server version:
-- MCP client (e.g. Claude Desktop):
+- Node.js 版本：
+- 操作系统：
+- wjx-mcp-server 版本：
+- MCP 客户端（如 Claude Desktop）：
 
-## Additional Context
+## 补充信息
 
-Any other context, error logs, or screenshots.
+其他上下文、错误日志或截图。

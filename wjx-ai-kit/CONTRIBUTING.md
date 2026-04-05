@@ -34,8 +34,8 @@ npm run build --workspace=wjx-cli
 
 ```bash
 npm test --workspace=wjx-api-sdk        # ~623 tests
-npm test --workspace=wjx-mcp-server     # ~282 tests
-npm test --workspace=wjx-cli            # ~122 tests
+npm test --workspace=wjx-mcp-server     # ~280 tests
+npm test --workspace=wjx-cli            # ~133 tests
 ```
 
 ---
