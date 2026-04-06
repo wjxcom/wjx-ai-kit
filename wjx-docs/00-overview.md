@@ -1,0 +1,393 @@
+# wjx-ai-kit：用 AI 重新定义问卷调研
+
+> 问卷星官方开源 · TypeScript SDK + MCP Server + CLI 三合一工具包
+
+---
+
+## 一句话说清楚
+
+**wjx-ai-kit** 是问卷星官方开源的 AI 开发工具包。它让你用自然语言创建问卷、用对话分析数据、用命令行自动化一切——把原来需要反复点击网页的问卷操作，变成 AI 可以直接完成的事。
+
+---
+
+## 为什么做这件事
+
+问卷调研正在发生两个变化：
+
+**第一，AI 正在重塑工作方式。** 当你可以对 Claude 说"帮我做一份员工满意度调查，包含 NPS 评分和 5 个维度的量表题"，它就能在 30 秒内创建一份专业问卷——没有人愿意再回到逐题拖拽的时代。
+
+**第二，数据驱动需要 API 化。** 企业用户的问卷系统需要和 CRM、HRM、BI 打通，研究人员需要批量创建实验问卷、自动化数据回收。这些场景靠网页操作做不到，需要一套可编程的接口。
+
+wjx-ai-kit 就是为这两个变化而生的：
+
+```
+你的 AI 助手 / 代码 / 脚本
+        ↓
+   wjx-ai-kit（SDK / MCP / CLI）
+        ↓
+    问卷星 OpenAPI
+        ↓
+  2.6 亿用户的调研平台
+```
+
+---
+
+## 三个工具，一个目标
+
+wjx-ai-kit 包含三个包，覆盖从 AI 对话到底层编程的全部场景：
+
+### 🔌 MCP Server — 让 AI 直接操作问卷星
+
+> "帮我创建一份 NPS 调查问卷，发布后统计结果"
+
+MCP (Model Context Protocol) 是 Anthropic 提出的 AI 工具调用协议。wjx-mcp-server 实现了 **56 个工具**，让 Claude、Cursor、Windsurf 等 AI 客户端可以直接操作问卷星。
+
+- **56 个 Tools**：创建问卷、查询答卷、管理通讯录、生成 SSO 链接、本地数据分析
+- **8 个 Resources**：题型编码、DSL 语法、分析方法等参考资料，AI 随时查阅
+- **19 个 Prompts**：NPS 分析、满意度调查、考试出题、异常检测等预设工作流
+- **开箱即用**：配置 API Key，接入 Claude Desktop / Cursor / Claude Code 即可使用
+
+**适合谁：** 使用 AI 编程工具的开发者、想用自然语言管理问卷的企业用户
+
+### ⌨️ CLI — AI Agent 原生命令行
+
+> `wjx survey create-by-text --file survey.txt --publish`
+
+wjx-cli 是为 AI Agent 设计的命令行工具。69 个子命令覆盖问卷星全部 API 能力，输出结构化 JSON，天然适配 AI Agent 工作流和自动化脚本。
+
+- **69 个子命令**：问卷、答卷、通讯录、部门、管理员、标签、用户体系、子账号、SSO、数据分析
+- **AI Agent 友好**：JSON 输出 + 管道输入 + 结构化错误 + Shell 补全
+- **Claude Code 技能**：`wjx skill install` 一键安装 AI Agent 技能包
+- **Dry-Run 预览**：`--dry-run` 看到完整请求但不实际发送
+- **9 个离线命令**：NPS、CSAT、异常检测等分析命令不需要 API Key
+
+**适合谁：** AI Agent 开发者、自动化脚本编写者、命令行爱好者
+
+### 📦 SDK — 零依赖 TypeScript 基础层
+
+> `await createSurveyByText({ text: "满意度调查\n\n1. 评分[量表题]\n1~10" })`
+
+wjx-api-sdk 是零运行时依赖的 TypeScript SDK，提供 60+ 类型安全的函数，覆盖问卷星 OpenAPI 全部能力。
+
+- **零依赖**：只用 Node.js 内置 API（fetch + crypto），无第三方包
+- **60+ 函数**：8 大模块完整覆盖（问卷、答卷、通讯录、用户体系、子账号、SSO、分析、DSL 转换）
+- **DSL 双向转换**：纯文本 ↔ 问卷结构体，支持 27 种题型标签
+- **本地分析引擎**：NPS/CSAT 计算、异常检测、数据解码，无需网络
+- **可测试设计**：fetch 注入 + 凭据提供者模式，623 个测试零网络依赖
+
+**适合谁：** 构建调研 SaaS 的开发者、需要集成问卷能力的系统、学术研究自动化
+
+---
+
+## 快速体验
+
+### 30 秒：用 AI 创建问卷
+
+如果你用 Claude Desktop 或 Cursor：
+
+```bash
+npm install -g wjx-mcp-server
+```
+
+在 Claude Desktop 配置中添加：
+
+```json
+{
+  "mcpServers": {
+    "wjx": {
+      "command": "npx",
+      "args": ["wjx-mcp-server"],
+      "env": { "WJX_API_KEY": "你的API Key" }
+    }
+  }
+}
+```
+
+然后对 Claude 说：
+
+> "帮我创建一份客户满意度调查，包含 NPS 评分题、5 个维度的量表题、和一个开放建议题"
+
+Claude 会自动调用 MCP 工具创建问卷、设置问卷、返回预览链接。
+
+### 1 分钟：用命令行创建问卷
+
+```bash
+# 安装
+npm install -g wjx-cli
+
+# 配置（交互式或参数模式）
+wjx init
+# 或 wjx init --api-key 你的APIKey
+
+# 环境检查
+wjx doctor
+
+# 用 DSL 文本创建问卷
+wjx survey create-by-text --text "
+客户满意度调查
+
+1. 您愿意向朋友推荐我们吗？[量表题]
+0~10
+
+2. 请评价以下方面 [矩阵量表题]
+行：
+- 产品质量
+- 服务态度
+- 响应速度
+列：
+- 非常不满意
+- 不满意
+- 一般
+- 满意
+- 非常满意
+
+3. 您有什么建议？[填空题]
+"
+```
+
+### 5 分钟：用 SDK 构建自动化
+
+```typescript
+import {
+  createSurveyByText,
+  queryResponses,
+  calculateNps,
+  decodeResponses,
+} from "wjx-api-sdk";
+
+// 1. 用自然语言 DSL 创建问卷
+const survey = await createSurveyByText({
+  text: "NPS 调查\n\n1. 推荐意愿[量表题]\n0~10",
+});
+console.log(`问卷已创建: ${survey.data.vid}`);
+
+// 2. 查询答卷数据
+const responses = await queryResponses({
+  vid: survey.data.vid,
+  page_size: 100,
+});
+
+// 3. 解码并分析
+for (const r of responses.data.list) {
+  const decoded = decodeResponses(r.submitdata);
+  console.log(decoded);
+}
+
+// 4. 计算 NPS
+const nps = calculateNps([9, 10, 7, 3, 8, 10, 9, 6, 10, 8]);
+console.log(`NPS: ${nps.score} (${nps.rating})`);
+// NPS: 20 (一般)
+```
+
+---
+
+## 能力全景
+
+| 能力 | SDK | MCP Server | CLI |
+|------|:---:|:----------:|:---:|
+| 问卷创建/编辑/删除 | ✅ | ✅ | ✅ |
+| DSL 文本创建问卷 | ✅ | ✅ | ✅ |
+| 答卷查询/下载/提交 | ✅ | ✅ | ✅ |
+| 统计报告 | ✅ | ✅ | ✅ |
+| 通讯录管理 | ✅ | ✅ | ✅ |
+| 部门/标签管理 | ✅ | ✅ | ✅ |
+| 用户体系/参与者 | ✅ | ✅ | ✅ |
+| 子账号管理 | ✅ | ✅ | ✅ |
+| SSO 单点登录 | ✅ | ✅ | ✅ |
+| NPS/CSAT 计算 | ✅ | ✅ | ✅ |
+| 异常检测 | ✅ | ✅ | ✅ |
+| Webhook 解密 | ✅ | ✅ | ✅ |
+| AI Prompt 模板 | - | ✅ 19个 | - |
+| AI 参考资源 | - | ✅ 8个 | - |
+| Claude Code 技能 | - | - | ✅ |
+| Shell 补全 | - | - | ✅ |
+| Docker 部署 | - | ✅ | - |
+
+---
+
+## 技术亮点
+
+### DSL：用纯文本定义问卷
+
+不用写 JSON，不用拖拽控件。用一种直觉的文本格式描述问卷，支持 27 种题型：
+
+```
+员工满意度调查
+这是一份关于工作体验的匿名调查
+===
+
+1. 您的部门 [下拉框]
+技术部
+产品部
+市场部
+运营部
+
+2. 整体满意度 [量表题]
+1~10
+
+3. 请评价以下方面 [矩阵量表题]
+行：
+- 工作环境
+- 团队协作
+- 职业发展
+- 薪酬福利
+列：
+- 非常不满意
+- 不满意
+- 一般
+- 满意
+- 非常满意
+
+4. 改进建议 [填空题]
+```
+
+SDK 的 `textToSurvey()` 解析这段文本，`parsedQuestionsToWire()` 转为 API 格式，`createSurvey()` 提交到问卷星。三步合一就是 `createSurveyByText()` —— 一个函数搞定。
+
+### 本地分析引擎：不上传数据也能分析
+
+6 个分析函数完全在本地运行，数据不出你的机器：
+
+- **NPS 计算**：自动分类推荐者/中立者/贬损者，给出评级（优秀/良好/一般/较差）
+- **CSAT 计算**：支持 5 级和 7 级量表
+- **异常检测**：识别秒答（<30% 中位时长）、直线作答、IP+内容重复
+- **数据解码**：解析问卷星的 `submitdata` 编码格式
+- **指标对比**：A/B 组差异分析，>10% 标记显著
+- **Push 解密**：AES-128-CBC 回调数据解密 + SHA1 签名验证
+
+### 零依赖 SDK
+
+`package.json` 的 `dependencies` 是空的。整个 SDK 只用 Node.js 内置的 `fetch`（Node 20+）和 `crypto` 模块。这意味着：
+
+- 没有供应链风险
+- 安装速度极快
+- 可以嵌入任何项目而不担心依赖冲突
+- 623 个测试全部通过 fetch 注入模式运行，零网络调用
+
+### 1000+ 测试
+
+| 包 | 测试数 | 说明 |
+|----|--------|------|
+| wjx-api-sdk | ~623 | 全部通过 mock fetch，零网络依赖 |
+| wjx-mcp-server | ~280 | 单元 + 集成测试 |
+| wjx-cli | ~133 | 端到端测试 |
+| **合计** | **~1036** | |
+
+---
+
+## 场景速览
+
+### 场景 1：AI 自动创建调研问卷
+
+> 你："帮我做一份关于远程办公体验的调查，15 个题，包含单选、量表和开放题"
+
+Claude 通过 MCP Server 自动完成：拟定题目 → 生成 DSL → 调用 `create_survey_by_text` → 返回预览链接。全程 30 秒。
+
+### 场景 2：自动化数据分析流水线
+
+```bash
+# 查询最新 100 条答卷 → 解码 → 统计 NPS
+VID=12345
+wjx response query --vid $VID --page_size 100 \
+  | jq -r '.data.list[].submitdata' \
+  | wjx analytics decode --submitdata - \
+  | wjx analytics nps --scores -
+```
+
+### 场景 3：批量创建实验问卷
+
+研究人员需要创建 20 个版本的问卷（不同题目顺序做 A/B 测试）：
+
+```typescript
+import { createSurveyByText } from "wjx-api-sdk";
+
+for (const [i, variant] of variants.entries()) {
+  const result = await createSurveyByText({
+    text: variant,
+    title: `实验组 ${i + 1}`,
+  });
+  console.log(`变体 ${i + 1}: vid=${result.data.vid}`);
+}
+```
+
+### 场景 4：CRM 集成
+
+SaaS 平台在用户完成购买后自动推送满意度调查：
+
+```typescript
+import { createSurveyByText, buildPreviewUrl, submitResponse } from "wjx-api-sdk";
+
+// 创建问卷（一次性）
+const survey = await createSurveyByText({ text: npsTemplate });
+
+// 生成调查链接
+const url = buildPreviewUrl({ vid: survey.data.vid, source: "crm" });
+
+// 或直接代填提交
+await submitResponse({
+  vid: survey.data.vid,
+  submitdata: "1$9",
+  inputcosttime: 60,
+});
+```
+
+### 场景 5：Webhook 实时回调
+
+问卷提交后实时处理数据：
+
+```typescript
+import { decodePushPayload, calculateNps } from "wjx-api-sdk";
+
+app.post("/webhook", (req, res) => {
+  const { decrypted, signatureValid } = decodePushPayload(
+    req.body.encrypt,
+    process.env.WJX_API_KEY,
+    req.headers["x-wjx-signature"],
+    req.body,
+  );
+
+  if (signatureValid) {
+    // 实时处理新答卷
+    processNewResponse(decrypted);
+  }
+});
+```
+
+---
+
+## 开始使用
+
+| 你的角色 | 推荐起点 | 文档 |
+|---------|----------|------|
+| 用 Claude/Cursor 的开发者 | MCP Server | [MCP 入门指南](./mcp-getting-started.md) |
+| 想自动化问卷操作的用户 | CLI | [CLI 入门指南](./cli-getting-started.md) |
+| 构建 SaaS / 做集成的开发者 | SDK | [SDK 入门指南](./sdk-getting-started.md) |
+| 做学术调研的研究人员 | CLI + SDK | [CLI 入门指南](./cli-getting-started.md) |
+
+---
+
+## 参与贡献
+
+wjx-ai-kit 是问卷星官方开源项目，采用 MIT 协议，欢迎社区贡献。
+
+```bash
+git clone https://github.com/wjxcom/wjx-ai-kit.git
+cd wjx-ai-kit
+npm install
+npm run build --workspace=wjx-api-sdk
+npm test --workspace=wjx-api-sdk  # 623 tests ✓
+```
+
+- GitHub: [github.com/wjxcom/wjx-ai-kit](https://github.com/wjxcom/wjx-ai-kit)
+- Issues: [提交反馈](https://github.com/wjxcom/wjx-ai-kit/issues)
+- npm: [wjx-api-sdk](https://www.npmjs.com/package/wjx-api-sdk) · [wjx-mcp-server](https://www.npmjs.com/package/wjx-mcp-server) · [wjx-cli](https://www.npmjs.com/package/wjx-cli)
+
+---
+
+## 深入了解
+
+- [MCP Server 入门指南](./mcp-getting-started.md) — 5 分钟接入 Claude/Cursor
+- [MCP Server 进阶指南](./mcp-advanced.md) — 56 个工具深度用法
+- [CLI 入门指南](./cli-getting-started.md) — 命令行快速上手
+- [CLI 进阶指南](./cli-advanced.md) — 69 个命令完全攻略
+- [SDK 入门指南](./sdk-getting-started.md) — TypeScript 开发快速上手
+- [SDK 进阶指南](./sdk-advanced.md) — 高级特性与最佳实践

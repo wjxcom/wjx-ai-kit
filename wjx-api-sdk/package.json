@@ -1,0 +1,38 @@
+{
+  "name": "wjx-api-sdk",
+  "version": "0.1.6",
+  "description": "问卷星 (Wenjuanxing) OpenAPI SDK — 零 MCP 依赖的 API 客户端",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "npx -p typescript tsc -p tsconfig.json",
+    "test": "npm run build && node --test __tests__/*.test.mjs",
+    "clean": "rm -rf dist",
+    "prepublishOnly": "npm run build"
+  },
+  "keywords": [
+    "wjx",
+    "wenjuanxing",
+    "survey",
+    "openapi",
+    "sdk"
+  ],
+  "author": "wjxagents",
+  "license": "MIT",
+  "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/wjxcom/wjx-ai-kit.git",
+    "directory": "wjx-api-sdk"
+  },
+  "devDependencies": {
+    "@types/node": "^22",
+    "typescript": "^5.5"
+  }
+}
