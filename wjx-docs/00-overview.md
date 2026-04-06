@@ -79,6 +79,61 @@ wjx-api-sdk 是零运行时依赖的 TypeScript SDK，提供 60+ 类型安全的
 
 ---
 
+## 选择你的工具
+
+不确定该用哪个？按你的使用方式选择：
+
+```
+你想怎么用问卷星？
+│
+├─ 在 AI 对话中操作 ──→ 选择你的 AI 工具（见下方配置指南）
+│   │
+│   ├─ Claude Code ──→ ⭐ 推荐：MCP + Agent + Skill（最佳体验）
+│   ├─ Claude Desktop / Cursor / Windsurf / Cline / Trae / Copilot ...
+│   │   └──→ MCP Server（+ Rules 文件增强）
+│   │
+│   └─ 不确定？先试 Claude Desktop，配置最简单
+│
+├─ 命令行 / 自动化脚本 ──→ CLI
+│   └─ wjx skill install 一键安装 Agent 技能包
+│
+└─ 构建应用 / 系统集成 ──→ SDK
+```
+
+### 三层能力递进
+
+wjx-ai-kit 不只是 MCP Server——它还提供 **Agent 定义** 和 **Skill 参考文档**，让 AI 从"能用工具"进化到"懂业务流程"：
+
+| 层级 | 能力 | 说明 |
+|------|------|------|
+| **MCP 工具层** | 56 个 Tools + 8 Resources + 19 Prompts | 所有 MCP 客户端通用，AI 直接调用 |
+| **Agent 层** | 2 个专家 Agent（MCP 专家 / CLI 专家） | 内置工作流和安全规范，自动编排多步操作 |
+| **Skill 层** | 2 套渐进式参考文档 | Agent 按需读取参数细节，无需预加载全部知识 |
+
+> **对比**：同类产品（如金数据 MCP）只有工具层。问卷星的 Agent + Skill 体系让 AI 不只是机械地执行命令，而是像一个问卷星专家一样主动规划工作流。
+
+---
+
+## AI 工具配置指南
+
+在你常用的 AI 工具中接入问卷星。点击对应指南，5 分钟内完成配置。
+
+| AI 工具 | Agent 支持 | 一句话说明 | 配置指南 |
+|---------|:---------:|----------|---------|
+| **Claude Code** | ⭐⭐⭐ | Agent + Skill 完整支持，终端内完成一切 | [配置指南](./setup-claude-code.md) |
+| **Claude Desktop** | ⭐ | 最简单的入门方式，对话即操作 | [配置指南](./setup-claude-desktop.md) |
+| **Cursor** | ⭐⭐ | AI 编程 + 问卷管理一体化 | [配置指南](./setup-cursor.md) |
+| **Windsurf** | ⭐⭐ | Cascade AI + 问卷星工具链 | [配置指南](./setup-windsurf.md) |
+| **Cline** | ⭐⭐ | VS Code 中的 AI Agent，自主完成问卷任务 | [配置指南](./setup-cline.md) |
+| **GitHub Copilot** | ⭐⭐ | Agent 模式下调用问卷星 MCP | [配置指南](./setup-copilot.md) |
+| **Trae** | ⭐⭐ | 字节跳动 AI IDE，中文体验友好 | [配置指南](./setup-trae.md) |
+| **Gemini** | ⭐ | Google AI 生态接入 | [配置指南](./setup-gemini.md) |
+| **Qodo** | ⭐ | 代码质量 + 问卷管理 | [配置指南](./setup-qodo.md) |
+
+> ⭐⭐⭐ = Agent + Skill 完整支持 | ⭐⭐ = MCP + Rules 文件增强 | ⭐ = MCP 基础接入
+
+---
+
 ## 快速体验
 
 ### 30 秒：用 AI 创建问卷
@@ -358,10 +413,14 @@ app.post("/webhook", (req, res) => {
 
 | 你的角色 | 推荐起点 | 文档 |
 |---------|----------|------|
-| 用 Claude/Cursor 的开发者 | MCP Server | [MCP 入门指南](./mcp-getting-started.md) |
-| 想自动化问卷操作的用户 | CLI | [CLI 入门指南](./cli-getting-started.md) |
-| 构建 SaaS / 做集成的开发者 | SDK | [SDK 入门指南](./sdk-getting-started.md) |
+| 用 Claude Code 的开发者 | MCP + Agent + Skill | [Claude Code 配置指南](./setup-claude-code.md) |
+| 用 Claude Desktop 的用户 | MCP Server | [Claude Desktop 配置指南](./setup-claude-desktop.md) |
+| 用 Cursor / Windsurf 的开发者 | MCP Server | [Cursor](./setup-cursor.md) / [Windsurf](./setup-windsurf.md) 配置指南 |
+| 用其他 AI 工具 | MCP Server | 见上方 [AI 工具配置指南](#ai-工具配置指南) |
+| 想用命令行自动化的用户 | CLI | [CLI 入门指南](./cli-getting-started.md) |
+| 构建 SaaS / 做系统集成 | SDK | [SDK 入门指南](./sdk-getting-started.md) |
 | 做学术调研的研究人员 | CLI + SDK | [CLI 入门指南](./cli-getting-started.md) |
+| 企业 IT / 远程部署 | MCP HTTP 模式 | [MCP 进阶指南](./mcp-advanced.md) |
 
 ---
 
@@ -385,9 +444,20 @@ npm test --workspace=wjx-api-sdk  # 623 tests ✓
 
 ## 深入了解
 
+### 入门指南
+
 - [MCP Server 入门指南](./mcp-getting-started.md) — 5 分钟接入 Claude/Cursor
-- [MCP Server 进阶指南](./mcp-advanced.md) — 56 个工具深度用法
 - [CLI 入门指南](./cli-getting-started.md) — 命令行快速上手
-- [CLI 进阶指南](./cli-advanced.md) — 69 个命令完全攻略
 - [SDK 入门指南](./sdk-getting-started.md) — TypeScript 开发快速上手
-- [SDK 进阶指南](./sdk-advanced.md) — 高级特性与最佳实践
+
+### AI 工具配置指南
+
+- [Claude Code](./setup-claude-code.md) ⭐ — Agent + Skill 完整体验
+- [Claude Desktop](./setup-claude-desktop.md) · [Cursor](./setup-cursor.md) · [Windsurf](./setup-windsurf.md) · [Cline](./setup-cline.md)
+- [GitHub Copilot](./setup-copilot.md) · [Trae](./setup-trae.md) · [Gemini](./setup-gemini.md) · [Qodo](./setup-qodo.md)
+
+### 进阶指南
+
+- [MCP Server 进阶指南](./mcp-advanced.md) — 56 个工具深度用法、HTTP 部署、Docker
+- [CLI 进阶指南](./cli-advanced.md) — 69 个命令完全攻略、Skill 系统
+- [SDK 进阶指南](./sdk-advanced.md) — DSL 引擎、分析函数、Webhook 解密

@@ -1,0 +1,165 @@
+# 在 GitHub Copilot 中使用问卷星
+
+> 在 VS Code / GitHub Copilot 中用自然语言创建问卷、分析数据、管理通讯录
+
+---
+
+## 准备工作
+
+1. **GitHub Copilot 订阅** — 需要 GitHub Copilot 个人版或企业版
+2. **VS Code** — 安装最新版 VS Code 并启用 GitHub Copilot 扩展
+3. **Node.js >= 20** — 运行 `node --version` 确认版本，低于 20 请前往 [nodejs.org](https://nodejs.org) 升级
+4. **获取问卷星 API Key** — 登录 [问卷星](https://www.wjx.cn)，进入「账号设置」→「API 设置」，创建或复制你的 API Key
+
+> 注意：Copilot 的 MCP 支持需要 Agent 模式。请确认你的 Copilot 版本已支持此功能。
+
+---
+
+## 第一步：接入 MCP Server
+
+### 方式一：项目级配置（推荐）
+
+在项目根目录创建 `.github/copilot-mcp.json`：
+
+```json
+{
+  "mcpServers": {
+    "wjx": {
+      "command": "npx",
+      "args": ["wjx-mcp-server"],
+      "env": {
+        "WJX_API_KEY": "替换为你的 API Key"
+      }
+    }
+  }
+}
+```
+
+### 方式二：VS Code 设置
+
+在 VS Code 的 `settings.json` 中添加：
+
+```json
+{
+  "mcp": {
+    "servers": {
+      "wjx": {
+        "command": "npx",
+        "args": ["wjx-mcp-server"],
+        "env": {
+          "WJX_API_KEY": "替换为你的 API Key"
+        }
+      }
+    }
+  }
+}
+```
+
+### 启用 Agent 模式
+
+确保 VS Code 设置中已启用 Agent 模式：
+
+```json
+{
+  "github.copilot.chat.agent.enabled": true
+}
+```
+
+### 企业用户
+
+如需管理通讯录，在 `env` 中额外添加 `"WJX_CORP_ID": "你的企业通讯录 ID"`。
+
+### HTTP 远程模式
+
+团队部署了远程 MCP 服务时：
+
+```json
+{
+  "mcpServers": {
+    "wjx": {
+      "url": "http://your-server:3000/mcp",
+      "headers": {
+        "Authorization": "Bearer your-token"
+      }
+    }
+  }
+}
+```
+
+---
+
+## 第二步：增强 Agent 能力
+
+GitHub Copilot 支持通过 `.github/copilot-instructions.md` 文件注入项目级自定义指令。
+
+在项目根目录创建 `.github/copilot-instructions.md`：
+
+```markdown
+# 问卷星操作指南
+
+## 创建问卷
+使用 create_survey_by_text 工具时，遵循问卷星 DSL 语法：
+- 第一行为问卷标题
+- 每题以序号开头
+- 支持题型：单选、多选、填空、量表、NPS、矩阵等
+
+## 数据分析
+- 使用 calculate_nps 计算净推荐值
+- ���用 cross_tabulate 进行交叉分析
+- 使用 query_responses 获取原始答卷数据
+```
+
+你也可以将 wjx-ai-kit 的 Skill 参考文档中更详细的内容添加到该文件中。
+
+---
+
+## ���三步：验证
+
+在 Copilot Chat 中切换到 Agent 模式，输入：
+
+> 帮我创建一份客户满意度调查问卷
+
+如果一切正常，Copilot 会调用问卷星工具，自动创建问卷并返回编辑链接。
+
+---
+
+## 典型场景
+
+### 场景 1: 创建调研问卷
+
+> 你：帮我创建一份员工满意度调查问卷，包含 NPS 评分题、工作环境满意度（5 级量表）和开放反馈
+>
+> AI 自动：读取 DSL 语法 → 生成问卷结构 → 调用 create_survey_by_text → 返回编辑链接
+
+### 场景 2: 分析数据
+
+> 你：分析最近一次客户满意度调查的 NPS 得分
+>
+> AI 自动：query_responses 获取数据 → calculate_nps 计算 → 给出推荐人/中立/贬损分布
+
+### 场景 3: 批量管理
+
+> 你：把这份 Excel 名单导入通讯录的"市场部"分组
+>
+> AI 自动：读取文件 → add_contacts 批量导入 → query_contacts 验证
+
+---
+
+## 常见问题
+
+### Copilot Chat 中没有出现 MCP 工具？
+
+1. 确认已启用 Agent 模式（`"github.copilot.chat.agent.enabled": true`）
+2. 确认 Copilot 版本支持 MCP（需要较新版本）
+3. 确认聊天面板已切换到 Agent 模式（非普通 Chat 模式）
+
+### MCP 支持是稳定功能吗？
+
+GitHub Copilot 的 MCP 支持可能处于预览阶段，功能和配置方式可能随版本更新变化。建议关注 [GitHub Copilot 官方文档](https://docs.github.com/copilot) 获取最新信息。
+
+---
+
+## 下一步
+
+- [MCP Server 入门指南](./mcp-getting-started.md) — 了解 56 个工具的完整能力
+- [wjx-ai-kit 总览](./00-overview.md) — 了解 SDK、MCP、CLI 三合一架构

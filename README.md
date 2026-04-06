@@ -4,6 +4,10 @@
 
 [![license](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 [![node](https://img.shields.io/badge/node-%3E%3D20-green)](https://nodejs.org/)
+[![npm wjx-api-sdk](https://img.shields.io/npm/v/wjx-api-sdk?label=wjx-api-sdk)](https://www.npmjs.com/package/wjx-api-sdk)
+[![npm wjx-mcp-server](https://img.shields.io/npm/v/wjx-mcp-server?label=wjx-mcp-server)](https://www.npmjs.com/package/wjx-mcp-server)
+[![npm wjx-cli](https://img.shields.io/npm/v/wjx-cli?label=wjx-cli)](https://www.npmjs.com/package/wjx-cli)
+[![npm downloads](https://img.shields.io/npm/dm/wjx-mcp-server?label=downloads)](https://www.npmjs.com/package/wjx-mcp-server)
 
 ---
 
@@ -16,14 +20,37 @@ wjx-ai-kit/
 ├── wjx-api-sdk/       # 零依赖 TypeScript SDK（50+ API 函数）
 ├── wjx-mcp-server/    # MCP Server（56 Tools / 8 Resources / 19 Prompts）
 ├── wjx-cli/           # 命令行工具（AI Agent 原生 CLI）
+├── wjx-agents/        # 2 个专家 Agent 定义
+├── wjx-skills/        # 2 套 Skill 参考文档
+├── wjx-docs/          # 使用文档 + AI 工具配置指南
 └── package.json       # workspace 根配置
 ```
 
 | 包 | 版本 | 说明 |
 |---|---|---|
-| [`wjx-api-sdk`](wjx-api-sdk/) | 0.1.5 | 零 MCP 依赖的问卷星 OpenAPI 客户端。8 模块、50+ 函数，可在任意 Node.js 项目中使用 |
-| [`wjx-mcp-server`](wjx-mcp-server/) | 0.1.4 | [Model Context Protocol](https://modelcontextprotocol.io/) 服务器。接入 Claude、Cursor 等 AI 客户端 |
-| [`wjx-cli`](wjx-cli/) | 0.1.10 | 命令行工具。支持 `wjx survey list`、stdin pipe、JSON/表格输出 |
+| [`wjx-api-sdk`](wjx-api-sdk/) | 0.1.6 | 零依赖 TypeScript SDK。8 模块、50+ 函数，可在任意 Node.js 项目中使用 |
+| [`wjx-mcp-server`](wjx-mcp-server/) | 0.1.5 | [MCP](https://modelcontextprotocol.io/) Server。接入 Claude、Cursor、Windsurf 等 AI 客户端 |
+| [`wjx-cli`](wjx-cli/) | 0.1.13 | 命令行工具。69 子命令，支持 stdin pipe、JSON/表格输出 |
+
+---
+
+## AI 工具配置指南
+
+在你的 AI 工具中接入问卷星，用自然语言创建问卷、分析数据、管理通讯录。
+
+| AI 工具 | Agent 支持 | 配置指南 |
+|---------|:---------:|---------|
+| **Claude Code** | ⭐⭐⭐ Agent + Skill | [setup-claude-code.md](wjx-docs/setup-claude-code.md) |
+| **Claude Desktop** | ⭐ MCP + Prompts | [setup-claude-desktop.md](wjx-docs/setup-claude-desktop.md) |
+| **Cursor** | ⭐⭐ MCP + Rules | [setup-cursor.md](wjx-docs/setup-cursor.md) |
+| **Windsurf** | ⭐⭐ MCP + Rules | [setup-windsurf.md](wjx-docs/setup-windsurf.md) |
+| **Cline** | ⭐⭐ MCP + Instructions | [setup-cline.md](wjx-docs/setup-cline.md) |
+| **GitHub Copilot** | ⭐⭐ MCP + Instructions | [setup-copilot.md](wjx-docs/setup-copilot.md) |
+| **Trae** | ⭐⭐ MCP + Rules | [setup-trae.md](wjx-docs/setup-trae.md) |
+| **Gemini** | ⭐ MCP | [setup-gemini.md](wjx-docs/setup-gemini.md) |
+| **Qodo** | ⭐ MCP | [setup-qodo.md](wjx-docs/setup-qodo.md) |
+
+> ⭐⭐⭐ = Agent + Skill 完整支持 | ⭐⭐ = MCP + Rules 文件增强 | ⭐ = MCP 基础接入
 
 ---
 
@@ -88,7 +115,7 @@ npm run build --workspace=wjx-mcp-server
 npm start --workspace=wjx-mcp-server
 ```
 
-详见 [wjx-mcp-server/README.md](wjx-mcp-server/README.md) 了解 Claude Desktop / Cursor 集成配置。
+详见 [wjx-mcp-server/README.md](wjx-mcp-server/README.md) 了解集成配置，或查看上方 **AI 工具配置指南** 找到你使用的工具。
 
 ### 使用方式二：CLI（命令行）
 
@@ -131,6 +158,22 @@ const result = await createSurvey({
 ```
 
 详见 [wjx-api-sdk/README.md](wjx-api-sdk/README.md)。
+
+---
+
+## 文档
+
+完整的使用文档和指南位于 [`wjx-docs/`](wjx-docs/) 目录：
+
+| 文档 | 说明 |
+|------|------|
+| [总纲](wjx-docs/00-overview.md) | 功能全景、选择引导、场景速览 |
+| [MCP 入门](wjx-docs/mcp-getting-started.md) | MCP Server 快速接入 |
+| [MCP 进阶](wjx-docs/mcp-advanced.md) | 56 工具深度用法、HTTP 部署、Docker |
+| [CLI 入门](wjx-docs/cli-getting-started.md) | 命令行快速上手 |
+| [CLI 进阶](wjx-docs/cli-advanced.md) | 69 命令完全攻略、Skill 系统 |
+| [SDK 入门](wjx-docs/sdk-getting-started.md) | TypeScript 开发快速上手 |
+| [SDK 进阶](wjx-docs/sdk-advanced.md) | DSL、分析引擎、Webhook 解密 |
 
 ---
 
