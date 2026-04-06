@@ -38,19 +38,17 @@ wjx-ai-kit/
 
 在你的 AI 工具中接入问卷星，用自然语言创建问卷、分析数据、管理通讯录。
 
-| AI 工具 | Agent 支持 | 配置指南 |
-|---------|:---------:|---------|
-| **Claude Code** | ⭐⭐⭐ Agent + Skill | [setup-claude-code.md](wjx-docs/setup-claude-code.md) |
-| **Claude Desktop** | ⭐ MCP + Prompts | [setup-claude-desktop.md](wjx-docs/setup-claude-desktop.md) |
-| **Cursor** | ⭐⭐ MCP + Rules | [setup-cursor.md](wjx-docs/setup-cursor.md) |
-| **Windsurf** | ⭐⭐ MCP + Rules | [setup-windsurf.md](wjx-docs/setup-windsurf.md) |
-| **Cline** | ⭐⭐ MCP + Instructions | [setup-cline.md](wjx-docs/setup-cline.md) |
-| **GitHub Copilot** | ⭐⭐ MCP + Instructions | [setup-copilot.md](wjx-docs/setup-copilot.md) |
-| **Trae** | ⭐⭐ MCP + Rules | [setup-trae.md](wjx-docs/setup-trae.md) |
-| **Gemini** | ⭐ MCP | [setup-gemini.md](wjx-docs/setup-gemini.md) |
-| **Qodo** | ⭐ MCP | [setup-qodo.md](wjx-docs/setup-qodo.md) |
-
-> ⭐⭐⭐ = Agent + Skill 完整支持 | ⭐⭐ = MCP + Rules 文件增强 | ⭐ = MCP 基础接入
+| AI 工具 | 配置指南 |
+|---------|---------|
+| **Claude Code** | [setup-claude-code.md](wjx-docs/setup-claude-code.md) |
+| **Claude Desktop** | [setup-claude-desktop.md](wjx-docs/setup-claude-desktop.md) |
+| **Cursor** | [setup-cursor.md](wjx-docs/setup-cursor.md) |
+| **Windsurf** | [setup-windsurf.md](wjx-docs/setup-windsurf.md) |
+| **Cline** | [setup-cline.md](wjx-docs/setup-cline.md) |
+| **GitHub Copilot** | [setup-copilot.md](wjx-docs/setup-copilot.md) |
+| **Trae** | [setup-trae.md](wjx-docs/setup-trae.md) |
+| **Gemini** | [setup-gemini.md](wjx-docs/setup-gemini.md) |
+| **Qoder** | [setup-qoder.md](wjx-docs/setup-qoder.md) |
 
 ---
 
