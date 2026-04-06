@@ -1,6 +1,6 @@
-# Changelog
+# 更新日志
 
-All notable changes to this project will be documented in this file.
+本文件记录项目的所有重要变更。
 
 ## [0.1.5] - 2026-04-02
 

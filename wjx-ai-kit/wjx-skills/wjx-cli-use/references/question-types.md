@@ -1,102 +1,102 @@
-# Question Types Reference
+# 题型参考
 
-Complete mapping of q_type and q_subtype codes used in `wjx survey create --questions <json>`.
+`wjx survey create --questions <json>` 中使用的 q_type 和 q_subtype 代码完整映射表。
 
-## Main Types (q_type)
+## 主题型 (q_type)
 
-| q_type | Name | Has Subtypes |
-|--------|------|-------------|
-| 1 | Page Break | No |
-| 2 | Paragraph/Section | No |
-| 3 | Single Choice | Yes |
-| 4 | Multiple Choice | Yes |
-| 5 | Fill-in | Yes |
-| 6 | Multi-fill | Yes |
-| 7 | Matrix | Yes |
-| 8 | File Upload | Yes |
-| 9 | Weight | No |
-| 10 | Slider | No |
+| q_type | 名称 | 有子类型 |
+|--------|------|---------|
+| 1 | 分页符 | 否 |
+| 2 | 段落说明 | 否 |
+| 3 | 单选题 | 是 |
+| 4 | 多选题 | 是 |
+| 5 | 填空题 | 是 |
+| 6 | 多项填空 | 是 |
+| 7 | 矩阵题 | 是 |
+| 8 | 文件上传 | 是 |
+| 9 | 比重题 | 否 |
+| 10 | 滑块题 | 否 |
 
-## All Subtypes (q_subtype)
+## 所有子类型 (q_subtype)
 
-### Single Choice (q_type=3)
-| q_subtype | Name | DSL Label |
-|-----------|------|-----------|
-| 3 | Standard single choice | [单选题] (default, can omit) |
-| 301 | Dropdown | [下拉框] |
-| 302 | Scale/Likert | [量表题] |
-| 303 | Scoring single choice | [评分单选] |
-| 304 | Scenario | [情景题] |
-| 305 | True/False | [判断题] |
+### 单选题 (q_type=3)
+| q_subtype | 名称 | DSL 标签 |
+|-----------|------|----------|
+| 3 | 标准单选题 | [单选题]（默认，可省略） |
+| 301 | 下拉框 | [下拉框] |
+| 302 | 量表题 | [量表题] |
+| 303 | 评分单选 | [评分单选] |
+| 304 | 情景题 | [情景题] |
+| 305 | 判断题 | [判断题] |
 
-### Multiple Choice (q_type=4)
-| q_subtype | Name | DSL Label |
-|-----------|------|-----------|
-| 4 | Standard multiple choice | [多选题] |
-| 401 | Scoring multiple choice | [评分多选] |
-| 402 | Sort/Ranking | [排序题] |
-| 403 | Commodity/Product | [商品题] |
+### 多选题 (q_type=4)
+| q_subtype | 名称 | DSL 标签 |
+|-----------|------|----------|
+| 4 | 标准多选题 | [多选题] |
+| 401 | 评分多选 | [评分多选] |
+| 402 | 排序题 | [排序题] |
+| 403 | 商品题 | [商品题] |
 
-### Fill-in (q_type=5)
-| q_subtype | Name | DSL Label |
-|-----------|------|-----------|
-| 5 | Standard fill-in / Essay | [填空题] / [简答题] |
-| 501 | Multi-level dropdown | [多级下拉题] |
+### 填空题 (q_type=5)
+| q_subtype | 名称 | DSL 标签 |
+|-----------|------|----------|
+| 5 | 标准填空题/简答题 | [填空题] / [简答题] |
+| 501 | 多级下拉题 | [多级下拉题] |
 
-### Multi-fill (q_type=6)
-| q_subtype | Name | DSL Label | Note |
-|-----------|------|-----------|------|
-| 6 | Standard multi-fill | [多项填空题] | q_title must contain {_} |
-| 601 | Exam multi-fill | [考试多项填空] | q_title must contain {_} |
-| 602 | Exam cloze | [考试完形填空] | q_title must contain {_} |
+### 多项填空 (q_type=6)
+| q_subtype | 名称 | DSL 标签 | 备注 |
+|-----------|------|----------|------|
+| 6 | 标准多项填空 | [多项填空题] | q_title 中须包含 {_} |
+| 601 | 考试多项填空 | [考试多项填空] | q_title 中须包含 {_} |
+| 602 | 考试完形填空 | [考试完形填空] | q_title 中须包含 {_} |
 
-### Matrix (q_type=7)
-| q_subtype | Name | DSL Label |
-|-----------|------|-----------|
-| 7 | Generic matrix | [矩阵题] |
-| 701 | Matrix scale | [矩阵量表题] |
-| 702 | Matrix single choice | [矩阵单选题] |
-| 703 | Matrix multiple choice | [矩阵多选题] |
-| 704 | Matrix fill-in | [矩阵填空题] |
-| 705 | Matrix slider | - |
-| 706 | Matrix numeric | - |
-| 707 | Table fill-in | - |
-| 708 | Table dropdown | - |
-| 709 | Table combo | - |
-| 710 | Table auto-increment | - |
-| 711 | Multi-file | - |
-| 712 | Multi-essay | - |
+### 矩阵题 (q_type=7)
+| q_subtype | 名称 | DSL 标签 |
+|-----------|------|----------|
+| 7 | 通用矩阵 | [矩阵题] |
+| 701 | 矩阵量表题 | [矩阵量表题] |
+| 702 | 矩阵单选题 | [矩阵单选题] |
+| 703 | 矩阵多选题 | [矩阵多选题] |
+| 704 | 矩阵填空题 | [矩阵填空题] |
+| 705 | 矩阵滑块题 | - |
+| 706 | 矩阵数值题 | - |
+| 707 | 表格填空题 | - |
+| 708 | 表格下拉题 | - |
+| 709 | 表格组合题 | - |
+| 710 | 表格自增题 | - |
+| 711 | 多文件上传 | - |
+| 712 | 多简答题 | - |
 
-### File Upload (q_type=8)
-| q_subtype | Name | DSL Label |
-|-----------|------|-----------|
-| 8 | File upload | [文件上传] |
-| 801 | Drawing/Signature | [绘图题] |
+### 文件上传 (q_type=8)
+| q_subtype | 名称 | DSL 标签 |
+|-----------|------|----------|
+| 8 | 文件上传 | [文件上传] |
+| 801 | 绘图题/签名 | [绘图题] |
 
-## Exam Survey Notes
+## 考试问卷说明
 
-For exam surveys, set survey type (`--type 6` or `atype=6`). The SAME q_type/q_subtype codes are used -- the distinction is at the survey level:
+创建考试问卷时，需设置问卷类型为考试（`--type 6` 或 `atype=6`）。题型代码与普通问卷相同，区别在问卷级别：
 
-| Exam Question | Configuration |
-|--------------|---------------|
-| Exam single choice | atype=6, q_type=3, q_subtype=3 |
-| Exam multiple choice | atype=6, q_type=4, q_subtype=4 |
-| Exam fill-in | atype=6, q_type=5, q_subtype=5 |
-| Exam multi-fill | q_type=6, q_subtype=601 |
-| Exam cloze | q_type=6, q_subtype=602 |
+| 考试题型 | 配置 |
+|---------|------|
+| 考试单选题 | atype=6, q_type=3, q_subtype=3 |
+| 考试多选题 | atype=6, q_type=4, q_subtype=4 |
+| 考试填空题 | atype=6, q_type=5, q_subtype=5 |
+| 考试多项填空 | q_type=6, q_subtype=601 |
+| 考试完形填空 | q_type=6, q_subtype=602 |
 
-## Survey Types (atype)
+## 问卷类型 (atype)
 
-| atype | Name | API Creatable |
-|-------|------|--------------|
-| 1 | Survey (调查) | Yes |
-| 2 | Assessment (测评) | Yes |
-| 3 | Vote (投票) | Yes |
-| 4 | 360 Assessment | No |
-| 5 | 360 (no assessment) | No |
-| 6 | Exam (考试) | Yes |
-| 7 | Form (表单) | Yes |
-| 8 | User System | No |
-| 9 | Teaching Evaluation | No |
-| 10 | Scale (量表) | No |
-| 11 | Democratic Review | No |
+| atype | 名称 | 可通过 API 创建 |
+|-------|------|----------------|
+| 1 | 调查 | 是 |
+| 2 | 测评 | 是 |
+| 3 | 投票 | 是 |
+| 4 | 360 评估 | 否 |
+| 5 | 360（无评估） | 否 |
+| 6 | 考试 | 是 |
+| 7 | 表单 | 是 |
+| 8 | 用户体系 | 否 |
+| 9 | 教学评估 | 否 |
+| 10 | 量表 | 否 |
+| 11 | 民主测评 | 否 |

@@ -5,7 +5,7 @@
 [![license](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 [![node](https://img.shields.io/badge/node-%3E%3D20-green)](https://nodejs.org/)
 [![npm](https://img.shields.io/npm/v/wjx-cli)](https://www.npmjs.com/package/wjx-cli)
-[![tests](https://img.shields.io/badge/tests-122%20passing-brightgreen)](__tests__/cli.test.mjs)
+[![tests](https://img.shields.io/badge/tests-133%20passing-brightgreen)](__tests__/cli.test.mjs)
 
 wjx-cli 是 [`wjx-ai-kit`](../) monorepo 的命令行入口，将 [wjx-api-sdk](../wjx-api-sdk/) 的 50+ 函数直接暴露为终端命令。设计目标：**让 AI Agent 和人类开发者都能用一行命令操作问卷星 OpenAPI**。
 
@@ -48,7 +48,7 @@ wjx-cli 是 [`wjx-ai-kit`](../) monorepo 的命令行入口，将 [wjx-api-sdk](
 - **AI Agent 原生** — 默认 JSON stdout + 结构化 JSON stderr，退出码区分错误类型，适合程序解析
 - **stdin pipe** — `echo '{"vid":123}' | wjx --stdin survey get`，参数通过管道传入
 - **表格输出** — `--table` 切换为人类可读的 `console.table` 格式
-- **67 个子命令** — 覆盖问卷、答卷、通讯录、部门、管理员、标签、用户体系、子账号、SSO、数据分析
+- **69 个子命令** — 覆盖问卷、答卷、通讯录、部门、管理员、标签、用户体系、子账号、SSO、数据分析
 - **9 个本地命令** — SSO URL 生成和 analytics 计算无需 API Key，离线可用
 - **Shell 补全** — `wjx completion bash/zsh/fish` 生成自动补全脚本
 - **Dry-run 预览** — `--dry-run` 预览 API 请求（URL/Headers/Body）不实��发送
@@ -150,7 +150,7 @@ wjx-ai-kit/                     # monorepo root
     │       ├── stdin.ts            # stdin JSON 读取 + source-aware merge
     │       └── completions.ts      # Shell 补全候选项生成
     └── __tests__/
-        └── cli.test.mjs         # ~122 个端到端测试
+        └── cli.test.mjs         # ~133 个端到端测试
 ```
 
 **数据流：** `CLI args / stdin` → `Commander parse` → `executeCommand()` → `wjx-api-sdk function` → `stdout JSON / stderr error`
@@ -790,7 +790,7 @@ echo '{"title":"调查","type":0,"questions":"[]"}' | wjx --stdin survey create
 cd wjx-ai-kit/wjx-cli
 
 npm run build    # TypeScript 编译 → dist/
-npm test         # 构建 + 运行 ~122 个测试
+npm test         # 构建 + 运行 ~133 个测试
 npm run clean    # 清理 dist/
 
 # 手动测试

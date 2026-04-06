@@ -5,8 +5,8 @@
 wjx-cli 是 `wjx-ai-kit` monorepo 的第三个包，与 `wjx-api-sdk`、`wjx-mcp-server` 并列。
 monorepo 根目录：`wjx-ai-kit/`，使用 npm workspaces。
 
-SDK 已完成（v0.1.5, ~623 tests），MCP Server 已完成（v0.1.4, ~282 tests）。
-CLI 已完成 v0.1.10（~122 tests）。
+SDK 已完成（v0.1.5, ~623 tests），MCP Server 已完成（v0.1.4, ~280 tests）。
+CLI 已完成 v0.1.10（~133 tests）。
 
 ## 关键文件
 
@@ -43,7 +43,7 @@ const result = await listSurveys({ page_index: 1 }, creds);
 
 ## 测试环境
 
-- `WJX_BASE_URL=https://tanhao.sojump.cn`
+- `WJX_BASE_URL` 可设为自定义域名（默认 `https://www.wjx.cn`）
 - `WJX_API_KEY` 在 `.env` 文件中（检查 `wjx-ai-kit/wjx-mcp-server/.env` 或 `wjx-ai-kit/.env`）
 - 真实 API 调用验证：`wjx survey list` 应返回问卷列表
 
