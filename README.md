@@ -49,6 +49,8 @@ wjx-ai-kit/
 | **Trae** | [setup-trae.md](wjx-docs/setup-trae.md) |
 | **Gemini** | [setup-gemini.md](wjx-docs/setup-gemini.md) |
 | **Qoder** | [setup-qoder.md](wjx-docs/setup-qoder.md) |
+| **OpenClaw** | [setup-openclaw.md](wjx-docs/setup-openclaw.md) |
+| **国产 Claw 系列** | [setup-claw.md](wjx-docs/setup-claw.md) |
 
 ---
 

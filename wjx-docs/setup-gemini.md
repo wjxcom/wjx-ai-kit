@@ -57,13 +57,69 @@
 
 ---
 
-## 第二步：增强 Agent 能力
+## 第二步：部署 Agent + Skill（推荐）
 
-Gemini Code Assist 目前不支持原生 Agent 部署，但你可以将 wjx-ai-kit 的 Skill 参考文档作为对话上下文的参考素材，帮助 Gemini 更好地理解问卷星的 DSL 语法、题型编码和分析方法。
+wjx-ai-kit 提供 2 个专家 Agent 和配套 Skill 参考文档，让 AI 理解问卷领域的专业知识。
+
+### 一键安装
+
+```bash
+npx wjx-cli skill install
+```
+
+这条命令会自动完成：
+- 创建 `.claude/agents/` 目录，部署 2 个专家 Agent（wjx-mcp-expert、wjx-cli-expert）
+- 复制 `wjx-skills/` 参考文档目录（DSL 语法、题型编码、分析方法等）
+
+安装后的目录结构：
+
+```
+your-project/
+├── .claude/agents/
+│   ├── wjx-mcp-expert.md    # MCP 工具专家
+│   └── wjx-cli-expert.md    # CLI 命令专家
+└── wjx-skills/
+    ├── wjx-mcp-use/          # MCP 使用技巧
+    │   ├── SKILL.md
+    │   └── references/
+    └── wjx-cli-use/          # CLI 使用技巧
+        ├── SKILL.md
+        └── references/
+```
+
+Skill 参考文档可以作为对话上下文的参考素材，帮助 Gemini 更好地理解问卷星的 DSL 语法、题型编码和分析方法。
 
 ---
 
-## 第三步：验证
+## 第三步：安装 CLI（可选）
+
+wjx-cli 提供 69 个子命令，适合批量操作和自动化脚本：
+
+```bash
+# 安装
+npm install -g wjx-cli
+
+# 配置 API Key
+wjx init
+
+# 环境检查
+wjx doctor
+
+# 试试看
+wjx survey list
+```
+
+CLI 输出结构化 JSON，可与 AI 工具配合使用。例如：
+
+```bash
+# 查询答卷并分析 NPS
+wjx response query --vid 12345 --page_size 100
+wjx analytics nps --scores 9,10,7,3,8
+```
+
+---
+
+## 第四步：验证
 
 在 Gemini Code Assist 的对话中输入：
 

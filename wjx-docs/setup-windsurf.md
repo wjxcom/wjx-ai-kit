@@ -73,30 +73,91 @@
 
 ---
 
-## 第二步：增强 Agent 能力
+## 第二步：部署 Agent + Skill（推荐）
 
-Windsurf 使用 Cascade AI 作为核心交互引擎。你可以通过 Windsurf Rules 文件注入问卷领域知识，提升 Cascade 操作问卷星的准确度。
+wjx-ai-kit 提供 2 个专家 Agent 和配套 Skill 参考文档，让 AI 理解问卷领域的专业知识。
 
-在项目中创建 Windsurf Rules 文件，将 wjx-ai-kit 的 Skill 参考文档中的关键内容（如 DSL 语法、题型编码、分析方法）加入其中：
+### 一键安装
+
+```bash
+npx wjx-cli skill install
+```
+
+这条命令会自动完成：
+- 创建 `.claude/agents/` 目录，部署 2 个专家 Agent（wjx-mcp-expert、wjx-cli-expert）
+- 复制 `wjx-skills/` 参考文档目录（DSL 语法、题型编码、分析方法等）
+
+安装后的目录结构：
 
 ```
-# 问卷星操作指南
+your-project/
+├── .claude/agents/
+│   ├── wjx-mcp-expert.md    # MCP 工具专家
+│   └── wjx-cli-expert.md    # CLI 命令专家
+└── wjx-skills/
+    ├── wjx-mcp-use/          # MCP 使用技巧
+    │   ├── SKILL.md
+    │   └── references/
+    └── wjx-cli-use/          # CLI 使用技巧
+        ├── SKILL.md
+        └── references/
+```
 
-## 创建问卷
-使用 create_survey_by_text 工具时，遵循问卷星 DSL 语法：
-- 第一行为问卷标题
-- 每题以序号开头
-- 支持题型：单选、多选、填空、量表、NPS、矩阵等
+### Windsurf Rules 增强
 
-## 数据分析
-- 使用 calculate_nps 计算净推荐值
-- 使用 cross_tabulate 进行交叉分析
-- 使用 query_responses 获取原始答卷数据
+Windsurf 使用 Cascade AI 作为核心引擎，支持 Rules 文件注入项目级上下文。你可以将 Skill 中的关键内容写入 Windsurf Rules 文件：
+
+在项目中创建 `.windsurf/rules.md`：
+
+```
+# 问卷星集成
+
+本项目使用 wjx-ai-kit 管理问卷调研。
+
+## MCP 工具使用规范
+- 创建问卷：优先使用 create_survey_by_text（DSL 文本模式）
+- 数据分析：先用 query_responses 获取数据，再用 calculate_nps / calculate_csat 分析
+- 通讯录操作：使用 add_contacts 批量导入，query_contacts 查询验证
+
+## DSL 语法要点
+- 第一行为问卷标题，=== 分隔描述
+- 题型标签：[单选题] [多选题] [填空题] [量表题] [矩阵量表题] [下拉框]
+- 量表范围：1~5 或 0~10
+```
+
+Cascade 会在每次对话中自动加载这些规则。
+
+---
+
+## 第三步：安装 CLI（可选）
+
+wjx-cli 提供 69 个子命令，适合批量操作和自动化脚本：
+
+```bash
+# 安装
+npm install -g wjx-cli
+
+# 配置 API Key
+wjx init
+
+# 环境检查
+wjx doctor
+
+# 试试看
+wjx survey list
+```
+
+CLI 输出结构化 JSON，可与 AI 工具配合使用。例如：
+
+```bash
+# 查询答卷并分析 NPS
+wjx response query --vid 12345 --page_size 100
+wjx analytics nps --scores 9,10,7,3,8
 ```
 
 ---
 
-## 第三步：验证
+## 第四步：验证
 
 在 Windsurf 的 Cascade 对话中输入：
 

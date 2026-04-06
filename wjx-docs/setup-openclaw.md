@@ -1,38 +1,44 @@
-# 在 Trae 中使用问卷星
+# 在 OpenClaw 中使用问卷星
 
-> 在 Trae 中用自然语言创建问卷、分析数据、管理通讯录
+> 在 OpenClaw 中用自然语言创建问卷、分析数据、管理通讯录
+
+---
+
+## 什么是 OpenClaw
+
+[OpenClaw](https://openclaw.com) 是开源的 AI 编程助手，支持 VS Code 插件和独立应用两种形态。OpenClaw 支持 MCP 协议和 Skills 系统，可以灵活扩展 AI 能力。
 
 ---
 
 ## 准备工作
 
-1. **安装 Trae** — 前往 [trae.ai](https://trae.ai) 下载并安装（字节跳动出品的 AI IDE，基于 VS Code）
-2. **Node.js >= 20** — 运行 `node --version` 确认版本，低于 20 请前往 [nodejs.org](https://nodejs.org) 升级
+1. **安装 OpenClaw** — 前往 [openclaw.com](https://openclaw.com) 下载，或在 VS Code 扩展市场搜索 "OpenClaw" 安装
+2. **Node.js >= 22** — 运行 `node --version` 确认版本（OpenClaw 要求 Node.js 22 或更高）
 3. **获取问卷星 API Key** — 登录 [问卷星](https://www.wjx.cn)，进入「账号设置」→「API 设置」，创建或复制你的 API Key
 
 ---
 
 ## 第一步：接入 MCP Server
 
-### 通过设置界面配置
-
-1. 打开 Trae Settings
-2. 进入 **AI Features** → **MCP**
-3. 添加新的 MCP Server，填入以下配置：
+编辑 OpenClaw 配置文件 `~/.openclaw/openclaw.json`，在 `acp.mcpServers` 中添加问卷星：
 
 ```json
 {
-  "mcpServers": {
-    "wjx": {
-      "command": "npx",
-      "args": ["wjx-mcp-server"],
-      "env": {
-        "WJX_API_KEY": "替换为你的 API Key"
+  "acp": {
+    "mcpServers": {
+      "wjx": {
+        "command": "npx",
+        "args": ["wjx-mcp-server"],
+        "env": {
+          "WJX_API_KEY": "替换为你的 API Key"
+        }
       }
     }
   }
 }
 ```
+
+> **注意**：OpenClaw 的 MCP 配置路径是 `acp.mcpServers`，与其他工具的 `mcpServers` 不同。
 
 ### 企业用户
 
@@ -44,11 +50,13 @@
 
 ```json
 {
-  "mcpServers": {
-    "wjx": {
-      "url": "http://your-server:3000/mcp",
-      "headers": {
-        "Authorization": "Bearer your-token"
+  "acp": {
+    "mcpServers": {
+      "wjx": {
+        "url": "http://your-server:3000/mcp",
+        "headers": {
+          "Authorization": "Bearer your-token"
+        }
       }
     }
   }
@@ -87,25 +95,21 @@ your-project/
         └── references/
 ```
 
-### Trae Rules 增强
+### OpenClaw Skills 增强
 
-Trae 支持 Rules 文件注入项目级上下文。将 Skill 中的关键内容写入 Trae Rules：
+OpenClaw 支持 Skills 系统，你可以在配置中启用 npm 作为包管理器来自动安装依赖：
 
+```json
+{
+  "skills": {
+    "install": {
+      "nodeManager": "npm"
+    }
+  }
+}
 ```
-# 问卷星集成
 
-本项目使用 wjx-ai-kit 管理问卷调研。
-
-## MCP 工具使用规范
-- 创建问卷：优先使用 create_survey_by_text（DSL 文本模式）
-- 数据分析：先用 query_responses 获取数据，再用 calculate_nps / calculate_csat 分析
-- 通讯录操作：使用 add_contacts 批量导入，query_contacts 查询验证
-
-## DSL 语法要点
-- 第一行为问卷标题，=== 分隔描述
-- 题型标签：[单选题] [多选题] [填空题] [量表题] [矩阵量表题] [下拉框]
-- 量表范围：1~5 或 0~10
-```
+同时，将 `wjx-skills/` 中的参考文档作为项目上下文，OpenClaw 会自动读取并用于增强 AI 的问卷操作能力。
 
 ---
 
@@ -139,11 +143,11 @@ wjx analytics nps --scores 9,10,7,3,8
 
 ## 第四步：验证
 
-在 Trae 的 AI 对话中输入：
+在 OpenClaw 的对话中输入：
 
 > 帮我创建一份客户满意度调查问卷
 
-如果一切正常，Trae 会调用问卷星工具，自动创建问卷并返回编辑链接。
+如果一切正常，OpenClaw 会调用问卷星 MCP 工具，自动创建问卷并返回编辑链接。
 
 ---
 
@@ -161,25 +165,26 @@ wjx analytics nps --scores 9,10,7,3,8
 >
 > AI 自动：query_responses 获取数据 → calculate_nps 计算 → 给出推荐人/中立/贬损分布
 
-### 场景 3: 批量管理
+### 场景 3: 代码中集成问卷
 
-> 你：把这份 Excel 名单导入通讯录的"市场部"分组
+> 你：帮我在这个 Express 项目中添加一个问卷回调接口，接收问卷星的 Webhook 推送
 >
-> AI 自动：读取文件 → add_contacts 批量导入 → query_contacts 验证
+> AI 自动：读取 push 解密参考 → 生成 Webhook 处理代码 → 集成到项目中
 
 ---
 
 ## 常见问题
 
-### Trae 中看不到 MCP 工具？
+### OpenClaw 中看不到问卷星工具？
 
-1. 确认已在 AI Features → MCP 中正确配置
-2. 确认 JSON 格式正确（没有尾逗号）
-3. 重启 Trae
+1. 确认配置文件路径是 `~/.openclaw/openclaw.json`
+2. 确认 MCP 配置在 `acp.mcpServers` 下（不是 `mcpServers`）
+3. 确认 Node.js 版本 >= 22
+4. 重启 OpenClaw
 
-### Trae 和 VS Code 的 MCP 配置一样吗？
+### OpenClaw 和其他 Claw 工具有什么区别？
 
-Trae 基于 VS Code，MCP 配置格式基本一致，但配置入口在 Trae 自己的设置界面中。具体路径请参考 Trae 官方文档。
+OpenClaw 是开源的，支持更灵活的扩展。其他 Claw 工具（如 KimiClaw、QClaw）各有特色，配置方式类似但可能有细微差异。
 
 ---
 

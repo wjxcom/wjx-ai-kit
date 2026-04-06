@@ -1,39 +1,59 @@
-# 在 Cline 中使用问卷星
+# 在国产 Claw 工具中使用问卷星
 
-> 在 VS Code 中通过 Cline 插件用自然语言创建问卷、分析数据、管理通讯录
+> Claw 家族 AI 编程工具的问卷星配置总览
+
+---
+
+## Claw 生态概览
+
+Claw 是国内 AI 编程工具的一个生态体系，多家厂商推出了各自的 Claw 工具，均支持 MCP 协议接入外部能力。
+
+| 工具 | 厂商 | 特点 | 配置指南 |
+|------|------|------|---------|
+| **OpenClaw** | 开源社区 | 开源、Skills 系统、VS Code 插件 + 独立应用 | [配置指南](./setup-openclaw.md) |
+| **KimiClaw** | 月之暗面 (Moonshot AI) | Kimi 大模型驱动，中文理解强 | 见下方通用配置 |
+| **QClaw** | 腾讯 | 微信生态直联，企业场景优化 | 见下方通用配置 |
+| **LinClaw** | 七牛云 | MIT 开源，支持 9 种 IDE 渠道，MCP 兼容 | 见下方通用配置 |
+| **ArkClaw** | 字节跳动 | 基于豆包大模型（预发布） | 见下方通用配置 |
+| **DuClaw** | 百度 | 基于文心大模型（预发布） | 见下方通用配置 |
 
 ---
 
 ## 准备工作
 
-1. **安装 Cline** — 在 VS Code 扩展市场搜索 "Cline" 并安装
-2. **Node.js >= 20** — 运行 `node --version` 确认版本，低于 20 请前往 [nodejs.org](https://nodejs.org) 升级
+1. **安装你选择的 Claw 工具**
+2. **Node.js >= 20**（OpenClaw 需要 >= 22）— 运行 `node --version` 确认版本
 3. **获取问卷星 API Key** — 登录 [问卷星](https://www.wjx.cn)，进入「账号设置」→「API 设置」，创建或复制你的 API Key
 
 ---
 
 ## 第一步：接入 MCP Server
 
-### 方式一：通过 UI 配置（推荐）
+### OpenClaw
 
-1. 打开 VS Code 侧边栏中的 **Cline** 面板
-2. 点击顶部 **Settings** 齿轮图标
-3. 找到 **MCP Servers** 部分
-4. 点击 **Add MCP Server**
-5. 填入以下信息：
-   - 名称：`wjx`
-   - 命令：`npx`
-   - 参数：`wjx-mcp-server`
-   - 环境变量：`WJX_API_KEY` = `你的 API Key`
+配置文件：`~/.openclaw/openclaw.json`
 
-### 方式二：直接编辑配置文件
+```json
+{
+  "acp": {
+    "mcpServers": {
+      "wjx": {
+        "command": "npx",
+        "args": ["wjx-mcp-server"],
+        "env": {
+          "WJX_API_KEY": "替换为你的 API Key"
+        }
+      }
+    }
+  }
+}
+```
 
-Cline 的 MCP 配置文件位于 VS Code 的 globalStorage 目录中：
+> **注意**：OpenClaw 使用 `acp.mcpServers` 路径，与标准的 `mcpServers` 不同。详见 [OpenClaw 配置指南](./setup-openclaw.md)。
 
-- **文件名**: `cline_mcp_settings.json`
-- **路径**: VS Code globalStorage 中 Cline 扩展的目录下
+### KimiClaw / QClaw / LinClaw / ArkClaw / DuClaw
 
-配置内容：
+大多数 Claw 工具采用标准 MCP 配置格式。在工具的 MCP 设置中添加：
 
 ```json
 {
@@ -48,6 +68,8 @@ Cline 的 MCP 配置文件位于 VS Code 的 globalStorage 目录中：
   }
 }
 ```
+
+> 各工具的 MCP 配置入口可能不同（设置面板、配置文件、命令行等），请参阅对应工具的官方文档。
 
 ### 企业用户
 
@@ -102,27 +124,7 @@ your-project/
         └── references/
 ```
 
-### Custom Instructions 增强
-
-Cline 支持 Custom Instructions 功能。在 Cline Settings 的 Custom Instructions 区域添加 Skill 中的关键内容：
-
-```
-# 问卷星集成
-
-本项目使用 wjx-ai-kit 管理问卷调研。
-
-## MCP 工具使用规范
-- 创建问卷：优先使用 create_survey_by_text（DSL 文本模式）
-- 数据分析：先用 query_responses 获取数据，再用 calculate_nps / calculate_csat 分析
-- 通讯录操作：使用 add_contacts 批量导入，query_contacts 查询验证
-
-## DSL 语法要点
-- 第一行为问卷标题，=== 分隔描述
-- 题型标签：[单选题] [多选题] [填空题] [量表题] [矩阵量表题] [下拉框]
-- 量表范围：1~5 或 0~10
-```
-
-你也可以将 `wjx-skills/` 目录中更详细的参数参考文档内容加入 Custom Instructions。
+各 Claw 工具如果支持 Rules 或指令文件，可以将 `wjx-skills/` 中的关键内容写入，提升 AI 操作问卷星的准确度。
 
 ---
 
@@ -156,11 +158,11 @@ wjx analytics nps --scores 9,10,7,3,8
 
 ## 第四步：验证
 
-在 Cline 对话框中输入：
+在你的 Claw 工具中输入：
 
 > 帮我创建一份客户满意度调查问卷
 
-如果一切正常，Cline 会调用问卷星工具，自动创建问卷并返回编辑链接。
+如果一切正常，AI 会调用问卷星 MCP 工具，自动创建问卷并返回编辑链接。
 
 ---
 
@@ -188,23 +190,26 @@ wjx analytics nps --scores 9,10,7,3,8
 
 ## 常见问题
 
-### 添加 MCP Server 后工具没有出现？
+### 我用的 Claw 工具不在列表中？
 
-1. 确认 Cline 已更新到最新版本（支持 MCP 的版本）
-2. 在 Cline Settings → MCP Servers 中检查连接状态
-3. 点击服务器旁边的刷新按钮重新连接
+只要你的 Claw 工具支持 MCP 协议，就可以参照上方的标准配置接入问卷星。如遇到问题，请在 [GitHub Issues](https://github.com/wjxcom/wjx-ai-kit/issues) 反馈。
 
-### Cline 支持哪些模型？
+### Claw 工具的 MCP 配置文件在哪？
 
-Cline 支持 Claude、GPT、Gemini 等多种模型。使用 Claude 系列模型与 MCP 工具的兼容性最佳。
+各工具不同，常见位置：
+- **OpenClaw**: `~/.openclaw/openclaw.json`（使用 `acp.mcpServers` 路径）
+- **KimiClaw**: 通常在设置面板的 MCP/工具 配置中
+- **LinClaw**: 参考 [LinClaw GitHub](https://github.com/aspect-build/linclaw) 文档
+- 其他工具请查阅对应官方文档
 
-### 工具调用时需要手动确认吗？
+### 需要特定版本的 Node.js？
 
-Cline 默认会在每次工具调用前请求用户确认。你可以在设置中调整自动批准策略，对信任的工具开启自动执行。
+大多数 Claw 工具需要 Node.js >= 20，OpenClaw 需要 >= 22。运行 `node --version` 检查。
 
 ---
 
 ## 下一步
 
+- [OpenClaw 详细配置指南](./setup-openclaw.md) — OpenClaw 专属配置和 Skills 系统
 - [MCP Server 入门指南](./mcp-getting-started.md) — 了解 56 个工具的完整能力
 - [wjx-ai-kit 总览](./00-overview.md) — 了解 SDK、MCP、CLI 三合一架构
