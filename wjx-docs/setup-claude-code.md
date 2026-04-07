@@ -100,7 +100,16 @@ npx wjx-cli skill install
 - 复制两个专家 Agent 配置文件
 - 复制 Skill 参考文档目录
 
-### 方式二：手动部署
+### 方式二：从 Skill 市场安装
+
+wjx-ai-kit 的 Skill 已上架 [Vercel Agent Skills](https://skills.sh/wjxcom/wjx-ai-kit) 和 [ClawHub](https://clawhub.ai/skills?q=wjx) 市场：
+
+```bash
+# 通过 Vercel Agent Skills 安装
+npx skills add wjxcom/wjx-ai-kit
+```
+
+### 方式三：手动部署
 
 ```bash
 # 创建 Agent 目录

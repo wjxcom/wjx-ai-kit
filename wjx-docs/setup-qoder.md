@@ -71,6 +71,8 @@ wjx-ai-kit 提供 2 个专家 Agent 和配套 Skill 参考文档，让 AI 理解
 npx wjx-cli skill install
 ```
 
+> 也可从 [Vercel Agent Skills](https://skills.sh/wjxcom/wjx-ai-kit) 安装：`npx skills add wjxcom/wjx-ai-kit`，或在 [ClawHub](https://clawhub.ai/skills?q=wjx) 市场搜索 "wjx" 安装。
+
 这条命令会自动完成：
 - 创建 `.claude/agents/` 目录，部署 2 个专家 Agent（wjx-mcp-expert、wjx-cli-expert）
 - 复制 `wjx-skills/` 参考文档目录（DSL 语法、题型编码、分析方法等）
