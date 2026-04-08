@@ -51,7 +51,7 @@ wjx-cli 是 [`wjx-ai-kit`](../) monorepo 的命令行入口，将 [wjx-api-sdk](
 - **69 个子命令** — 覆盖问卷、答卷、通讯录、部门、管理员、标签、用户体系、子账号、SSO、数据分析
 - **9 个本地命令** — SSO URL 生成和 analytics 计算无需 API Key，离线可用
 - **Shell 补全** — `wjx completion bash/zsh/fish` 生成自动补全脚本
-- **Dry-run 预览** — `--dry-run` 预览 API 请求（URL/Headers/Body）不实��发送
+- **Dry-run 预览** — `--dry-run` 预览 API 请求（URL/Headers/Body）不实际发送
 - **基于 wjx-api-sdk** — 直接调用 SDK 函数，类型安全，行为与 API 一致
 
 ---
@@ -72,7 +72,17 @@ wjx survey list           # 查看问卷列表
 ## 前置条件
 
 - **Node.js >= 20**（[安装指引](docs/install-nodejs.md)）
-- **问卷星 OpenAPI API Key**（[申请方式](https://www.wjx.cn/openapi/)）
+- **问卷星 OpenAPI API Key**（见下方获取方式）
+
+---
+
+## 获取 API Key
+
+1. 用微信扫码登录：[点击打开登录页](https://www.wjx.cn/weixinlogin.aspx?redirecturl=%2Fnewwjx%2Fmanage%2Fuserinfo.aspx%3FshowApiKey%3D1)
+2. 扫码后自动跳转到 API Key 页面，复制页面上显示的 Key
+3. 运行 `wjx init`，粘贴 Key 完成配置
+
+> **AI Agent 场景**：用户获取 Key 后，Agent 可直接执行 `wjx init --api-key <key>` 跳过交互。
 
 ---
 

@@ -128,6 +128,20 @@ your-project/
 
 各 Claw 工具如果支持 Rules 或指令文件，可以将 `wjx-skills/` 中的关键内容写入，提升 AI 操作问卷星的准确度。
 
+### Skill zip 手动安装
+
+如果无法使用 npm，可下载 Skill 包手动安装：
+
+1. 下载 [wjx-cli-use-skill-latest.zip](https://pubdz.paperol.cn/wjx-ai-kit/skills/wjx-cli-use-skill-latest.zip)
+2. 解压到 AI 工具的技能目录（或当前项目目录下）
+3. 安装 CLI 并配置 API Key：
+   ```bash
+   npm install -g wjx-cli
+   wjx init
+   ```
+
+详见 [Skill 包入门指南](./skill-getting-started.md)。
+
 ---
 
 ## 第三步：安装 CLI（可选）

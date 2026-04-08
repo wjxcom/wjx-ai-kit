@@ -38,16 +38,20 @@ Skill 是一种让 AI 助手获得特定能力的方式。问卷星 Skill 包含
 
 ### 第一步：下载
 
-从 [GitHub Releases](https://github.com/wjxcom/wjx-ai-kit/releases) 下载最新的 `wjx-cli-use-skill-*.zip`，解压到本地。
-
-或者用命令行：
+下载最新 Skill 包并解压：
 
 ```bash
-# 如果已安装 wjx-cli
-wjx skill install
+# 下载最新版
+curl -L -o wjx-cli-use-skill-latest.zip https://pubdz.paperol.cn/wjx-ai-kit/skills/wjx-cli-use-skill-latest.zip
+unzip wjx-cli-use-skill-latest.zip
+```
 
-# 或手动下载解压
-unzip wjx-cli-use-skill-1.0.0.zip
+也可以直接在浏览器打开 [下载链接](https://pubdz.paperol.cn/wjx-ai-kit/skills/wjx-cli-use-skill-latest.zip) 下载。
+
+如果已安装 wjx-cli，也可用命令安装：
+
+```bash
+wjx skill install
 ```
 
 ### 第二步：安装

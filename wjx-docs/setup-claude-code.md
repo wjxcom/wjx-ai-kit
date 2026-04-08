@@ -123,6 +123,20 @@ cp wjx-agents/wjx-cli-expert/wjx-cli-expert.md .claude/agents/
 cp -r wjx-skills .
 ```
 
+### 方式四：Skill zip 手动安装
+
+如果无法使用 npm，可下载 Skill 包手动安装：
+
+1. 下载 [wjx-cli-use-skill-latest.zip](https://pubdz.paperol.cn/wjx-ai-kit/skills/wjx-cli-use-skill-latest.zip)
+2. 解压到项目目录下的 `wjx-skills/` 中
+3. 安装 CLI 并配置 API Key：
+   ```bash
+   npm install -g wjx-cli
+   wjx init
+   ```
+
+详见 [Skill 包入门指南](./skill-getting-started.md)。
+
 ### Agent 安装后的目录结构
 
 ```
