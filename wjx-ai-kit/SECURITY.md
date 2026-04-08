@@ -6,9 +6,10 @@
 
 请通过以下方式联系我们：
 
-- 在 [Codeup](https://codeup.aliyun.com/6445da2d020eabef3107e22e/wjxfc/wjxagents) 上创建私密 Issue
+- **推荐**：通过 [GitHub Security Advisories](https://github.com/wjxcom/wjx-ai-kit/security/advisories/new) 提交私密报告
+- **邮件**：发送至 wjx-ai-kit-security@wjx.cn
 
-我们会在收到报告后尽快确认并处理。
+我们会在收到报告后 72 小时内确认并开始处理。
 
 ## Security Best Practices
 

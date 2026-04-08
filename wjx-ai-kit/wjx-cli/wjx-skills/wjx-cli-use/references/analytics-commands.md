@@ -1,4 +1,4 @@
-# 分析命令参考
+# Analytics Commands Reference
 
 > 所有分析命令**本地运行**，无需 API Key 或网络连接。
 > 所有命令支持 `--stdin` 传入 JSON 参数。

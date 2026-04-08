@@ -1,6 +1,6 @@
 {
   "name": "wjx-api-sdk",
-  "version": "0.1.5",
+  "version": "0.1.6",
   "description": "问卷星 (Wenjuanxing) OpenAPI SDK — 零 MCP 依赖的 API 客户端",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -28,8 +28,8 @@
   "type": "module",
   "repository": {
     "type": "git",
-    "url": "https://codeup.aliyun.com/6445da2d020eabef3107e22e/wjxfc/wjxagents.git",
-    "directory": "wjx-ai-kit/wjx-api-sdk"
+    "url": "https://github.com/wjxcom/wjx-ai-kit.git",
+    "directory": "wjx-api-sdk"
   },
   "devDependencies": {
     "@types/node": "^22",
