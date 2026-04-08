@@ -3,6 +3,16 @@
 > 通讯录相关操作需要 `WJX_CORP_ID`（通过 `wjx init` 配置或环境变量）。
 > 所有通讯录命令支持 `--corpid <s>` 覆盖默认值。
 
+## 目录
+
+- [Contacts 模块](#contacts-模块) — query, add, delete
+- [Department 模块](#department-模块) — list, add, modify, delete
+- [Admin 模块](#admin-模块) — add, delete, restore
+- [Tag 模块](#tag-模块) — list, add, modify, delete
+- [Account 模块（子账号）](#account-模块子账号) — list, add, modify, delete, restore
+- [SSO 模块](#sso-模块) — subaccount-url, user-system-url, partner-url
+- [User-System 模块（已过时）](#user-system-模块已过时) — add/modify/delete-participants, bind, query
+
 ## Contacts 模块
 
 ### wjx contacts query

@@ -1,35 +1,25 @@
 ---
 name: wjx-cli-use
-description: Guide for using wjx-cli (Wenjuanxing CLI) to create surveys, query responses, and analyze data. Use when the user wants to interact with the Wenjuanxing (问卷星) platform via CLI commands, including creating surveys with specific question types, querying response data, managing contacts, or performing analytics. Covers all 69 subcommands across 15 modules.
-homepage: https://www.wjx.cn
-version: 1.0.0
+description: "Guide for using wjx-cli (Wenjuanxing CLI) to create surveys, query responses, and analyze data. Use when the user mentions: 问卷, 调查, 收集, 表单, 投票, 考试, 测评, 满意度, NPS, 问卷星, wjx, survey, questionnaire — or wants to create surveys, view responses, export data, analyze NPS/CSAT, manage contacts/departments/sub-accounts. Covers all 69 subcommands across 15 modules."
 ---
 
 # wjx-cli 使用指南
 
 wjx-cli 是问卷星 OpenAPI 的命令行工具。所有命令格式：`wjx <模块> <操作> [选项]`。
 
-## 触发场景
+## 快速路由
 
-以下情况应直接使用本 Skill：
-
-- 用户提到「问卷」「调查」「收集」「表单」「投票」「考试」「测评」「满意度」「NPS」「问卷星」「wjx」等关键词
-- 用户说「帮我做个调查」「创建问卷」「查看答卷」「分析数据」「导出数据」等
-- 用户需要管理通讯录、部门、子账号、SSO 等企业功能
-
-### 模糊场景
-
-| 用户表述 | 处理方式 |
-|---------|---------|
-| 「帮我做个调查/问卷」 | `wjx survey create-by-text --text "..."` |
-| 「做个考试/测验」 | `wjx survey create-by-text --text "..." --type 6` |
-| 「做个投票」 | `wjx survey create-by-text --text "..." --type 3` |
-| 「做个表单/报名表」 | `wjx survey create-by-text --text "..." --type 7` |
-| 「看看问卷结果」 | 先 `wjx survey list` 找 vid，再 `wjx response report --vid <vid>` |
-| 「导出答卷数据」 | `wjx response download --vid <vid>` |
-| 「分析 NPS 得分」 | `wjx analytics nps --scores "[9,10,7,3]"` |
-| 「导入联系人」 | `wjx contacts add --users '[...]'`（需 `WJX_CORP_ID`） |
-| 「查看问卷链接」 | `wjx survey url --vid <vid>` |
+| 用户意图 | 命令 |
+|---------|------|
+| 做调查/问卷 | `wjx survey create-by-text --text "..."` |
+| 做考试/测验 | `wjx survey create-by-text --text "..." --type 6` |
+| 做投票 | `wjx survey create-by-text --text "..." --type 3` |
+| 做表单/报名表 | `wjx survey create-by-text --text "..." --type 7` |
+| 看问卷结果 | 先 `wjx survey list` 找 vid，再 `wjx response report --vid <vid>` |
+| 导出答卷数据 | `wjx response download --vid <vid>` |
+| 分析 NPS | `wjx analytics nps --scores "[9,10,7,3]"` |
+| 导入联系人 | `wjx contacts add --users '[...]'`（需 `WJX_CORP_ID`） |
+| 查看问卷链接 | `wjx survey url --vid <vid>` |
 
 ## 安装与配置
 
@@ -179,28 +169,6 @@ wjx survey create-by-text --file examples/exam_survey.txt --type 6
 | `WJX_BASE_URL` | 否 | 自定义 API 基础域名（默认 `https://www.wjx.cn`） |
 
 凭据优先级：`--api-key` 参数 > 环境变量 > `~/.wjxrc` 配置文件。
-
-## 目录结构
-
-```
-wjx-cli-use/
-├── SKILL.md                              # 本文档（AI 读取入口）
-├── README.md                             # 场景化宣传文档
-├── package.json                          # 元数据
-├── setup.sh                              # 环境检测与安装脚本
-├── pack_skill.sh                         # 打包分发 zip
-├── examples/                             # DSL 示例文件
-│   ├── nps_survey.txt                    # NPS 调查示例
-│   ├── satisfaction_survey.txt           # 满意度调查示例
-│   └── exam_survey.txt                   # 考试问卷示例
-└── references/                           # 详细参考文档（按需读取）
-    ├── dsl-syntax.md                     # DSL 语法，28 种题型标签
-    ├── survey-commands.md                # survey 模块全部子命令
-    ├── response-commands.md              # 答卷查询、筛选、下载
-    ├── contacts-commands.md              # 通讯录、部门、管理员、标签、子账号、SSO
-    ├── analytics-commands.md             # NPS/CSAT/异常检测/数据解码
-    └── question-types.md                 # 题型编码映射表
-```
 
 ## 参考文件（按需读取）
 
