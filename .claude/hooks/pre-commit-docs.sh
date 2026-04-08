@@ -14,7 +14,7 @@ fi
 echo "[hook] wjx-docs 有 md 文件变更，重建 wjx-kit.html ..." >&2
 
 # 运行构建
-if node scripts/build-docs-html.js >&2; then
+if node .claude/scripts/build-docs-html.js >&2; then
   git add wjx-docs/wjx-kit.html
   echo "[hook] wjx-kit.html 已重建并暂存" >&2
 else

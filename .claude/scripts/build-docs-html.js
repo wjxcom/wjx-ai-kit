@@ -2,14 +2,14 @@
 /**
  * build-docs-html.js — 将 wjx-docs/ 下所有 .md 文件内嵌到单个 wjx-kit.html
  *
- * 用法: node scripts/build-docs-html.js
+ * 用法: node .claude/scripts/build-docs-html.js
  * 输出: wjx-docs/wjx-kit.html
  */
 
 const { readFileSync, writeFileSync, readdirSync } = require("fs");
 const { join, basename } = require("path");
 
-const ROOT = join(__dirname, "..");
+const ROOT = join(__dirname, "../..");
 const DOCS_DIR = join(ROOT, "wjx-docs");
 const OUTPUT = join(DOCS_DIR, "wjx-kit.html");
 
