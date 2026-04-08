@@ -21,7 +21,7 @@ wjx-ai-kit/
 ├── wjx-mcp-server/    # MCP Server（56 Tools / 8 Resources / 19 Prompts）
 ├── wjx-cli/           # 命令行工具（AI Agent 原生 CLI）
 ├── wjx-agents/        # 2 个专家 Agent 定义
-├── wjx-skills/        # 2 套 Skill 参考文档
+├── wjx-skills/        # 2 套 Skill 参考文档（可打包分发 zip）
 ├── wjx-docs/          # 使用文档 + AI 工具配置指南
 └── package.json       # workspace 根配置
 ```

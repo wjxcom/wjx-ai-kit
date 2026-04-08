@@ -96,6 +96,9 @@ wjx-api-sdk 是零运行时依赖的 TypeScript SDK，提供 60+ 类型安全的
 │   │
 │   └─ 不确定？先试 Claude Desktop，配置最简单
 │
+├─ 下载 Skill 包安装 ──→ Skill 包（适合不想配 MCP 的用户）
+│   └─ 下载 zip → bash setup.sh -y → 对 AI 说话即可
+│
 ├─ 命令行 / 自动化脚本 ──→ CLI
 │   └─ wjx skill install 一键安装 Agent 技能包
 │
@@ -463,6 +466,7 @@ npm test --workspace=wjx-api-sdk  # 623 tests ✓
 - [MCP Server 入门指南](./mcp-getting-started.md) — 5 分钟接入 Claude/Cursor
 - [CLI 入门指南](./cli-getting-started.md) — 命令行快速上手
 - [SDK 入门指南](./sdk-getting-started.md) — TypeScript 开发快速上手
+- [Skill 包入门指南](./skill-getting-started.md) — 下载安装 Skill 包，最简单的上手方式
 
 ### AI 工具配置指南
 
