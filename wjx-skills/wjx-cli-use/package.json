@@ -5,7 +5,7 @@
   "homepage": "https://www.wjx.cn",
   "repository": {
     "type": "git",
-    "url": "https://github.com/AskmeKolar/wjx-ai-kit.git",
+    "url": "https://github.com/wjxcom/wjx-ai-kit.git",
     "directory": "wjx-skills/wjx-cli-use"
   },
   "license": "MIT",

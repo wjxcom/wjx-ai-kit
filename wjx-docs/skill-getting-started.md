@@ -21,7 +21,7 @@ Skill 是一种让 AI 助手获得特定能力的方式。问卷星 Skill 包含
 
 | | MCP Server | Skill 包 | CLI |
 |---|---|---|---|
-| **适合谁** | 所有 AI 工具��户 | Claw 系列 / 不想配 MCP 的用户 | 命令行 / 自动化脚本用户 |
+| **适合谁** | 所有 AI 工具用户 | Claw 系列 / 不想配 MCP 的用户 | 命令行 / 自动化脚本用户 |
 | **能力** | 56 个工具 + AI 自动调用 | AI 读取指南 + 调用 CLI 命令 | 69 个子命令 |
 | **安装** | 一行 npx 命令 | 下载 zip + `setup.sh` | `npm install -g wjx-cli` |
 | **配置复杂度** | 低 | 最低 | 最低 |
@@ -38,7 +38,7 @@ Skill 是一种让 AI 助手获得特定能力的方式。问卷星 Skill 包含
 
 ### 第一步：下载
 
-从 [GitHub Releases](https://github.com/AskmeKolar/wjx-ai-kit/releases) 下载最新的 `wjx-cli-use-skill-*.zip`，解压到本地。
+从 [GitHub Releases](https://github.com/wjxcom/wjx-ai-kit/releases) 下载最新的 `wjx-cli-use-skill-*.zip`，解压到本地。
 
 或者用命令行：
 

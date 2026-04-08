@@ -86,11 +86,16 @@ install_cli() {
     fi
 
     print_info "正在全局安装 wjx-cli..."
-    if npm install -g wjx-cli 2>/dev/null; then
+    NPM_ERR=$(mktemp)
+    if npm install -g wjx-cli 2>"$NPM_ERR"; then
+        rm -f "$NPM_ERR"
         print_success "wjx-cli 安装成功"
         return 0
     else
-        print_warning "全局安装失败（可能需要权限），尝试 sudo..."
+        print_warning "全局安装失败，错误信息："
+        cat "$NPM_ERR" 2>/dev/null
+        rm -f "$NPM_ERR"
+        print_info "尝试 sudo..."
         if command -v sudo &> /dev/null; then
             if sudo npm install -g wjx-cli; then
                 print_success "wjx-cli 安装成功（sudo）"
@@ -126,7 +131,7 @@ guide_api_key() {
     if [[ "$OSTYPE" == "darwin"* ]]; then
         open "$LOGIN_URL" 2>/dev/null && OPENED=1
     elif [[ "$OSTYPE" == "cygwin" ]] || [[ "$OSTYPE" == "msys" ]] || [[ "$OSTYPE" == "win32" ]]; then
-        start "$LOGIN_URL" 2>/dev/null && OPENED=1
+        cmd.exe /c start "" "$LOGIN_URL" 2>/dev/null && OPENED=1
     elif command -v xdg-open &> /dev/null; then
         xdg-open "$LOGIN_URL" 2>/dev/null && OPENED=1
     fi
@@ -142,7 +147,9 @@ guide_api_key() {
 
     echo "  请在浏览器页面复制 API Key，然后继续下一步。"
     echo ""
-    read -p "  按回车键继续..." -r
+    if [ $AUTO_INSTALL -eq 0 ]; then
+        read -p "  按回车键继续..." -r
+    fi
 }
 
 # Step 4: 配置 wjx-cli

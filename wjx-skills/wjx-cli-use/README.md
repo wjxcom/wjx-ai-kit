@@ -174,7 +174,7 @@ wjx survey create-by-text --file examples/exam_survey.txt --type 6  # 考试问�
 ## 相关链接
 
 - [问卷星官网](https://www.wjx.cn)
-- [wjx-ai-kit GitHub](https://github.com/AskmeKolar/wjx-ai-kit)
+- [wjx-ai-kit GitHub](https://github.com/wjxcom/wjx-ai-kit)
 - [wjx-api-sdk (npm)](https://www.npmjs.com/package/wjx-api-sdk)
 - [wjx-mcp-server (npm)](https://www.npmjs.com/package/wjx-mcp-server)
 - [wjx-cli (npm)](https://www.npmjs.com/package/wjx-cli)
