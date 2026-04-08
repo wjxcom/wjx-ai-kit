@@ -15,8 +15,8 @@
 ### 初始化
 
 ```bash
-git clone https://codeup.aliyun.com/6445da2d020eabef3107e22e/wjxfc/wjxagents.git
-cd wjxagents/wjx-ai-kit
+git clone https://github.com/wjxcom/wjx-ai-kit.git
+cd wjx-ai-kit
 npm install
 ```
 
@@ -113,7 +113,7 @@ npm test --workspace=<package-name>
 git push origin feat/your-feature-name
 ```
 
-在 Codeup 上创建 Pull Request，目标分支为 `develop`。
+在 GitHub 上创建 Pull Request，目标分支为 `develop`。
 
 ---
 

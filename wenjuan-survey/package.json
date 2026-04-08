@@ -1,0 +1,31 @@
+{
+  "name": "wenjuan-survey",
+  "version": "1.0.0",
+  "description": "问卷网（www.wenjuan.com）- 人人都好用的在线问卷调查平台",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "publish:valentines": "node scripts/publish_preset.js valentines",
+    "publish:labor": "node scripts/publish_preset.js labor",
+    "publish:april-fools": "node scripts/publish_preset.js april_fools",
+    "publish:april-fools-fun": "node scripts/publish_preset.js april_fools_fun",
+    "publish:singles-day": "node scripts/publish_preset.js singles_day"
+  },
+  "keywords": [
+    "wenjuan",
+    "survey",
+    "questionnaire",
+    "投票",
+    "问卷",
+    "表单"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "axios": "^1.6.0",
+    "open": "^10.0.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

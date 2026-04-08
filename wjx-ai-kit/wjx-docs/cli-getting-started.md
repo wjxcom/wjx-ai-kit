@@ -280,6 +280,8 @@ wjx completion fish > ~/.config/fish/completions/wjx.fish
 wjx skill install
 ```
 
+> 也可从 [Vercel Agent Skills](https://skills.sh/wjxcom/wjx-ai-kit) 安装：`npx skills add wjxcom/wjx-ai-kit`，或在 [ClawHub](https://clawhub.ai/skills?q=wjx) 市场搜索 "wjx" 安装。
+
 安装后，Claude Code 会获得一个 `wjx-cli-expert` Agent，能够：
 - 理解你的自然语言需求
 - 自动选择正确的 wjx 命令

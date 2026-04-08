@@ -1,4 +1,4 @@
-# Contacts, Departments, Admins, Tags, Accounts & SSO
+# 通讯录、部门、管理员、标签、子账号与 SSO 参考
 
 > 通讯录相关操作需要 `WJX_CORP_ID`（通过 `wjx init` 配置或环境变量）。
 > 所有通讯录命令支持 `--corpid <s>` 覆盖默认值。

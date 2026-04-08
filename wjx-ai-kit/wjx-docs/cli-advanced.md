@@ -284,7 +284,7 @@ done
 
 ### 安装结构
 
-`wjx skill install` 安装以下文件到当前项目：
+`wjx skill install` 安装以下文件到当前项目（也可从 [Vercel Agent Skills](https://skills.sh/wjxcom/wjx-ai-kit) 或 [ClawHub](https://clawhub.ai/skills?q=wjx) 市场安装）：
 
 ```
 项目根目录/

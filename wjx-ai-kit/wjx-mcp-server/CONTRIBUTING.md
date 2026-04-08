@@ -16,8 +16,8 @@
 
 ```bash
 # 1. 克隆仓库
-git clone https://codeup.aliyun.com/6445da2d020eabef3107e22e/wjxfc/wjxagents.git
-cd wjxagents/wjx-ai-kit
+git clone https://github.com/wjxcom/wjx-ai-kit.git
+cd wjx-ai-kit
 
 # 2. 安装依赖
 npm install

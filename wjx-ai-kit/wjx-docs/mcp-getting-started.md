@@ -63,6 +63,8 @@ npm install -g wjx-mcp-server
 
 保存后重启 Claude Desktop。在输入框旁边会看到工具图标，点击可以看到 56 个问卷星工具已就绪。
 
+> 更详细的配置说明请参阅 [Claude Desktop 配置指南](./setup-claude-desktop.md)。
+
 ### 验证
 
 对 Claude 说：
@@ -93,6 +95,8 @@ Claude 会调用 `list_surveys` 工具，返回你账户下的问卷列表。如
 
 重启 Cursor，在 AI 对话中即可使用问卷星工具。
 
+> 更详细的配置说明请参阅 [Cursor 配置指南](./setup-cursor.md)。
+
 ---
 
 ## 接入 Claude Code
@@ -106,6 +110,8 @@ claude mcp add wjx -- npx wjx-mcp-server
 ```bash
 export WJX_API_KEY="替换为你的API Key"
 ```
+
+> Claude Code 支持完整的 Agent + Skill 体验，详见 [Claude Code 配置指南](./setup-claude-code.md)。
 
 ---
 

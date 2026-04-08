@@ -1,4 +1,4 @@
-# Survey Commands Reference
+# 问卷命令参考
 
 > **全参数访问**: CLI 的显式 flags 是常用参数的子集。要使用 SDK 支持的全部参数，可通过 `--stdin` 传入 JSON：
 > ```bash
