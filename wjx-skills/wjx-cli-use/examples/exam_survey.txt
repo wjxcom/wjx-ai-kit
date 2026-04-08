@@ -1,6 +1,5 @@
 JavaScript 基础知识测验
 测试你对 JavaScript 核心概念的理解
-===
 
 1. 以下哪个不是 JavaScript 的基本数据类型？[单选题]
 string

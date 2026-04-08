@@ -131,7 +131,7 @@ wjx admin add --users '[{"userid":"u1","role":2}]'
 wjx account add --subuser user1 --password pass123 --role 1
 ```
 
-角色编号：1=系统管理员, 2=问卷管理员, 3=统计查看, 4=完整查看。所有参数见 [references/contacts-commands.md](references/contacts-commands.md)。
+子账号角色编号：1=系统管理员, 2=问卷管理员, 3=统计查看, 4=完整查看。管理员角色编号不同（0-5），详见 [references/contacts-commands.md](references/contacts-commands.md)。
 
 ### 工作流 4：考试/测评问卷
 

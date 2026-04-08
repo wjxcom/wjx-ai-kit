@@ -2,7 +2,7 @@
 
 > 用自然语言做调研 -- 创建问卷、分析数据、管理通讯录，像聊天一样简单。
 
-**问卷星**（[wjx.cn](https://www.wjx.cn)）是中国领先的在线调研平台，服务 2.6 亿用户。这个 Skill 让你的 AI 助手直接操作问卷星，不用打开网页，不用学 API。
+**问卷星**（[wjx.cn](https://www.wjx.cn)）是中国领先的在线调研平台，服务 3.5+ 亿用户。这个 Skill 让你的 AI 助手直接操作问卷星，不用打开网页，不用学 API。
 
 ---
 
@@ -65,7 +65,7 @@ npx wjx-mcp-server
 ### 方式二：下载 Skill 包（适合 Claw 系列工具）
 
 1. 下载并解压 Skill 包到本地
-2. 运行安装脚本：
+2. 运行安装脚本（Windows 用户需要 Git Bash 或 WSL）：
 
 ```bash
 cd wjx-cli-use
@@ -95,6 +95,8 @@ wjx analytics nps --scores "[9,10,7,3,8]"   # 计算 NPS（离线）
 ---
 
 ## 支持的 AI 工具
+
+> **提示**：以下配置指南链接指向 wjx-ai-kit 仓库中的文档。如果你是通过 zip 包独立安装的，请访问 [GitHub 仓库](https://github.com/wjxcom/wjx-ai-kit/tree/develop/wjx-docs) 查看在线文档。
 
 | AI 工具 | 接入方式 | 配置指南 |
 |---------|---------|---------|

@@ -108,7 +108,7 @@ install_cli() {
         echo "请手动安装："
         echo "  sudo npm install -g wjx-cli"
         echo ""
-        echo "或��用 npx 免安装运行："
+        echo "或使用 npx 免安装运行："
         echo "  npx wjx-cli survey list"
         echo ""
         return 1
