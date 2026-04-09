@@ -30,3 +30,8 @@ _*.mjs
 
 # Claude Code
 .claude/plans/
+.claude/scheduled_tasks.lock
+
+# wjx-cli 配置（含 API Key）
+**/.wjxrc
+*.zip

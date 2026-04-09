@@ -16,7 +16,7 @@ MCP (Model Context Protocol) 是 AI 工具调用的标准协议。wjx-mcp-server
 
 ### 1. 获取问卷星 API Key
 
-登录 [问卷星](https://www.wjx.cn)，进入「账号设置」→「API 设置」，创建或复制你的 API Key。
+微信扫码登录 [API Key 获取页](https://www.wjx.cn/weixinlogin.aspx?redirecturl=%2Fnewwjx%2Fmanage%2Fuserinfo.aspx%3FshowApiKey%3D1)，登录后页面直接显示 API Key。
 
 > 企业用户如需管理通讯录，还需要获取 Corp ID（企业通讯录 ID）。
 

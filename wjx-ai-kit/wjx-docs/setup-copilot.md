@@ -9,7 +9,7 @@
 1. **GitHub Copilot 订阅** — 需要 GitHub Copilot 个人版或企业版
 2. **VS Code** — 安装最新版 VS Code 并启用 GitHub Copilot 扩展
 3. **Node.js >= 20** — 运行 `node --version` 确认版本，低于 20 请前往 [nodejs.org](https://nodejs.org) 升级
-4. **获取问卷星 API Key** — 登录 [问卷星](https://www.wjx.cn)，进入「账号设置」→「API 设置」，创建或复制你的 API Key
+4. **获取问卷星 API Key** — 微信扫码登录 [API Key 获取页](https://www.wjx.cn/weixinlogin.aspx?redirecturl=%2Fnewwjx%2Fmanage%2Fuserinfo.aspx%3FshowApiKey%3D1)，登录后页面直接显示 API Key
 
 > 注意：Copilot 的 MCP 支持需要 Agent 模式。请确认你的 Copilot 版本已支持此功能。
 

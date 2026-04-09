@@ -39,7 +39,7 @@ wjx init
 ```
 
 按提示输入：
-- **API Key**（必填）：从问卷星「账号设置 → API 设置」获取
+- **API Key**（必填）：微信扫码登录 [API Key 获取页](https://www.wjx.cn/weixinlogin.aspx?redirecturl=%2Fnewwjx%2Fmanage%2Fuserinfo.aspx%3FshowApiKey%3D1) 获取
 - **Base URL**（可选）：默认 `https://www.wjx.cn`
 - **Corp ID**（可选）：企业通讯录 ID
 
