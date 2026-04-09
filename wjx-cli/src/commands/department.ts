@@ -5,7 +5,7 @@ import {
   modifyDepartment,
   deleteDepartment,
 } from "wjx-api-sdk";
-import { executeCommand, requireField } from "../lib/command-helpers.js";
+import { executeCommand, requireField, ensureJsonString } from "../lib/command-helpers.js";
 
 export function registerDepartmentCommands(program: Command): void {
   const department = program.command("department").description("部门管理");
@@ -30,7 +30,7 @@ export function registerDepartmentCommands(program: Command): void {
     .action(async (_opts, cmd) => {
       await executeCommand(program, cmd, addDepartment, (m) => {
         requireField(m, "depts");
-        return { depts: m.depts, corpid: m.corpid };
+        return { depts: ensureJsonString(m.depts, "depts"), corpid: m.corpid };
       });
     });
 
@@ -43,7 +43,7 @@ export function registerDepartmentCommands(program: Command): void {
     .action(async (_opts, cmd) => {
       await executeCommand(program, cmd, modifyDepartment, (m) => {
         requireField(m, "depts");
-        return { depts: m.depts, corpid: m.corpid };
+        return { depts: ensureJsonString(m.depts, "depts"), corpid: m.corpid };
       });
     });
 
@@ -61,7 +61,7 @@ export function registerDepartmentCommands(program: Command): void {
         requireField(m, "depts");
         return {
           type: m.type,
-          depts: m.depts,
+          depts: ensureJsonString(m.depts, "depts"),
           corpid: m.corpid,
           del_child: m.del_child,
         };

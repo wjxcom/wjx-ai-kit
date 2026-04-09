@@ -1,5 +1,5 @@
 import { queryResponses, queryResponsesRealtime, downloadResponses, getReport, submitResponse, getWinners, modifyResponse, get360Report, clearResponses, } from "wjx-api-sdk";
-import { executeCommand, strictInt, requireField } from "../lib/command-helpers.js";
+import { executeCommand, strictInt, requireField, ensureJsonString } from "../lib/command-helpers.js";
 export function registerResponseCommands(program) {
     const response = program.command("response").description("答卷管理");
     // --- count ---
@@ -42,7 +42,7 @@ export function registerResponseCommands(program) {
         .option("--query_note", "查询备注")
         .option("--distinct_user", "去重用户")
         .option("--distinct_sojumpparm", "去重参数")
-        .option("--conds <s>", "查询条件")
+        .option("--conds <json>", "查询条件JSON字符串，最多2个条件")
         .action(async (_opts, cmd) => {
         await executeCommand(program, cmd, queryResponses, (m) => {
             requireField(m, "vid");
@@ -61,7 +61,7 @@ export function registerResponseCommands(program) {
                 query_note: m.query_note,
                 distinct_user: m.distinct_user,
                 distinct_sojumpparm: m.distinct_sojumpparm,
-                conds: m.conds,
+                conds: ensureJsonString(m.conds, "conds"),
             };
         });
     });
@@ -90,7 +90,7 @@ export function registerResponseCommands(program) {
         .option("--qid <s>", "题目ID")
         .option("--sort <n>", "排序", strictInt)
         .option("--query_type <n>", "查询类型", strictInt)
-        .option("--suffix <n>", "文件后缀", strictInt)
+        .option("--suffix <n>", "导出格式: 0=CSV, 1=SAV, 2=Word", strictInt)
         .option("--query_record", "查询记录")
         .action(async (_opts, cmd) => {
         await executeCommand(program, cmd, downloadResponses, (m) => {
@@ -173,6 +173,7 @@ export function registerResponseCommands(program) {
         .command("report")
         .description("获取统计报告")
         .option("--vid <n>", "问卷ID", strictInt)
+        .option("--valid", "查询有效答卷（默认true）")
         .option("--min_index <n>", "最小序号", strictInt)
         .option("--jid <s>", "答卷ID")
         .option("--sojumpparm <s>", "自定义参数")
@@ -180,12 +181,13 @@ export function registerResponseCommands(program) {
         .option("--end_time <n>", "结束时间", strictInt)
         .option("--distinct_user", "去重用户")
         .option("--distinct_sojumpparm", "去重参数")
-        .option("--conds <s>", "查询条件")
+        .option("--conds <json>", "查询条件JSON字符串")
         .action(async (_opts, cmd) => {
         await executeCommand(program, cmd, getReport, (m) => {
             requireField(m, "vid");
             return {
                 vid: m.vid,
+                valid: m.valid ?? true,
                 min_index: m.min_index,
                 jid: m.jid,
                 sojumpparm: m.sojumpparm,
@@ -193,7 +195,7 @@ export function registerResponseCommands(program) {
                 end_time: m.end_time,
                 distinct_user: m.distinct_user,
                 distinct_sojumpparm: m.distinct_sojumpparm,
-                conds: m.conds,
+                conds: ensureJsonString(m.conds, "conds"),
             };
         });
     });

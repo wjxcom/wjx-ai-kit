@@ -1,5 +1,5 @@
 import { addParticipants, modifyParticipants, deleteParticipants, bindActivity, querySurveyBinding, queryUserSurveys, } from "wjx-api-sdk";
-import { executeCommand, strictInt, requireField } from "../lib/command-helpers.js";
+import { executeCommand, strictInt, requireField, ensureJsonString } from "../lib/command-helpers.js";
 export function registerUserSystemCommands(program) {
     const userSystem = program.command("user-system").description("用户系统管理");
     // --- add-participants ---
@@ -8,11 +8,16 @@ export function registerUserSystemCommands(program) {
         .description("添加参与者")
         .option("--users <json>", "参与者JSON")
         .option("--sysid <n>", "系统ID", strictInt)
+        .option("--auto_create_udept", "部门不存在时自动创建")
         .action(async (_opts, cmd) => {
         await executeCommand(program, cmd, addParticipants, (m) => {
             requireField(m, "users");
             requireField(m, "sysid");
-            return { users: m.users, sysid: m.sysid };
+            return {
+                users: ensureJsonString(m.users, "users"),
+                sysid: m.sysid,
+                auto_create_udept: m.auto_create_udept,
+            };
         });
     });
     // --- modify-participants ---
@@ -21,11 +26,16 @@ export function registerUserSystemCommands(program) {
         .description("修改参与者")
         .option("--users <json>", "参与者JSON")
         .option("--sysid <n>", "系统ID", strictInt)
+        .option("--auto_create_udept", "部门不存在时自动创建")
         .action(async (_opts, cmd) => {
         await executeCommand(program, cmd, modifyParticipants, (m) => {
             requireField(m, "users");
             requireField(m, "sysid");
-            return { users: m.users, sysid: m.sysid };
+            return {
+                users: ensureJsonString(m.users, "users"),
+                sysid: m.sysid,
+                auto_create_udept: m.auto_create_udept,
+            };
         });
     });
     // --- delete-participants ---
@@ -38,7 +48,10 @@ export function registerUserSystemCommands(program) {
         await executeCommand(program, cmd, deleteParticipants, (m) => {
             requireField(m, "uids");
             requireField(m, "sysid");
-            return { uids: m.uids, sysid: m.sysid };
+            return {
+                uids: ensureJsonString(m.uids, "uids"),
+                sysid: m.sysid,
+            };
         });
     });
     // --- bind ---
@@ -47,7 +60,7 @@ export function registerUserSystemCommands(program) {
         .description("绑定问卷到用户系统")
         .option("--vid <n>", "问卷ID", strictInt)
         .option("--sysid <n>", "系统ID", strictInt)
-        .option("--uids <s>", "参与者ID列表")
+        .option("--uids <json>", "参与者ID JSON数组")
         .option("--answer_times <n>", "可答次数", strictInt)
         .option("--can_chg_answer", "允许修改答案")
         .option("--can_view_result", "允许查看结果")
@@ -60,7 +73,7 @@ export function registerUserSystemCommands(program) {
             return {
                 vid: m.vid,
                 sysid: m.sysid,
-                uids: m.uids,
+                uids: ensureJsonString(m.uids, "uids"),
                 answer_times: m.answer_times,
                 can_chg_answer: m.can_chg_answer,
                 can_view_result: m.can_view_result,

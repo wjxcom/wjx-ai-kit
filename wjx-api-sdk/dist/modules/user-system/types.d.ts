@@ -1,6 +1,7 @@
 export interface AddParticipantsInput {
     users: string;
     sysid: number;
+    auto_create_udept?: boolean;
 }
 export interface ModifyParticipantsInput {
     users: string;

@@ -77,7 +77,7 @@ export async function getReport<T = unknown>(
     "distinct_user", "distinct_sojumpparm", "conds",
   ]);
 
-  return callWjxApi<T>(params, { credentials, fetchImpl });
+  return callWjxApi<T>(params, { credentials, fetchImpl, timeoutMs: LONG_TIMEOUT_MS });
 }
 
 export async function submitResponse<T = unknown>(

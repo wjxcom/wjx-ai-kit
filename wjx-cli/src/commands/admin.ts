@@ -4,7 +4,7 @@ import {
   deleteAdmin,
   restoreAdmin,
 } from "wjx-api-sdk";
-import { executeCommand, requireField } from "../lib/command-helpers.js";
+import { executeCommand, requireField, ensureJsonString } from "../lib/command-helpers.js";
 
 export function registerAdminCommands(program: Command): void {
   const admin = program.command("admin").description("管理员管理");
@@ -18,7 +18,7 @@ export function registerAdminCommands(program: Command): void {
     .action(async (_opts, cmd) => {
       await executeCommand(program, cmd, addAdmin, (m) => {
         requireField(m, "users");
-        return { users: m.users, corpid: m.corpid };
+        return { users: ensureJsonString(m.users, "users"), corpid: m.corpid };
       });
     });
 

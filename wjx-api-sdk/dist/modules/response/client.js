@@ -41,7 +41,7 @@ export async function getReport(input, credentials = getWjxCredentials(), fetchI
         "valid", "min_index", "jid", "sojumpparm", "begin_time", "end_time",
         "distinct_user", "distinct_sojumpparm", "conds",
     ]);
-    return callWjxApi(params, { credentials, fetchImpl });
+    return callWjxApi(params, { credentials, fetchImpl, timeoutMs: LONG_TIMEOUT_MS });
 }
 export async function submitResponse(input, credentials = getWjxCredentials(), fetchImpl = fetch) {
     const params = {

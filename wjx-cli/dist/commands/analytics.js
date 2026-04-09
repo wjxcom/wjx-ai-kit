@@ -31,7 +31,7 @@ export function registerAnalyticsCommands(program) {
             requireField(m, "scores");
             const scores = JSON.parse(m.scores);
             if (!Array.isArray(scores)) {
-                throw new CliError("INPUT_ERROR", "--scores must be a JSON array of numbers");
+                throw new CliError("INPUT_ERROR", "--scores 必须是数字数组的 JSON 字符串");
             }
             const result = calculateNps(scores);
             formatOutput(result, program.opts());
@@ -52,7 +52,7 @@ export function registerAnalyticsCommands(program) {
             requireField(m, "scores");
             const scores = JSON.parse(m.scores);
             if (!Array.isArray(scores)) {
-                throw new CliError("INPUT_ERROR", "--scores must be a JSON array of numbers");
+                throw new CliError("INPUT_ERROR", "--scores 必须是数字数组的 JSON 字符串");
             }
             const result = calculateCsat(scores, m.scale);
             formatOutput(result, program.opts());
@@ -72,7 +72,7 @@ export function registerAnalyticsCommands(program) {
             requireField(m, "responses");
             const responses = JSON.parse(m.responses);
             if (!Array.isArray(responses)) {
-                throw new CliError("INPUT_ERROR", "--responses must be a JSON array");
+                throw new CliError("INPUT_ERROR", "--responses 必须是 JSON 数组");
             }
             const result = detectAnomalies(responses);
             formatOutput(result, program.opts());

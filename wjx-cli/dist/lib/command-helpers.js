@@ -61,6 +61,31 @@ export function getMerged(cmd) {
     return { ...cmd.opts() };
 }
 /**
+ * Ensure a value is a JSON string suitable for the OpenAPI.
+ * - If the value is a string, validate it's parseable JSON and return as-is.
+ * - If the value is an array/object (e.g. from --stdin JSON parsing), JSON.stringify it.
+ * - If undefined/null, return undefined.
+ * This fixes the common issue where --stdin passes parsed objects while the API expects
+ * a JSON-encoded string (double-encoded in the POST body).
+ */
+export function ensureJsonString(value, fieldName) {
+    if (value === undefined || value === null)
+        return undefined;
+    if (typeof value === "string") {
+        try {
+            JSON.parse(value);
+        }
+        catch {
+            throw new CliError("INPUT_ERROR", `${fieldName} 必须是合法的 JSON 字符串`);
+        }
+        return value;
+    }
+    if (typeof value === "object") {
+        return JSON.stringify(value);
+    }
+    throw new CliError("INPUT_ERROR", `${fieldName} 必须是 JSON 字符串或对象`);
+}
+/**
  * Central command executor.
  * - Merges stdin data with CLI opts (source-aware)
  * - Gets credentials (unless noAuth)
@@ -99,7 +124,7 @@ export async function executeCommand(program, actionCommand, sdkFn, buildInput, 
         const result = await sdkFn(input, creds);
         // P0 fix: detect SDK API failure response
         if (result.result === false) {
-            throw new CliError("API_ERROR", result.errormsg || "API request failed");
+            throw new CliError("API_ERROR", result.errormsg || "API 请求失败");
         }
         const output = opts.transformResult ? opts.transformResult(result) : result;
         formatOutput(output, globalOpts);

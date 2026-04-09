@@ -50,7 +50,7 @@ export function registerAccountCommands(program) {
     // --- modify ---
     account
         .command("modify")
-        .description("修改子账号")
+        .description("修改子账号（不支持修改密码，密码需通过问卷星后台修改）")
         .option("--subuser <s>", "子账号用户名")
         .option("--mobile <s>", "手机号")
         .option("--email <s>", "邮箱")

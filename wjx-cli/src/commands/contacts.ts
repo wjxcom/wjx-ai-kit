@@ -4,7 +4,7 @@ import {
   addContacts,
   deleteContacts,
 } from "wjx-api-sdk";
-import { executeCommand, requireField } from "../lib/command-helpers.js";
+import { executeCommand, requireField, ensureJsonString } from "../lib/command-helpers.js";
 
 export function registerContactsCommands(program: Command): void {
   const contacts = program.command("contacts").description("通讯录管理");
@@ -34,7 +34,7 @@ export function registerContactsCommands(program: Command): void {
       await executeCommand(program, cmd, addContacts, (m) => {
         requireField(m, "users");
         return {
-          users: m.users,
+          users: ensureJsonString(m.users, "users"),
           corpid: m.corpid,
           auto_create_udept: m.auto_create_udept,
           auto_create_tag: m.auto_create_tag,

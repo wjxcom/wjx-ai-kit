@@ -29,6 +29,15 @@ export declare function printDryRunPreview(request: CapturedRequest | null): voi
  * Extracts the common pattern used in both executeCommand and manual handlers.
  */
 export declare function getMerged(cmd: Command): Record<string, unknown>;
+/**
+ * Ensure a value is a JSON string suitable for the OpenAPI.
+ * - If the value is a string, validate it's parseable JSON and return as-is.
+ * - If the value is an array/object (e.g. from --stdin JSON parsing), JSON.stringify it.
+ * - If undefined/null, return undefined.
+ * This fixes the common issue where --stdin passes parsed objects while the API expects
+ * a JSON-encoded string (double-encoded in the POST body).
+ */
+export declare function ensureJsonString(value: unknown, fieldName: string): string | undefined;
 type SdkFunction = (input: any, creds: any, ...rest: any[]) => Promise<WjxApiResponse<any>>;
 /**
  * Central command executor.

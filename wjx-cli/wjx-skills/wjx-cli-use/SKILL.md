@@ -9,6 +9,45 @@ wjx-cli 是问卷星 OpenAPI 的命令行工具。命令格式：`wjx <模块> <
 
 全局选项：`--api-key <key>` 覆盖凭据，`--table` 表格输出，`--dry-run` 预览请求不发送，`--stdin` 从管道读 JSON 参数。
 
+## AI Agent 行为准则（必读）
+
+### 规则 1：一个需求 = 一个问卷
+
+无论用户要求多少种题型，**必须在一次 create-by-text 调用中包含所有题目**。
+
+- 正确：用户说"包含单选、多选、填空、量表" → 一个 DSL 文本包含所有题目 → 调用一次
+- 错误：为每种题型分别调用 create-by-text → 产生多个问卷
+
+一个问卷可以包含任意数量、任意类型的题目。没有"一种问卷只能包含一种题型"的限制。
+
+### 规则 2：问卷类型 ≠ 题目类型
+
+"投票问卷"、"考试问卷"、"调查问卷"是**问卷类型**（atype），通过 `--type` 参数设置。题目仍然使用普通的题型标签。
+
+| 用户说 | 正确做法 | 错误做法 |
+|--------|---------|---------|
+| "投票单选" | `--type 3` + `[单选题]` | 寻找"投票单选"标签 |
+| "投票多选" | `--type 3` + `[多选题]` | 寻找"投票多选"标签 |
+| "考试填空" | `--type 6` + `[填空题]` | 寻找"考试填空"标签 |
+
+不存在 `[投票单选题]`、`[投票多选题]` 这样的题型标签。"投票"描述的是问卷用途，不是题目类型。
+
+### 规则 3：不支持的题型要明确告知
+
+以下功能**不在 DSL/API 支持范围内**，遇到时应告知用户，不要反复尝试或创建替代问卷：
+
+| 不支持的题型 | 替代方案 |
+|-------------|---------|
+| 签名题 | `[绘图题]` 近似替代 |
+| 地区题/省市区选择 | API 不支持，建议用 `[多级下拉题]` 或网页端手动添加 |
+| NPS 专用题 | `[量表题]` + `0~10` 实现相同效果 |
+| 自动每题一页 | DSL 支持 `=== 分页 ===` 手动分页 |
+
+遇到不支持的题型时，正确做法：
+1. 告诉用户该题型不被支持，并建议替代方案
+2. 继续创建问卷中其他可支持的题目
+3. **不要**反复调用创建命令尝试不同方式，**不要**为不同题型分别创建多个问卷
+
 ## 快速路由
 
 | 用户意图 | 命令 |
@@ -21,7 +60,7 @@ wjx-cli 是问卷星 OpenAPI 的命令行工具。命令格式：`wjx <模块> <
 | 导出答卷数据 | `wjx response download --vid <vid>` |
 | 分析 NPS | `wjx analytics nps --scores "[9,10,7,3]"` |
 | 导入联系人 | `wjx contacts add --users '[...]'`（需 `WJX_CORP_ID`） |
-| 查看问卷链接 | `wjx survey url --vid <vid>` |
+| 查看问卷链接 | `wjx survey url --mode edit --activity <vid>` |
 
 ## 安装与配置
 
@@ -91,7 +130,7 @@ wjx doctor
 | `account` | list, add, modify, delete, restore | 子账号管理 |
 | `sso` | subaccount-url, user-system-url, partner-url | SSO 链接生成 |
 | `analytics` | decode, nps, csat, anomalies, compare, decode-push | 本地分析（无需 API Key） |
-| `init` / `doctor` | — | 配置向导 / 环境诊断 |
+| `init` / `doctor` / `whoami` | — | 配置向导 / 环境诊断 / 验证 API Key |
 | `completion` | bash, zsh, fish, install | Shell 自动补全 |
 | `skill` / `update` | — | 技能管理 / 自更新 |
 
@@ -114,6 +153,8 @@ wjx survey create-by-text --text "问卷标题
 ```
 
 问卷类型：`--type 1` 调查（默认），`3` 投票，`6` 考试，`7` 表单。考试问卷示例见 `examples/exam_survey.txt`。
+
+**注意**：考试问卷的正确答案和每题分值**无法**通过 API 设置。创建考试后，应提供编辑链接 `wjx survey url --mode edit --activity <vid>`，指引用户在网页端手动配置答案与评分。
 
 完整 DSL 语法（含 28 种题型标签）见 [references/dsl-syntax.md](references/dsl-syntax.md)。JSON 创建或复制问卷见 [references/survey-commands.md](references/survey-commands.md)。
 
