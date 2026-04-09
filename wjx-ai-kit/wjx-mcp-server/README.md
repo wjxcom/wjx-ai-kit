@@ -98,8 +98,8 @@ flowchart LR
 ### 安装与构建
 
 ```bash
-git clone https://codeup.aliyun.com/6445da2d020eabef3107e22e/wjxfc/wjxagents.git
-cd wjxagents/wjx-ai-kit/wjx-mcp-server
+git clone https://github.com/wjxcom/wjx-ai-kit.git
+cd wjx-ai-kit/wjx-mcp-server
 npm install
 npm run build
 ```

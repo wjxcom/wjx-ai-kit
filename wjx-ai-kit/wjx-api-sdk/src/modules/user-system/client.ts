@@ -1,5 +1,5 @@
 import type { WjxApiResponse, WjxCredentials, FetchLike } from "../../core/types.js";
-import { Action } from "../../core/constants.js";
+import { Action, LONG_TIMEOUT_MS } from "../../core/constants.js";
 import { callWjxUserSystemApi, getWjxCredentials, assignDefined } from "../../core/api-client.js";
 import type {
   AddParticipantsInput,
@@ -15,14 +15,14 @@ export async function addParticipants<T = unknown>(
   credentials: WjxCredentials = getWjxCredentials(),
   fetchImpl: FetchLike = fetch,
 ): Promise<WjxApiResponse<T>> {
-  return callWjxUserSystemApi<T>(
-    {
-      action: Action.ADD_PARTICIPANTS,
-      users: input.users,
-      sysid: input.sysid,
-    },
-    { credentials, fetchImpl, maxRetries: 0 },
-  );
+  const params: Record<string, unknown> = {
+    action: Action.ADD_PARTICIPANTS,
+    users: input.users,
+    sysid: input.sysid,
+  };
+  if (input.auto_create_udept !== undefined) params.auto_create_udept = input.auto_create_udept;
+
+  return callWjxUserSystemApi<T>(params, { credentials, fetchImpl, maxRetries: 0 });
 }
 
 export async function modifyParticipants<T = unknown>(
@@ -83,7 +83,7 @@ export async function querySurveyBinding<T = unknown>(
   };
   assignDefined(params, input, ["join_status", "day", "week", "month", "force_join_times"]);
 
-  return callWjxUserSystemApi<T>(params, { credentials, fetchImpl });
+  return callWjxUserSystemApi<T>(params, { credentials, fetchImpl, timeoutMs: LONG_TIMEOUT_MS });
 }
 
 export async function queryUserSurveys<T = unknown>(

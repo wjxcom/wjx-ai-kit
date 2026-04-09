@@ -85,6 +85,10 @@ async function initInteractive(): Promise<void> {
     let apiKey = "";
     while (!apiKey) {
       const hint = currentApiKey ? ` [${maskApiKey(currentApiKey)}]` : "";
+      if (!currentApiKey) {
+        stderr.write("获取 API Key：微信扫码登录下方链接，登录后页面会显示你的 API Key。\n");
+        stderr.write("https://www.wjx.cn/weixinlogin.aspx?redirecturl=%2Fnewwjx%2Fmanage%2Fuserinfo.aspx%3FshowApiKey%3D1\n\n");
+      }
       const input = await rl.question(`* WJX_API_KEY${hint}: `);
       apiKey = input.trim() || currentApiKey;
       if (!apiKey) {

@@ -5,7 +5,7 @@ import {
   modifyTag,
   deleteTag,
 } from "wjx-api-sdk";
-import { executeCommand, requireField } from "../lib/command-helpers.js";
+import { executeCommand, requireField, ensureJsonString } from "../lib/command-helpers.js";
 
 export function registerTagCommands(program: Command): void {
   const tag = program.command("tag").description("标签管理");
@@ -32,7 +32,7 @@ export function registerTagCommands(program: Command): void {
       await executeCommand(program, cmd, addTag, (m) => {
         requireField(m, "child_names");
         return {
-          child_names: m.child_names,
+          child_names: ensureJsonString(m.child_names, "child_names"),
           corpid: m.corpid,
           is_radio: m.is_radio,
         };
@@ -53,7 +53,7 @@ export function registerTagCommands(program: Command): void {
         return {
           tp_id: m.tp_id,
           tp_name: m.tp_name,
-          child_names: m.child_names,
+          child_names: ensureJsonString(m.child_names, "child_names"),
           corpid: m.corpid,
         };
       });
@@ -70,7 +70,7 @@ export function registerTagCommands(program: Command): void {
       await executeCommand(program, cmd, deleteTag, (m) => {
         requireField(m, "type");
         requireField(m, "tags");
-        return { type: m.type, tags: m.tags, corpid: m.corpid };
+        return { type: m.type, tags: ensureJsonString(m.tags, "tags"), corpid: m.corpid };
       });
     });
 }

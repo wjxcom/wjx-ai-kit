@@ -119,7 +119,7 @@ MCP server has its own .env parser (`src/core/load-env.ts`, no dotenv dependency
 - **dist/ is checked into the repo**
 - **No linter/formatter**: no ESLint or Prettier configured
 - **Style**: 2-space indent, double quotes, semicolons
-- **Git**: branch `develop`, remote on Aliyun Codeup (no `gh`/`glab` CLI available)
+- **Git**: branch `develop`, remote on GitHub
 - **CLI output protocol**: JSON to stdout, structured errors to stderr, exit codes 0 (success), 1 (API/auth error), 2 (input error)
 - **沟通语言**: 使用中文与用户沟通，包括代码注释、提交信息和对话回复
 

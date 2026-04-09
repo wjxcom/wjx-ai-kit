@@ -69,5 +69,5 @@ node dist/index.js survey list # 手动测试
 ## Git
 
 - 当前分支：`develop`
-- 远程：Aliyun Codeup（没有 gh/glab CLI）
+- 远程：GitHub
 - 提交后手动推送到 origin/develop

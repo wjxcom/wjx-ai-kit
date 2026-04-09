@@ -36,7 +36,7 @@ wjx doctor                  # 验证连接
 
 ```bash
 # 克隆仓库（如果尚未克隆）
-git clone https://codeup.aliyun.com/6445da2d020eabef3107e22e/wjxfc/wjxagents.git
+git clone https://github.com/wjxcom/wjx-ai-kit.git
 
 # 部署 Agent 定义
 mkdir -p .claude/agents
