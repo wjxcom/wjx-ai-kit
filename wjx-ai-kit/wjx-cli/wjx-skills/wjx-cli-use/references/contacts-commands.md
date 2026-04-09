@@ -1,7 +1,17 @@
-# Contacts, Departments, Admins, Tags, Accounts & SSO
+# 通讯录、部门、管理员、标签、子账号与 SSO 参考
 
 > 通讯录相关操作需要 `WJX_CORP_ID`（通过 `wjx init` 配置或环境变量）。
 > 所有通讯录命令支持 `--corpid <s>` 覆盖默认值。
+
+## 目录
+
+- [Contacts 模块](#contacts-模块) — query, add, delete
+- [Department 模块](#department-模块) — list, add, modify, delete
+- [Admin 模块](#admin-模块) — add, delete, restore
+- [Tag 模块](#tag-模块) — list, add, modify, delete
+- [Account 模块（子账号）](#account-模块子账号) — list, add, modify, delete, restore
+- [SSO 模块](#sso-模块) — subaccount-url, user-system-url, partner-url
+- [User-System 模块（已过时）](#user-system-模块已过时) — add/modify/delete-participants, bind, query
 
 ## Contacts 模块
 
@@ -321,10 +331,10 @@ wjx sso partner-url --username partner1
 > 这些命令已标记 Deprecated，优先使用通讯录模块。仅在用户明确要求时使用。
 
 ```bash
-wjx user-system add-participants --usid 100 --users '[{"uid":"u1","uname":"Alice","upass":"123"}]'
-wjx user-system modify-participants --usid 100 --users '[...]'
-wjx user-system delete-participants --usid 100 --uids '["u1","u2"]'
-wjx user-system bind --vid 12345 --usid 100 --uids '["u1"]'
-wjx user-system query-binding --vid 12345 --usid 100
-wjx user-system query-surveys --usid 100 --uid u1
+wjx user-system add-participants --sysid 100 --users '[{"uid":"u1","uname":"Alice","upass":"123"}]'
+wjx user-system modify-participants --sysid 100 --users '[...]'
+wjx user-system delete-participants --sysid 100 --uids '["u1","u2"]'
+wjx user-system bind --vid 12345 --sysid 100 --uids '["u1"]'
+wjx user-system query-binding --vid 12345 --sysid 100
+wjx user-system query-surveys --sysid 100 --uid u1
 ```

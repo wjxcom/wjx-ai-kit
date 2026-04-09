@@ -106,7 +106,7 @@ export function registerResponseCommands(program: Command): void {
     .option("--qid <s>", "题目ID")
     .option("--sort <n>", "排序", strictInt)
     .option("--query_type <n>", "查询类型", strictInt)
-    .option("--suffix <n>", "文件后缀", strictInt)
+    .option("--suffix <n>", "导出格式: 0=CSV, 1=SAV, 2=Word", strictInt)
     .option("--query_record", "查询记录")
     .action(async (_opts, cmd) => {
       await executeCommand(program, cmd, downloadResponses, (m) => {

@@ -68,7 +68,7 @@ wjx-cli 是问卷星 OpenAPI 的命令行工具。所有命令格式：`wjx <模
 | 「导出答卷数据」 | `wjx response download --vid <vid>` |
 | 「分析 NPS 得分」 | `wjx analytics nps --scores "[9,10,7,3]"` |
 | 「导入联系人」 | `wjx contacts add --users '[...]'`（需 `WJX_CORP_ID`） |
-| 「查看问卷链接」 | `wjx survey url --vid <vid>` |
+| 「查看问卷链接」 | `wjx survey url --mode edit --activity <vid>` |
 
 ## 安装与配置
 
@@ -120,6 +120,7 @@ wjx doctor            # 检查连接状态
 | `analytics` | decode, nps, csat, anomalies, compare, decode-push | 本地分析（无需 API Key） |
 | `init` | （独立命令） | 交互式配置向导 |
 | `doctor` | （独立命令） | 环境诊断 |
+| `whoami` | （独立命令） | 验证 API Key 并显示账号信息 |
 | `completion` | bash, zsh, fish, install | Shell 自动补全 |
 | `skill` | install, update | 管理 Claude Code 技能（安装/更新 wjx-cli-use） |
 | `update` | （独立命令） | 自更新 wjx-cli 到最新版本 |
@@ -189,6 +190,8 @@ wjx survey create-by-text --text "JavaScript 基础测验
 # 也可使用示例文件
 wjx survey create-by-text --file examples/exam_survey.txt --type 6
 ```
+
+**注意**：考试问卷的正确答案和每题分值**无法**通过 API 设置。创建考试后，应提供编辑链接 `wjx survey url --mode edit --activity <vid>`，指引用户在网页端手动配置答案与评分。
 
 ## 常用枚举值
 

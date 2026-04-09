@@ -60,7 +60,7 @@ wjx-cli 是问卷星 OpenAPI 的命令行工具。命令格式：`wjx <模块> <
 | 导出答卷数据 | `wjx response download --vid <vid>` |
 | 分析 NPS | `wjx analytics nps --scores "[9,10,7,3]"` |
 | 导入联系人 | `wjx contacts add --users '[...]'`（需 `WJX_CORP_ID`） |
-| 查看问卷链接 | `wjx survey url --vid <vid>` |
+| 查看问卷链接 | `wjx survey url --mode edit --activity <vid>` |
 
 ## 安装与配置
 
@@ -130,7 +130,7 @@ wjx doctor
 | `account` | list, add, modify, delete, restore | 子账号管理 |
 | `sso` | subaccount-url, user-system-url, partner-url | SSO 链接生成 |
 | `analytics` | decode, nps, csat, anomalies, compare, decode-push | 本地分析（无需 API Key） |
-| `init` / `doctor` | — | 配置向导 / 环境诊断 |
+| `init` / `doctor` / `whoami` | — | 配置向导 / 环境诊断 / 验证 API Key |
 | `completion` | bash, zsh, fish, install | Shell 自动补全 |
 | `skill` / `update` | — | 技能管理 / 自更新 |
 
@@ -153,6 +153,8 @@ wjx survey create-by-text --text "问卷标题
 ```
 
 问卷类型：`--type 1` 调查（默认），`3` 投票，`6` 考试，`7` 表单。考试问卷示例见 `examples/exam_survey.txt`。
+
+**注意**：考试问卷的正确答案和每题分值**无法**通过 API 设置。创建考试后，应提供编辑链接 `wjx survey url --mode edit --activity <vid>`，指引用户在网页端手动配置答案与评分。
 
 完整 DSL 语法（含 28 种题型标签）见 [references/dsl-syntax.md](references/dsl-syntax.md)。JSON 创建或复制问卷见 [references/survey-commands.md](references/survey-commands.md)。
 

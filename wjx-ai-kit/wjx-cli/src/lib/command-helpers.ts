@@ -166,7 +166,7 @@ export async function executeCommand(
     if (result.result === false) {
       throw new CliError(
         "API_ERROR",
-        result.errormsg || "API request failed",
+        result.errormsg || "API 请求失败",
       );
     }
 
