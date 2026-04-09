@@ -51,6 +51,7 @@ const MENU = [
       { key: "setup-claw", label: "Claw 系列" },
       { key: "setup-openclaw", label: "OpenClaw" },
       { key: "setup-qoder", label: "Qoder" },
+      { key: "setup-workbench", label: "AI 工作台" },
     ],
   },
 ];

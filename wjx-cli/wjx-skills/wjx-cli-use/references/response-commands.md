@@ -1,4 +1,4 @@
-# Response Commands Reference
+# 答卷命令参考
 
 > **全参数访问**: 以下列出的是 CLI 显式 flags。SDK 支持的额外参数可通过 `--stdin` 传入 JSON。
 
