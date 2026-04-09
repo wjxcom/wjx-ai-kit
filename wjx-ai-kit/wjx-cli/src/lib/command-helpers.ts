@@ -86,6 +86,30 @@ export function getMerged(cmd: Command): Record<string, unknown> {
   return { ...cmd.opts() };
 }
 
+/**
+ * Ensure a value is a JSON string suitable for the OpenAPI.
+ * - If the value is a string, validate it's parseable JSON and return as-is.
+ * - If the value is an array/object (e.g. from --stdin JSON parsing), JSON.stringify it.
+ * - If undefined/null, return undefined.
+ * This fixes the common issue where --stdin passes parsed objects while the API expects
+ * a JSON-encoded string (double-encoded in the POST body).
+ */
+export function ensureJsonString(value: unknown, fieldName: string): string | undefined {
+  if (value === undefined || value === null) return undefined;
+  if (typeof value === "string") {
+    try {
+      JSON.parse(value);
+    } catch {
+      throw new CliError("INPUT_ERROR", `${fieldName} 必须是合法的 JSON 字符串`);
+    }
+    return value;
+  }
+  if (typeof value === "object") {
+    return JSON.stringify(value);
+  }
+  throw new CliError("INPUT_ERROR", `${fieldName} 必须是 JSON 字符串或对象`);
+}
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type SdkFunction = (input: any, creds: any, ...rest: any[]) => Promise<WjxApiResponse<any>>;
 

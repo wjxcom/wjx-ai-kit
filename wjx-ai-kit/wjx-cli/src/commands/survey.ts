@@ -21,7 +21,7 @@ import {
 import { formatOutput } from "../lib/output.js";
 import { CliError, handleError } from "../lib/errors.js";
 import { getCredentials } from "../lib/auth.js";
-import { executeCommand, strictInt, requireField, getMerged, createCapturingFetch, printDryRunPreview } from "../lib/command-helpers.js";
+import { executeCommand, strictInt, requireField, getMerged, createCapturingFetch, printDryRunPreview, ensureJsonString } from "../lib/command-helpers.js";
 
 export function registerSurveyCommands(program: Command): void {
   const survey = program.command("survey").description("问卷管理");
@@ -74,7 +74,7 @@ export function registerSurveyCommands(program: Command): void {
           title: m.title,
           type: m.type ?? 0,
           description: m.description ?? "",
-          questions: m.questions ?? "[]",
+          questions: ensureJsonString(m.questions, "questions") ?? "[]",
           source_vid: m.source_vid,
           publish: m.publish,
         };
@@ -87,7 +87,7 @@ export function registerSurveyCommands(program: Command): void {
     .description("用 DSL 文本创建问卷（推荐 AI Agent 使用）")
     .option("--text <s>", "DSL 格式问卷文本")
     .option("--file <path>", "从文件读取 DSL 文本")
-    .option("--type <n>", "问卷类型：1=调查, 6=考试", strictInt)
+    .option("--type <n>", "问卷类型：1=调查, 2=测评, 3=投票, 6=考试, 7=表单", strictInt)
     .option("--publish", "创建后发布")
     .option("--creater <s>", "创建者子账号")
     .action(async (_opts, cmd) => {
@@ -206,11 +206,11 @@ export function registerSurveyCommands(program: Command): void {
         requireField(m, "vid");
         return {
           vid: m.vid,
-          api_setting: m.api_setting,
-          after_submit_setting: m.after_submit_setting,
-          msg_setting: m.msg_setting,
-          sojumpparm_setting: m.sojumpparm_setting,
-          time_setting: m.time_setting,
+          api_setting: ensureJsonString(m.api_setting, "api_setting"),
+          after_submit_setting: ensureJsonString(m.after_submit_setting, "after_submit_setting"),
+          msg_setting: ensureJsonString(m.msg_setting, "msg_setting"),
+          sojumpparm_setting: ensureJsonString(m.sojumpparm_setting, "sojumpparm_setting"),
+          time_setting: ensureJsonString(m.time_setting, "time_setting"),
         };
       });
     });
