@@ -1,4 +1,4 @@
-# Response Commands Reference
+# 答卷命令参考
 
 > **全参数访问**: 以下列出的是 CLI 显式 flags。SDK 支持的额外参数可通过 `--stdin` 传入 JSON。
 
@@ -46,6 +46,7 @@ wjx response query --vid 12345 --page_size 50 --sort 1 --begin_time 170000000000
 - 多选：`2$1|3`（第2题选第1和第3个选项）
 - 填空：`3$答案文本`
 - 量表：`4$8`（第4题选8分）
+- 排序：`5$2|3|1`（第5题排序：选项2第1名、选项3第2名、选项1第3名，按排名顺序用`|`分隔所有选项序号）
 
 ## wjx response report
 

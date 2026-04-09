@@ -199,7 +199,7 @@ export function registerResponseTools(server: McpServer): void {
       inputSchema: {
         vid: z.number().int().positive().describe("问卷编号"),
         inputcosttime: z.number().int().min(2).describe("填写时间（秒），需>1秒否则视为机器提交"),
-        submitdata: z.string().min(1).describe("答卷���容字符串，格式：题号$答案}题号$答案"),
+        submitdata: z.string().min(1).describe("答卷内容字符串，格式：题号$答案}题号$答案。单选：题号$选项序号；多选：题号$选项1|选项2；填空：题号$文本；排序题：题号$选项序号1|选项序号2|选项序号3（按排名顺序列出所有选项序号）"),
         udsid: z.number().int().optional().describe("自定义来源编号"),
         sojumpparm: z.string().optional().describe("自定义链接参数"),
         submittime: z.string().optional().describe("答卷提交时间，日期时间字符串，默认当前时间"),
