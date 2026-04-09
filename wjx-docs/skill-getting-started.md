@@ -34,14 +34,35 @@ Skill 是一种让 AI 助手获得特定能力的方式。问卷星 Skill 包含
 
 ---
 
-## 快速开始：安装 Skill 包
+## 快速开始：让 AI 帮你安装
 
-### 第一步：下载
+你已经在 AI 工具里了，直接让 AI 完成安装。复制下面的话发给你的 AI 助手：
 
-下载最新 Skill 包并解压：
+> 请帮我安装问卷星 Skill：下载 https://pubdz.paperol.cn/wjx-ai-kit/skills/wjx-cli-use-skill-latest.zip 并解压到当前目录，然后运行 `bash wjx-cli-use/setup.sh -y` 完成安装。
+
+AI 会自动执行以下步骤：
+1. 下载并解压 Skill 包
+2. 检测 Node.js 20+
+3. 安装 wjx-cli 命令行工具
+4. 打开浏览器，微信扫码登录问卷星获取 API Key
+5. 运行 `wjx init` 配置 API Key
+6. 运行 `wjx doctor` 验证连接
+
+安装完成后，直接对 AI 说：
+
+> "帮我创建一份客户满意度调查，包含 NPS 评分题和 5 个维度的量表题"
+
+AI 会自动调用 `wjx` 命令创建问卷，返回编辑链接和填写链接。
+
+---
+
+## 手动安装
+
+如果你更喜欢自己操作，或者 AI 工具没有终端权限：
+
+### 第一步：下载并解压
 
 ```bash
-# 下载最新版
 curl -L -o wjx-cli-use-skill-latest.zip https://pubdz.paperol.cn/wjx-ai-kit/skills/wjx-cli-use-skill-latest.zip
 unzip wjx-cli-use-skill-latest.zip
 ```
@@ -54,19 +75,12 @@ unzip wjx-cli-use-skill-latest.zip
 wjx skill install
 ```
 
-### 第二步：安装
+### 第二步：运行安装脚本
 
 ```bash
 cd wjx-cli-use
 bash setup.sh -y
 ```
-
-脚本会自动完成 5 步：
-1. 检测 Node.js 20+（未安装会提示安装指引）
-2. 安装 wjx-cli 命令行工具
-3. 打开浏览器，微信扫码登录问卷星获取 API Key
-4. 运行 `wjx init` 粘贴 API Key
-5. 运行 `wjx doctor` 验证连接
 
 ### 第三步：在 AI 工具中启用
 
@@ -82,18 +96,6 @@ wjx skill install   # 自动安装到 .claude/agents/
 
 **其他工具**：
 将 `SKILL.md` 的内容添加到工具的系统提示或 Rules 文件中。
-
-### 第四步：开始使用
-
-对 AI 说：
-
-> "帮我创建一份客户满意度调查，包含 NPS 评分题和 5 个维度的量表题"
-
-或者更简单：
-
-> "帮我做个问卷"
-
-AI 会自动调用 `wjx` 命令创建问卷，返回编辑链接和填写链接。
 
 ---
 
