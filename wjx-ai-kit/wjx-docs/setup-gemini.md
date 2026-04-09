@@ -8,7 +8,7 @@
 
 1. **安装 Gemini Code Assist** — 在 VS Code 或 JetBrains IDE 的扩展市场搜索 "Gemini Code Assist" 并安装
 2. **Node.js >= 20** — 运行 `node --version` 确认版本，低于 20 请前往 [nodejs.org](https://nodejs.org) 升级
-3. **获取问卷星 API Key** — 登录 [问卷星](https://www.wjx.cn)，进入「账号设置」→「API 设置」，创建或复制你的 API Key
+3. **获取问卷星 API Key** — 微信扫码登录 [API Key 获取页](https://www.wjx.cn/weixinlogin.aspx?redirecturl=%2Fnewwjx%2Fmanage%2Fuserinfo.aspx%3FshowApiKey%3D1)，登录后页面直接显示 API Key
 
 > 注意：Gemini Code Assist 的 MCP 支持可能处于预览阶段，功能和配置方式可能随版本更新变化。
 
