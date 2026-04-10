@@ -20,8 +20,11 @@ if command -v zip &>/dev/null; then
     -x "${NAME}/.wjxrc" \
     -x "*.DS_Store" \
     -x "**/.DS_Store"
+elif [[ "${OSTYPE:-}" == msys* || "${OSTYPE:-}" == cygwin* ]] && [ -x "/c/Windows/System32/tar.exe" ]; then
+  # Windows Git Bash: 自带的 GNU tar 不支持 zip 格式，改用 Windows 原生 bsdtar
+  /c/Windows/System32/tar.exe -acf "$OUT" --exclude=node_modules --exclude=.git --exclude=.wjxrc --exclude=.DS_Store -C "$PARENT" "$NAME"
 elif command -v tar &>/dev/null; then
-  # Windows fallback: bsdtar（Windows 10+ 自带），支持 -a 自动检测 zip 格式
+  # macOS / Linux: bsdtar 或 GNU tar >= 1.31 支持 -a 自动检测 zip
   tar -acf "$OUT" --exclude='node_modules' --exclude='.git' --exclude='.wjxrc' --exclude='.DS_Store' -C "$PARENT" "$NAME"
 else
   echo "错误: 未找到 zip 或 tar，无法打包" >&2
