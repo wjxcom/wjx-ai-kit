@@ -118,7 +118,7 @@ Qoder 支持记忆系统和规则文件。将 Skill 中的关键内容加入 Qod
 如果无法使用 npm，可下载 Skill 包手动安装：
 
 1. 下载 [wjx-cli-use-skill-latest.zip](https://pubdz.paperol.cn/wjx-ai-kit/skills/wjx-cli-use-skill-latest.zip)
-2. 解压到 AI 工具的技能目录（或当前项目目录下）
+2. 解压并提取其中的 `wjx-cli-use` 目录到 AI 工具的技能目录（或当前项目目录下）
 3. 安装 CLI 并配置 API Key：
    ```bash
    npm install -g wjx-cli

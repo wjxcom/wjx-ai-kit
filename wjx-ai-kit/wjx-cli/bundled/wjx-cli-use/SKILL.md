@@ -48,6 +48,15 @@ wjx-cli 是问卷星 OpenAPI 的命令行工具。命令格式：`wjx <模块> <
 2. 继续创建问卷中其他可支持的题目
 3. **不要**反复调用创建命令尝试不同方式，**不要**为不同题型分别创建多个问卷
 
+### 规则 4：面向用户说自然语言，不说 CLI 命令
+
+用户不需要知道 `wjx` 命令的存在。CLI 是你（AI）在后台执行的工具，**不要**在回复中展示 CLI 命令或命令行用法。
+
+- 正确：「问卷已创建，这是填写链接：https://...」
+- 错误：「你可以运行 `wjx survey list` 查看问卷列表」
+
+唯一例外：用户明确问"怎么用命令行"或要求看具体命令时，可以展示。
+
 ## 快速路由
 
 | 用户意图 | 命令 |
@@ -66,29 +75,41 @@ wjx-cli 是问卷星 OpenAPI 的命令行工具。命令格式：`wjx <模块> <
 
 首次使用时按以下步骤执行。AI 应直接执行命令，不要求用户去终端操作。
 
-### 步骤 1：检查并安装 wjx-cli
+### 步骤 1：检查并安装 Node.js 和 wjx-cli
 
 ```bash
-wjx --version
+node --version
 ```
 
-未安装或版本过低时，直接执行：
+如果 Node.js 未安装或版本 < 20，需要先安装 Node.js。参见 [Node.js 安装指南](../wjx-cli/docs/install-nodejs.md)，根据用户操作系统选择安装方式（优先使用 fnm 或 nvm）。
+
+Node.js 就绪后，安装 wjx-cli：
 
 ```bash
 npm install -g wjx-cli
+wjx --version
 ```
 
 ### 步骤 2：获取并配置 API Key
 
-API Key 需要用户手动获取（无法自动化）：
+API Key 需要用户手动获取（无法自动化）。
 
-1. 告诉用户打开以下链接，用微信扫码登录：
-   `https://www.wjx.cn/weixinlogin.aspx?redirecturl=%2Fnewwjx%2Fmanage%2Fuserinfo.aspx%3FshowApiKey%3D1`
+**确定域名**：默认域名为 `www.wjx.cn`。如果用户使用自定义域名（如 `xxx.sojump.cn`），需替换下方链接中的域名。可先询问用户，或检查已有的 `~/.wjxrc` 配置中的 `base_url`。
+
+1. 告诉用户打开以下链接，用微信扫码登录（将 `<域名>` 替换为实际域名）：
+   `https://<域名>/weixinlogin.aspx?redirecturl=%2Fnewwjx%2Fmanage%2Fuserinfo.aspx%3FshowApiKey%3D1`
+   默认：`https://www.wjx.cn/weixinlogin.aspx?redirecturl=%2Fnewwjx%2Fmanage%2Fuserinfo.aspx%3FshowApiKey%3D1`
 2. 登录后页面会显示 API Key，让用户复制粘贴给你
 3. 拿到 Key 后，直接执行（非交互模式）：
 
 ```bash
 wjx init --api-key <用户提供的key>
+```
+
+如果用户使用自定义域名，追加 `--base-url`：
+
+```bash
+wjx init --api-key <key> --base-url https://<域名>
 ```
 
 凭据优先级：`--api-key` 参数 > `WJX_API_KEY` 环境变量 > `~/.wjxrc` 配置文件。通讯录操作另需 `WJX_CORP_ID`。
@@ -103,10 +124,14 @@ wjx doctor
 
 所有检查项应为 ok。如果 API 连接失败，根据错误信息排查（参见下方"常见错误与处理"）。
 
-验证通过后，告诉用户可以开始使用了，并给出示例引导：
+### 安装完成后的回复（重要）
+
+验证通过后，**必须**向用户展示以下自然语言使用示例。**不要**向用户展示 CLI 命令——CLI 是你（AI）在后台使用的工具，用户只需要用自然语言告诉你需求。
+
+请向用户回复：
 
 ```
-配置完成！你现在可以直接告诉我你想做什么，比如：
+安装完成！你现在可以直接告诉我你想做什么，比如：
 - 「帮我做一份客户满意度调查，包含 NPS 评分题」
 - 「出一套 JavaScript 基础测验，10 道选择题」
 - 「查看我的问卷列表」
@@ -116,23 +141,20 @@ wjx doctor
 - 「帮我把这批联系人导入到通讯录」
 ```
 
-## 命令总览（15 模块，69 命令）
+## 命令总览
 
 | 模块 | 命令 | 说明 |
 |------|------|------|
-| `survey` | list, get, create, create-by-text, delete, status, settings, update-settings, tags, tag-details, clear-bin, upload, export-text, url | 问卷增删改查与配置 |
-| `response` | query, realtime, download, submit, modify, clear, report, winners, 360-report, count | 答卷数据操作 |
+| `survey` | list, get, create, create-by-text, delete, status, settings, update-settings, upload, export-text, url | 问卷增删改查与配置 |
+| `response` | query, realtime, download, submit, modify, clear, report, count | 答卷数据操作 |
 | `contacts` | query, add, delete | 联系人管理（需 WJX_CORP_ID） |
 | `department` | list, add, modify, delete | 部门管理 |
 | `admin` | add, delete, restore | 管理员管理 |
 | `tag` | list, add, modify, delete | 标签管理 |
-| `user-system` | add-participants, modify-participants, delete-participants, bind, query-binding, query-surveys | 用户系统（已过时） |
 | `account` | list, add, modify, delete, restore | 子账号管理 |
 | `sso` | subaccount-url, user-system-url, partner-url | SSO 链接生成 |
 | `analytics` | decode, nps, csat, anomalies, compare, decode-push | 本地分析（无需 API Key） |
-| `init` / `doctor` / `whoami` | — | 配置向导 / 环境诊断 / 验证 API Key |
-| `completion` | bash, zsh, fish, install | Shell 自动补全 |
-| `skill` / `update` | — | 技能管理 / 自更新 |
+| `init` / `doctor` / `whoami` | — | 配置 / 诊断 / 验证 |
 
 ## 核心工作流
 
@@ -152,33 +174,17 @@ wjx survey create-by-text --text "问卷标题
 2. 另一个题目[填空题]"
 ```
 
-问卷类型：`--type 1` 调查（默认），`3` 投票，`6` 考试，`7` 表单。考试问卷示例见 `examples/exam_survey.txt`。
+问卷类型：`--type 1` 调查（默认），`3` 投票，`6` 考试，`7` 表单。
 
 **注意**：考试问卷的正确答案和每题分值**无法**通过 API 设置。创建考试后，应提供编辑链接 `wjx survey url --mode edit --activity <vid>`，指引用户在网页端手动配置答案与评分。
 
-完整 DSL 语法（含 28 种题型标签）见 [references/dsl-syntax.md](references/dsl-syntax.md)。JSON 创建或复制问卷见 [references/survey-commands.md](references/survey-commands.md)。
+完整 DSL 语法（含 28 种题型标签）见 [references/dsl-syntax.md](references/dsl-syntax.md)。
 
-### 查询与分析答卷
+### 答卷与分析
 
-```bash
-wjx response report --vid 12345           # 统计报告（建议第一步）
-wjx response query --vid 12345            # 答卷明细数据
-wjx response download --vid 12345         # 批量导出（CSV/SAV/Word）
-wjx response count --vid 12345            # 答卷总数
-wjx analytics nps --scores "[9,10,7,3,8]" # NPS 分析（本地，无需 API）
-wjx analytics csat --scores "[4,5,3,5,2]" # CSAT 分析（本地）
-```
+答卷操作需要先获取 vid（`wjx survey list`），再使用 `wjx response` 子命令。下载格式：`--suffix 0` CSV，`1` SAV，`2` Word。详见 [references/response-commands.md](references/response-commands.md)。
 
-下载格式：`--suffix 0` CSV，`1` SAV，`2` Word。完整参数见 [references/response-commands.md](references/response-commands.md)。
-
-### 管理通讯录与账号
-
-```bash
-wjx contacts add --users '[{"userid":"u1","name":"Alice","mobile":"13800000001"}]'
-wjx department add --depts '["研发部/后端"]'
-wjx admin add --users '[{"userid":"u1","role":2}]'
-wjx account add --subuser user1 --password pass123 --role 1
-```
+### 通讯录与账号
 
 子账号角色：1=系统管理员, 2=问卷管理员, 3=统计查看, 4=完整查看。详见 [references/contacts-commands.md](references/contacts-commands.md)。
 
