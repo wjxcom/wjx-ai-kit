@@ -75,29 +75,41 @@ wjx-cli 是问卷星 OpenAPI 的命令行工具。命令格式：`wjx <模块> <
 
 首次使用时按以下步骤执行。AI 应直接执行命令，不要求用户去终端操作。
 
-### 步骤 1：检查并安装 wjx-cli
+### 步骤 1：检查并安装 Node.js 和 wjx-cli
 
 ```bash
-wjx --version
+node --version
 ```
 
-未安装或版本过低时，直接执行：
+如果 Node.js 未安装或版本 < 20，需要先安装 Node.js。参见 [Node.js 安装指南](../wjx-cli/docs/install-nodejs.md)，根据用户操作系统选择安装方式（优先使用 fnm 或 nvm）。
+
+Node.js 就绪后，安装 wjx-cli：
 
 ```bash
 npm install -g wjx-cli
+wjx --version
 ```
 
 ### 步骤 2：获取并配置 API Key
 
-API Key 需要用户手动获取（无法自动化）：
+API Key 需要用户手动获取（无法自动化）。
 
-1. 告诉用户打开以下链接，用微信扫码登录：
-   `https://www.wjx.cn/weixinlogin.aspx?redirecturl=%2Fnewwjx%2Fmanage%2Fuserinfo.aspx%3FshowApiKey%3D1`
+**确定域名**：默认域名为 `www.wjx.cn`。如果用户使用自定义域名（如 `xxx.sojump.cn`），需替换下方链接中的域名。可先询问用户，或检查已有的 `~/.wjxrc` 配置中的 `base_url`。
+
+1. 告诉用户打开以下链接，用微信扫码登录（将 `<域名>` 替换为实际域名）：
+   `https://<域名>/weixinlogin.aspx?redirecturl=%2Fnewwjx%2Fmanage%2Fuserinfo.aspx%3FshowApiKey%3D1`
+   默认：`https://www.wjx.cn/weixinlogin.aspx?redirecturl=%2Fnewwjx%2Fmanage%2Fuserinfo.aspx%3FshowApiKey%3D1`
 2. 登录后页面会显示 API Key，让用户复制粘贴给你
 3. 拿到 Key 后，直接执行（非交互模式）：
 
 ```bash
 wjx init --api-key <用户提供的key>
+```
+
+如果用户使用自定义域名，追加 `--base-url`：
+
+```bash
+wjx init --api-key <key> --base-url https://<域名>
 ```
 
 凭据优先级：`--api-key` 参数 > `WJX_API_KEY` 环境变量 > `~/.wjxrc` 配置文件。通讯录操作另需 `WJX_CORP_ID`。
