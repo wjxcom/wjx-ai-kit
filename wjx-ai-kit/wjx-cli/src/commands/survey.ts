@@ -33,7 +33,7 @@ export function registerSurveyCommands(program: Command): void {
     .option("--page <n>", "页码", strictInt)
     .option("--page_size <n>", "每页数量", strictInt)
     .option("--status <n>", "状态筛选", strictInt)
-    .option("--atype <n>", "问卷类型", strictInt)
+    .option("--atype <n>", "问卷类型筛选：1=调查, 2=测评, 3=投票, 4=360度评估, 5=360评估无测评关系, 6=考试, 7=表单, 8=用户体系, 9=教学评估, 10=量表, 11=民主评议", strictInt)
     .option("--name_like <s>", "名称搜索")
     .action(async (_opts, cmd) => {
       await executeCommand(program, cmd, listSurveys, (m) => ({
@@ -62,7 +62,7 @@ export function registerSurveyCommands(program: Command): void {
     .command("create")
     .description("创建问卷")
     .option("--title <s>", "问卷标题")
-    .option("--type <n>", "问卷类型", strictInt)
+    .option("--type <n>", "问卷类型：1=调查, 2=测评, 3=投票, 6=考试, 7=表单（仅这5种可通过API创建）", strictInt)
     .option("--description <s>", "问卷描述")
     .option("--questions <json>", "题目JSON数组")
     .option("--source_vid <s>", "复制源问卷ID")
@@ -87,7 +87,7 @@ export function registerSurveyCommands(program: Command): void {
     .description("用 DSL 文本创建问卷（推荐 AI Agent 使用）")
     .option("--text <s>", "DSL 格式问卷文本")
     .option("--file <path>", "从文件读取 DSL 文本")
-    .option("--type <n>", "问卷类型：1=调查, 2=测评, 3=投票, 6=考试, 7=表单", strictInt)
+    .option("--type <n>", "问卷类型：1=调查, 2=测评, 3=投票, 6=考试, 7=表单（仅这5种可通过API创建；4=360度评估, 5=360评估无测评关系, 8=用户体系, 9=教学评估, 10=量表, 11=民主评议 不支持API创建）", strictInt)
     .option("--publish", "创建后发布")
     .option("--creater <s>", "创建者子账号")
     .action(async (_opts, cmd) => {
@@ -199,7 +199,7 @@ export function registerSurveyCommands(program: Command): void {
     .option("--api_setting <json>", "API设置JSON")
     .option("--after_submit_setting <json>", "提交后设置JSON")
     .option("--msg_setting <json>", "消息设置JSON")
-    .option("--sojumpparm_setting <json>", "参数设置JSON")
+    .option("--sojumpparm_setting <json>", "自定义链接参数设置JSON。【注意】部分字段（如 join_limit、only_limit_join 等作答次数限制）可能无法通过 API 生效，需在问卷星网页后台配置")
     .option("--time_setting <json>", "时间设置JSON")
     .action(async (_opts, cmd) => {
       await executeCommand(program, cmd, updateSurveySettings, (m) => {

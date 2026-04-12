@@ -56,7 +56,7 @@ export function registerResponseCommands(program: Command): void {
     .option("--query_note", "查询备注")
     .option("--distinct_user", "去重用户")
     .option("--distinct_sojumpparm", "去重参数")
-    .option("--conds <json>", "查询条件JSON字符串，最多2个条件")
+    .option("--conds <json>", "查询条件JSON字符串，最多2个条件，AND关系。格式: [{\"q_index\":题号,\"opt\":\"操作符\",\"val\":\"值\"}]。q_index=10000表示总分；opt可选: eq/ne/gt/lt/gte/lte/in/not_in/contains/not_contains；val为逗号分隔的值。示例: [{\"q_index\":1,\"opt\":\"in\",\"val\":\"1,2\"}]")
     .action(async (_opts, cmd) => {
       await executeCommand(program, cmd, queryResponses, (m) => {
         requireField(m, "vid");
@@ -201,7 +201,7 @@ export function registerResponseCommands(program: Command): void {
     .option("--end_time <n>", "结束时间", strictInt)
     .option("--distinct_user", "去重用户")
     .option("--distinct_sojumpparm", "去重参数")
-    .option("--conds <json>", "查询条件JSON字符串")
+    .option("--conds <json>", "查询条件JSON字符串，格式: [{\"q_index\":题号,\"opt\":\"操作符\",\"val\":\"值\"}]。q_index=10000表示总分；opt可选: eq/ne/gt/lt/gte/lte/in/not_in/contains/not_contains；val为逗号分隔的值")
     .action(async (_opts, cmd) => {
       await executeCommand(program, cmd, getReport, (m) => {
         requireField(m, "vid");

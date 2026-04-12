@@ -56,7 +56,7 @@ export function registerMultiUserTools(server: McpServer): void {
     {
       title: "修改子账号",
       description:
-        "修改子账号的信息，包括手机号、邮箱、角色、分组等。不支持修改密码。",
+        "修改子账号的信息，包括手机号、邮箱、角色、分组等。【重要】不支持修改密码，密码只能通过问卷星网页后台修改，请勿尝试通过其他方式（如修改配置文件）变通。",
       inputSchema: {
         subuser: z.string().min(1).describe("子账号用户名"),
         mobile: z.string().optional().describe("手机号"),

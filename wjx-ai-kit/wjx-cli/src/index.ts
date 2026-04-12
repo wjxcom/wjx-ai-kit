@@ -17,7 +17,7 @@ import { registerCompletionCommands } from "./commands/completion.js";
 import { registerReferenceCommands } from "./commands/reference.js";
 import { registerSkillCommands } from "./commands/skill.js";
 import { registerUpdateCommands } from "./commands/update.js";
-import { readStdin } from "./lib/stdin.js";
+import { readStdin, readInputFile } from "./lib/stdin.js";
 import { handleError } from "./lib/errors.js";
 import { applyConfigToEnv } from "./lib/config.js";
 import { getCompletions } from "./lib/completions.js";
@@ -38,20 +38,28 @@ program
   .option("--json", "JSON 输出（默认）")
   .option("--table", "表格输出")
   .option("--stdin", "从 stdin 读取 JSON 参数")
+  .option("--input-file <path>", "从文件读取 JSON 参数（推荐 Windows 使用，避免 PowerShell 管道编码问题）")
   .option("--dry-run", "预览 API 请求（不实际发送）");
 
 // Prevent Commander from calling process.exit on errors — we handle it ourselves
 program.exitOverride();
 
-// Global preAction hook: read stdin and merge with command opts
+// Global preAction hook: read input (stdin or file) and merge with command opts
 program.hook("preAction", async (thisCommand, actionCommand) => {
   const globalOpts = thisCommand.opts();
-  if (globalOpts.stdin) {
-    const stdinData = await readStdin();
-    if (Object.keys(stdinData).length > 0) {
-      // Store stdin data on the action command for executeCommand to pick up
-      (actionCommand as unknown as Record<string, unknown>).__stdinData = stdinData;
-    }
+
+  let inputData: Record<string, unknown> | undefined;
+
+  // --input-file takes precedence over --stdin
+  if (globalOpts.inputFile) {
+    inputData = readInputFile(globalOpts.inputFile as string);
+  } else if (globalOpts.stdin) {
+    inputData = await readStdin();
+  }
+
+  if (inputData && Object.keys(inputData).length > 0) {
+    // Store input data on the action command for executeCommand to pick up
+    (actionCommand as unknown as Record<string, unknown>).__stdinData = inputData;
   }
 });
 

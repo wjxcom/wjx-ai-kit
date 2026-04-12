@@ -37,7 +37,7 @@ export function registerResponseTools(server: McpServer): void {
         query_note: z.boolean().optional().describe("是否查询标注信息"),
         distinct_user: z.boolean().optional().describe("是否仅返回用户最新答卷"),
         distinct_sojumpparm: z.boolean().optional().describe("是否仅返回自定义参数最新答卷"),
-        conds: z.string().optional().describe("题目查询条件 JSON 字符串，最多2个条件，AND关系"),
+        conds: z.string().optional().describe("题目查询条件 JSON 字符串，最多2个条件，AND关系。格式: [{\"q_index\":题号,\"opt\":\"操作符\",\"val\":\"值\"}]。q_index 为题号（10000=总分）；opt 可选: eq/ne/gt/lt/gte/lte/in/not_in/contains/not_contains；val 为逗号分隔的值。示例: [{\"q_index\":1,\"opt\":\"in\",\"val\":\"1,2\"}] 表示第1题选了选项1或2"),
       },
       annotations: {
         destructiveHint: false,
@@ -161,7 +161,7 @@ export function registerResponseTools(server: McpServer): void {
         end_time: z.number().int().optional().describe("查询结束时间（Unix毫秒时间戳）"),
         distinct_user: z.boolean().optional().describe("是否仅用户最新答卷"),
         distinct_sojumpparm: z.boolean().optional().describe("是否仅自定义参数最新答卷"),
-        conds: z.string().optional().describe("题目查询条件 JSON 字符串"),
+        conds: z.string().optional().describe("题目查询条件 JSON 字符串。格式: [{\"q_index\":题号,\"opt\":\"操作符\",\"val\":\"值\"}]。q_index 为题号（10000=总分）；opt 可选: eq/ne/gt/lt/gte/lte/in/not_in/contains/not_contains；val 为逗号分隔的值"),
       },
       annotations: {
         destructiveHint: false,

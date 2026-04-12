@@ -7,6 +7,7 @@ import {
   restoreSubAccount,
 } from "wjx-api-sdk";
 import { executeCommand, strictInt, requireField } from "../lib/command-helpers.js";
+import { CliError } from "../lib/errors.js";
 
 export function registerAccountCommands(program: Command): void {
   const account = program.command("account").description("子账号管理");
@@ -70,6 +71,9 @@ export function registerAccountCommands(program: Command): void {
     .action(async (_opts, cmd) => {
       await executeCommand(program, cmd, modifySubAccount, (m) => {
         requireField(m, "subuser");
+        if (m.password !== undefined) {
+          throw new CliError("INPUT_ERROR", "modify_sub_account 不支持修改密码，密码需通过问卷星后台修改。请勿将密码参数传入此命令。");
+        }
         return {
           subuser: m.subuser,
           mobile: m.mobile,
