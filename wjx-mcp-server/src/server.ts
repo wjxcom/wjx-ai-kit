@@ -1,5 +1,6 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { readFileSync, existsSync } from "node:fs";
+import { execSync } from "node:child_process";
 import { dirname, resolve, join } from "node:path";
 import { homedir } from "node:os";
 import { fileURLToPath } from "node:url";
@@ -87,12 +88,19 @@ export function createServer(): McpServer {
         }
       }
 
+      // Detect wjx-cli availability
+      let cliVersion = "(未安装)";
+      try {
+        cliVersion = execSync("wjx --version", { timeout: 5000, encoding: "utf-8" }).trim();
+      } catch { /* not installed */ }
+
       const config = {
         server_version: serverInfo.version,
         base_url: baseUrl,
         api_key: maskedKey,
         corp_id: corpId,
         wjxrc: wjxrcInfo,
+        cli_version: cliVersion,
         env_WJX_BASE_URL: process.env.WJX_BASE_URL || "(未设置，使用默认值)",
         transport: process.env.MCP_TRANSPORT || "stdio",
       };

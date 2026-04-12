@@ -13,49 +13,22 @@ wjx-cli 是问卷星 OpenAPI 的命令行工具。命令格式：`wjx <模块> <
 
 ### 规则 1：一个需求 = 一个问卷
 
-无论用户要求多少种题型，**必须在一次 create-by-text 调用中包含所有题目**。
-
-- 正确：用户说"包含单选、多选、填空、量表" → 一个 DSL 文本包含所有题目 → 调用一次
-- 错误：为每种题型分别调用 create-by-text → 产生多个问卷
-
-一个问卷可以包含任意数量、任意类型的题目。没有"一种问卷只能包含一种题型"的限制。
+无论用户要求多少种题型，**必须在一次 `create-by-text` 调用中包含所有题目**。一个问卷可包含任意数量、任意类型的题目。
 
 ### 规则 2：问卷类型 ≠ 题目类型
 
-"投票问卷"、"考试问卷"、"调查问卷"是**问卷类型**（atype），通过 `--type` 参数设置。题目仍然使用普通的题型标签。
-
-| 用户说 | 正确做法 | 错误做法 |
-|--------|---------|---------|
-| "投票单选" | `--type 3` + `[单选题]` | 寻找"投票单选"标签 |
-| "投票多选" | `--type 3` + `[多选题]` | 寻找"投票多选"标签 |
-| "考试填空" | `--type 6` + `[填空题]` | 寻找"考试填空"标签 |
-
-不存在 `[投票单选题]`、`[投票多选题]` 这样的题型标签。"投票"描述的是问卷用途，不是题目类型。
+"投票/考试/调查"是**问卷类型**（`--type` 参数），不是题型标签。`--type 3` + `[单选题]` = 投票单选，不存在 `[投票单选题]` 标签。
 
 ### 规则 3：不支持的题型要明确告知
 
-以下功能**不在 DSL/API 支持范围内**，遇到时应告知用户，不要反复尝试或创建替代问卷：
-
-| 不支持的题型 | 替代方案 |
-|-------------|---------|
-| 签名题 | `[绘图题]` 近似替代 |
-| 地区题/省市区选择 | API 不支持，建议用 `[多级下拉题]` 或网页端手动添加 |
-| NPS 专用题 | `[量表题]` + `0~10` 实现相同效果 |
-| 自动每题一页 | DSL 支持 `=== 分页 ===` 手动分页 |
-
-遇到不支持的题型时，正确做法：
-1. 告诉用户该题型不被支持，并建议替代方案
-2. 继续创建问卷中其他可支持的题目
-3. **不要**反复调用创建命令尝试不同方式，**不要**为不同题型分别创建多个问卷
+签名题（用 `[绘图题]` 替代）、地区题（用 `[多级下拉题]` 或网页端添加）、NPS 专用题（用 `[量表题]` + `0~10`）不在 DSL 支持范围内。告知用户替代方案，继续创建其他题目，**不要**反复尝试或拆分多个问卷。
 
 ### 规则 4：面向用户说自然语言，不说 CLI 命令
 
-用户不需要知道 `wjx` 命令的存在。CLI 是你（AI）在后台执行的工具，**不要**在回复中展示 CLI 命令或命令行用法。
+CLI 是你（AI）在后台执行的工具，**不要**在回复中展示命令或命令行用法。唯一例外：用户明确要求看命令时。
 
 - 正确：「问卷已创建，这是填写链接：https://...」
 - 错误：「你可以运行 `wjx survey list` 查看问卷列表」
-
-唯一例外：用户明确问"怎么用命令行"或要求看具体命令时，可以展示。
 
 ## 快速路由
 
@@ -81,9 +54,9 @@ wjx-cli 是问卷星 OpenAPI 的命令行工具。命令格式：`wjx <模块> <
 node --version
 ```
 
-如果 Node.js 未安装或版本 < 20，需要先安装 Node.js。参见 [Node.js 安装指南](../wjx-cli/docs/install-nodejs.md)，根据用户操作系统选择安装方式（优先使用 fnm 或 nvm）。
+如果 Node.js 未安装或版本 < 20，需要先安装。参见 [references/install-nodejs.md](references/install-nodejs.md)，根据操作系统选择安装方式。
 
-Node.js 就绪后，安装 wjx-cli：
+Node.js 就绪后：
 
 ```bash
 npm install -g wjx-cli
@@ -94,19 +67,18 @@ wjx --version
 
 API Key 需要用户手动获取（无法自动化）。
 
-**确定域名**：默认域名为 `www.wjx.cn`。如果用户使用自定义域名（如 `xxx.sojump.cn`），需替换下方链接中的域名。可先询问用户，或检查已有的 `~/.wjxrc` 配置中的 `base_url`。
+**确定域名**：默认 `www.wjx.cn`。如果用户使用自定义域名（如 `xxx.sojump.cn`），替换下方链接中的域名。
 
-1. 告诉用户打开以下链接，用微信扫码登录（将 `<域名>` 替换为实际域名）：
+1. 让用户打开（`<域名>` 替换为实际域名，默认 `www.wjx.cn`）：
    `https://<域名>/weixinlogin.aspx?redirecturl=%2Fnewwjx%2Fmanage%2Fuserinfo.aspx%3FshowApiKey%3D1`
-   默认：`https://www.wjx.cn/weixinlogin.aspx?redirecturl=%2Fnewwjx%2Fmanage%2Fuserinfo.aspx%3FshowApiKey%3D1`
-2. 登录后页面会显示 API Key，让用户复制粘贴给你
-3. 拿到 Key 后，直接执行（非交互模式）：
+2. 微信扫码登录后复制 API Key
+3. 拿到 Key 后执行：
 
 ```bash
 wjx init --api-key <用户提供的key>
 ```
 
-如果用户使用自定义域名，追加 `--base-url`：
+自定义域名追加 `--base-url`：
 
 ```bash
 wjx init --api-key <key> --base-url https://<域名>
@@ -116,19 +88,15 @@ wjx init --api-key <key> --base-url https://<域名>
 
 ### 步骤 3：验证
 
-配置完成后**必须执行** doctor 确认环境和连接正常：
-
 ```bash
 wjx doctor
 ```
 
-所有检查项应为 ok。如果 API 连接失败，根据错误信息排查（参见下方"常见错误与处理"）。
+所有检查项应为 ok。失败时参见下方"常见错误与处理"。
 
 ### 安装完成后的回复（重要）
 
-验证通过后，**必须**向用户展示以下自然语言使用示例。**不要**向用户展示 CLI 命令——CLI 是你（AI）在后台使用的工具，用户只需要用自然语言告诉你需求。
-
-请向用户回复：
+验证通过后，**必须**向用户展示自然语言使用示例，**不要**展示 CLI 命令：
 
 ```
 安装完成！你现在可以直接告诉我你想做什么，比如：
@@ -165,8 +133,6 @@ wjx doctor
 ```bash
 wjx survey create-by-text --text "问卷标题
 
-可选描述
-
 1. 题目文本[单选题]
 选项A
 选项B
@@ -176,27 +142,28 @@ wjx survey create-by-text --text "问卷标题
 
 问卷类型：`--type 1` 调查（默认），`3` 投票，`6` 考试，`7` 表单。
 
-**注意**：考试问卷的正确答案和每题分值**无法**通过 API 设置。创建考试后，应提供编辑链接 `wjx survey url --mode edit --activity <vid>`，指引用户在网页端手动配置答案与评分。
+**考试问卷注意**：正确答案和每题分值**无法**通过 API 设置。创建后应提供编辑链接 `wjx survey url --mode edit --activity <vid>`，指引用户在网页端配置。
 
 完整 DSL 语法（含 28 种题型标签）见 [references/dsl-syntax.md](references/dsl-syntax.md)。
 
 ### 答卷与分析
 
-答卷操作需要先获取 vid（`wjx survey list`），再使用 `wjx response` 子命令。下载格式：`--suffix 0` CSV，`1` SAV，`2` Word。详见 [references/response-commands.md](references/response-commands.md)。
+先获取 vid（`wjx survey list`），再用 `wjx response` 子命令。下载格式：`--suffix 0` CSV，`1` SAV，`2` Word。详见 [references/response-commands.md](references/response-commands.md)。
 
 ### 通讯录与账号
 
-子账号角色：1=系统管理员, 2=问卷管理员, 3=统计查看, 4=完整查看。详见 [references/contacts-commands.md](references/contacts-commands.md)。
+角色：1=系统管理员, 2=问卷管理员, 3=统计查看, 4=完整查看。详见 [references/contacts-commands.md](references/contacts-commands.md)。
 
 ## 常见错误与处理
 
 | 错误信息 | 原因 | 解决方案 |
 |---------|------|---------|
-| `API Key is required` | 未配置 API Key | 执行 `wjx init --api-key <key>` |
-| `Invalid API Key` | API Key 错误或过期 | 重新获取 API Key（见安装步骤 2） |
+| `API Key is required` | 未配置 API Key | `wjx init --api-key <key>` |
+| `Invalid API Key` / "appkey error" | Key 错误或过期 | 重新获取（见步骤 2） |
 | `vid is required` | 未指定问卷 ID | 先 `wjx survey list` 获取 vid |
-| `Corp ID is required` | 通讯录操作需企业 ID | 执行 `wjx init`，配置 `WJX_CORP_ID` |
-| `Network Error` | 网络连接问题 | 检查网络，或用 `--dry-run` 预览请求 |
+| `Corp ID is required` | 通讯录操作需企业 ID | `wjx init` 配置 `WJX_CORP_ID` |
+| `Network Error` / 超时 | 网络不通或 base_url 错误 | `wjx doctor` 检查，`--dry-run` 预览 |
+| 创建问卷题目丢失 | DSL 格式错误 | 检查题号 + [题型标签]，选项各占一行 |
 
 ## 参考文件（按需读取）
 
@@ -206,3 +173,4 @@ wjx survey create-by-text --text "问卷标题
 - [通讯录命令](references/contacts-commands.md) — 联系人、部门、管理员、标签、子账号、SSO
 - [分析命令](references/analytics-commands.md) — NPS/CSAT/CES 公式、异常检测、数据解码
 - [题型编码](references/question-types.md) — 完整 q_type/q_subtype 映射表
+- [安装 Node.js](references/install-nodejs.md) — 各平台 Node.js 安装方式

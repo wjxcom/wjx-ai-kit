@@ -1,6 +1,6 @@
 ---
 name: wjx-mcp-use
-description: Guide for using wjx-mcp-server MCP tools to interact with the Wenjuanxing (问卷星) platform. Use when the user wants to create surveys, query responses, analyze data, manage contacts, or generate SSO links via MCP protocol. Covers 57 tools, 8 resources, and 19 prompts.
+description: "Guide for using wjx-mcp-server MCP tools to interact with the Wenjuanxing (问卷星) platform. Use when the user mentions: 问卷, 调查, 收集, 表单, 投票, 考试, 测评, 满意度, NPS, 问卷星, wjx, survey, questionnaire — or wants to create surveys, query responses, analyze data, manage contacts, or generate SSO links via MCP protocol. Covers 57 tools, 8 resources, and 19 prompts."
 ---
 
 # wjx-mcp-server Usage Guide
@@ -11,53 +11,42 @@ wjx-mcp-server 提供 57 个 MCP 工具、8 个参考资源和 19 个 prompt 模
 
 ### 规则 1：一个需求 = 一个问卷
 
-无论用户要求多少种题型，**必须在一次 create_survey_by_text 调用中包含所有题目**。
-
-- 正确：用户说"包含单选、多选、填空、量表" → 一个 DSL 文本包含所有题目 → 调用一次
-- 错误：为每种题型分别调用 create_survey_by_text → 产生多个问卷
-
-一个问卷可以包含任意数量、任意类型的题目。没有"一种问卷只能包含一种题型"的限制。
+无论用户要求多少种题型，**必须在一次 `create_survey_by_text` 调用中包含所有题目**。一个问卷可包含任意数量、任意类型的题目。
 
 ### 规则 2：问卷类型 ≠ 题目类型
 
-"投票问卷"、"考试问卷"、"调查问卷"是**问卷类型**（atype），通过 `atype` 参数设置。题目仍然使用普通的题型标签。
-
-| 用户说 | 正确做法 | 错误做法 |
-|--------|---------|---------|
-| "投票单选" | `atype: 3` + `[单选题]` | 寻找"投票单选"标签 |
-| "投票多选" | `atype: 3` + `[多选题]` | 寻找"投票多选"标签 |
-| "考试填空" | `atype: 6` + `[填空题]` | 寻找"考试填空"标签 |
-
-不存在 `[投票单选题]`、`[投票多选题]` 这样的题型标签。"投票"描述的是问卷用途，不是题目类型。
+"投票/考试/调查"是**问卷类型**（`atype` 参数），不是题型标签。`atype: 3` + `[单选题]` = 投票单选，不存在 `[投票单选题]` 标签。
 
 ### 规则 3：不支持的题型要明确告知
 
-以下功能**不在 DSL/API 支持范围内**，遇到时应告知用户，不要反复尝试或创建替代问卷：
-
-| 不支持的题型 | 替代方案 |
-|-------------|---------|
-| 签名题 | `[绘图题]` 近似替代 |
-| 地区题/省市区选择 | API 不支持，建议用 `[多级下拉题]` 或网页端手动添加 |
-| NPS 专用题 | `[量表题]` + `0~10` 实现相同效果 |
-| 自动每题一页 | DSL 支持 `=== 分页 ===` 手动分页 |
-
-遇到不支持的题型时，正确做法：
-1. 告诉用户该题型不被支持，并建议替代方案
-2. 继续创建问卷中其他可支持的题目
-3. **不要**反复调用创建工具尝试不同方式，**不要**为不同题型分别创建多个问卷
+签名题（用 `[绘图题]` 替代）、地区题（用 `[多级下拉题]` 或网页端添加）、NPS 专用题（用 `[量表题]` + `0~10`）不在 DSL 支持范围内。告知用户替代方案，继续创建其他题目，**不要**反复尝试或拆分多个问卷。
 
 ### 规则 4：面向用户说自然语言，不说工具名
 
-用户不需要知道 MCP 工具的存在。**不要**在回复中展示工具名或调用参数。
-
-- 正确：「问卷已创建，这是填写链接：https://...」
-- 错误：「我调用了 create_survey_by_text 工具来创建问卷」
-
-唯一例外：用户明确问"用了哪个工具"或在调试时，可以展示。
+用户不需要知道 MCP 工具的存在。**不要**在回复中展示工具名或调用参数。唯一例外：用户明确要求调试时。
 
 ### 规则 5：首次使用时检查配置
 
-如果用户首次使用问卷星功能，先调用 `get_config` 工具确认 API Key 和 Base URL 是否已配置。如果未配置，引导用户设置。
+首次使用问卷星功能，先调用 `get_config` 确认 API Key 和 Base URL 是否已配置。
+
+- **api_key 未设置**：引导用户在 AI 工具的 MCP 配置中添加 `WJX_API_KEY` 环境变量
+- **base_url 与用户域名不符**：引导添加 `WJX_BASE_URL` 环境变量（如 `https://xxx.sojump.cn`）
+- **获取 API Key**：让用户访问 `https://<域名>/weixinlogin.aspx?redirecturl=%2Fnewwjx%2Fmanage%2Fuserinfo.aspx%3FshowApiKey%3D1`，微信扫码登录后复制 Key
+- **cli_version 未安装**：可选，安装 `npm install -g wjx-cli` 后用 `wjx init --api-key <key>` 统一配置
+
+## 快速路由
+
+| 用户意图 | 工具 |
+|---------|------|
+| 做调查/问卷 | `create_survey_by_text({ text: "...", atype: 1 })` |
+| 做考试/测验 | `create_survey_by_text({ text: "...", atype: 6 })` |
+| 做投票 | `create_survey_by_text({ text: "...", atype: 3 })` |
+| 做表单/报名表 | `create_survey_by_text({ text: "...", atype: 7 })` |
+| 看问卷结果 | `get_report({ vid })` 统计概览，`query_responses({ vid })` 明细 |
+| 导出答卷数据 | `download_responses({ vid })` |
+| 查看问卷链接 | `build_survey_url({ mode: "edit", activity: vid })` |
+| 分析 NPS | `calculate_nps({ scores: [...] })` |
+| 查当前配置 | `get_config({})` |
 
 ## 工具总览（57 tools）
 
@@ -70,13 +59,13 @@ wjx-mcp-server 提供 57 个 MCP 工具、8 个参考资源和 19 个 prompt 模
 | SSO | 5 | sso_subaccount_url, sso_user_system_url, sso_partner_url, build_survey_url, build_preview_url |
 | 分析计算 | 5 | decode_responses, calculate_nps, calculate_csat, detect_anomalies, compare_metrics |
 | 用户体系 | 6 | add/modify/delete_participants, bind_activity, query_survey_binding, query_user_surveys |
-| 诊断 | 1 | get_config（查看当前 API Base URL、API Key 脱敏、配置来源） |
+| 诊断 | 1 | get_config — API Key（脱敏）、Base URL、CLI 版本、配置来源 |
 
 详细参数见 [references/tools-survey.md](references/tools-survey.md)、[references/tools-response.md](references/tools-response.md)、[references/tools-other.md](references/tools-other.md)。
 
 ## 核心工作流
 
-### 1. 创建问卷（推荐 DSL 文本方式）
+### 创建问卷（推荐 DSL 文本方式）
 
 ```
 1. create_survey_by_text({ text: "问卷标题\n\n1. 题目[单选题]\nA. 选项A\nB. 选项B", atype: 6 })
@@ -84,29 +73,33 @@ wjx-mcp-server 提供 57 个 MCP 工具、8 个参考资源和 19 个 prompt 模
 3. build_survey_url({ mode: "edit", activity: N }) — 提供编辑链接
 ```
 
+**考试问卷（atype=6）注意**：正确答案和每题分值**无法**通过 API 设置。创建后应提供编辑链接，指引用户在网页端配置答案与评分。
+
 DSL 语法详见 `wjx://reference/dsl-syntax` 资源，或 [references/dsl-and-types.md](references/dsl-and-types.md)。
 
-### 2. 查询和分析数据
+### 查询和分析数据
 
 ```
 1. get_report({ vid: N }) — 统计概览（首选）
 2. query_responses({ vid: N, page_size: 50 }) — 明细数据
 3. decode_responses({ submitdata: "..." }) — 解码答卷格式
-4. calculate_nps({ scores: [...] }) / calculate_csat({ scores: [...] }) — 分析
+4. calculate_nps / calculate_csat — 分析指标
 5. detect_anomalies({ responses: [...] }) — 数据质量检查
 ```
 
-### 3. 管理通讯录
+## 常见错误与处理
 
-```
-1. add_contacts({ users: [...] }) — 批量导入（最多 100 条）
-2. query_contacts({ uid: "..." }) — 验证
-3. list_departments() / add_department({ depts: [...] }) — 部门管理
-```
+| 错误现象 | 原因 | 解决方案 |
+|---------|------|---------|
+| "appkey error" | API Key 错误或过期 | `get_config` 查看 key，引导重新获取 |
+| "activity not found" | 问卷 vid 不存在 | `list_surveys` 确认正确 vid |
+| "corp_id required" | 通讯录操作缺企业 ID | 配置 `WJX_CORP_ID` 环境变量 |
+| 网络超时 | base_url 错误或网络不通 | `get_config` 检查 base_url |
+| 创建问卷题目丢失 | DSL 格式错误 | 检查题号 + [题型标签]，选项各占一行 |
+
+更多排查详见 [references/troubleshooting.md](references/troubleshooting.md)。
 
 ## MCP 资源（参考数据）
-
-调用工具前可查阅，获取编码参考：
 
 | 资源 URI | 内容 |
 |----------|------|
@@ -121,41 +114,11 @@ DSL 语法详见 `wjx://reference/dsl-syntax` 资源，或 [references/dsl-and-t
 
 ## Prompt 模板（19 个）
 
-可直接使用的预定义工作流：
+**通用/运维（6）：** design-survey, analyze-results, create-nps-survey, configure-webhook, anomaly-detection, user-system-workflow
 
-**通用/运维（6）：**
+**分析（6）：** nps-analysis, csat-analysis, cross-tabulation, sentiment-analysis, survey-health-check, comparative-analysis
 
-| Prompt | 用途 |
-|--------|------|
-| `design-survey` | 引导设计问卷结构 |
-| `analyze-results` | 获取并分析问卷数据 |
-| `create-nps-survey` | 一键创建 NPS 问卷 |
-| `configure-webhook` | 配置数据推送 |
-| `anomaly-detection` | 异常答卷检测 |
-| `user-system-workflow` | 用户体系完整流程 |
-
-**分析（6）：**
-
-| Prompt | 用途 |
-|--------|------|
-| `nps-analysis` | NPS 完整分析（得分、分布、建议） |
-| `csat-analysis` | CSAT 满意度分析 |
-| `cross-tabulation` | 交叉分析 |
-| `sentiment-analysis` | 开放题情感分析 |
-| `survey-health-check` | 问卷质量诊断 |
-| `comparative-analysis` | 跨问卷对比分析 |
-
-**问卷生成（7）：**
-
-| Prompt | 用途 |
-|--------|------|
-| `generate-survey` | 通用问卷生成 |
-| `generate-nps-survey` | NPS 问卷生成 |
-| `generate-360-evaluation` | 360 度评估问卷生成 |
-| `generate-satisfaction-survey` | 满意度调查生成 |
-| `generate-engagement-survey` | 员工敬业度调查生成 |
-| `generate-exam-from-document` | 从文档生成考试 |
-| `generate-exam-from-knowledge` | 从知识点生成考试 |
+**问卷生成（7）：** generate-survey, generate-nps-survey, generate-360-evaluation, generate-satisfaction-survey, generate-engagement-survey, generate-exam-from-document, generate-exam-from-knowledge
 
 ## 常用枚举值
 
@@ -172,3 +135,4 @@ DSL 语法详见 `wjx://reference/dsl-syntax` 资源，或 [references/dsl-and-t
 - [问卷工具详解](references/tools-survey.md) — 12 个问卷管理工具的完整参数
 - [答卷工具详解](references/tools-response.md) — 9 个答卷数据工具的完整参数
 - [其他工具详解](references/tools-other.md) — 通讯录、子账号、SSO、分析、推送工具参数
+- [错误排查](references/troubleshooting.md) — API 错误码、配置问��、自定义域名、考试限制
