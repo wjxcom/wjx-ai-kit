@@ -68,7 +68,7 @@
   - `ParsedSurvey` / `ParsedQuestion` typed interfaces for structured survey representation
   - `buildPreviewUrl()`: generate survey preview URLs from vid
   - 598 unit tests
-- **7 大模块 · 56 个 Tools**:
+- **7 大模块 · 57 个 Tools**:
   - Survey (12): 问卷 CRUD、状态管理、设置读写、标签、回收站、文件上传、文本创建、预览
   - Response (10): 答卷查询、实时查询、下载、统计报告、代填提交、文件链接、中奖者、改分、360 报告、清空
   - Contacts (14): 通讯录成员、管理员、部门、标签管理

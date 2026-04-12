@@ -133,7 +133,7 @@ cat ~/.wjxrc
 ```
 wjx-ai-kit/                     # monorepo root
 ├── wjx-api-sdk/                 # TypeScript SDK（50+ 函数，零依赖）
-├── wjx-mcp-server/              # MCP Server（56 tools，供 Claude/Cursor 使用）
+├── wjx-mcp-server/              # MCP Server（57 tools，供 Claude/Cursor 使用）
 └── wjx-cli/                     # ← 本项目
     ├── src/
     │   ├── index.ts             # Commander 入口 + 全局 preAction hook
@@ -888,7 +888,7 @@ export WJX_BASE_URL=https://your-test-server.com
 |------|------|
 | [wjx-ai-kit](../) | Monorepo 根目录 |
 | [wjx-api-sdk](../wjx-api-sdk/) | TypeScript SDK（50+ 函数，零依赖） |
-| [wjx-mcp-server](../wjx-mcp-server/) | MCP Server（56 tools，供 Claude/Cursor 使用） |
+| [wjx-mcp-server](../wjx-mcp-server/) | MCP Server（57 tools，供 Claude/Cursor 使用） |
 
 ---
 
