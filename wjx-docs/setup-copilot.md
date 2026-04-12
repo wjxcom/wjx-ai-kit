@@ -236,5 +236,5 @@ GitHub Copilot 的 MCP 支持可能处于预览阶段，功能和配置方式可
 
 ## 下一步
 
-- [MCP Server 入门指南](./mcp-getting-started.md) — 了解 56 个工具的完整能力
+- [MCP Server 入门指南](./mcp-getting-started.md) — 了解 57 个工具的完整能力
 - [wjx-ai-kit 总览](./00-overview.md) — 了解 SDK、MCP、CLI 三合一架构

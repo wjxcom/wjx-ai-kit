@@ -15,7 +15,7 @@
 ### 首次开源发布
 
 - **wjx-api-sdk@0.1.6** — 零依赖 TypeScript SDK（50+ 函数、70+ 类型）
-- **wjx-mcp-server@0.1.5** — MCP Server（56 tools / 8 resources / 19 prompts）
+- **wjx-mcp-server@0.1.5** — MCP Server（57 tools / 8 resources / 19 prompts）
 - **wjx-cli@0.1.13** — CLI 命令行工具（69 子命令）
 - 2 个 Agent 定义（wjx-mcp-expert、wjx-cli-expert）
 - 2 套 Skill（wjx-mcp-use、wjx-cli-use）

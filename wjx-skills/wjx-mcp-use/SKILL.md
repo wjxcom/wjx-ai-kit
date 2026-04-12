@@ -1,11 +1,11 @@
 ---
 name: wjx-mcp-use
-description: Guide for using wjx-mcp-server MCP tools to interact with the Wenjuanxing (问卷星) platform. Use when the user wants to create surveys, query responses, analyze data, manage contacts, or generate SSO links via MCP protocol. Covers 56 tools, 8 resources, and 19 prompts.
+description: Guide for using wjx-mcp-server MCP tools to interact with the Wenjuanxing (问卷星) platform. Use when the user wants to create surveys, query responses, analyze data, manage contacts, or generate SSO links via MCP protocol. Covers 57 tools, 8 resources, and 19 prompts.
 ---
 
 # wjx-mcp-server Usage Guide
 
-wjx-mcp-server 提供 56 个 MCP 工具、8 个参考资源和 19 个 prompt 模板，覆盖问卷星 OpenAPI 的全部能力。
+wjx-mcp-server 提供 57 个 MCP 工具、8 个参考资源和 19 个 prompt 模板，覆盖问卷星 OpenAPI 的全部能力。
 
 ## AI Agent 行为准则（必读）
 
@@ -46,7 +46,20 @@ wjx-mcp-server 提供 56 个 MCP 工具、8 个参考资源和 19 个 prompt 模
 2. 继续创建问卷中其他可支持的题目
 3. **不要**反复调用创建工具尝试不同方式，**不要**为不同题型分别创建多个问卷
 
-## 工具总览（56 tools）
+### 规则 4：面向用户说自然语言，不说工具名
+
+用户不需要知道 MCP 工具的存在。**不要**在回复中展示工具名或调用参数。
+
+- 正确：「问卷已创建，这是填写链接：https://...」
+- 错误：「我调用了 create_survey_by_text 工具来创建问卷」
+
+唯一例外：用户明确问"用了哪个工具"或在调试时，可以展示。
+
+### 规则 5：首次使用时检查配置
+
+如果用户首次使用问卷星功能，先调用 `get_config` 工具确认 API Key 和 Base URL 是否已配置。如果未配置，引导用户设置。
+
+## 工具总览（57 tools）
 
 | 模块 | 工具数 | 说明 |
 |------|--------|------|
@@ -57,6 +70,7 @@ wjx-mcp-server 提供 56 个 MCP 工具、8 个参考资源和 19 个 prompt 模
 | SSO | 5 | sso_subaccount_url, sso_user_system_url, sso_partner_url, build_survey_url, build_preview_url |
 | 分析计算 | 5 | decode_responses, calculate_nps, calculate_csat, detect_anomalies, compare_metrics |
 | 用户体系 | 6 | add/modify/delete_participants, bind_activity, query_survey_binding, query_user_surveys |
+| 诊断 | 1 | get_config（查看当前 API Base URL、API Key 脱敏、配置来源） |
 
 详细参数见 [references/tools-survey.md](references/tools-survey.md)、[references/tools-response.md](references/tools-response.md)、[references/tools-other.md](references/tools-other.md)。
 

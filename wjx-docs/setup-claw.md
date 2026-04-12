@@ -231,5 +231,5 @@ wjx analytics nps --scores 9,10,7,3,8
 ## 下一步
 
 - [OpenClaw 详细配置指南](./setup-openclaw.md) — OpenClaw 专属配置和 Skills 系统
-- [MCP Server 入门指南](./mcp-getting-started.md) — 了解 56 个工具的完整能力
+- [MCP Server 入门指南](./mcp-getting-started.md) — 了解 57 个工具的完整能力
 - [wjx-ai-kit 总览](./00-overview.md) — 了解 SDK、MCP、CLI 三合一架构

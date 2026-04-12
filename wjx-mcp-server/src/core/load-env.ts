@@ -1,8 +1,44 @@
 import { readFileSync, existsSync } from "node:fs";
-import { resolve, dirname } from "node:path";
+import { resolve, dirname, join } from "node:path";
+import { homedir } from "node:os";
 import { fileURLToPath } from "node:url";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
+
+/**
+ * Credential resolution order (highest wins):
+ * 1. Real environment variables (already in process.env at startup)
+ * 2. ~/.wjxrc config file (shared with wjx-cli, written by `wjx init`)
+ * 3. .env file (cwd or package root)
+ *
+ * Both ~/.wjxrc and .env only set keys that are NOT already present,
+ * so loading order determines priority: wjxrc first, then .env.
+ */
+
+// ── Step 1: Load ~/.wjxrc (JSON config shared with wjx-cli) ──
+
+const wjxrcPath = process.env.WJX_CONFIG_PATH || join(homedir(), ".wjxrc");
+
+if (existsSync(wjxrcPath)) {
+  try {
+    const parsed = JSON.parse(readFileSync(wjxrcPath, "utf-8"));
+    if (typeof parsed === "object" && parsed !== null) {
+      if (!(("WJX_API_KEY") in process.env) && parsed.apiKey) {
+        process.env.WJX_API_KEY = parsed.apiKey;
+      }
+      if (!(("WJX_BASE_URL") in process.env) && parsed.baseUrl) {
+        process.env.WJX_BASE_URL = parsed.baseUrl;
+      }
+      if (!(("WJX_CORP_ID") in process.env) && parsed.corpId) {
+        process.env.WJX_CORP_ID = parsed.corpId;
+      }
+    }
+  } catch {
+    // ~/.wjxrc read/parse error — skip silently
+  }
+}
+
+// ── Step 2: Load .env file ──
 
 /**
  * Resolve .env file path. Priority:
