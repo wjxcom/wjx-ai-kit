@@ -33,8 +33,17 @@ export function registerSurveyCommands(program: Command): void {
     .option("--page <n>", "页码", strictInt)
     .option("--page_size <n>", "每页数量", strictInt)
     .option("--status <n>", "状态筛选", strictInt)
-    .option("--atype <n>", "问卷类型", strictInt)
+    .option("--atype <n>", "问卷类型筛选：1=调查, 2=测评, 3=投票, 4=360度评估, 5=360评估无测评关系, 6=考试, 7=表单, 8=用户体系, 9=教学评估, 10=量表, 11=民主评议", strictInt)
     .option("--name_like <s>", "名称搜索")
+    .option("--sort <n>", "排序规则：0=ID升序, 1=ID降序, 2=开始时间升序, 3=开始时间降序, 4=创建时间升序, 5=创建时间降序", strictInt)
+    .option("--creater <s>", "创建者（子账号用户名）")
+    .option("--folder <s>", "文件夹名称筛选")
+    .option("--is_xingbiao", "仅显示星标问卷")
+    .option("--query_all", "查询所有问卷（含子账号）")
+    .option("--verify_status <n>", "审核状态筛选", strictInt)
+    .option("--time_type <n>", "时间类型：0=创建时间, 1=最后修改时间", strictInt)
+    .option("--begin_time <n>", "起始时间（毫秒时间戳）", strictInt)
+    .option("--end_time <n>", "结束时间（毫秒时间戳）", strictInt)
     .action(async (_opts, cmd) => {
       await executeCommand(program, cmd, listSurveys, (m) => ({
         page_index: m.page,
@@ -42,6 +51,15 @@ export function registerSurveyCommands(program: Command): void {
         status: m.status,
         atype: m.atype,
         name_like: m.name_like,
+        sort: m.sort,
+        creater: m.creater,
+        folder: m.folder,
+        is_xingbiao: m.is_xingbiao,
+        query_all: m.query_all,
+        verify_status: m.verify_status,
+        time_type: m.time_type,
+        begin_time: m.begin_time,
+        end_time: m.end_time,
       }));
     });
 
@@ -50,10 +68,26 @@ export function registerSurveyCommands(program: Command): void {
     .command("get")
     .description("获取问卷详情")
     .option("--vid <n>", "问卷ID", strictInt)
+    .option("--get_questions", "返回题目信息")
+    .option("--get_items", "返回选项信息")
+    .option("--get_exts", "返回扩展信息")
+    .option("--get_setting", "返回设置信息")
+    .option("--get_page_cut", "返回分页信息")
+    .option("--get_tags", "返回标签信息")
+    .option("--showtitle", "显示标题")
     .action(async (_opts, cmd) => {
       await executeCommand(program, cmd, getSurvey, (m) => {
         requireField(m, "vid");
-        return { vid: m.vid };
+        return {
+          vid: m.vid,
+          get_questions: m.get_questions,
+          get_items: m.get_items,
+          get_exts: m.get_exts,
+          get_setting: m.get_setting,
+          get_page_cut: m.get_page_cut,
+          get_tags: m.get_tags,
+          showtitle: m.showtitle,
+        };
       });
     });
 
@@ -62,11 +96,12 @@ export function registerSurveyCommands(program: Command): void {
     .command("create")
     .description("创建问卷")
     .option("--title <s>", "问卷标题")
-    .option("--type <n>", "问卷类型", strictInt)
+    .option("--type <n>", "问卷类型：1=调查, 2=测评, 3=投票, 6=考试, 7=表单（仅这5种可通过API创建）", strictInt)
     .option("--description <s>", "问卷描述")
     .option("--questions <json>", "题目JSON数组")
     .option("--source_vid <s>", "复制源问卷ID")
     .option("--publish", "创建后发布")
+    .option("--creater <s>", "创建者（子账号用户名）")
     .action(async (_opts, cmd) => {
       await executeCommand(program, cmd, createSurvey, (m) => {
         requireField(m, "title");
@@ -77,6 +112,7 @@ export function registerSurveyCommands(program: Command): void {
           questions: ensureJsonString(m.questions, "questions") ?? "[]",
           source_vid: m.source_vid,
           publish: m.publish,
+          creater: m.creater,
         };
       });
     });
@@ -87,7 +123,8 @@ export function registerSurveyCommands(program: Command): void {
     .description("用 DSL 文本创建问卷（推荐 AI Agent 使用）")
     .option("--text <s>", "DSL 格式问卷文本")
     .option("--file <path>", "从文件读取 DSL 文本")
-    .option("--type <n>", "问卷类型：1=调查, 2=测评, 3=投票, 6=考试, 7=表单", strictInt)
+    .option("--title <s>", "覆盖 DSL 文本中的问卷标题")
+    .option("--type <n>", "问卷类型：1=调查, 2=测评, 3=投票, 6=考试, 7=表单（仅这5种可通过API创建；4=360度评估, 5=360评估无测评关系, 8=用户体系, 9=教学评估, 10=量表, 11=民主评议 不支持API创建）", strictInt)
     .option("--publish", "创建后发布")
     .option("--creater <s>", "创建者子账号")
     .action(async (_opts, cmd) => {
@@ -131,6 +168,7 @@ export function registerSurveyCommands(program: Command): void {
         const creds = getCredentials(globalOpts);
         const result = await createSurveyByText({
           text: dslText,
+          title: merged.title as string | undefined,
           atype: merged.type as number | undefined,
           publish: merged.publish as boolean | undefined,
           creater: merged.creater as string | undefined,
@@ -184,10 +222,11 @@ export function registerSurveyCommands(program: Command): void {
     .command("settings")
     .description("获取问卷设置")
     .option("--vid <n>", "问卷ID", strictInt)
+    .option("--additional_setting <s>", "附加设置查询参数")
     .action(async (_opts, cmd) => {
       await executeCommand(program, cmd, getSurveySettings, (m) => {
         requireField(m, "vid");
-        return { vid: m.vid };
+        return { vid: m.vid, additional_setting: m.additional_setting };
       });
     });
 
@@ -199,7 +238,7 @@ export function registerSurveyCommands(program: Command): void {
     .option("--api_setting <json>", "API设置JSON")
     .option("--after_submit_setting <json>", "提交后设置JSON")
     .option("--msg_setting <json>", "消息设置JSON")
-    .option("--sojumpparm_setting <json>", "参数设置JSON")
+    .option("--sojumpparm_setting <json>", "自定义链接参数设置JSON。【注意】部分字段（如 join_limit、only_limit_join 等作答次数限制）可能无法通过 API 生效，需在问卷星网页后台配置")
     .option("--time_setting <json>", "时间设置JSON")
     .action(async (_opts, cmd) => {
       await executeCommand(program, cmd, updateSurveySettings, (m) => {
@@ -317,6 +356,11 @@ export function registerSurveyCommands(program: Command): void {
     .option("--mode <s>", "模式: create 或 edit")
     .option("--name <s>", "问卷名称（create模式）")
     .option("--activity <n>", "问卷vid（edit模式必填）", strictInt)
+    .option("--qt <n>", "创建模式的问卷类型", strictInt)
+    .option("--osa <n>", "自动发布标记", strictInt)
+    .option("--redirect_url <s>", "操作后跳转URL")
+    .option("--editmode <n>", "编辑模式", strictInt)
+    .option("--runprotect <n>", "运行保护标记", strictInt)
     .action(async (_opts, cmd) => {
       try {
         const merged = getMerged(cmd);
@@ -331,6 +375,11 @@ export function registerSurveyCommands(program: Command): void {
           mode: mode as "create" | "edit",
           name: merged.name as string | undefined,
           activity: merged.activity as number | undefined,
+          qt: merged.qt as number | undefined,
+          osa: merged.osa as number | undefined,
+          redirect_url: merged.redirect_url as string | undefined,
+          editmode: merged.editmode as number | undefined,
+          runprotect: merged.runprotect as number | undefined,
         });
         const globalOpts = program.opts();
         if (globalOpts.table) {

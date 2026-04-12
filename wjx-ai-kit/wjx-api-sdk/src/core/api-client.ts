@@ -94,7 +94,7 @@ async function _callApi<T = unknown>(
       let response: Response;
       try {
         const headers: Record<string, string> = {
-          "Content-Type": "application/json",
+          "Content-Type": "application/json; charset=utf-8",
           "Authorization": `Bearer ${credentials.apiKey}`,
         };
         if (credentials.clientIp) {

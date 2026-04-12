@@ -37,7 +37,7 @@ export function registerResponseTools(server: McpServer): void {
         query_note: z.boolean().optional().describe("是否查询标注信息"),
         distinct_user: z.boolean().optional().describe("是否仅返回用户最新答卷"),
         distinct_sojumpparm: z.boolean().optional().describe("是否仅返回自定义参数最新答卷"),
-        conds: z.string().optional().describe("题目查询条件 JSON 字符串，最多2个条件，AND关系"),
+        conds: z.string().optional().describe("题目查询条件 JSON 字符串，最多2个条件，AND关系。格式: [{\"q_index\":题号,\"opt\":\"操作符\",\"val\":\"值\"}]。q_index 为题号（10000=总分）；opt 可选: eq/ne/gt/lt/gte/lte/in/not_in/contains/not_contains；val 为逗号分隔的值。示例: [{\"q_index\":1,\"opt\":\"in\",\"val\":\"1,2\"}] 表示第1题选了选项1或2"),
       },
       annotations: {
         destructiveHint: false,
@@ -161,7 +161,7 @@ export function registerResponseTools(server: McpServer): void {
         end_time: z.number().int().optional().describe("查询结束时间（Unix毫秒时间戳）"),
         distinct_user: z.boolean().optional().describe("是否仅用户最新答卷"),
         distinct_sojumpparm: z.boolean().optional().describe("是否仅自定义参数最新答卷"),
-        conds: z.string().optional().describe("题目查询条件 JSON 字符串"),
+        conds: z.string().optional().describe("题目查询条件 JSON 字符串。格式: [{\"q_index\":题号,\"opt\":\"操作符\",\"val\":\"值\"}]。q_index 为题号（10000=总分）；opt 可选: eq/ne/gt/lt/gte/lte/in/not_in/contains/not_contains；val 为逗号分隔的值"),
       },
       annotations: {
         destructiveHint: false,
@@ -199,7 +199,7 @@ export function registerResponseTools(server: McpServer): void {
       inputSchema: {
         vid: z.number().int().positive().describe("问卷编号"),
         inputcosttime: z.number().int().min(2).describe("填写时间（秒），需>1秒否则视为机器提交"),
-        submitdata: z.string().min(1).describe("答卷内容字符串，格式：题号$答案}题号$答案。单选：题号$选项序号；多选：题号$选项1|选项2；填空：题号$文本；排序题：题号$选项序号1|选项序号2|选项序号3（按排名顺序列出所有选项序号）"),
+        submitdata: z.string().min(1).describe("答卷内容字符串，格式：题号$答案}题号$答案。单选：题号$选项序号；多选：题号$选项1|选项2；填空：题号$文本；排序题：题号$选项1,选项2,选项3（逗号分隔，如 3$2,3,1）；矩阵题：题号_子题序号$值（如 6_1$1}6_2$3）；比重题：题号_子项序号$比重值（如 8_1$33}8_2$67）；滑动条：题号$数值（如 7$59）；多项填空：题号_填空序号$文本（如 9_1$文本1}9_2$文本2）；多级下拉：题号$一级-二级（如 10$中国-湖南）"),
         udsid: z.number().int().optional().describe("自定义来源编号"),
         sojumpparm: z.string().optional().describe("自定义链接参数"),
         submittime: z.string().optional().describe("答卷提交时间，日期时间字符串，默认当前时间"),

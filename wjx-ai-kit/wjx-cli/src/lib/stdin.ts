@@ -1,5 +1,41 @@
+import { readFileSync } from "node:fs";
 import type { Command } from "commander";
 import { CliError } from "./errors.js";
+
+/** Strip UTF-8 BOM (EF BB BF) if present — common on Windows-generated files. */
+function stripBom(buf: Buffer): Buffer {
+  if (buf.length >= 3 && buf[0] === 0xEF && buf[1] === 0xBB && buf[2] === 0xBF) {
+    return buf.subarray(3);
+  }
+  return buf;
+}
+
+/**
+ * Read JSON from a file path (UTF-8). Bypasses shell pipe encoding issues.
+ */
+export function readInputFile(filePath: string): Record<string, unknown> {
+  let content: string;
+  try {
+    const buf = readFileSync(filePath);
+    content = stripBom(buf).toString("utf8").trim();
+  } catch (e) {
+    throw new CliError("INPUT_ERROR", `无法读取输入文件 ${filePath}: ${e instanceof Error ? e.message : String(e)}`);
+  }
+  if (!content) {
+    return {};
+  }
+  try {
+    const parsed = JSON.parse(content);
+    if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) {
+      throw new CliError("INPUT_ERROR",
+        `输入文件 JSON 必须是对象，实际为 ${Array.isArray(parsed) ? "array" : typeof parsed}`);
+    }
+    return parsed as Record<string, unknown>;
+  } catch (e) {
+    if (e instanceof CliError) throw e;
+    throw new CliError("INPUT_ERROR", `输入文件 JSON 解析失败: ${e instanceof Error ? e.message : String(e)}`);
+  }
+}
 
 /**
  * Read JSON from stdin. Returns parsed object or empty object if no data.
@@ -14,7 +50,7 @@ export async function readStdin(): Promise<Record<string, unknown>> {
   for await (const chunk of process.stdin) {
     chunks.push(chunk as Buffer);
   }
-  const raw = Buffer.concat(chunks).toString("utf8").trim();
+  const raw = stripBom(Buffer.concat(chunks)).toString("utf8").trim();
 
   if (!raw) {
     return {};
