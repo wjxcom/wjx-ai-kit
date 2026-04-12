@@ -57,11 +57,13 @@ export function registerResponseCommands(program: Command): void {
     .option("--distinct_user", "去重用户")
     .option("--distinct_sojumpparm", "去重参数")
     .option("--conds <json>", "查询条件JSON字符串，最多2个条件，AND关系。格式: [{\"q_index\":题号,\"opt\":\"操作符\",\"val\":\"值\"}]。q_index=10000表示总分；opt可选: eq/ne/gt/lt/gte/lte/in/not_in/contains/not_contains；val为逗号分隔的值。示例: [{\"q_index\":1,\"opt\":\"in\",\"val\":\"1,2\"}]")
+    .option("--valid", "仅查询有效答卷")
     .action(async (_opts, cmd) => {
       await executeCommand(program, cmd, queryResponses, (m) => {
         requireField(m, "vid");
         return {
           vid: m.vid,
+          valid: m.valid,
           page_index: m.page_index,
           page_size: m.page_size,
           sort: m.sort,
@@ -108,11 +110,13 @@ export function registerResponseCommands(program: Command): void {
     .option("--query_type <n>", "查询类型", strictInt)
     .option("--suffix <n>", "导出格式: 0=CSV, 1=SAV, 2=Word", strictInt)
     .option("--query_record", "查询记录")
+    .option("--valid", "仅下载有效答卷")
     .action(async (_opts, cmd) => {
       await executeCommand(program, cmd, downloadResponses, (m) => {
         requireField(m, "vid");
         return {
           vid: m.vid,
+          valid: m.valid,
           taskid: m.taskid,
           query_count: m.query_count,
           begin_time: m.begin_time,

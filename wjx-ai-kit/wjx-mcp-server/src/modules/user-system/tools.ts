@@ -15,9 +15,9 @@ export function registerUserSystemTools(server: McpServer): void {
   server.registerTool(
     "add_participants",
     {
-      title: "[已过时] 批量添加参与者",
+      title: "批量添加参与者",
       description:
-        "[Deprecated] 向用户系统批量添加参与者（每次最多100人）。users 为 JSON 数组字符串，每个对象包含: uid(参与者唯一编号,必填)、uname(参与者姓名,选填)、upass(初始登录密码,选填)、udept(部门,选填,必须是数组如[\"部门1\"])、uextf(附加信息,选填,必须是数组如[\"信息1\"])。",
+        "向用户系统批量添加参与者（每次最多100人）。users 为 JSON 数组字符串，每个对象包含: uid(参与者唯一编号,必填)、uname(参与者姓名,选填)、upass(初始登录密码,选填)、udept(部门,选填,必须是数组如[\"部门1\"])、uextf(附加信息,选填,必须是数组如[\"信息1\"])。auto_create_udept 可在部门不存在时自动创建。",
       inputSchema: {
         users: z
           .string()
@@ -26,12 +26,13 @@ export function registerUserSystemTools(server: McpServer): void {
             "参与者列表 JSON 字符串（数组），每项包含: uid(用户ID,必填), uname(姓名), upass(密码), udept(部门,数组格式如[\"部门1\"]), uextf(附加信息,数组格式如[\"信息1\"])",
           ),
         usid: z.number().int().positive().describe("用户系统 ID（sysid）"),
+        auto_create_udept: z.boolean().optional().describe("部门不存在时是否自动创建（0=不创建, 1=创建, 默认0）"),
       },
       annotations: {
         destructiveHint: false,
         idempotentHint: false,
         openWorldHint: true,
-        title: "[已过时] 批量添加参与者",
+        title: "批量添加参与者",
       },
     },
     wrapToolHandler(async (args) => {
@@ -39,6 +40,7 @@ export function registerUserSystemTools(server: McpServer): void {
       return addParticipants({
         users: args.users,
         sysid: args.usid,
+        auto_create_udept: args.auto_create_udept,
       });
     }),
   );
@@ -47,9 +49,9 @@ export function registerUserSystemTools(server: McpServer): void {
   server.registerTool(
     "modify_participants",
     {
-      title: "[已过时] 批量修改参与者",
+      title: "批量修改参与者",
       description:
-        "[Deprecated] 批量修改用户系统中参与者的信息。users 为 JSON 数组字符串，每个对象包含: uid(参与者唯一编号,必填)、uname(姓名)、upass(密码)、udept(部门,必须是数组格式如[\"部门1\"])、uextf(附加信息,必须是数组格式如[\"信息1\"])。auto_create_udept 可在部门不存在时自动创建。",
+        "批量修改用户系统中参与者的信息。users 为 JSON 数组字符串，每个对象包含: uid(参与者唯一编号,必填)、uname(姓名)、upass(密码)、udept(部门,必须是数组格式如[\"部门1\"])、uextf(附加信息,必须是数组格式如[\"信息1\"])。auto_create_udept 可在部门不存在时自动创建。",
       inputSchema: {
         users: z
           .string()
@@ -64,7 +66,7 @@ export function registerUserSystemTools(server: McpServer): void {
         destructiveHint: true,
         idempotentHint: true,
         openWorldHint: true,
-        title: "[已过时] 批量修改参与者",
+        title: "批量修改参与者",
       },
     },
     wrapToolHandler(async (args) => {
@@ -81,9 +83,9 @@ export function registerUserSystemTools(server: McpServer): void {
   server.registerTool(
     "delete_participants",
     {
-      title: "[已过时] 批量删除参与者",
+      title: "批量删除参与者",
       description:
-        "[Deprecated] 从用户系统中批量删除参与者。此操作不可逆，请谨慎使用！uids 为 JSON 数组字符串，如 [\"uid1\",\"uid2\"]。",
+        "从用户系统中批量删除参与者。此操作不可逆，请谨慎使用！uids 为 JSON 数组字符串，如 [\"uid1\",\"uid2\"]。",
       inputSchema: {
         uids: z
           .string()
@@ -95,7 +97,7 @@ export function registerUserSystemTools(server: McpServer): void {
         destructiveHint: true,
         idempotentHint: false,
         openWorldHint: true,
-        title: "[已过时] 批量删除参与者",
+        title: "批量删除参与者",
       },
     },
     wrapToolHandler(async (args) => {
@@ -111,9 +113,9 @@ export function registerUserSystemTools(server: McpServer): void {
   server.registerTool(
     "bind_activity",
     {
-      title: "[已过时] 绑定问卷到用户体系",
+      title: "绑定问卷到用户体系",
       description:
-        "[Deprecated] 将问卷绑定到用户体系，并指定参与者。可设置作答次数限制、是否允许修改答案等。",
+        "将问卷绑定到用户体系，并指定参与者。可设置作答次数限制、是否允许修改答案等。",
       inputSchema: {
         vid: z.number().int().positive().describe("问卷编号"),
         usid: z.number().int().positive().describe("用户系统 ID（sysid）"),
@@ -130,7 +132,7 @@ export function registerUserSystemTools(server: McpServer): void {
         destructiveHint: false,
         idempotentHint: false,
         openWorldHint: true,
-        title: "[已过时] 绑定问卷到用户体系",
+        title: "绑定问卷到用户体系",
       },
     },
     wrapToolHandler(async (args) => {
@@ -151,9 +153,9 @@ export function registerUserSystemTools(server: McpServer): void {
   server.registerTool(
     "query_survey_binding",
     {
-      title: "[已过时] 查询问卷用户绑定",
+      title: "查询问卷用户绑定",
       description:
-        "[Deprecated] 查询问卷与用户系统的绑定关系，返回绑定的参与者列表。支持按参与状态(join_status)、日期(day)、周(week)、月(month)筛选，可选择是否强制获取参与次数(force_join_times)。",
+        "查询问卷与用户系统的绑定关系，返回绑定的参与者列表。支持按参与状态(join_status)、日期(day)、周(week)、月(month)筛选，可选择是否强制获取参与次数(force_join_times)。",
       inputSchema: {
         vid: z.number().int().positive().describe("问卷编号"),
         usid: z.number().int().positive().describe("用户系统 ID（sysid）"),
@@ -167,7 +169,7 @@ export function registerUserSystemTools(server: McpServer): void {
         destructiveHint: false,
         idempotentHint: true,
         openWorldHint: true,
-        title: "[已过时] 查询问卷用户绑定",
+        title: "查询问卷用户绑定",
       },
     },
     wrapToolHandler(async (args) =>
@@ -187,9 +189,9 @@ export function registerUserSystemTools(server: McpServer): void {
   server.registerTool(
     "query_user_surveys",
     {
-      title: "[已过时] 查询用户关联问卷",
+      title: "查询用户关联问卷",
       description:
-        "[Deprecated] 查询指定参与者被分配的问卷列表，支持分页。",
+        "查询指定参与者被分配的问卷列表，支持分页。",
       inputSchema: {
         uid: z.string().min(1).describe("参与者 ID"),
         usid: z.number().int().positive().describe("用户系统 ID（sysid）"),
@@ -198,7 +200,7 @@ export function registerUserSystemTools(server: McpServer): void {
         destructiveHint: false,
         idempotentHint: true,
         openWorldHint: true,
-        title: "[已过时] 查询用户关联问卷",
+        title: "查询用户关联问卷",
       },
     },
     wrapToolHandler(async (args) =>

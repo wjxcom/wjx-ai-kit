@@ -23,6 +23,7 @@ export function registerAccountCommands(program: Command): void {
     .option("--page_index <n>", "页码", strictInt)
     .option("--page_size <n>", "每页数量", strictInt)
     .option("--mobile <s>", "手机号")
+    .option("--status", "按启用状态筛选")
     .action(async (_opts, cmd) => {
       await executeCommand(program, cmd, querySubAccounts, (m) => ({
         subuser: m.subuser,
@@ -32,6 +33,7 @@ export function registerAccountCommands(program: Command): void {
         page_index: m.page_index,
         page_size: m.page_size,
         mobile: m.mobile,
+        status: m.status,
       }));
     });
 
