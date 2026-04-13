@@ -4,7 +4,7 @@
 
 ## 概览
 
-- Tools: 56 个，分为 7 个模块
+- Tools: 57 个，分为 7 个模块
 - Resources: 8 个
 - Prompts: 19 个
 

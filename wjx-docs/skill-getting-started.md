@@ -36,7 +36,7 @@ Skill 是一种让 AI 助手获得特定能力的方式。问卷星 Skill 包含
 
 你已经在 AI 工具里了，直接让 AI 完成安装。复制下面的话发给你的 AI 助手：
 
-> 请帮我安��问卷星工具：
+> 请帮我安装问卷星工具：
 > 1. 先检查 Node.js 是否已安装（`node --version`），如果没有请帮我安装 Node.js 20+
 > 2. 运行 `npm install -g wjx-cli` 安装问卷星 CLI
 > 3. 安装完成后，告诉我去这个链接获取 API Key：https://www.wjx.cn/weixinlogin.aspx?redirecturl=%2Fnewwjx%2Fmanage%2Fuserinfo.aspx%3FshowApiKey%3D1 ，等我把 Key 发给你

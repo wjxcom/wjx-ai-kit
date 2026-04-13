@@ -90,7 +90,7 @@
 
 ## 第二步：部署 Agent + Skill（推荐）
 
-wjx-ai-kit 提供 2 个专家 Agent 和配套 Skill 参考文档，让 AI 理解问卷领域的专业知识。
+wjx-ai-kit 提供专家 Agent 和配套 Skill 参考文档，让 AI 理解问卷领域的专业知识。
 
 ### 一键安装
 
@@ -101,20 +101,16 @@ npx wjx-cli skill install
 > 也可从 [Vercel Agent Skills](https://skills.sh/wjxcom/wjx-ai-kit) 安装：`npx skills add wjxcom/wjx-ai-kit`，或在 [ClawHub](https://clawhub.ai/skills?q=wjx) 市场搜索 "wjx" 安装。
 
 这条命令会自动完成：
-- 创建 `.claude/agents/` 目录，部署 2 个专家 Agent（wjx-mcp-expert、wjx-cli-expert）
-- 复制 `wjx-skills/` 参考文档目录（DSL 语法、题型编码、分析方法等）
+- 创建 `.claude/agents/` 目录，部署 wjx-cli-expert Agent（CLI 命令专家）
+- 复制 `wjx-skills/wjx-cli-use/` 参考文档（DSL 语法、题型编码、CLI 命令参数等）
 
 安装后的目录结构：
 
 ```
 your-project/
 ├── .claude/agents/
-│   ├── wjx-mcp-expert.md    # MCP 工具专家
-│   └── wjx-cli-expert.md    # CLI 命令专家
+│   └── wjx-cli-expert.md    # CLI 命令专家 Agent
 └── wjx-skills/
-    ├── wjx-mcp-use/          # MCP 使用技巧
-    │   ├── SKILL.md
-    │   └── references/
     └── wjx-cli-use/          # CLI 使用技巧
         ├── SKILL.md
         └── references/

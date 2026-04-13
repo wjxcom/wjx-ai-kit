@@ -18,7 +18,7 @@
 ```
 wjx-ai-kit/
 ├── wjx-api-sdk/       # 零依赖 TypeScript SDK（50+ API 函数）
-├── wjx-mcp-server/    # MCP Server（56 Tools / 8 Resources / 19 Prompts）
+├── wjx-mcp-server/    # MCP Server（57 Tools / 8 Resources / 19 Prompts）
 ├── wjx-cli/           # 命令行工具（AI Agent 原生 CLI）
 ├── wjx-agents/        # 2 个专家 Agent 定义
 ├── wjx-skills/        # 2 套 Skill 参考文档（可打包分发 zip）
@@ -28,9 +28,9 @@ wjx-ai-kit/
 
 | 包 | 版本 | 说明 |
 |---|---|---|
-| [`wjx-api-sdk`](wjx-api-sdk/) | 0.1.6 | 零依赖 TypeScript SDK。8 模块、50+ 函数，可在任意 Node.js 项目中使用 |
-| [`wjx-mcp-server`](wjx-mcp-server/) | 0.1.5 | [MCP](https://modelcontextprotocol.io/) Server。接入 Claude、Cursor、Windsurf 等 AI 客户端 |
-| [`wjx-cli`](wjx-cli/) | 0.1.13 | 命令行工具。69 子命令，支持 stdin pipe、JSON/表格输出 |
+| [`wjx-api-sdk`](wjx-api-sdk/) | 0.1.21 | 零依赖 TypeScript SDK。8 模块、50+ 函数，可在任意 Node.js 项目中使用 |
+| [`wjx-mcp-server`](wjx-mcp-server/) | 0.1.21 | [MCP](https://modelcontextprotocol.io/) Server。接入 Claude、Cursor、Windsurf 等 AI 客户端 |
+| [`wjx-cli`](wjx-cli/) | 0.1.21 | 命令行工具。69 子命令，支持 stdin pipe、JSON/表格输出 |
 
 ---
 
@@ -79,7 +79,7 @@ wjx-ai-kit/
 ### 前置条件
 
 - **Node.js >= 20**
-- **问卷星 OpenAPI API Key**
+- **问卷星 OpenAPI API Key** — 微信扫码登录 [API Key 获取页](https://www.wjx.cn/weixinlogin.aspx?redirecturl=%2Fnewwjx%2Fmanage%2Fuserinfo.aspx%3FshowApiKey%3D1)，登录后页面直接显示 API Key
 
 ### 安装
 
@@ -169,7 +169,7 @@ const result = await createSurvey({
 |------|------|
 | [总纲](wjx-docs/00-overview.md) | 功能全景、选择引导、场景速览 |
 | [MCP 入门](wjx-docs/mcp-getting-started.md) | MCP Server 快速接入 |
-| [MCP 进阶](wjx-docs/mcp-advanced.md) | 56 工具深度用法、HTTP 部署、Docker |
+| [MCP 进阶](wjx-docs/mcp-advanced.md) | 57 工具深度用法、HTTP 部署、Docker |
 | [CLI 入门](wjx-docs/cli-getting-started.md) | 命令行快速上手 |
 | [CLI 进阶](wjx-docs/cli-advanced.md) | 69 命令完全攻略、Skill 系统 |
 | [SDK 入门](wjx-docs/sdk-getting-started.md) | TypeScript 开发快速上手 |

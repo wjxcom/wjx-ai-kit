@@ -25,22 +25,24 @@
       "command": "npx",
       "args": ["wjx-mcp-server"],
       "env": {
-        "WJX_API_KEY": "替换为你的 API Key"
+        "WJX_API_KEY": "替换为你的 API Key",
+        "WJX_BASE_URL": "https://www.wjx.cn"
       }
     }
   }
 }
 ```
 
-> 也可以放在全局路径 `~/.cursor/mcp.json`，这样所有项目都能使用。
+> `WJX_BASE_URL` 为可选项，默认值 `https://www.wjx.cn`；如果你使用自定义域名或测试环境，可替换为对应地址。也可以放在全局路径 `~/.cursor/mcp.json`，这样所有项目都能使用。
 
 ### 方式二：通过 UI 配置
 
 1. 打开 Cursor Settings（`Cmd+,` / `Ctrl+,`）
-2. 进入 **Features** → **MCP**
-3. 点击 **Add Server**
-4. 填入名称 `wjx`，命令 `npx wjx-mcp-server`
-5. 在环境变量中添加 `WJX_API_KEY`
+2. 在设置搜索框中输入 `MCP`
+3. 进入 **Features** → **MCP**
+4. 点击 **New MCP Server**（新版 Cursor 中已将原来的 "Add Server" 按钮改名）
+5. 此时 Cursor 会直接打开 `mcp.json` 编辑器（不再弹出 "Copied!" 提示），把 JSON 配置粘贴进去保存即可
+6. 确保 `env` 中配置了 `WJX_API_KEY`（企业用户可追加 `WJX_CORP_ID`，如需切换域名可追加 `WJX_BASE_URL`）
 
 ### 企业用户
 
@@ -67,7 +69,7 @@
 
 ## 第二步：部署 Agent + Skill（推荐）
 
-wjx-ai-kit 提供 2 个专家 Agent 和配套 Skill 参考文档，让 AI 理解问卷领域的专业知识。
+wjx-ai-kit 提供专家 Agent 和配套 Skill 参考文档，让 AI 理解问卷领域的专业知识。
 
 ### 一键安装
 
@@ -78,20 +80,16 @@ npx wjx-cli skill install
 > 也可从 [Vercel Agent Skills](https://skills.sh/wjxcom/wjx-ai-kit) 安装：`npx skills add wjxcom/wjx-ai-kit`，或在 [ClawHub](https://clawhub.ai/skills?q=wjx) 市场搜索 "wjx" 安装。
 
 这条命令会自动完成：
-- 创建 `.claude/agents/` 目录，部署 2 个专家 Agent（wjx-mcp-expert、wjx-cli-expert）
-- 复制 `wjx-skills/` 参考文档目录（DSL 语法、题型编码、分析方法等）
+- 创建 `.claude/agents/` 目录，部署 wjx-cli-expert Agent（CLI 命令专家）
+- 复制 `wjx-skills/wjx-cli-use/` 参考文档（DSL 语法、题型编码、CLI 命令参数等）
 
 安装后的目录结构：
 
 ```
 your-project/
 ├── .claude/agents/
-│   ├── wjx-mcp-expert.md    # MCP 工具专家
-│   └── wjx-cli-expert.md    # CLI 命令专家
+│   └── wjx-cli-expert.md    # CLI 命令专家 Agent
 └── wjx-skills/
-    ├── wjx-mcp-use/          # MCP 使用技巧
-    │   ├── SKILL.md
-    │   └── references/
     └── wjx-cli-use/          # CLI 使用技巧
         ├── SKILL.md
         └── references/

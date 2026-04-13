@@ -1,6 +1,6 @@
 ---
 name: wjx-mcp-expert
-description: 问卷星 MCP 专家子Agent，通过 wjx-mcp-server 的 56 个 MCP 工具完成问卷创建、数据回收、分析等全部操作
+description: 问卷星 MCP 专家子Agent，通过 wjx-mcp-server 的 57 个 MCP 工具完成问卷创建、数据回收、分析等全部操作
 model: sonnet
 tools:
   - Bash

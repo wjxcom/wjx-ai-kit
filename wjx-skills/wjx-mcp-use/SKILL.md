@@ -135,4 +135,4 @@ DSL 语法详见 `wjx://reference/dsl-syntax` 资源，或 [references/dsl-and-t
 - [问卷工具详解](references/tools-survey.md) — 12 个问卷管理工具的完整参数
 - [答卷工具详解](references/tools-response.md) — 9 个答卷数据工具的完整参数
 - [其他工具详解](references/tools-other.md) — 通讯录、子账号、SSO、分析、推送工具参数
-- [错误排查](references/troubleshooting.md) — API 错误码、配置问��、自定义域名、考试限制
+- [错误排查](references/troubleshooting.md) — API 错误码、配置问题、自定义域名、考试限制

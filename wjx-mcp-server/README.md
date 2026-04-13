@@ -60,7 +60,7 @@ flowchart LR
 
     Server --> R[Resources ×8]
     Server --> P[Prompts ×19]
-    Server --> Tools[Tools ×56]
+    Server --> Tools[Tools ×57]
 
     Tools --> S1[survey ×12]
     Tools --> S2[response ×9]

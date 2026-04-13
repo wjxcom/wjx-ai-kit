@@ -14,11 +14,11 @@
 
 ## 第一步：接入 MCP Server
 
-### 通过设置界面配置
+### 通过 AI 聊天面板配置
 
-1. 打开 Trae Settings
-2. 进入 **AI Features** → **MCP**
-3. 添加新的 MCP Server，填入以下配置：
+1. 打开 Trae 的 AI 聊天面板（侧边栏）
+2. 点击聊天面板中的 **MCP 图标**（位于面板顶部或工具栏区域）
+3. 在弹出的 MCP 管理界面中添加新的 MCP Server，填入以下配置：
 
 ```json
 {
@@ -59,7 +59,7 @@
 
 ## 第二步：部署 Agent + Skill（推荐）
 
-wjx-ai-kit 提供 2 个专家 Agent 和配套 Skill 参考文档，让 AI 理解问卷领域的专业知识。
+wjx-ai-kit 提供专家 Agent 和配套 Skill 参考文档，让 AI 理解问卷领域的专业知识。
 
 ### 一键安装
 
@@ -70,20 +70,16 @@ npx wjx-cli skill install
 > 也可从 [Vercel Agent Skills](https://skills.sh/wjxcom/wjx-ai-kit) 安装：`npx skills add wjxcom/wjx-ai-kit`，或在 [ClawHub](https://clawhub.ai/skills?q=wjx) 市场搜索 "wjx" 安装。
 
 这条命令会自动完成：
-- 创建 `.claude/agents/` 目录，部署 2 个专家 Agent（wjx-mcp-expert、wjx-cli-expert）
-- 复制 `wjx-skills/` 参考文档目录（DSL 语法、题型编码、分析方法等）
+- 创建 `.claude/agents/` 目录，部署 wjx-cli-expert Agent（CLI 命令专家）
+- 复制 `wjx-skills/wjx-cli-use/` 参考文档（DSL 语法、题型编码、CLI 命令参数等）
 
 安装后的目录结构：
 
 ```
 your-project/
 ├── .claude/agents/
-│   ├── wjx-mcp-expert.md    # MCP 工具专家
-│   └── wjx-cli-expert.md    # CLI 命令专家
+│   └── wjx-cli-expert.md    # CLI 命令专家 Agent
 └── wjx-skills/
-    ├── wjx-mcp-use/          # MCP 使用技巧
-    │   ├── SKILL.md
-    │   └── references/
     └── wjx-cli-use/          # CLI 使用技巧
         ├── SKILL.md
         └── references/
@@ -189,13 +185,23 @@ wjx analytics nps --scores 9,10,7,3,8
 
 ### Trae 中看不到 MCP 工具？
 
-1. 确认已在 AI Features → MCP 中正确配置
+1. 确认已通过 AI 聊天面板中的 MCP 图标正确配置
 2. 确认 JSON 格式正确（没有尾逗号）
 3. 重启 Trae
 
 ### Trae 和 VS Code 的 MCP 配置一样吗？
 
-Trae 基于 VS Code，MCP 配置格式基本一致，但配置入口在 Trae 自己的设置界面中。具体路径请参考 Trae 官方文档。
+Trae 基于 VS Code，MCP 配置格式基本一致，但配置入口在 Trae 的 AI 聊天面板中的 MCP 图标，而不是 VS Code 的设置页面。具体路径请参考 Trae 官方文档。
+
+### Windows 下 npx 报错 "cannot be loaded because running scripts is disabled"？
+
+这是 PowerShell 执行策略限制。以管理员身份打开 PowerShell，运行：
+
+```powershell
+Set-ExecutionPolicy RemoteSigned -Scope CurrentUser
+```
+
+设置后重启 Trae 即可正常使用 npx。
 
 ---
 

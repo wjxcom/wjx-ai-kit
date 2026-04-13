@@ -61,7 +61,7 @@ npm install -g wjx-mcp-server
 }
 ```
 
-保存后重启 Claude Desktop。在输入框旁边会看到工具图标，点击可以看到 56 个问卷星工具已就绪。
+保存后重启 Claude Desktop。在输入框旁边会看到工具图标，点击可以看到 57 个问卷星工具已就绪。
 
 > 更详细的配置说明请参阅 [Claude Desktop 配置指南](./setup-claude-desktop.md)。
 

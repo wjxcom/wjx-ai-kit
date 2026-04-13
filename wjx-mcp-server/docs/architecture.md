@@ -7,11 +7,11 @@
 
 `wjx-mcp-server` 是一个围绕问卷星 OpenAPI 构建的 MCP Server。它把问卷管理、答卷查询、通讯录/用户体系管理、SSO 快速集成，以及本地分析能力统一暴露为 MCP 的三类原语：
 
-- Tools：56 个
+- Tools：57 个
 - Resources：8 个
 - Prompts：19 个
 
-整体设计遵循”入口层选择传输、MCP Server 统一注册能力、模块层封装业务、核心层处理签名/重试/超时”的分层思路。56 个 tools 中，`survey`/`response`/`contacts`/`user-system`/`multi-user` 主要访问问卷星远程接口，`sso` 与 `analytics` 则以内存计算和 URL 组装为主，不依赖远程 OpenAPI。
+整体设计遵循”入口层选择传输、MCP Server 统一注册能力、模块层封装业务、核心层处理签名/重试/超时”的分层思路。57 个 tools 中，`survey`/`response`/`contacts`/`user-system`/`multi-user` 主要访问问卷星远程接口，`sso` 与 `analytics` 则以内存计算和 URL 组装为主，不依赖远程 OpenAPI。
 
 ## 2. 整体架构
 

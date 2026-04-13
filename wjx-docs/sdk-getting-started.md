@@ -145,7 +145,7 @@ import {
 } from "wjx-api-sdk";
 ```
 
-### 答卷管理（10 函数）
+### 答卷管理（9 函数）
 
 ```typescript
 import {
@@ -154,7 +154,6 @@ import {
   downloadResponses,       // 批量下载
   getReport,               // 统计报告
   submitResponse,          // 代填提交
-  getFileLinks,            // 文件下载链接
   getWinners,              // 抽奖中奖者
   modifyResponse,          // 修改答卷
   get360Report,            // 360 报告

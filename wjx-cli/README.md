@@ -775,7 +775,7 @@ echo '{"title":"调查","type":0,"questions":"[]"}' | wjx --stdin survey create
 | Claude Desktop / Cursor 等 MCP 客户端 | `wjx-mcp-server` |
 | 终端 / shell 脚本 / CI/CD | `wjx-cli` |
 | 自定义 Agent（Python/Node/Go） | `wjx-cli`（子进程）或 `wjx-api-sdk`（直接导入） |
-| 需要 56 个 MCP tools + resources + prompts | `wjx-mcp-server` |
+| 需要 57 个 MCP tools + resources + prompts | `wjx-mcp-server` |
 | 需要简单的 JSON in / JSON out | `wjx-cli` |
 
 ---

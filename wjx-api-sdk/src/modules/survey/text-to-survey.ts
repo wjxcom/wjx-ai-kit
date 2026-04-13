@@ -443,10 +443,16 @@ function buildQuestion(type: string, title: string, required: boolean, body: str
     case "scoring-multi":
     case "sort":
     case "true-false":
-    case "weight":
     case "commodity":
     case "scenario":
       q.options = body.filter((l) => l.length > 0).map(stripOptionPrefix);
+      break;
+
+    case "weight":
+      // 比重题：过滤掉 surveyToText 产生的"总分：N"元信息行
+      q.options = body
+        .filter((l) => l.length > 0 && !/^总分[：:]\s*\d+$/.test(l))
+        .map(stripOptionPrefix);
       break;
 
     case "scale":

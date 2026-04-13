@@ -79,7 +79,7 @@ wjx doctor
 ✓ Config file: ~/.wjxrc
 ✓ API Key: sk-****...****
 ✓ API connectivity: OK (12 surveys found)
-✓ SDK version: wjx-api-sdk@0.1.5
+✓ SDK version: wjx-api-sdk@0.1.21
 ```
 
 ---
