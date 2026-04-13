@@ -37,7 +37,7 @@ export function registerResponseTools(server: McpServer): void {
         query_note: z.boolean().optional().describe("是否查询标注信息"),
         distinct_user: z.boolean().optional().describe("是否仅返回用户最新答卷"),
         distinct_sojumpparm: z.boolean().optional().describe("是否仅返回自定义参数最新答卷"),
-        conds: z.string().optional().describe("题目查询条件 JSON 字符串，最多2个条件，AND关系"),
+        conds: z.string().optional().describe("题目查询条件 JSON 字符串，最多2个条件，AND关系。格式：[{\"q_index\":10000,\"opt\":\"in\",\"val\":\"1,2\"}]。q_index 是内部题号（题目序号×10000，如第1题=10000，第3题=30000）；opt 支持 =、in、not_in；val 为选项序号"),
       },
       annotations: {
         destructiveHint: false,
@@ -161,7 +161,7 @@ export function registerResponseTools(server: McpServer): void {
         end_time: z.number().int().optional().describe("查询结束时间（Unix毫秒时间戳）"),
         distinct_user: z.boolean().optional().describe("是否仅用户最新答卷"),
         distinct_sojumpparm: z.boolean().optional().describe("是否仅自定义参数最新答卷"),
-        conds: z.string().optional().describe("题目查询条件 JSON 字符串"),
+        conds: z.string().optional().describe("题目查询条件 JSON 字符串。格式：[{\"q_index\":10000,\"opt\":\"in\",\"val\":\"1,2\"}]。q_index 是内部题号（题目序号×10000）"),
       },
       annotations: {
         destructiveHint: false,
@@ -199,7 +199,7 @@ export function registerResponseTools(server: McpServer): void {
       inputSchema: {
         vid: z.number().int().positive().describe("问卷编号"),
         inputcosttime: z.number().int().min(2).describe("填写时间（秒），需>1秒否则视为机器提交"),
-        submitdata: z.string().min(1).describe("答卷内容字符串，格式：题号$答案}题号$答案。单选：题号$选项序号；多选：题号$选项1|选项2；填空：题号$文本；排序题：题号$选项序号1|选项序号2|选项序号3（按排名顺序列出所有选项序号）"),
+        submitdata: z.string().min(1).describe("答卷内容字符串，格式：题号$答案}题号$答案。单选：题号$选项序号；多选：题号$选项1|选项2（竖线分隔）；填空：题号$文本；排序题：题号$选项序号1,选项序号2,选项序号3（英文逗号分隔，按排名顺序列出所有选项序号）"),
         udsid: z.number().int().optional().describe("自定义来源编号"),
         sojumpparm: z.string().optional().describe("自定义链接参数"),
         submittime: z.string().optional().describe("答卷提交时间，日期时间字符串，默认当前时间"),

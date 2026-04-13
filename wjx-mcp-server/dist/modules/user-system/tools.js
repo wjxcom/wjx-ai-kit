@@ -12,6 +12,7 @@ export function registerUserSystemTools(server) {
                 .min(2)
                 .describe("参与者列表 JSON 字符串（数组），每项包含: uid(用户ID,必填), uname(姓名), upass(密码), udept(部门,数组格式如[\"部门1\"]), uextf(附加信息,数组格式如[\"信息1\"])"),
             usid: z.number().int().positive().describe("用户系统 ID（sysid）"),
+            auto_create_udept: z.boolean().optional().describe("部门不存在时是否自动创建，默认 false"),
         },
         annotations: {
             destructiveHint: false,
@@ -24,6 +25,7 @@ export function registerUserSystemTools(server) {
         return addParticipants({
             users: args.users,
             sysid: args.usid,
+            auto_create_udept: args.auto_create_udept,
         });
     }));
     // ─── modify_participants ──────────────────────────────────────────

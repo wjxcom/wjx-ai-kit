@@ -18,6 +18,7 @@ export interface WireQuestion {
     is_requir: boolean;
     items?: WireQuestionItem[];
     col_items?: WireQuestionItem[];
+    total?: number;
 }
 export interface WireConversionResult {
     questions: WireQuestion[];

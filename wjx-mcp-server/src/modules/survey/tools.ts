@@ -251,7 +251,7 @@ export function registerSurveyTools(server: McpServer): void {
           .number()
           .int()
           .optional()
-          .describe("问卷类型筛选：1=调查, 2=测评, 3=投票, 4=360度评估, 5=360评估无测评关系, 6=考试, 7=表单, 8=用户体系, 9=教学评估, 10=量表, 11=民主评议"),
+          .describe("问卷类型筛选：1=调查, 2=测评, 3=投票, 4=360度评估, 5=360评估无测评关系, 6=考试, 7=表单, 8=用户体系, 9=教学评估, 11=民主评议"),
         name_like: z
           .string()
           .max(10)

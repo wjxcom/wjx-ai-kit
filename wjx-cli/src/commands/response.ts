@@ -56,7 +56,7 @@ export function registerResponseCommands(program: Command): void {
     .option("--query_note", "查询备注")
     .option("--distinct_user", "去重用户")
     .option("--distinct_sojumpparm", "去重参数")
-    .option("--conds <json>", "查询条件JSON字符串，最多2个条件")
+    .option("--conds <json>", "查询条件JSON，格式：[{\"q_index\":10000,\"opt\":\"in\",\"val\":\"1,2\"}]，q_index=题序×10000，最多2个条件")
     .action(async (_opts, cmd) => {
       await executeCommand(program, cmd, queryResponses, (m) => {
         requireField(m, "vid");
@@ -201,7 +201,7 @@ export function registerResponseCommands(program: Command): void {
     .option("--end_time <n>", "结束时间", strictInt)
     .option("--distinct_user", "去重用户")
     .option("--distinct_sojumpparm", "去重参数")
-    .option("--conds <json>", "查询条件JSON字符串")
+    .option("--conds <json>", "查询条件JSON，格式：[{\"q_index\":10000,\"opt\":\"in\",\"val\":\"1,2\"}]，q_index=题序×10000")
     .action(async (_opts, cmd) => {
       await executeCommand(program, cmd, getReport, (m) => {
         requireField(m, "vid");

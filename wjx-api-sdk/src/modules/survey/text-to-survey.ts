@@ -46,6 +46,7 @@ export interface WireQuestion {
   is_requir: boolean;
   items?: WireQuestionItem[];
   col_items?: WireQuestionItem[];
+  total?: number;
 }
 
 export interface WireConversionResult {
@@ -168,6 +169,11 @@ export function parsedQuestionsToWire(questions: ParsedQuestion[]): WireConversi
           item.item_score = item.item_index;
         }
       }
+    }
+
+    // Weight questions (q_type=9) require total field (default 100)
+    if (typeInfo.q_type === 9) {
+      wq.total = 100;
     }
 
     wire.push(wq);
