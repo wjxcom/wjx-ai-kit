@@ -130,9 +130,10 @@ export function parsedQuestionsToWire(questions) {
                 }
             }
         }
-        // Weight questions (q_type=9) require total field (default 100)
+        // Weight questions (q_type=9) require total and row_width
         if (typeInfo.q_type === 9) {
             wq.total = 100;
+            wq.row_width = 15;
         }
         wire.push(wq);
         qIdx++;

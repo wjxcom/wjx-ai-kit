@@ -19,6 +19,7 @@ export interface WireQuestion {
     items?: WireQuestionItem[];
     col_items?: WireQuestionItem[];
     total?: number;
+    row_width?: number;
 }
 export interface WireConversionResult {
     questions: WireQuestion[];

@@ -33,6 +33,8 @@ interface ExecuteOpts {
   noAuth?: boolean;
   /** 在输出前转换 API 返回结果（用于提取/重塑数据） */
   transformResult?: (result: WjxApiResponse<unknown>) => unknown;
+  /** 在调用 SDK 之前异步转换 input（如获取问卷结构修正 submitdata） */
+  transformInput?: (input: Record<string, unknown>, creds: unknown) => Promise<Record<string, unknown>>;
 }
 
 export interface CapturedRequest {
@@ -153,14 +155,16 @@ export async function executeCommand(
 
     const creds = getCredentials(globalOpts);
 
+    const finalInput = opts.transformInput ? await opts.transformInput(input, creds) : input;
+
     if (globalOpts.dryRun) {
       const { fetchImpl, getCapturedRequest } = createCapturingFetch();
-      await sdkFn(input, creds, fetchImpl);
+      await sdkFn(finalInput, creds, fetchImpl);
       printDryRunPreview(getCapturedRequest());
       return;
     }
 
-    const result = await sdkFn(input, creds);
+    const result = await sdkFn(finalInput, creds);
 
     // P0 fix: detect SDK API failure response
     if (result.result === false) {

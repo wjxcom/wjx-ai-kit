@@ -1,5 +1,17 @@
-import { queryResponses, queryResponsesRealtime, downloadResponses, getReport, submitResponse, getWinners, modifyResponse, get360Report, clearResponses, } from "wjx-api-sdk";
+import { queryResponses, queryResponsesRealtime, downloadResponses, getReport, submitResponse, getWinners, modifyResponse, get360Report, clearResponses, getSurvey, } from "wjx-api-sdk";
 import { executeCommand, strictInt, requireField, ensureJsonString } from "../lib/command-helpers.js";
+/** 修正排序题 submitdata 中的管道符为逗号 */
+function fixRankingSubmitdata(data, rankingIndices) {
+    return data.split("}").map(part => {
+        const idx = part.indexOf("$");
+        if (idx === -1)
+            return part;
+        const qNum = parseInt(part.slice(0, idx), 10);
+        if (!rankingIndices.has(qNum))
+            return part;
+        return part.slice(0, idx + 1) + part.slice(idx + 1).replace(/\|/g, ",");
+    }).join("}");
+}
 export function registerResponseCommands(program) {
     const response = program.command("response").description("答卷管理");
     // --- count ---
@@ -133,6 +145,23 @@ export function registerResponseCommands(program) {
                 sojumpparm: m.sojumpparm,
                 submittime: m.submittime,
             };
+        }, {
+            transformInput: async (input, creds) => {
+                // 自动修正排序题 submitdata：AI 常误用 | 分隔，问卷星要求用逗号
+                try {
+                    const survey = await getSurvey({ vid: input.vid }, creds);
+                    const data = survey?.data;
+                    const questions = data?.questions ?? [];
+                    const rankingIndices = new Set(questions.filter((q) => q.q_subtype === 402).map((q) => q.q_index));
+                    if (rankingIndices.size > 0 && typeof input.submitdata === "string") {
+                        return { ...input, submitdata: fixRankingSubmitdata(input.submitdata, rankingIndices) };
+                    }
+                }
+                catch {
+                    // 获取问卷结构失败时不阻塞提交
+                }
+                return input;
+            },
         });
     });
     // --- modify ---

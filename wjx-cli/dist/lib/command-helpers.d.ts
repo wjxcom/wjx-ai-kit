@@ -12,6 +12,8 @@ interface ExecuteOpts {
     noAuth?: boolean;
     /** 在输出前转换 API 返回结果（用于提取/重塑数据） */
     transformResult?: (result: WjxApiResponse<unknown>) => unknown;
+    /** 在调用 SDK 之前异步转换 input（如获取问卷结构修正 submitdata） */
+    transformInput?: (input: Record<string, unknown>, creds: unknown) => Promise<Record<string, unknown>>;
 }
 export interface CapturedRequest {
     method: string;

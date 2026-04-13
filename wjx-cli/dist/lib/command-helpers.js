@@ -115,13 +115,14 @@ export async function executeCommand(program, actionCommand, sdkFn, buildInput, 
             return;
         }
         const creds = getCredentials(globalOpts);
+        const finalInput = opts.transformInput ? await opts.transformInput(input, creds) : input;
         if (globalOpts.dryRun) {
             const { fetchImpl, getCapturedRequest } = createCapturingFetch();
-            await sdkFn(input, creds, fetchImpl);
+            await sdkFn(finalInput, creds, fetchImpl);
             printDryRunPreview(getCapturedRequest());
             return;
         }
-        const result = await sdkFn(input, creds);
+        const result = await sdkFn(finalInput, creds);
         // P0 fix: detect SDK API failure response
         if (result.result === false) {
             throw new CliError("API_ERROR", result.errormsg || "API 请求失败");
