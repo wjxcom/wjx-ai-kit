@@ -29,6 +29,14 @@ export const TYPE_MAP = {
 };
 /** Subtypes that need auto-incrementing item_score (1, 2, 3, ...) */
 const SCORING_SUBTYPES = new Set([302, 303, 401]);
+/** 矩阵子类型 → matrix_mode 映射（API §3.6 矩阵展现形式） */
+const MATRIX_MODE_MAP = {
+    7: 0, // 矩阵通用 → 无
+    701: 101, // 矩阵量表 → 矩阵量表
+    702: 103, // 矩阵单选 → 矩阵单选
+    703: 102, // 矩阵多选 → 矩阵多选
+    704: 201, // 矩阵填空 → 矩阵填空
+};
 /**
  * Convert ParsedQuestion array to API wire format (question JSON for createSurvey).
  * 段落说明（q_type=2）会被过滤掉，因为 questions JSON 创建 API 不支持该题型。
@@ -130,10 +138,34 @@ export function parsedQuestionsToWire(questions) {
                 }
             }
         }
+        // Multi-fill (q_type=6): gap_count = number of {_} placeholders in q_title
+        if (typeInfo.q_type === 6) {
+            const matches = wq.q_title.match(/\{_\}/g);
+            wq.gap_count = matches ? matches.length : 2;
+        }
+        // Matrix (q_type=7): matrix_mode + style_mode are required
+        if (typeInfo.q_type === 7) {
+            wq.matrix_mode = MATRIX_MODE_MAP[typeInfo.q_subtype] ?? 0;
+            wq.style_mode = 0; // 常规
+        }
         // Weight questions (q_type=9) require total and row_width
         if (typeInfo.q_type === 9) {
             wq.total = 100;
             wq.row_width = 15;
+        }
+        // Slider (q_type=10): min_value + max_value are required
+        if (typeInfo.q_type === 10 && q.scaleRange) {
+            const [min, max] = q.scaleRange;
+            const minNum = parseInt(min, 10);
+            const maxNum = parseInt(max, 10);
+            if (!isNaN(minNum) && !isNaN(maxNum)) {
+                wq.min_value = minNum;
+                wq.max_value = maxNum;
+            }
+        }
+        else if (typeInfo.q_type === 10) {
+            wq.min_value = 0;
+            wq.max_value = 100;
         }
         wire.push(wq);
         qIdx++;

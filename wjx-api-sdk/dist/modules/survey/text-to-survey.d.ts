@@ -20,6 +20,16 @@ export interface WireQuestion {
     col_items?: WireQuestionItem[];
     total?: number;
     row_width?: number;
+    /** 多项填空题填空数量（q_type=6 必填） */
+    gap_count?: number;
+    /** 矩阵展现形式（q_type=7 必填）：0=无, 101=量表, 102=多选, 103=单选, 201=填空 */
+    matrix_mode?: number;
+    /** 矩阵样式模式（q_type=7 必填）：0=常规 */
+    style_mode?: number;
+    /** 滑动条最小值（q_type=10 必填） */
+    min_value?: number;
+    /** 滑动条最大值（q_type=10 必填） */
+    max_value?: number;
 }
 export interface WireConversionResult {
     questions: WireQuestion[];
