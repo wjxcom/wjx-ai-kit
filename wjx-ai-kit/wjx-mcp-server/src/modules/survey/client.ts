@@ -1,6 +1,7 @@
 export {
   createSurvey,
   createSurveyByText,
+  createSurveyByJson,
   getSurvey,
   listSurveys,
   updateSurveyStatus,

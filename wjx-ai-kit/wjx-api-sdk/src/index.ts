@@ -40,6 +40,7 @@ export {
 export {
   createSurvey,
   createSurveyByText,
+  createSurveyByJson,
   validateQuestionsJson,
   getSurvey,
   listSurveys,
@@ -55,9 +56,12 @@ export {
 export { surveyToText, typeToLabel, stripHtml } from "./modules/survey/survey-to-text.js";
 export { textToSurvey, parsedQuestionsToWire, LABEL_TO_TYPE, TYPE_MAP } from "./modules/survey/text-to-survey.js";
 export type { WireQuestion, WireConversionResult } from "./modules/survey/text-to-survey.js";
+export { jsonToSurvey, jsonQuestionsToWire, parseJsonl, QTYPE_MAP } from "./modules/survey/json-to-survey.js";
+export type { JsonSurveyQuestion, JsonParsedSurvey, JsonWireConversionResult } from "./modules/survey/json-to-survey.js";
 export type {
   CreateSurveyInput,
   CreateSurveyByTextInput,
+  CreateSurveyByJsonInput,
   GetSurveyInput,
   ListSurveysInput,
   UpdateSurveyStatusInput,
