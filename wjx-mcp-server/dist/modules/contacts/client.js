@@ -1,0 +1,2 @@
+export { queryContacts, addContacts, deleteContacts, addAdmin, deleteAdmin, restoreAdmin, listDepartments, addDepartment, modifyDepartment, deleteDepartment, listTags, addTag, modifyTag, deleteTag, } from "wjx-api-sdk";
+//# sourceMappingURL=client.js.map

@@ -1,0 +1,1 @@
+export type { QueryContactsInput, AddContactsInput, DeleteContactsInput, AddAdminInput, DeleteAdminInput, RestoreAdminInput, ListDepartmentsInput, AddDepartmentInput, ModifyDepartmentInput, DeleteDepartmentInput, ListTagsInput, AddTagInput, ModifyTagInput, DeleteTagInput, } from "wjx-api-sdk";

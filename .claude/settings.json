@@ -1,0 +1,16 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "if": "Bash(git commit*)",
+            "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/pre-commit-docs.sh\""
+          }
+        ]
+      }
+    ]
+  }
+}

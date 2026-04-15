@@ -1,0 +1,12 @@
+import type { WjxApiResponse, WjxCredentials, FetchLike } from "../../core/types.js";
+import type { QueryResponsesInput, QueryResponsesRealtimeInput, DownloadResponsesInput, GetReportInput, SubmitResponseInput, GetFileLinksInput, GetWinnersInput, ModifyResponseInput, Get360ReportInput, ClearResponsesInput } from "./types.js";
+export declare function queryResponses<T = unknown>(input: QueryResponsesInput, credentials?: WjxCredentials, fetchImpl?: FetchLike): Promise<WjxApiResponse<T>>;
+export declare function queryResponsesRealtime<T = unknown>(input: QueryResponsesRealtimeInput, credentials?: WjxCredentials, fetchImpl?: FetchLike): Promise<WjxApiResponse<T>>;
+export declare function downloadResponses<T = unknown>(input: DownloadResponsesInput, credentials?: WjxCredentials, fetchImpl?: FetchLike): Promise<WjxApiResponse<T>>;
+export declare function getReport<T = unknown>(input: GetReportInput, credentials?: WjxCredentials, fetchImpl?: FetchLike): Promise<WjxApiResponse<T>>;
+export declare function submitResponse<T = unknown>(input: SubmitResponseInput, credentials?: WjxCredentials, fetchImpl?: FetchLike): Promise<WjxApiResponse<T>>;
+export declare function getFileLinks<T = unknown>(input: GetFileLinksInput, credentials?: WjxCredentials, fetchImpl?: FetchLike): Promise<WjxApiResponse<T>>;
+export declare function getWinners<T = unknown>(input: GetWinnersInput, credentials?: WjxCredentials, fetchImpl?: FetchLike): Promise<WjxApiResponse<T>>;
+export declare function modifyResponse<T = unknown>(input: ModifyResponseInput, credentials?: WjxCredentials, fetchImpl?: FetchLike): Promise<WjxApiResponse<T>>;
+export declare function get360Report<T = unknown>(input: Get360ReportInput, credentials?: WjxCredentials, fetchImpl?: FetchLike): Promise<WjxApiResponse<T>>;
+export declare function clearResponses<T = unknown>(input: ClearResponsesInput, credentials?: WjxCredentials, fetchImpl?: FetchLike): Promise<WjxApiResponse<T>>;
