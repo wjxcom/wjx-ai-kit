@@ -1,0 +1,16 @@
+import type { WjxApiResponse, WjxCredentials, FetchLike } from "../../core/types.js";
+import type { QueryContactsInput, AddContactsInput, DeleteContactsInput, AddAdminInput, DeleteAdminInput, RestoreAdminInput, ListDepartmentsInput, AddDepartmentInput, ModifyDepartmentInput, DeleteDepartmentInput, ListTagsInput, AddTagInput, ModifyTagInput, DeleteTagInput } from "./types.js";
+export declare function queryContacts<T = unknown>(input: QueryContactsInput, credentials?: WjxCredentials, fetchImpl?: FetchLike): Promise<WjxApiResponse<T>>;
+export declare function addContacts<T = unknown>(input: AddContactsInput, credentials?: WjxCredentials, fetchImpl?: FetchLike): Promise<WjxApiResponse<T>>;
+export declare function deleteContacts<T = unknown>(input: DeleteContactsInput, credentials?: WjxCredentials, fetchImpl?: FetchLike): Promise<WjxApiResponse<T>>;
+export declare function addAdmin<T = unknown>(input: AddAdminInput, credentials?: WjxCredentials, fetchImpl?: FetchLike): Promise<WjxApiResponse<T>>;
+export declare function deleteAdmin<T = unknown>(input: DeleteAdminInput, credentials?: WjxCredentials, fetchImpl?: FetchLike): Promise<WjxApiResponse<T>>;
+export declare function restoreAdmin<T = unknown>(input: RestoreAdminInput, credentials?: WjxCredentials, fetchImpl?: FetchLike): Promise<WjxApiResponse<T>>;
+export declare function listDepartments<T = unknown>(input: ListDepartmentsInput, credentials?: WjxCredentials, fetchImpl?: FetchLike): Promise<WjxApiResponse<T>>;
+export declare function addDepartment<T = unknown>(input: AddDepartmentInput, credentials?: WjxCredentials, fetchImpl?: FetchLike): Promise<WjxApiResponse<T>>;
+export declare function modifyDepartment<T = unknown>(input: ModifyDepartmentInput, credentials?: WjxCredentials, fetchImpl?: FetchLike): Promise<WjxApiResponse<T>>;
+export declare function deleteDepartment<T = unknown>(input: DeleteDepartmentInput, credentials?: WjxCredentials, fetchImpl?: FetchLike): Promise<WjxApiResponse<T>>;
+export declare function listTags<T = unknown>(input: ListTagsInput, credentials?: WjxCredentials, fetchImpl?: FetchLike): Promise<WjxApiResponse<T>>;
+export declare function addTag<T = unknown>(input: AddTagInput, credentials?: WjxCredentials, fetchImpl?: FetchLike): Promise<WjxApiResponse<T>>;
+export declare function modifyTag<T = unknown>(input: ModifyTagInput, credentials?: WjxCredentials, fetchImpl?: FetchLike): Promise<WjxApiResponse<T>>;
+export declare function deleteTag<T = unknown>(input: DeleteTagInput, credentials?: WjxCredentials, fetchImpl?: FetchLike): Promise<WjxApiResponse<T>>;

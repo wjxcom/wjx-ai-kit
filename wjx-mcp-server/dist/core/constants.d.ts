@@ -1,0 +1,1 @@
+export { getWjxBaseUrl, getWjxApiUrl, getWjxUserSystemApiUrl, getWjxSubuserApiUrl, getWjxContactsApiUrl, getWjxSsoSubaccountUrl, getWjxSsoUserSystemUrl, getWjxSsoPartnerUrl, getWjxSurveyCreateUrl, getWjxSurveyEditUrl, Action, DEFAULT_TIMEOUT_MS, DEFAULT_MAX_RETRIES, RETRY_DELAY_MS, } from "wjx-api-sdk";

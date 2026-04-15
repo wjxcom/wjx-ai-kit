@@ -1,0 +1,43 @@
+JavaScript 基础知识测验
+测试你对 JavaScript 核心概念的理解
+
+1. 以下哪个不是 JavaScript 的基本数据类型？[单选题]
+string
+number
+boolean
+array
+
+2. var、let 和 const 的区别是什么？[多选题]
+var 有函数作用域，let 和 const 有块作用域
+const 声明后不能重新赋值
+let 声明的变量会被提升
+var 可以重复声明同名变量
+
+3. 以下代码的输出是什么？console.log(typeof null) [单选题]
+"null"
+"undefined"
+"object"
+"boolean"
+
+4. 请简述 Promise 的三种状态及其含义 [填空题]
+
+5. 以下哪些是 ES6 新增的特性？[多选题]
+箭头函数
+模板字符串
+解构赋值
+class 关键字
+Symbol 类型
+可选链操作符
+
+6. 请评价你对以下 JS 概念的熟悉程度 [矩阵量表题]
+行：
+- 闭包
+- 原型链
+- 事件循环
+- async/await
+- 模块系统
+列：
+- 不了解
+- 了解概念
+- 能使用
+- 熟练掌握

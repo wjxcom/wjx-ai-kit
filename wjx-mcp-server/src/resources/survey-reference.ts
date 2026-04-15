@@ -1,0 +1,85 @@
+export const SURVEY_TYPES: Record<number, string> = {
+  1: "调查",
+  2: "测评",
+  3: "投票",
+  4: "360度评估",
+  5: "360评估(无测评关系)",
+  6: "考试",
+  7: "表单",
+  8: "用户体系",
+  9: "教学评估",
+  11: "民主评议",
+};
+
+/**
+ * WJX OpenAPI 题目类型 (q_type)
+ * 编码来源: 官方 API 文档 3.3 题目类型
+ *
+ * 注意: 这些编码是 API 层面的编码，与问卷星前端 UI 显示的编号不同。
+ * subtypes 对应 3.4 题目细分类型 (q_subtype)。
+ */
+export const QUESTION_TYPES: Record<number, { name: string; subtypes?: Record<number, string> }> = {
+  1: {
+    name: "分页",
+  },
+  2: {
+    name: "段落",
+  },
+  3: {
+    name: "单选题",
+    subtypes: { 3: "单选题", 301: "下拉框", 302: "量表题", 303: "评分单选", 304: "情景题", 305: "判断题" },
+  },
+  4: {
+    name: "多选题",
+    subtypes: { 4: "多选题", 401: "评分多选", 402: "排序题", 403: "商品题" },
+  },
+  5: {
+    name: "填空题",
+    subtypes: { 5: "填空题", 501: "多级下拉题" },
+  },
+  6: {
+    name: "多项填空题",
+    subtypes: { 6: "普通多项填空", 601: "考试多项填空", 602: "考试完型填空" },
+  },
+  7: {
+    name: "矩阵题",
+    subtypes: { 701: "矩阵量表题", 702: "矩阵单选题", 703: "矩阵多选题", 704: "矩阵填空题", 705: "矩阵滑动条", 706: "矩阵数值题", 707: "表格填空题", 708: "表格下拉框", 709: "表格组合题", 710: "表格自增题", 711: "多项文件题", 712: "多项简答题" },
+  },
+  8: {
+    name: "文件上传",
+    subtypes: { 8: "文件上传", 801: "绘图题" },
+  },
+  9: {
+    name: "比重题",
+  },
+  10: {
+    name: "滑动条",
+  },
+};
+
+export const SURVEY_STATUSES: Record<number, string> = {
+  0: "未发布",
+  1: "已发布",
+  2: "已暂停",
+  3: "已删除",
+  4: "彻底删除",
+  5: "被审核",
+};
+
+export const VERIFY_STATUSES: Record<number, string> = {
+  1: "已通过",
+  2: "审核中",
+  3: "未通过",
+  4: "待实名",
+};
+
+/**
+ * 问卷状态合法转换路径
+ * 键: 当前状态编码，值: 可转换到的目标状态编码列表
+ */
+export const STATUS_TRANSITIONS: Record<number, { targets: number[]; description: string }> = {
+  0: { targets: [1], description: "未发布 → 已发布" },
+  1: { targets: [2, 3], description: "已发布 → 已暂停 | 已删除" },
+  2: { targets: [1, 3], description: "已暂停 → 已发布 | 已删除" },
+  3: { targets: [], description: "已删除（终态，不可恢复）" },
+};
