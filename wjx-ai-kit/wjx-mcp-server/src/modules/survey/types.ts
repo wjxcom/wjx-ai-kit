@@ -1,5 +1,6 @@
 export type {
   CreateSurveyInput,
+  CreateSurveyByJsonInput,
   GetSurveyInput,
   ListSurveysInput,
   UpdateSurveyStatusInput,

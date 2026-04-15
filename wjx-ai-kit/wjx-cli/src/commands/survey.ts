@@ -3,6 +3,9 @@ import { Command } from "commander";
 import {
   createSurvey,
   createSurveyByText,
+  createSurveyByJson,
+  jsonToSurvey,
+  jsonQuestionsToWire,
   getSurvey,
   listSurveys,
   updateSurveyStatus,
@@ -168,6 +171,71 @@ export function registerSurveyCommands(program: Command): void {
         const creds = getCredentials(globalOpts);
         const result = await createSurveyByText({
           text: dslText,
+          title: merged.title as string | undefined,
+          atype: merged.type as number | undefined,
+          publish: merged.publish as boolean | undefined,
+          creater: merged.creater as string | undefined,
+        }, creds);
+
+        if (result.result === false) {
+          throw new CliError("API_ERROR", result.errormsg || "API request failed");
+        }
+
+        formatOutput(result, globalOpts);
+      } catch (e) {
+        handleError(e);
+      }
+    });
+
+  // --- create-by-json ---
+  survey
+    .command("create-by-json")
+    .description("用 JSONL 格式创建问卷（支持 70+ 题型，推荐 AI Agent 使用）")
+    .option("--jsonl <s>", "JSONL 格式问卷内容（每行一个 JSON 对象）")
+    .option("--file <path>", "从文件读取 JSONL 内容")
+    .option("--title <s>", "覆盖 JSONL 中的问卷标题")
+    .option("--type <n>", "问卷类型：1=调查, 2=测评, 3=投票, 6=考试, 7=表单", strictInt)
+    .option("--publish", "创建后发布")
+    .option("--creater <s>", "创建者子账号")
+    .action(async (_opts, cmd) => {
+      try {
+        const merged = getMerged(cmd);
+
+        // Resolve JSONL content: --jsonl > --file
+        let jsonlText: string | undefined;
+        if (typeof merged.jsonl === "string" && merged.jsonl) {
+          jsonlText = merged.jsonl;
+        } else if (typeof merged.file === "string" && merged.file) {
+          try {
+            jsonlText = readFileSync(merged.file as string, "utf8");
+          } catch {
+            throw new CliError("INPUT_ERROR", `无法读取文件: ${merged.file}`);
+          }
+        }
+
+        if (!jsonlText) {
+          throw new CliError("INPUT_ERROR", "必须提供 --jsonl 或 --file 参数");
+        }
+
+        const globalOpts = program.opts();
+
+        if (globalOpts.dryRun) {
+          const parsed = jsonToSurvey(jsonlText);
+          const { questions: wireQuestions, skippedTypes } = jsonQuestionsToWire(parsed.questions);
+          process.stderr.write(JSON.stringify({
+            dry_run: true,
+            parsed_title: parsed.title,
+            parsed_description: parsed.description,
+            question_count: wireQuestions.length,
+            skipped_types: skippedTypes.length > 0 ? skippedTypes : undefined,
+            wire_questions: wireQuestions,
+          }, null, 2) + "\n");
+          return;
+        }
+
+        const creds = getCredentials(globalOpts);
+        const result = await createSurveyByJson({
+          jsonl: jsonlText,
           title: merged.title as string | undefined,
           atype: merged.type as number | undefined,
           publish: merged.publish as boolean | undefined,

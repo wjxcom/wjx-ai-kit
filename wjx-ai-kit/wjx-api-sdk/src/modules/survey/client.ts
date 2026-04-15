@@ -1,11 +1,14 @@
 import type { WjxApiResponse, WjxCredentials, FetchLike } from "../../core/types.js";
-import { Action } from "../../core/constants.js";
+import { Action, LONG_TIMEOUT_MS } from "../../core/constants.js";
 import { callWjxApi, getWjxCredentials, assignDefined } from "../../core/api-client.js";
 export { textToSurvey, parsedQuestionsToWire } from "./text-to-survey.js";
 import { textToSurvey, parsedQuestionsToWire } from "./text-to-survey.js";
+export { jsonToSurvey, jsonQuestionsToWire } from "./json-to-survey.js";
+import { jsonToSurvey, jsonQuestionsToWire } from "./json-to-survey.js";
 import type {
   CreateSurveyInput,
   CreateSurveyByTextInput,
+  CreateSurveyByJsonInput,
   GetSurveyInput,
   ListSurveysInput,
   UpdateSurveyStatusInput,
@@ -39,13 +42,14 @@ export function validateQuestionsJson(questions: string): void {
   }
 }
 
-export async function createSurvey<T = unknown>(
+async function createSurveyWithAction<T = unknown>(
   input: CreateSurveyInput,
-  credentials: WjxCredentials = getWjxCredentials(),
-  fetchImpl: FetchLike = fetch,
+  action: string,
+  credentials: WjxCredentials,
+  fetchImpl: FetchLike,
 ): Promise<WjxApiResponse<T>> {
   const params: Record<string, unknown> = {
-    action: Action.CREATE_SURVEY,
+    action,
     title: input.title,
   };
   if (input.source_vid !== undefined) {
@@ -61,7 +65,20 @@ export async function createSurvey<T = unknown>(
   if (input.compress_img !== undefined) params.compress_img = input.compress_img;
   if (input.is_string !== undefined) params.is_string = input.is_string;
 
-  return callWjxApi<T>(params, { credentials, fetchImpl, maxRetries: 0 });
+  return callWjxApi<T>(params, {
+    credentials,
+    fetchImpl,
+    maxRetries: 0,
+    timeoutMs: LONG_TIMEOUT_MS,
+  });
+}
+
+export async function createSurvey<T = unknown>(
+  input: CreateSurveyInput,
+  credentials: WjxCredentials = getWjxCredentials(),
+  fetchImpl: FetchLike = fetch,
+): Promise<WjxApiResponse<T>> {
+  return createSurveyWithAction<T>(input, Action.CREATE_SURVEY, credentials, fetchImpl);
 }
 
 export async function getSurvey<T = unknown>(
@@ -235,6 +252,45 @@ export async function createSurveyByText<T = unknown>(
     },
     credentials,
     fetchImpl,
+  );
+}
+
+/**
+ * 通过 JSONL 格式创建问卷（客户端解析 JSONL 后调用问卷创建 OpenAPI，action 1000106）。
+ * 不支持的题型会被跳过（记录在返回结果中）。
+ */
+export async function createSurveyByJson<T = unknown>(
+  input: CreateSurveyByJsonInput,
+  credentials: WjxCredentials = getWjxCredentials(),
+  fetchImpl: FetchLike = fetch,
+): Promise<WjxApiResponse<T>> {
+  const jsonl = input.jsonl.trim();
+  if (!jsonl) {
+    throw new Error("jsonl must not be empty");
+  }
+  // 校验 JSONL 可被本地解析（题型映射错误时 jsonQuestionsToWire 会丢弃题目）
+  const parsed = jsonToSurvey(input.jsonl);
+  jsonQuestionsToWire(parsed.questions);
+  const title = input.title ?? parsed.title;
+  const description = parsed.description ?? "";
+
+  // OpenAPI 1000106：远端按 JSONL 解析，参数字段名为 surveydatajson（非 questions）
+  return callWjxApi<T>(
+    {
+      action: Action.CREATE_SURVEY_BY_JSON,
+      title,
+      atype: input.atype ?? 1,
+      desc: description,
+      surveydatajson: jsonl,
+      publish: input.publish ?? false,
+      ...(input.creater !== undefined ? { creater: input.creater } : {}),
+    },
+    {
+      credentials,
+      fetchImpl,
+      maxRetries: 0,
+      timeoutMs: LONG_TIMEOUT_MS,
+    },
   );
 }
 

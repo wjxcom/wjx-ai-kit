@@ -3,6 +3,7 @@ import { z } from "zod";
 import {
   createSurvey,
   createSurveyByText,
+  createSurveyByJson,
   getSurvey,
   listSurveys,
   updateSurveyStatus,
@@ -662,6 +663,55 @@ export function registerSurveyTools(server: McpServer): void {
       try {
         const result = await createSurveyByText({
           text: args.text,
+          atype: args.atype,
+          publish: args.publish,
+          creater: args.creater,
+        });
+        return toolResult(result, result.result === false);
+      } catch (error) {
+        return toolError(error);
+      }
+    },
+  );
+
+  // ─── create_survey_by_json ──────────────────────────────────────────
+  server.registerTool(
+    "create_survey_by_json",
+    {
+      title: "用 JSON 创建问卷",
+      description:
+        "通过 JSONL 格式创建问卷。每行一个 JSON 对象，首行为 qtype='问卷基础信息' 的元数据。" +
+        "支持 70+ 种题型（普通调查、专业调查模型、考试、表单），远多于 DSL 文本格式。" +
+        "【核心字段】qtype（题型名称）、title（标题）、select（选项数组）、rowtitle（行标题）、requir（是否必填）。" +
+        "【专业模型】支持 BWS/MaxDiff(mdattr)、联合分析(columntitle)、品牌漏斗(brands)、Kano模型、SUS模型、PSM模型等。" +
+        "【考试题型】支持 correctselect（正确答案）、quizscore（分值）、answeranalysis（答案解析）。" +
+        "【关联逻辑】支持 relation（显示条件）、referselect（引用前题选项）。" +
+        "输入示例（JSONL）：\n" +
+        '{"qtype":"问卷基础信息","title":"客户满意度调查","introduction":"请认真填写"}\n' +
+        '{"qtype":"单选","title":"您的性别","select":["男","女"]}\n' +
+        '{"qtype":"量表题","title":"满意度评分","select":["1","2","3","4","5"],"minvaluetext":"非常不满意","maxvaluetext":"非常满意"}',
+      inputSchema: {
+        jsonl: z.string().min(1).describe("JSONL 格式的问卷内容（每行一个 JSON 对象）"),
+        atype: z
+          .number()
+          .int()
+          .optional()
+          .default(1)
+          .describe("问卷类型：1=调查（默认）, 2=测评, 3=投票, 6=考试, 7=表单"),
+        publish: z.boolean().optional().default(false).describe("是否立即发布"),
+        creater: z.string().optional().describe("创建者子账号用户名"),
+      },
+      annotations: {
+        destructiveHint: false,
+        idempotentHint: false,
+        openWorldHint: true,
+        title: "用 JSON 创建问卷",
+      },
+    },
+    async (args) => {
+      try {
+        const result = await createSurveyByJson({
+          jsonl: args.jsonl,
           atype: args.atype,
           publish: args.publish,
           creater: args.creater,
