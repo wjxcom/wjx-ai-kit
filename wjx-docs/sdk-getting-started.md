@@ -1,6 +1,6 @@
 # SDK 入门指南：TypeScript 开发快速上手
 
-> 零依赖、类型安全、60+ 函数，5 分钟集成问卷能力
+> 零依赖、类型安全、{{SDK_FUNCTION_COUNT}} 函数，5 分钟集成问卷能力
 
 ---
 
@@ -10,7 +10,7 @@ wjx-api-sdk 是问卷星 OpenAPI 的 TypeScript SDK。它的特点是：
 
 - **零运行时依赖**：只用 Node.js 内置 API（fetch + crypto），无第三方包
 - **完整类型系统**：70+ TypeScript 类型定义，全程类型安全
-- **60+ 函数**：8 个模块覆盖问卷星全部 API 能力
+- **{{SDK_FUNCTION_COUNT}} 函数**：8 个模块覆盖问卷星全部 API 能力
 - **可测试设计**：fetch 注入 + 凭据提供者模式，623 个测试零网络调用
 
 ---
@@ -145,7 +145,7 @@ import {
 } from "wjx-api-sdk";
 ```
 
-### 答卷管理（9 函数）
+### 答卷管理（10 函数）
 
 ```typescript
 import {
@@ -157,6 +157,7 @@ import {
   getWinners,              // 抽奖中奖者
   modifyResponse,          // 修改答卷
   get360Report,            // 360 报告
+  getFileLinks,            // 附件下载链接
   clearResponses,          // 清空答卷
 } from "wjx-api-sdk";
 ```

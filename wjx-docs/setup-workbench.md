@@ -90,7 +90,7 @@ npx wjx-cli skill install
 
 这条命令会自动完成：
 - 创建 `.claude/agents/` 目录，部署 wjx-cli-expert Agent（CLI 命令专家）
-- 复制 `wjx-skills/wjx-cli-use/` 参考文档（DSL 语法、题型编码、CLI 命令参数等）
+- 复制 `skills/wjx-cli-use/` 参考文档（DSL 语法、题型编码、CLI 命令参数等）
 
 安装后的目录结构：
 
@@ -98,13 +98,13 @@ npx wjx-cli skill install
 your-project/
 ├── .claude/agents/
 │   └── wjx-cli-expert.md    # CLI 命令专家 Agent
-└── wjx-skills/
+└── skills/
     └── wjx-cli-use/          # CLI 使用技巧
         ├── SKILL.md
         └── references/
 ```
 
-如果你的工作台支持 Rules 或指令文件，可以将 `wjx-skills/` 中的关键内容写入，提升 AI 操作问卷星的准确度。
+如果你的工作台支持 Rules 或指令文件，可以将 `skills/` 中的关键内容写入，提升 AI 操作问卷星的准确度。
 
 ### Skill zip 手动安装
 
@@ -124,29 +124,7 @@ your-project/
 
 ## 第三步：安装 CLI（可选）
 
-wjx-cli 提供 69 个子命令，适合批量操作和自动化脚本：
-
-```bash
-# 安装
-npm install -g wjx-cli
-
-# 配置 API Key
-wjx init
-
-# 环境检查
-wjx doctor
-
-# 试试看
-wjx survey list
-```
-
-CLI 输出结构化 JSON，可与工作台配合使用。例如：
-
-```bash
-# 查询答卷并分析 NPS
-wjx response query --vid 12345 --page_size 100
-wjx analytics nps --scores 9,10,7,3,8
-```
+详见 [CLI 入门指南](./cli-getting-started.md)。CLI 提供 {{CLI_COMMAND_COUNT}} 个子命令，适合批量操作和自动化脚本。
 
 ---
 
@@ -157,28 +135,6 @@ wjx analytics nps --scores 9,10,7,3,8
 > 帮我创建一份客户满意度调查问卷
 
 如果一切正常，AI 会调用问卷星 MCP 工具，自动创建问卷并返回编辑链接。
-
----
-
-## 典型场景
-
-### 场景 1: 创建调研问卷
-
-> 你：帮我创建一份员工满意度调查问卷，包含 NPS 评分题、工作环境满意度（5 级量表）和开放反馈
->
-> AI 自动：读取 DSL 语法 → 生成问卷结构 → 调用 create_survey_by_text → 返回编辑链接
-
-### 场景 2: 分析数据
-
-> 你：分析最近一次客户满意度调查的 NPS 得分
->
-> AI 自动：query_responses 获取数据 → calculate_nps 计算 → 给出推荐人/中立/贬损分布
-
-### 场景 3: 自主完成多步骤任务（工作台优势）
-
-> 你：为下周的产品发布会准备调研方案——会前期望调查、会中实时反馈、会后满意度评估
->
-> AI 自动规划三份问卷 → 逐一设计并创建 → 汇总所有链接和操作说明
 
 ---
 
@@ -197,11 +153,11 @@ wjx analytics nps --scores 9,10,7,3,8
 
 ### QoderWork 和 Qoder IDE 插件是什么关系？
 
-Qoder IDE 插件面向开发者，嵌入 VS Code / JetBrains。QoderWork 是独立桌面应用，面向更广泛用户。两者同属 Qoder 生态，MCP 配置方式相同。详见 [Qoder 配置指南](./setup-qoder.md)。
+Qoder IDE 插件面向开发者，嵌入 VS Code / JetBrains。QoderWork 是独立桌面应用，面向更广泛用户。两者同属 Qoder 生态，MCP 配置方式相同。详见 [IDE 插件配置指南](./setup-ide.md)。
 
 ---
 
 ## 下一步
 
-- [MCP Server 入门指南](./mcp-getting-started.md) — 了解 57 个工具的完整能力
+- [MCP Server 入门指南](./mcp-getting-started.md) — 了解 {{MCP_TOOL_COUNT}} 个工具的完整能力
 - [wjx-ai-kit 总览](./00-overview.md) — 了解 SDK、MCP、CLI 三合一架构

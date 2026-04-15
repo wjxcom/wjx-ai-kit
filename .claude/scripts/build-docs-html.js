@@ -13,6 +13,20 @@ const ROOT = join(__dirname, "../..");
 const DOCS_DIR = join(ROOT, "wjx-docs");
 const OUTPUT = join(DOCS_DIR, "wjx-kit.html");
 
+// --- 文档变量（单一数据源）---
+// 所有 wjx-docs/*.md 中的 {{VAR_NAME}} 占位符会在构建时被替换
+// 新增/变更模块后只需修改此处，构建时自动同步到所有文档
+const MCP_PKG = require("../../wjx-mcp-server/package.json");
+const DOC_VARS = {
+  MCP_TOOL_COUNT: "57",       // server.registerTool() 调用总数
+  MCP_RESOURCE_COUNT: "8",    // MCP Resources 数量
+  MCP_PROMPT_COUNT: "19",     // MCP Prompts 数量
+  CLI_COMMAND_COUNT: "69",    // CLI 叶子命令数
+  CLI_ANALYTICS_COUNT: "6",   // analytics 子命令数
+  SDK_FUNCTION_COUNT: "60+",  // SDK 导出函数数
+  VERSION: MCP_PKG.version,   // 从 package.json 自动读取
+};
+
 // 文档菜单定义：分组 + 顺序
 const MENU = [
   {
@@ -42,15 +56,8 @@ const MENU = [
     items: [
       { key: "setup-claude-code", label: "Claude Code" },
       { key: "setup-claude-desktop", label: "Claude Desktop" },
-      { key: "setup-cursor", label: "Cursor" },
-      { key: "setup-windsurf", label: "Windsurf" },
-      { key: "setup-cline", label: "Cline" },
-      { key: "setup-copilot", label: "GitHub Copilot" },
-      { key: "setup-trae", label: "Trae" },
-      { key: "setup-gemini", label: "Gemini Code Assist" },
+      { key: "setup-ide", label: "IDE 插件（7 工具）" },
       { key: "setup-claw", label: "Claw 系列" },
-      { key: "setup-openclaw", label: "OpenClaw" },
-      { key: "setup-qoder", label: "Qoder" },
       { key: "setup-workbench", label: "AI 工作台" },
     ],
   },
@@ -64,7 +71,19 @@ for (const file of mdFiles) {
   docs[key] = readFileSync(join(DOCS_DIR, file), "utf-8");
 }
 
-console.log(`读取了 ${Object.keys(docs).length} 个文档`);
+// 注入文档变量
+let totalReplacements = 0;
+for (const key of Object.keys(docs)) {
+  for (const [varName, value] of Object.entries(DOC_VARS)) {
+    const placeholder = `{{${varName}}}`;
+    while (docs[key].includes(placeholder)) {
+      docs[key] = docs[key].replace(placeholder, value);
+      totalReplacements++;
+    }
+  }
+}
+
+console.log(`读取了 ${Object.keys(docs).length} 个文档，注入 ${totalReplacements} 处变量`);
 
 // HTML 模板
 const HTML_TEMPLATE = `<!DOCTYPE html>

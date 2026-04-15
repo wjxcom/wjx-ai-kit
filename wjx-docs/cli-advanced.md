@@ -1,4 +1,4 @@
-# CLI 进阶指南：69 个命令完全攻略
+# CLI 进阶指南：{{CLI_COMMAND_COUNT}} 个命令完全攻略
 
 > 管道组合、自动化脚本、DSL 高级用法、AI Skill 系统
 
@@ -154,7 +154,7 @@ done
 
 ---
 
-## 69 个命令完整参考
+## {{CLI_COMMAND_COUNT}} 个命令完整参考
 
 ### 问卷管理 (14)
 
@@ -290,7 +290,7 @@ done
 项目根目录/
 ├── .claude/agents/
 │   └── wjx-cli-expert.md      # Claude Code Agent 定义
-└── wjx-skills/wjx-cli-use/
+└── skills/wjx-cli-use/
     ├── SKILL.md                # 技能主文档（命令概览 + 核心工作流）
     └── references/
         ├── dsl-syntax.md       # DSL 语法参考

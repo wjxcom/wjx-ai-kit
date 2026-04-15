@@ -18,10 +18,10 @@ tools:
 
 ## 可用技能
 
-你有一个配套的 MCP 使用指南技能，位于 `wjx-skills/wjx-mcp-use/`：
+你有一个配套的 MCP 使用指南技能，位于 `skills/wjx-mcp-use/`：
 
-- **`wjx-skills/wjx-mcp-use/SKILL.md`** — 工具总览、核心工作流、MCP 资源、Prompt 模板、常用枚举值
-- **`wjx-skills/wjx-mcp-use/references/`** — 按需查阅的详细参考：
+- **`skills/wjx-mcp-use/SKILL.md`** — 工具总览、核心工作流、MCP 资源、Prompt 模板、常用枚举值
+- **`skills/wjx-mcp-use/references/`** — 按需查阅的详细参考：
   - `dsl-and-types.md` — DSL 文本语法、题型映射表、问卷/状态编码
   - `tools-survey.md` — 12 个问卷管理工具的完整参数
   - `tools-response.md` — 10 个答卷数据工具的完整参数

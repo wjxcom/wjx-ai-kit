@@ -50,7 +50,7 @@ export function installSkill(targetDir, options = {}) {
     const agentSrc = join(bundledDir, "wjx-cli-expert.md");
     const skillSrc = join(bundledDir, "wjx-cli-use");
     const agentDest = join(targetDir, ".claude", "agents", "wjx-cli-expert.md");
-    const skillDest = join(targetDir, "wjx-skills", "wjx-cli-use");
+    const skillDest = join(targetDir, "skills", "wjx-cli-use");
     const agentExists = existsSync(agentDest);
     const skillExists = existsSync(join(skillDest, "SKILL.md"));
     const isUpdate = agentExists || skillExists;
@@ -73,7 +73,7 @@ export function installSkill(targetDir, options = {}) {
     if (!silent) {
         stderr.write(`${msg}:\n`);
         stderr.write(`  .claude/agents/wjx-cli-expert.md\n`);
-        stderr.write(`  wjx-skills/wjx-cli-use/ (${files.length - 1} files)\n`);
+        stderr.write(`  skills/wjx-cli-use/ (${files.length - 1} files)\n`);
     }
     return { status, version, files, message: msg };
 }
@@ -84,7 +84,7 @@ export function updateSkill(targetDir, options = {}) {
     const { silent = false } = options;
     const version = getVersion();
     const agentDest = join(targetDir, ".claude", "agents", "wjx-cli-expert.md");
-    const skillDest = join(targetDir, "wjx-skills", "wjx-cli-use", "SKILL.md");
+    const skillDest = join(targetDir, "skills", "wjx-cli-use", "SKILL.md");
     if (!existsSync(agentDest) && !existsSync(skillDest)) {
         const msg = "技能尚未安装，请先运行 wjx skill install";
         if (!silent)

@@ -284,7 +284,7 @@ console.log(parsed.questions); // ParsedQuestion[]
 
 | 变量 | 必填 | 说明 |
 |------|:----:|------|
-| `WJX_API_KEY` | 是 | 问卷星 OpenAPI API Key（[扫码获取](https://www.wjx.cn/weixinlogin.aspx?redirecturl=%2Fnewwjx%2Fmanage%2Fuserinfo.aspx%3FshowApiKey%3D1)） |
+| `WJX_API_KEY` | 是 | 问卷星 OpenAPI Key（[扫码获取](https://www.wjx.cn/weixinlogin.aspx?redirecturl=%2Fnewwjx%2Fmanage%2Fuserinfo.aspx%3FshowApiKey%3D1)） |
 | `WJX_CORP_ID` | 否 | 企业通讯录 ID（通讯录相关操作需要） |
 | `WJX_BASE_URL` | 否 | 自定义 API 基础域名（默认 `https://www.wjx.cn`） |
 

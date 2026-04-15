@@ -18,7 +18,7 @@ MCP (Model Context Protocol) 是 AI 工具调用的标准协议。wjx-mcp-server
 
 微信扫码登录 [API Key 获取页](https://www.wjx.cn/weixinlogin.aspx?redirecturl=%2Fnewwjx%2Fmanage%2Fuserinfo.aspx%3FshowApiKey%3D1)，登录后页面直接显示 API Key。
 
-> 企业用户如需管理通讯录，还需要获取 Corp ID（企业通讯录 ID）。
+> 企业用户如需管理通讯录，还需要获取 Corp ID（企业通讯录 ID）。登录问卷星后台 → 企业管理 → 通讯录设置，页面中会显示通讯录 ID。
 
 ### 2. 确认 Node.js 版本
 
@@ -61,7 +61,7 @@ npm install -g wjx-mcp-server
 }
 ```
 
-保存后重启 Claude Desktop。在输入框旁边会看到工具图标，点击可以看到 57 个问卷星工具已就绪。
+保存后重启 Claude Desktop。在输入框底部会看到工具图标，点击可以看到 {{MCP_TOOL_COUNT}} 个问卷星工具已就绪。
 
 > 更详细的配置说明请参阅 [Claude Desktop 配置指南](./setup-claude-desktop.md)。
 
@@ -95,20 +95,14 @@ Claude 会调用 `list_surveys` 工具，返回你账户下的问卷列表。如
 
 重启 Cursor，在 AI 对话中即可使用问卷星工具。
 
-> 更详细的配置说明请参阅 [Cursor 配置指南](./setup-cursor.md)。
+> 更详细的配置说明请参阅 [IDE 插件配置指南](./setup-ide.md)。
 
 ---
 
 ## 接入 Claude Code
 
 ```bash
-claude mcp add wjx -- npx wjx-mcp-server
-```
-
-需要设置环境变量：
-
-```bash
-export WJX_API_KEY="替换为你的API Key"
+claude mcp add wjx --env WJX_API_KEY=你的APIKey -- npx wjx-mcp-server
 ```
 
 > Claude Code 支持完整的 Agent + Skill 体验，详见 [Claude Code 配置指南](./setup-claude-code.md)。
@@ -126,7 +120,7 @@ export WJX_API_KEY="替换为你的API Key"
 
 AI 会：
 1. 设计问卷结构
-2. 生成 DSL 文本（一种直觉的纯文本问卷格式）
+2. 生成 DSL 文本（一种直观的纯文本问卷格式）
 3. 调用 `create_survey_by_text` 工具创建问卷
 4. 返回问卷 ID 和预览链接
 
@@ -177,7 +171,7 @@ AI 会：
 
 ## 工具分类速览
 
-MCP Server 提供 57 个工具，分为 7 个模块：
+MCP Server 提供 {{MCP_TOOL_COUNT}} 个工具（含 1 个系统工具 `get_config`），按功能分为 7 个模块：
 
 | 模块 | 工具数 | 用途 | 示例 |
 |------|--------|------|------|
@@ -191,7 +185,7 @@ MCP Server 提供 57 个工具，分为 7 个模块：
 
 ### 内置参考资源
 
-AI 可以随时查阅 8 个参考资源，不需要你提供文档：
+AI 可以随时查阅 {{MCP_RESOURCE_COUNT}} 个参考资源，不需要你提供文档：
 
 | 资源 | 内容 |
 |------|------|
@@ -206,7 +200,7 @@ AI 可以随时查阅 8 个参考资源，不需要你提供文档：
 
 ### 预设 Prompt 模板
 
-19 个预设 Prompt 提供标准化工作流：
+{{MCP_PROMPT_COUNT}} 个预设 Prompt 提供标准化工作流：
 
 **调研分析类：**
 - `nps-analysis` — 完整 NPS 分析流程

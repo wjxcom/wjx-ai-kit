@@ -17,10 +17,10 @@ tools:
 
 ## 可用技能
 
-你有一个配套的 CLI 使用指南技能，位于 `wjx-skills/wjx-cli-use/`：
+你有一个配套的 CLI 使用指南技能，位于 `skills/wjx-cli-use/`：
 
-- **`wjx-skills/wjx-cli-use/SKILL.md`** — 命令总览、核心工作流、常用枚举值
-- **`wjx-skills/wjx-cli-use/references/`** — 按需查阅的详细参考：
+- **`skills/wjx-cli-use/SKILL.md`** — 命令总览、核心工作流、常用枚举值
+- **`skills/wjx-cli-use/references/`** — 按需查阅的详细参考：
   - `dsl-syntax.md` — DSL 文本语法（create-by-text 用）
   - `survey-commands.md` — survey 模块全部参数
   - `response-commands.md` — response 模块全部参数

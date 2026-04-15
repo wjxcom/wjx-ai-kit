@@ -26,11 +26,11 @@ wjx-ai-kit/
 └── package.json       # workspace 根配置
 ```
 
-| 包 | 版本 | 说明 |
-|---|---|---|
-| [`wjx-api-sdk`](wjx-api-sdk/) | 0.1.21 | 零依赖 TypeScript SDK。8 模块、50+ 函数，可在任意 Node.js 项目中使用 |
-| [`wjx-mcp-server`](wjx-mcp-server/) | 0.1.21 | [MCP](https://modelcontextprotocol.io/) Server。接入 Claude、Cursor、Windsurf 等 AI 客户端 |
-| [`wjx-cli`](wjx-cli/) | 0.1.21 | 命令行工具。69 子命令，支持 stdin pipe、JSON/表格输出 |
+| 包                                   | 版本     | 说明                                                                                |
+| ----------------------------------- | ------ | --------------------------------------------------------------------------------- |
+| [`wjx-api-sdk`](wjx-api-sdk/)       | 0.1.22 | 零依赖 TypeScript SDK。8 模块、50+ 函数，可在任意 Node.js 项目中使用                                 |
+| [`wjx-mcp-server`](wjx-mcp-server/) | 0.1.22 | [MCP](https://modelcontextprotocol.io/) Server。接入 Claude、Cursor、Windsurf 等 AI 客户端 |
+| [`wjx-cli`](wjx-cli/)               | 0.1.22 | 命令行工具。69 子命令，支持 stdin pipe、JSON/表格输出                                              |
 
 ---
 
@@ -42,15 +42,9 @@ wjx-ai-kit/
 |---------|---------|
 | **Claude Code** | [setup-claude-code.md](wjx-docs/setup-claude-code.md) |
 | **Claude Desktop** | [setup-claude-desktop.md](wjx-docs/setup-claude-desktop.md) |
-| **Cursor** | [setup-cursor.md](wjx-docs/setup-cursor.md) |
-| **Windsurf** | [setup-windsurf.md](wjx-docs/setup-windsurf.md) |
-| **Cline** | [setup-cline.md](wjx-docs/setup-cline.md) |
-| **GitHub Copilot** | [setup-copilot.md](wjx-docs/setup-copilot.md) |
-| **Trae** | [setup-trae.md](wjx-docs/setup-trae.md) |
-| **Gemini** | [setup-gemini.md](wjx-docs/setup-gemini.md) |
-| **Qoder** | [setup-qoder.md](wjx-docs/setup-qoder.md) |
-| **OpenClaw** | [setup-openclaw.md](wjx-docs/setup-openclaw.md) |
-| **国产 Claw 系列** | [setup-claw.md](wjx-docs/setup-claw.md) |
+| **IDE 插件**（Cursor / Windsurf / Cline / Copilot / Trae / Gemini / Qoder） | [setup-ide.md](wjx-docs/setup-ide.md) |
+| **Claw 系列**（OpenClaw / KimiClaw / QClaw / LinClaw / MaxClaw 等） | [setup-claw.md](wjx-docs/setup-claw.md) |
+| **AI 工作台**（Manus / WorkBuddy / QoderWork） | [setup-workbench.md](wjx-docs/setup-workbench.md) |
 
 ---
 

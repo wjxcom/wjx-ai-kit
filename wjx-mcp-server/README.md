@@ -91,9 +91,7 @@ flowchart LR
 
 #### 获取 API 凭据
 
-1. 登录[问卷星控制台](https://www.wjx.cn)
-2. 进入 **账号设置 → API自动登录** 或联系客户经理开通 OpenAPI 权限
-3. 获取 API Key（一串字母数字组成的密钥）
+微信扫码登录 [API Key 获取页](https://www.wjx.cn/weixinlogin.aspx?redirecturl=%2Fnewwjx%2Fmanage%2Fuserinfo.aspx%3FshowApiKey%3D1)，登录后页面直接显示 API Key。
 
 ### 安装与构建
 
@@ -138,9 +136,32 @@ MCP_TRANSPORT=http PORT=3000 MCP_AUTH_TOKEN=my-secret node dist/index.js
 
 ## 集成配置
 
-### Claude Desktop
+### 方式一：npx 直接使用（推荐）
 
-编辑 Claude Desktop 配置文件（macOS: `~/Library/Application Support/Claude/claude_desktop_config.json`）：
+无需下载源码，直接通过 npx 使用：
+
+```json
+{
+  "mcpServers": {
+    "wjx": {
+      "command": "npx",
+      "args": ["wjx-mcp-server"],
+      "env": {
+        "WJX_API_KEY": "your_api_key"
+      }
+    }
+  }
+}
+```
+
+将此 JSON 配置添加到你的 AI 工具的 MCP 配置文件中：
+
+- **Claude Desktop**: `~/Library/Application Support/Claude/claude_desktop_config.json`（macOS）或 `%APPDATA%\Claude\claude_desktop_config.json`（Windows）
+- **Claude Code**: `claude mcp add wjx --env WJX_API_KEY=your_api_key -- npx wjx-mcp-server`
+- **Cursor**: `.cursor/mcp.json`
+- **其他工具**: 详见 [AI 工具配置指南](../wjx-docs/00-overview.md#ai-工具配置指南)
+
+### 方式二：从源码运行
 
 ```json
 {
@@ -157,30 +178,6 @@ MCP_TRANSPORT=http PORT=3000 MCP_AUTH_TOKEN=my-secret node dist/index.js
 ```
 
 > 将 `args` 中的路径替换为你本地 `dist/index.js` 的实际路径。
-
-### Claude Code
-
-```bash
-claude mcp add wjx -- node ./wjx-mcp-server/dist/index.js
-```
-
-### Cursor
-
-在项目根目录创建或编辑 `.cursor/mcp.json`：
-
-```json
-{
-  "mcpServers": {
-    "wjx": {
-      "command": "node",
-      "args": ["./wjx-mcp-server/dist/index.js"],
-      "env": {
-        "WJX_API_KEY": "your_api_key"
-      }
-    }
-  }
-}
-```
 
 ---
 
