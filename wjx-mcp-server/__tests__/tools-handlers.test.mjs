@@ -330,6 +330,33 @@ describe("survey tools validation via MCP", () => {
     });
   });
 
+  describe("create_survey_by_json", () => {
+    it("rejects empty jsonl", async () => {
+      const result = await client.callTool({
+        name: "create_survey_by_json",
+        arguments: { jsonl: "" },
+      });
+      assert.equal(result.isError, true);
+    });
+
+    it("rejects missing jsonl", async () => {
+      const result = await client.callTool({
+        name: "create_survey_by_json",
+        arguments: {},
+      });
+      assert.equal(result.isError, true);
+    });
+
+    it("rejects jsonl exceeding 1MB", async () => {
+      const big = "x".repeat(1_000_001);
+      const result = await client.callTool({
+        name: "create_survey_by_json",
+        arguments: { jsonl: big },
+      });
+      assert.equal(result.isError, true);
+    });
+  });
+
   describe("get_survey", () => {
     it("rejects empty arguments", async () => {
       const result = await client.callTool({

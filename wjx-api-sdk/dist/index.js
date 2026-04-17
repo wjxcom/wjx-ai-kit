@@ -2,9 +2,10 @@
 export { getWjxBaseUrl, getWjxApiUrl, getWjxUserSystemApiUrl, getWjxSubuserApiUrl, getWjxContactsApiUrl, getWjxSsoSubaccountUrl, getWjxSsoUserSystemUrl, getWjxSsoPartnerUrl, getWjxSurveyCreateUrl, getWjxSurveyEditUrl, Action, DEFAULT_TIMEOUT_MS, LONG_TIMEOUT_MS, DEFAULT_MAX_RETRIES, RETRY_DELAY_MS, } from "./core/constants.js";
 export { setCredentialProvider, getWjxCredentials, callWjxApi, callWjxUserSystemApi, callWjxSubuserApi, callWjxContactsApi, getCorpId, assignDefined, } from "./core/api-client.js";
 // Survey module
-export { createSurvey, createSurveyByText, validateQuestionsJson, getSurvey, listSurveys, updateSurveyStatus, getSurveySettings, updateSurveySettings, deleteSurvey, getQuestionTags, getTagDetails, clearRecycleBin, uploadFile, } from "./modules/survey/client.js";
+export { createSurvey, createSurveyByText, createSurveyByJson, validateQuestionsJson, getSurvey, listSurveys, updateSurveyStatus, getSurveySettings, updateSurveySettings, deleteSurvey, getQuestionTags, getTagDetails, clearRecycleBin, uploadFile, } from "./modules/survey/client.js";
 export { surveyToText, typeToLabel, stripHtml } from "./modules/survey/survey-to-text.js";
 export { textToSurvey, parsedQuestionsToWire, LABEL_TO_TYPE, TYPE_MAP } from "./modules/survey/text-to-survey.js";
+export { extractJsonlMetadata, normalizeJsonl, MAX_JSONL_SIZE } from "./modules/survey/json-to-survey.js";
 // Response module
 export { queryResponses, queryResponsesRealtime, downloadResponses, getReport, submitResponse, getFileLinks, getWinners, modifyResponse, get360Report, clearResponses, } from "./modules/response/client.js";
 // Contacts module

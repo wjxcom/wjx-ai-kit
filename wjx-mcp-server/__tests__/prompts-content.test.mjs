@@ -44,8 +44,8 @@ describe("prompts content correctness", () => {
         arguments: { topic: "产品反馈" },
       });
       const text = result.messages[0].content.text;
-      assert.ok(text.includes("题型标签"));
-      assert.ok(text.includes("[单选题]"));
+      assert.ok(text.includes("JSONL"));
+      assert.ok(text.includes("create_survey_by_json"));
     });
 
     it("includes optional target_audience when provided", async () => {

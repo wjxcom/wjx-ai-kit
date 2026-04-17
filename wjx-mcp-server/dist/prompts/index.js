@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { registerAnalysisPrompts } from "./analysis.js";
 import { registerSurveyGenerationPrompts } from "./survey-generation.js";
+import { registerSurveyGenerationJsonPrompts } from "./survey-generation-json.js";
 export function registerPrompts(server) {
     server.prompt("design-survey", "引导 AI 设计问卷结构，包含题型选择、逻辑跳转和选项设计", {
         topic: z.string().describe("问卷主题（如：员工满意度、客户反馈、产品调研）"),
@@ -19,14 +20,18 @@ export function registerPrompts(server) {
 1. 问卷标题和描述
 2. 题目列表（每题包含：题型、标题、选项/填空说明、是否必填）
 3. 建议的逻辑跳转规则
-4. 最终输出 DSL 文本格式（供 create_survey_by_text 工具直接使用）
+4. 最终输出 JSONL 格式（供 create_survey_by_json 工具直接使用，推荐，支持 70+ 题型）
 
-DSL 格式说明：
-- 第一行为问卷标题，空行后为描述，再空行后为题目列表
-- 题目格式：序号. 题目标题[题型标签]，下一行列出选项
-- 题型标签：[单选题]、[多选题]、[填空题]、[下拉框]、[量表题]（选项用 min~max 格式）、[评分单选]、[评分多选]、[排序题]、[判断题]、[矩阵量表题]、[矩阵单选题]、[矩阵多选题]、[矩阵填空题]、[文件上传]、[比重题]、[滑动条]
-- 选填题在标签后加（选填）（中文全角括号）
-- 分页用 === 分页 === 标记`,
+JSONL 格式说明（每行一个 JSON 对象）：
+- 首行为问卷元数据：{"qtype":"问卷基础信息","title":"问卷标题","introduction":"问卷描述"}
+- 后续每行一个题目，如：{"qtype":"单选","title":"题目标题","select":["选项1","选项2"]}
+- 常用 qtype：单选、多选、单项填空、多项填空、下拉框、量表题、评分单选、评分多选、排序题、判断题、矩阵量表题、矩阵单选题、矩阵多选题、矩阵填空题、文件上传、比重题、滑动条
+- 选填题设 requir=false
+- 量表题可用 minvaluetext/maxvaluetext 标注两端文字
+- 多项填空必须在 title 中用 {_} 占位符表示每个子填空位，如 {"qtype":"多项填空","title":"电话 {_}，邮箱 {_}"}；**不要用 rowtitle 数组**（那是矩阵题字段，多项填空不支持，会导致只生成 1 个空位）
+- 更多 qtype 及字段请参考 generate-survey-json prompt
+
+如果问卷仅涉及简单题型（约 25 种），也可退而使用 DSL 文本格式 + create_survey_by_text 工具。`,
                 },
             }],
     }));
@@ -227,5 +232,7 @@ Use survey type 1 (survey) and output the create_survey tool call with properly 
     registerAnalysisPrompts(server);
     // ═══ Survey Generation Prompts ════════════════════════════════════════
     registerSurveyGenerationPrompts(server);
+    // ═══ Survey Generation Prompts (JSON format) ════════════════════════
+    registerSurveyGenerationJsonPrompts(server);
 }
 //# sourceMappingURL=index.js.map

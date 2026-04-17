@@ -11,7 +11,7 @@ wjx-mcp-server 提供 57 个 MCP 工具、8 个参考资源和 19 个 prompt 模
 
 ### 规则 1：一个需求 = 一个问卷
 
-无论用户要求多少种题型，**必须在一次 `create_survey_by_text` 调用中包含所有题目**。一个问卷可包含任意数量、任意类型的题目。
+无论用户要求多少种题型，**必须在一次 `create_survey_by_json`（首选）或 `create_survey_by_text` 调用中包含所有题目**。一个问卷可包含任意数量、任意类型的题目。
 
 ### 规则 2：问卷类型 ≠ 题目类型
 
@@ -38,10 +38,10 @@ wjx-mcp-server 提供 57 个 MCP 工具、8 个参考资源和 19 个 prompt 模
 
 | 用户意图 | 工具 |
 |---------|------|
-| 做调查/问卷 | `create_survey_by_text({ text: "...", atype: 1 })` |
-| 做考试/测验 | `create_survey_by_text({ text: "...", atype: 6 })` |
-| 做投票 | `create_survey_by_text({ text: "...", atype: 3 })` |
-| 做表单/报名表 | `create_survey_by_text({ text: "...", atype: 7 })` |
+| 做调查/问卷 | `create_survey_by_json`（首选，支持 70+ 题型）；简单场景可用 `create_survey_by_text` |
+| 做考试/测验 | `create_survey_by_json` + prompt `generate-exam-json`（首选）；简单场景可用 `create_survey_by_text({ text: "...", atype: 6 })` |
+| 做投票 | `create_survey_by_json` + `atype: 3`（首选）；简单场景可用 `create_survey_by_text({ text: "...", atype: 3 })` |
+| 做表单/报名表 | `create_survey_by_json` + prompt `generate-form-json`（首选）；简单场景可用 `create_survey_by_text({ text: "...", atype: 7 })` |
 | 看问卷结果 | `get_report({ vid })` 统计概览，`query_responses({ vid })` 明细 |
 | 导出答卷数据 | `download_responses({ vid })` |
 | 查看问卷链接 | `build_survey_url({ mode: "edit", activity: vid })` |
@@ -52,7 +52,7 @@ wjx-mcp-server 提供 57 个 MCP 工具、8 个参考资源和 19 个 prompt 模
 
 | 模块 | 工具数 | 说明 |
 |------|--------|------|
-| 问卷管理 | 12 | create_survey, create_survey_by_text, get_survey, list_surveys, update_survey_status, get/update_survey_settings, delete_survey, get_question_tags, get_tag_details, upload_file, clear_recycle_bin |
+| 问卷管理 | 13 | create_survey, create_survey_by_json（推荐）, create_survey_by_text, get_survey, list_surveys, update_survey_status, get/update_survey_settings, delete_survey, get_question_tags, get_tag_details, upload_file, clear_recycle_bin |
 | 答卷数据 | 9 | query_responses, query_responses_realtime, download_responses, get_report, submit_response, get_winners, modify_response, get_360_report, clear_responses |
 | 通讯录 | 14 | query/add/delete_contacts, add/delete/restore_admin, list/add/modify/delete_departments, list/add/modify/delete_tags |
 | 子账号 | 5 | add/modify/delete/restore/query_sub_accounts |
@@ -65,7 +65,18 @@ wjx-mcp-server 提供 57 个 MCP 工具、8 个参考资源和 19 个 prompt 模
 
 ## 核心工作流
 
-### 创建问卷（推荐 DSL 文本方式）
+### 创建问卷（推荐 JSON 方式）
+
+**首选方式：JSON 创建**（支持 70+ 题型，覆盖全部题型编码）
+
+```
+1. 使用 prompt 模板生成题目 JSON（如 generate-survey-json、generate-exam-json 等）
+2. create_survey_by_json({ questions: [...], title: "问卷标题", atype: 1 })
+3. get_survey({ vid: N }) — 验证内容
+4. build_survey_url({ mode: "edit", activity: N }) — 提供编辑链接
+```
+
+**简单场景备选：DSL 文本创建**（仅支持约 25 种题型）
 
 ```
 1. create_survey_by_text({ text: "问卷标题\n\n1. 题目[单选题]\nA. 选项A\nB. 选项B", atype: 6 })
@@ -118,7 +129,9 @@ DSL 语法详见 `wjx://reference/dsl-syntax` 资源，或 [references/dsl-and-t
 
 **分析（6）：** nps-analysis, csat-analysis, cross-tabulation, sentiment-analysis, survey-health-check, comparative-analysis
 
-**问卷生成（7）：** generate-survey, generate-nps-survey, generate-360-evaluation, generate-satisfaction-survey, generate-engagement-survey, generate-exam-from-document, generate-exam-from-knowledge
+**问卷生成 — DSL 文本（7）：** generate-survey, generate-nps-survey, generate-360-evaluation, generate-satisfaction-survey, generate-engagement-survey, generate-exam-from-document, generate-exam-from-knowledge
+
+**问卷生成 — JSON（4，推荐）：** generate-survey-json, generate-major-survey-json, generate-exam-json, generate-form-json
 
 ## 常用枚举值
 
