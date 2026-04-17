@@ -18,7 +18,7 @@ export declare const Action: {
     readonly UPDATE_STATUS: "1000102";
     readonly UPDATE_SETTINGS: "1000103";
     readonly UPLOAD_FILE: "1000104";
-    readonly CREATE_SURVEY_BY_TEXT: "1000105";
+    readonly CREATE_SURVEY_BY_JSON: "1000106";
     readonly DELETE_SURVEY: "1000301";
     readonly CLEAR_RECYCLE_BIN: "1000302";
     readonly SUBMIT_RESPONSE: "1001001";

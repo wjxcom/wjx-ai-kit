@@ -3,6 +3,7 @@ import { z } from "zod";
 import {
   createSurvey,
   createSurveyByText,
+  createSurveyByJson,
   getSurvey,
   listSurveys,
   updateSurveyStatus,
@@ -625,7 +626,7 @@ export function registerSurveyTools(server: McpServer): void {
     {
       title: "用 DSL 文本创建问卷",
       description:
-        "通过人类可读的 DSL 文本创建问卷。文本格式与 get_survey(format='dsl') 输出一致。" +
+        "（简单场景备选，仅支持约 25 种题型）通过人类可读的 DSL 文本创建问卷。文本格式与 get_survey(format='dsl') 输出一致。" +
         "支持题型标签：[单选题]、[下拉框]/[下拉单选]、[多选题]、[填空题]、[简答题]/[问答题]、[多项填空题]、[量表题]、[评分单选]、[评分多选]、[排序题]、[判断题]、[比重题]、[滑动条]、[矩阵题]、[矩阵量表题]、[矩阵单选题]、[矩阵多选题]、[矩阵填空题]、[文件上传]、[绘图题]、[段落说明]、[商品题]、[多级下拉题]、[考试多项填空]、[考试完形填空]。" +
         "【考试题型】创建考试问卷时设 atype=6，考试中的单选/多选/填空自动变为考试题型。" +
         "【多项填空/考试填空】题目标题中必须包含填空占位符 {_}，如：'The boy {_} a student'。" +
@@ -659,6 +660,59 @@ export function registerSurveyTools(server: McpServer): void {
       try {
         const result = await createSurveyByText({
           text: args.text,
+          atype: args.atype,
+          publish: args.publish,
+          creater: args.creater,
+        });
+        return toolResult(result, result.result === false);
+      } catch (error) {
+        return toolError(error);
+      }
+    },
+  );
+
+  // ─── create_survey_by_json ───────────────────────────────────────
+  server.registerTool(
+    "create_survey_by_json",
+    {
+      title: "用 JSON 创建问卷",
+      description:
+        "（推荐，支持 70+ 题型）通过 JSONL 格式创建问卷。每行一个 JSON 对象，首行为 qtype='问卷基础信息' 的元数据。" +
+        "支持 70+ 种题型（普通调查、专业调查模型、考试、表单），远多于 DSL 文本格式。" +
+        "【核心字段】qtype（题型名称）、title（标题）、select（选项数组）、rowtitle（行标题，仅矩阵/比重/Kano/PSM 使用）、requir（是否必填）。" +
+        "【专业模型】支持 BWS/MaxDiff(mdattr)、联合分析(columntitle)、品牌漏斗(brands)、Kano模型、SUS模型、PSM模型等。" +
+        "【考试题型】支持 correctselect（正确答案）、quizscore（分值）、answeranalysis（答案解析）。" +
+        "【关联逻辑】支持 relation（显示条件）、referselect（引用前题选项）。" +
+        "【多项填空必看】多项填空 qtype='多项填空'，子填空位数量由 title 中的 {_} 占位符数量决定，例如 title='电话 {_}，邮箱 {_}，微信 {_}' 会生成 3 个空位；**禁止用 rowtitle 数组**（多项填空不支持该字段，服务端会忽略并只生成 1 个空位）。考试多项填空/考试完形填空同理。" +
+        "输入示例（JSONL）：\n" +
+        '{"qtype":"问卷基础信息","title":"客户满意度调查","introduction":"请认真填写"}\n' +
+        '{"qtype":"单选","title":"您的性别","select":["男","女"]}\n' +
+        '{"qtype":"多项填空","title":"联系方式：电话 {_}，邮箱 {_}"}\n' +
+        '{"qtype":"量表题","title":"满意度评分","select":["1","2","3","4","5"],"minvaluetext":"非常不满意","maxvaluetext":"非常满意"}',
+      inputSchema: {
+        jsonl: z.string().min(1).max(1_000_000).describe("JSONL 格式的问卷内容（每行一个 JSON 对象）"),
+        title: z.string().optional().describe("覆盖 JSONL 中的问卷标题"),
+        atype: z
+          .number()
+          .int()
+          .optional()
+          .default(1)
+          .describe("问卷类型：1=调查（默认）, 2=测评, 3=投票, 6=考试, 7=表单"),
+        publish: z.boolean().optional().default(false).describe("是否立即发布"),
+        creater: z.string().optional().describe("创建者子账号用户名"),
+      },
+      annotations: {
+        destructiveHint: false,
+        idempotentHint: false,
+        openWorldHint: true,
+        title: "用 JSON 创建问卷",
+      },
+    },
+    async (args) => {
+      try {
+        const result = await createSurveyByJson({
+          jsonl: args.jsonl,
+          title: args.title,
           atype: args.atype,
           publish: args.publish,
           creater: args.creater,

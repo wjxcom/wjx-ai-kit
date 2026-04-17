@@ -1,11 +1,14 @@
 import type { WjxApiResponse, WjxCredentials, FetchLike } from "../../core/types.js";
-import { Action } from "../../core/constants.js";
+import { Action, LONG_TIMEOUT_MS } from "../../core/constants.js";
 import { callWjxApi, getWjxCredentials, assignDefined } from "../../core/api-client.js";
 export { textToSurvey, parsedQuestionsToWire } from "./text-to-survey.js";
 import { textToSurvey, parsedQuestionsToWire } from "./text-to-survey.js";
+export { extractJsonlMetadata, normalizeJsonl } from "./json-to-survey.js";
+import { extractJsonlMetadata, normalizeJsonl, MAX_JSONL_SIZE } from "./json-to-survey.js";
 import type {
   CreateSurveyInput,
   CreateSurveyByTextInput,
+  CreateSurveyByJsonInput,
   GetSurveyInput,
   ListSurveysInput,
   UpdateSurveyStatusInput,
@@ -235,6 +238,47 @@ export async function createSurveyByText<T = unknown>(
     },
     credentials,
     fetchImpl,
+  );
+}
+
+/**
+ * 通过 JSONL 格式创建问卷（纯透传到服务端 action 1000106）。
+ * 客户端仅做基本校验（非空、大小限制、BOM/CRLF 标准化），
+ * 服务端自行解析 JSONL 并创建问卷。
+ */
+export async function createSurveyByJson<T = unknown>(
+  input: CreateSurveyByJsonInput,
+  credentials: WjxCredentials = getWjxCredentials(),
+  fetchImpl: FetchLike = fetch,
+): Promise<WjxApiResponse<T>> {
+  const jsonl = normalizeJsonl(input.jsonl.trim());
+  if (!jsonl) {
+    throw new Error("jsonl must not be empty");
+  }
+  if (jsonl.length > MAX_JSONL_SIZE) {
+    throw new Error(`jsonl exceeds maximum size of ${MAX_JSONL_SIZE} bytes (${jsonl.length})`);
+  }
+
+  const metadata = extractJsonlMetadata(jsonl);
+  const title = input.title ?? metadata.title;
+  const description = metadata.description ?? "";
+
+  return callWjxApi<T>(
+    {
+      action: Action.CREATE_SURVEY_BY_JSON,
+      title,
+      atype: input.atype ?? 1,
+      desc: description,
+      surveydatajson: jsonl,
+      publish: input.publish ?? false,
+      ...(input.creater !== undefined ? { creater: input.creater } : {}),
+    },
+    {
+      credentials,
+      fetchImpl,
+      maxRetries: 0,
+      timeoutMs: LONG_TIMEOUT_MS,
+    },
   );
 }
 

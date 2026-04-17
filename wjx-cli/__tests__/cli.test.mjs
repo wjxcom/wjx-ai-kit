@@ -57,7 +57,7 @@ describe("wjx CLI", () => {
 
   it("survey --help lists all subcommands", () => {
     const out = run(["survey", "--help"]);
-    for (const cmd of ["list", "get", "create", "delete", "status", "settings", "update-settings", "tags", "tag-details", "clear-bin", "upload", "url"]) {
+    for (const cmd of ["list", "get", "create", "create-by-json", "delete", "status", "settings", "update-settings", "tags", "tag-details", "clear-bin", "upload", "url"]) {
       assert.match(out, new RegExp(cmd), `missing subcommand: ${cmd}`);
     }
   });
@@ -832,6 +832,59 @@ describe("survey create-by-text", () => {
     const dsl = "标题\n\n1. Q1[单选题]\nA. a\nB. b";
     const result = await runFull(
       ["survey", "create-by-text", "--text", dsl],
+      { env: { WJX_API_KEY: "", PATH: process.env.PATH, ...NO_CONFIG } },
+    );
+    assert.equal(result.exitCode, 1);
+    const err = JSON.parse(result.stderr.trim());
+    assert.equal(err.code, "AUTH_ERROR");
+  });
+});
+
+// ═══════════════════════════════════════
+// survey create-by-json
+// ═══════════════════════════════════════
+
+describe("survey create-by-json", () => {
+  it("survey --help lists create-by-json", () => {
+    const out = run(["survey", "--help"]);
+    assert.match(out, /create-by-json/);
+  });
+
+  it("create-by-json without --jsonl or --file → INPUT_ERROR exit 2", async () => {
+    const result = await runFull(["survey", "create-by-json"]);
+    assert.equal(result.exitCode, 2);
+    const err = JSON.parse(result.stderr.trim());
+    assert.equal(err.code, "INPUT_ERROR");
+    assert.ok(err.message.includes("--jsonl") || err.message.includes("--file"));
+  });
+
+  it("create-by-json --file with nonexistent file → INPUT_ERROR exit 2", async () => {
+    const result = await runFull(["survey", "create-by-json", "--file", "/tmp/__no_such_json_12345.jsonl"]);
+    assert.equal(result.exitCode, 2);
+    const err = JSON.parse(result.stderr.trim());
+    assert.equal(err.code, "INPUT_ERROR");
+  });
+
+  it("create-by-json --dry-run shows metadata and line count", async () => {
+    const jsonl = [
+      '{"qtype":"问卷基础信息","title":"测试问卷","introduction":"请填写"}',
+      '{"qtype":"单选","title":"性别","select":["男","女"]}',
+    ].join("\n");
+    const result = await runFull(
+      ["survey", "create-by-json", "--jsonl", jsonl, "--dry-run"],
+      { env: { WJX_API_KEY: "fake-key-1234567890", ...NO_CONFIG } },
+    );
+    assert.equal(result.exitCode, 0);
+    const preview = JSON.parse(result.stderr);
+    assert.equal(preview.dry_run, true);
+    assert.equal(preview.metadata.title, "测试问卷");
+    assert.equal(preview.line_count, 2);
+  });
+
+  it("create-by-json without api-key → AUTH_ERROR exit 1", async () => {
+    const jsonl = '{"qtype":"问卷基础信息","title":"T"}\n{"qtype":"单选","title":"Q","select":["a"]}';
+    const result = await runFull(
+      ["survey", "create-by-json", "--jsonl", jsonl],
       { env: { WJX_API_KEY: "", PATH: process.env.PATH, ...NO_CONFIG } },
     );
     assert.equal(result.exitCode, 1);

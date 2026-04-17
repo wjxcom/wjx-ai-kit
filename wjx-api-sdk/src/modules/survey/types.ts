@@ -23,6 +23,19 @@ export interface CreateSurveyByTextInput {
   creater?: string;
 }
 
+export interface CreateSurveyByJsonInput {
+  /** JSONL 格式的问卷内容（每行一个 JSON 对象，首行为问卷基础信息） */
+  jsonl: string;
+  /** 问卷标题（可选，不传则从"问卷基础信息"条目提取） */
+  title?: string;
+  /** 问卷类型：1=调查, 2=测评, 3=投票, 6=考试, 7=表单 */
+  atype?: number;
+  /** 是否立即发布 */
+  publish?: boolean;
+  /** 创建者子账号用户名 */
+  creater?: string;
+}
+
 export interface UploadFileInput {
   file_name: string;
   file: string;

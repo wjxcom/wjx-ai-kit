@@ -1,4 +1,4 @@
-# 问卷管理工具详解（12 tools）
+# 问卷管理工具详解（13 tools）
 
 ## create_survey — 创建问卷
 
@@ -16,7 +16,35 @@
 | `compress_img` | boolean | 否 | 是否压缩图片 |
 | `is_string` | boolean | 否 | 是否使用原始 activity string 格式 |
 
-## create_survey_by_text — 用 DSL 文本创建问卷（推荐）
+## create_survey_by_json — 用 JSON 创建问卷（推荐）
+
+**首选方式**：支持 70+ 题型，覆盖全部 q_type/q_subtype 编码。配合 prompt 模板（generate-survey-json、generate-major-survey-json、generate-exam-json、generate-form-json）使用效果最佳。
+
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| `title` | string | 是 | 问卷标题 |
+| `questions` | array | 是 | 题目 JSON 数组（格式同 create_survey 的 questions 参数） |
+| `atype` | number | 否 | 问卷类型：1=调查(默认), 2=测评, 3=投票, 6=考试, 7=表单 |
+| `desc` | string | 否 | 问卷描述 |
+| `publish` | boolean | 否 | 是否立即发布（默认 false） |
+| `creater` | string | 否 | 创建者子账号用户名 |
+
+### 常见题型 qtype 片段
+
+```jsonl
+{"qtype":"单选","title":"您的性别","select":["男","女"]}
+{"qtype":"多选","title":"常用品牌","select":["A","B","C"]}
+{"qtype":"单项填空","title":"请留下建议"}
+{"qtype":"多项填空","title":"联系方式：电话 {_}，邮箱 {_}，微信 {_}"}
+{"qtype":"矩阵量表","title":"请评价","rowtitle":["外观","功能"],"select":["差","中","好"]}
+```
+
+**多项填空（qtype="多项填空"）特殊规则**：
+- 子填空位数量 = title 中 `{_}` 占位符的数量。例 `"电话 {_}，邮箱 {_}"` 生成 2 个输入框。
+- **禁止使用 `rowtitle` 数组定义子项** — `rowtitle` 是矩阵题/比重题/Kano/PSM 的字段，多项填空不支持，服务端会忽略并只生成 1 个空位。
+- 考试多项填空（`qtype="考试多项填空"`）和考试完形填空同理，都依赖 `{_}` 占位符。
+
+## create_survey_by_text — 用 DSL 文本创建问卷（简单场景备选）
 
 **重要**：一个需求只调用一次。无论用户要求多少种题型，都放在同一个 DSL 文本中。投票问卷使用 `atype: 3`，题目仍然用普通 `[单选题]`/`[多选题]` 标签。
 

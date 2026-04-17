@@ -45,13 +45,51 @@ wjx survey create --title "标题" --source_vid 12345   # 复制已有问卷
 - `q_subtype` 每题必填
 - `q_title` 中不要包含题型标签（如[单选题]），题型由 q_type/q_subtype 决定
 - 考试问卷设 `--type 6`，题目使用相同的 q_type 编码
-- 多项填空（q_type=6）的 q_title 必须包含 `{_}` 占位符
+- **多项填空（q_type=6）**：q_title 必须包含 `{_}` 占位符，每个 `{_}` 对应一个子填空位。例：`"电话 {_}，邮箱 {_}，微信 {_}"` 生成 3 个输入框。**不要用 rowtitle 数组定义子项**（rowtitle 仅用于矩阵题/比重题，多项填空不支持，会导致只生成 1 个空位）。
 
 完整 q_type/q_subtype 编码见 [question-types.md](question-types.md)。
 
+## wjx survey create-by-json
+
+用 JSON 创建问卷（**推荐 AI Agent 使用，支持 70+ 题型**）。
+
+```bash
+wjx survey create-by-json --title "标题" --questions '[...]'
+wjx survey create-by-json --title "标题" --questions '[...]' --type 6   # 考试
+cat questions.json | wjx survey create-by-json --title "标题" --stdin
+wjx survey create-by-json --title "标题" --questions '[...]' --dry-run  # 预览
+```
+
+| Flag | 必填 | 说明 |
+|------|------|------|
+| `--title <s>` | 是 | 问卷标题 |
+| `--questions <json>` | 二选一 | 题目 JSON 数组 |
+| `--stdin` | 二选一 | 从 stdin 读取 JSON |
+| `--type <n>` | 否 | 问卷类型（默认 1=调查，考试用 6） |
+| `--description <s>` | 否 | 问卷描述 |
+| `--publish` | 否 | 创建后发布 |
+| `--creater <s>` | 否 | 创建者子账号 |
+| `--dry-run` | 否 | 预览请求，不实际创建 |
+
+题目 JSON 格式同 `wjx survey create` 的 `--questions` 参数，完整 q_type/q_subtype 编码见 [question-types.md](question-types.md)。
+
+**JSONL 方式的 qtype 速查**（通过 MCP prompt 或 JSONL 流程生成时常用）：
+
+```jsonl
+{"qtype":"单选","title":"您的性别","select":["男","女"]}
+{"qtype":"多选","title":"了解的品牌","select":["A","B","C"]}
+{"qtype":"单项填空","title":"请留下建议"}
+{"qtype":"多项填空","title":"联系方式：电话 {_}，邮箱 {_}，微信 {_}"}
+{"qtype":"矩阵量表","title":"请评价","rowtitle":["外观","功能"],"select":["差","中","好"]}
+```
+
+**多项填空（qtype="多项填空"）关键提醒**：
+- 子填空位数量由 title 中 `{_}` 占位符的数量决定
+- **禁止使用 `rowtitle` 数组定义子项** — 多项填空不支持该字段，服务端会忽略并只生成 1 个空位
+
 ## wjx survey create-by-text
 
-用 DSL 文本创建问卷（**推荐 AI Agent 使用**）。
+用 DSL 文本创建问卷（**简单场景备选，仅支持约 25 种题型**）。
 
 ```bash
 wjx survey create-by-text --text "标题\n\n1. 题目[单选题]\n选项A\n选项B"

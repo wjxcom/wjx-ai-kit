@@ -90,9 +90,10 @@ describe("SDK barrel exports", () => {
   // ─── Survey module ─────────────────────────────────────────────────
   describe("survey module", () => {
     for (const name of [
-      "createSurvey", "getSurvey", "listSurveys", "updateSurveyStatus",
+      "createSurvey", "createSurveyByJson", "getSurvey", "listSurveys", "updateSurveyStatus",
       "getSurveySettings", "updateSurveySettings", "deleteSurvey",
       "getQuestionTags", "getTagDetails", "clearRecycleBin", "uploadFile",
+      "extractJsonlMetadata", "normalizeJsonl",
     ]) {
       it(`should export ${name} as a function`, () => {
         assert.equal(typeof sdk[name], "function", `${name} should be a function`);

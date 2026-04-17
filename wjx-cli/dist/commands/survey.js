@@ -1,5 +1,5 @@
 import { readFileSync } from "node:fs";
-import { createSurvey, createSurveyByText, getSurvey, listSurveys, updateSurveyStatus, getSurveySettings, updateSurveySettings, deleteSurvey, getQuestionTags, getTagDetails, clearRecycleBin, uploadFile, buildSurveyUrl, surveyToText, textToSurvey, parsedQuestionsToWire, } from "wjx-api-sdk";
+import { createSurvey, createSurveyByText, createSurveyByJson, getSurvey, listSurveys, updateSurveyStatus, getSurveySettings, updateSurveySettings, deleteSurvey, getQuestionTags, getTagDetails, clearRecycleBin, uploadFile, buildSurveyUrl, surveyToText, textToSurvey, parsedQuestionsToWire, extractJsonlMetadata, normalizeJsonl, MAX_JSONL_SIZE, } from "wjx-api-sdk";
 import { formatOutput } from "../lib/output.js";
 import { CliError, handleError } from "../lib/errors.js";
 import { getCredentials } from "../lib/auth.js";
@@ -105,6 +105,71 @@ export function registerSurveyCommands(program) {
             const creds = getCredentials(globalOpts);
             const result = await createSurveyByText({
                 text: dslText,
+                atype: merged.type,
+                publish: merged.publish,
+                creater: merged.creater,
+            }, creds);
+            if (result.result === false) {
+                throw new CliError("API_ERROR", result.errormsg || "API request failed");
+            }
+            formatOutput(result, globalOpts);
+        }
+        catch (e) {
+            handleError(e);
+        }
+    });
+    // --- create-by-json ---
+    survey
+        .command("create-by-json")
+        .description("用 JSONL 格式创建问卷（支持 70+ 题型，推荐 AI Agent 使用）")
+        .option("--jsonl <s>", "JSONL 格式问卷文本")
+        .option("--file <path>", "从文件读取 JSONL 文本")
+        .option("--title <s>", "覆盖 JSONL 中的问卷标题")
+        .option("--type <n>", "问卷类型：1=调查, 2=测评, 3=投票, 6=考试, 7=表单", strictInt)
+        .option("--publish", "创建后发布")
+        .option("--creater <s>", "创建者子账号")
+        .action(async (_opts, cmd) => {
+        try {
+            const merged = getMerged(cmd);
+            // Resolve JSONL text: --jsonl > --file > stdin.jsonl
+            let jsonlText;
+            if (typeof merged.jsonl === "string" && merged.jsonl) {
+                jsonlText = merged.jsonl;
+            }
+            else if (typeof merged.file === "string" && merged.file) {
+                try {
+                    const raw = readFileSync(merged.file, "utf8");
+                    if (raw.length > MAX_JSONL_SIZE) {
+                        throw new CliError("INPUT_ERROR", `文件大小 ${raw.length} 字节超过上限 ${MAX_JSONL_SIZE}`);
+                    }
+                    jsonlText = raw;
+                }
+                catch (e) {
+                    if (e instanceof CliError)
+                        throw e;
+                    throw new CliError("INPUT_ERROR", `无法读取文件: ${merged.file}`);
+                }
+            }
+            if (!jsonlText) {
+                throw new CliError("INPUT_ERROR", "必须提供 --jsonl 或 --file 参数");
+            }
+            const normalized = normalizeJsonl(jsonlText.trim());
+            const globalOpts = program.opts();
+            if (globalOpts.dryRun) {
+                const metadata = extractJsonlMetadata(normalized);
+                const lineCount = normalized.split("\n").filter((l) => l.trim()).length;
+                process.stderr.write(JSON.stringify({
+                    dry_run: true,
+                    metadata,
+                    line_count: lineCount,
+                    jsonl_size: normalized.length,
+                }, null, 2) + "\n");
+                return;
+            }
+            const creds = getCredentials(globalOpts);
+            const result = await createSurveyByJson({
+                jsonl: jsonlText,
+                title: merged.title,
                 atype: merged.type,
                 publish: merged.publish,
                 creater: merged.creater,
