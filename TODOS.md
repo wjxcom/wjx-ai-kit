@@ -1,10 +1,19 @@
 # TODOS
 
-## 待验证
+（v0.2.0 发版后合理性审查结果：原 3 项 TODO 全部关闭，见下方"已关闭"段。）
 
-- [ ] **验证服务端自动变换能力** — 确认 action 1000106 的服务端 JSONL 解析是否自动处理：多项填空 `{_}` 占位符补全、量表/评分题 `item_score` 自动赋值、滑动条数值范围展开。删除 `json-to-survey.ts` 本地解析器后，这些变换完全依赖服务端。
+## 已关闭
 
-## 待实施
+### 验证服务端自动变换能力 — 2026-04-17 关闭
+- `{_}` 占位符自动补全：闭环测试已验证服务端**不会**将 `rowtitle` 数组转成 `{_}`（Q04 多项填空只生成 1 个空位）。已通过 6 份文档更新引导 AI 在 `title` 中直接输出 `{_}`。
+- `item_score` 自动赋值、滑动条范围展开：未在发布前暴露问题，属假设性担忧，不投入主动验证成本。观察生产反馈后再决定。
 
-- [ ] **AI → 问卷创建管道可观测性** — 为 `createSurveyByJson` 添加日志/遥测，跟踪 AI 生成的 JSONL 文本经过创建管道后的成功率、常见失败模式和题型分布。
-- [ ] **合并 4 个 JSON prompt 为 1 个参数化 prompt** — `generate-survey-json`、`generate-major-survey-json`、`generate-exam-json`、`generate-form-json` 有大量重复结构（`JSONL_FORMAT_INSTRUCTIONS`、`JSONL_CONSTRAINTS`），可合并为一个接受 `survey_type` 参数的 prompt。
+### AI → 问卷创建管道可观测性 — 2026-04-17 关闭
+- SDK 明确定义为零依赖设计，加日志/遥测违背核心约束。
+- 应用层（CLI `handleError`、MCP `toolError`）已有结构化错误输出覆盖失败场景。
+- 如需成功率/题型分布统计，应由接入方在调用侧采集，不应下沉到 SDK。
+
+### 合并 4 个 JSON prompt 为参数化 prompt — 2026-04-17 关闭
+- 共享部分（`JSONL_FORMAT_INSTRUCTIONS`、`JSONL_CONSTRAINTS`）已抽取为常量，DRY 已达成。
+- 差异部分是本质差异：设计思路、参数结构（exam 有 4 个独立 count）、atype、专业题型说明均不同。
+- MCP 客户端列表里 4 个独立 prompt 可发现性更好，合并为参数化 prompt 损失场景语义。
