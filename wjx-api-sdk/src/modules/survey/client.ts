@@ -64,7 +64,12 @@ export async function createSurvey<T = unknown>(
   if (input.compress_img !== undefined) params.compress_img = input.compress_img;
   if (input.is_string !== undefined) params.is_string = input.is_string;
 
-  return callWjxApi<T>(params, { credentials, fetchImpl, maxRetries: 0 });
+  return callWjxApi<T>(params, {
+    credentials,
+    fetchImpl,
+    maxRetries: 0,
+    timeoutMs: LONG_TIMEOUT_MS,
+  });
 }
 
 export async function getSurvey<T = unknown>(
