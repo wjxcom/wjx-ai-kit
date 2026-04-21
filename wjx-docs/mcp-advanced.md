@@ -1,4 +1,4 @@
-# MCP Server 进阶指南：{{MCP_TOOL_COUNT}} 个工具完全攻略
+# MCP Server 进阶指南：58 个工具完全攻略
 
 > HTTP 部署、Docker、多租户、自动化工作流、全部工具深度用法
 
@@ -96,7 +96,7 @@ services:
 
 ## 全部工具详解
 
-### 问卷管理（12 个工具）
+### 问卷管理（58 个工具）
 
 #### `create_survey` — 创建问卷（JSON 模式）
 
@@ -112,9 +112,24 @@ services:
 - publish (boolean): 创建后自动发布
 ```
 
-#### `create_survey_by_text` — 创建问卷（DSL 文本模式）
+#### `create_survey_by_json` — 创建问卷（JSONL 模式，唯一推荐）
 
-**推荐使用。** 用人类可读的 DSL 文本创建问卷，支持 27 种题型标签。
+所有问卷创建一律使用本工具，覆盖 70+ 题型（含矩阵/比重/滑块/文件上传/排序），每行一道题。
+
+```
+参数：
+- jsonl (string, 必填): JSONL 格式问卷文本（首行可选 `{"_meta":{"title":"...","description":"..."}}`）
+- title (string): 覆盖 JSONL 中的问卷标题
+- atype (number): 问卷类型（1=调查 3=投票 6=考试 7=表单）
+- publish (boolean): 创建后自动发布
+- creater (string): 创建者子账号
+```
+
+字段编码见 [题型参考](#题型参考)。
+
+#### `create_survey_by_text` — 创建问卷（DSL 文本模式，已弃用）
+
+> **已弃用**：新项目请改用 `create_survey_by_json`。本工具仅为兼容保留。
 
 ```
 参数：
@@ -175,7 +190,7 @@ DSL 支持的题型标签：
 - `clear_recycle_bin` — 清空回收站
 - `upload_file` — 上传图片文件（Base64）
 
-### 答卷管理（9 个工具）
+### 答卷管理（58 个工具）
 
 #### `query_responses` — 查询答卷
 
@@ -219,7 +234,7 @@ DSL 支持的题型标签：
 - `get_360_report` — 360 度评估报告（异步任务）
 - `clear_responses` — 清空全部答卷（不可逆）
 
-### 通讯录管理（14 个工具）
+### 通讯录管理（58 个工具）
 
 企业通讯录的完整 CRUD，覆盖联系人、部门、管理员、标签四个维度。需要设置 `WJX_CORP_ID`。
 
@@ -230,7 +245,7 @@ DSL 支持的题型标签：
 | 部门 | `list_departments` `add_department` `modify_department` `delete_department` |
 | 标签 | `list_tags` `add_tag` `modify_tag` `delete_tag` |
 
-### SSO 单点登录（5 个工具）
+### SSO 单点登录（58 个工具）
 
 生成免密登录 URL，纯本地计算，无需 API 调用。
 
@@ -242,7 +257,7 @@ DSL 支持的题型标签：
 | `build_survey_url` | 生成问卷创建或编辑页面 URL |
 | `build_preview_url` | 生成答卷填写页面 URL |
 
-### 数据分析（5 个工具）
+### 数据分析（58 个工具）
 
 **全部在本地运行，数据不离开你的机器。** 无需 API Key。
 
@@ -286,7 +301,7 @@ DSL 支持的题型标签：
 
 A/B 组或时间段对比，差异 >10% 标记为显著。
 
-### 用户体系（6 个工具）
+### 用户体系（58 个工具）
 
 > **注意**：用户体系相关工具已标记为 `[已过时]`，问卷星官方建议新项目优先使用通讯录（Contacts）模块。存量项目仍可调用。
 
@@ -299,7 +314,7 @@ A/B 组或时间段对比，差异 >10% 标记为显著。
 | `query_survey_binding` | 查询问卷-用户绑定关系，支持按日/周/月和参与状态筛选 |
 | `query_user_surveys` | 查询某参与者关联的问卷列表 |
 
-### 子账号管理（5 个工具）
+### 子账号管理（58 个工具）
 
 主账号下的多用户管理，支持 4 种角色：1=系统管理员 / 2=问卷管理员 / 3=统计结果查看员 / 4=完整结果查看员。
 
@@ -336,7 +351,7 @@ Claude 会自动调用 `query_responses` → `decode_responses` → `calculate_n
 > - 5 道判断题
 > 创建为考试类型问卷，发布后给我链接"
 
-Claude 使用 `generate-exam-from-document` prompt → 生成 DSL 文本 → `create_survey_by_text`（atype=6）→ `update_survey_status`（发布）→ `build_preview_url`（生成链接）。
+Claude 使用 `generate-exam-from-document` prompt → 生成 JSONL → `create_survey_by_json`（atype=6）→ `update_survey_status`（发布）→ `build_preview_url`（生成链接）。
 
 ### 工作流 3：批量创建 + SSO 分发
 

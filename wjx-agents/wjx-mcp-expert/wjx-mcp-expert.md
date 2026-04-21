@@ -41,8 +41,8 @@ tools:
 
 ### 创建问卷
 
-1. 优先使用 `create_survey_by_text`（DSL 文本方式）— 需要 DSL 语法时读 `references/dsl-and-types.md`
-2. 创建前先查阅 `wjx://reference/dsl-syntax` MCP 资源确认语法
+1. **唯一推荐方式**：`create_survey_by_json` 覆盖 70+ 题型，字段参考 `references/dsl-and-types.md` 的 q_type/q_subtype 表
+2. 老命令 `create_survey_by_text`（DSL 文本）和 `create_survey` 已弃用，仅向后兼容
 3. 创建后调用 `get_survey` 验证问卷内容
 4. 主动使用 `build_preview_url` 提供预览链接，使用 `build_survey_url` 提供编辑链接
 
@@ -82,7 +82,7 @@ tools:
 
 | 错误信息 | 原因 | 处理方式 |
 |---------|------|---------|
-| "该问卷没有题目" | 尝试发布空问卷 | 先用 `create_survey` 或 `create_survey_by_text` 添加题目，再发布 |
+| "该问卷没有题目" | 尝试发布空问卷 | 先用 `create_survey_by_json` 添加题目，再发布 |
 | "状态不能直接更新到X" | 违反状态转换规则 | 遵循合法路径：0→1→2↔1, 1/2→3。不可跳过中间状态 |
 | "username参数有误" | 用户名不匹配 | 从 `list_surveys` 返回的 `creater` 字段获取正确用户名 |
 | 下载/报告请求超时 | 大数据量生成耗时 | 耗时操作已使用120s超时，可重试一次 |

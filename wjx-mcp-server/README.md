@@ -6,13 +6,13 @@
 [![license](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 [![node](https://img.shields.io/badge/node-%3E%3D20-green)](https://nodejs.org/)
 
-通过 Claude、Cursor 或任何 MCP 兼容的 AI 客户端，以自然语言创建、管理和分析问卷。服务器封装了问卷星 OpenAPI，提供 **57 个 Tools**、**8 个 Resources** 和 **19 个 Prompts**。
+通过 Claude、Cursor 或任何 MCP 兼容的 AI 客户端，以自然语言创建、管理和分析问卷。服务器封装了问卷星 OpenAPI，提供 **58 个 Tools**、**8 个 Resources** 和 **23 个 Prompts**。
 
 ---
 
 ## 功能特性
 
-### 7 大模块 · 57 个 Tools
+### 7 大模块 · 58 个 Tools
 
 | 模块 | 工具数 | 说明 |
 |------|:------:|------|
@@ -28,7 +28,7 @@
 
 AI 客户端可直接读取的参考数据：`survey-types`、`question-types`、`survey-statuses`、`analysis-methods`、`response-format`、`user-roles`、`push-format`、`dsl-syntax`。
 
-### 19 个 MCP Prompts
+### 23 个 MCP Prompts
 
 预置工作流模板，分三组：
 
@@ -59,8 +59,8 @@ flowchart LR
     HTTP --> Server
 
     Server --> R[Resources ×8]
-    Server --> P[Prompts ×19]
-    Server --> Tools[Tools ×57]
+    Server --> P[Prompts ×23]
+    Server --> Tools[Tools ×58]
 
     Tools --> S1[survey ×12]
     Tools --> S2[response ×9]
@@ -249,15 +249,15 @@ wjx-mcp-server/
 │   │   ├── constants.ts          # Action codes、API URL、默认值
 │   │   └── types.ts              # 共享类型定义
 │   ├── modules/
-│   │   ├── survey/               # 问卷管理（12 tools）
-│   │   ├── response/             # 答卷数据（9 tools）
-│   │   ├── contacts/             # 通讯录（14 tools）
-│   │   ├── sso/                  # 免登录 URL（5 tools）
-│   │   ├── user-system/          # 用户体系（6 tools）
-│   │   ├── multi-user/           # 多用户管理（5 tools）
-│   │   └── analytics/            # 本地分析（5 tools）
+│   │   ├── survey/               # 问卷管理（58 tools，另含 1 个 get_config 系统工具）
+│   │   ├── response/             # 答卷数据（58 tools）
+│   │   ├── contacts/             # 通讯录（58 tools）
+│   │   ├── sso/                  # 免登录 URL（58 tools）
+│   │   ├── user-system/          # 用户体系（58 tools）
+│   │   ├── multi-user/           # 多用户管理（58 tools）
+│   │   └── analytics/            # 本地分析（58 tools）
 │   ├── resources/                # 8 个 MCP Resources
-│   ├── prompts/                  # 19 个 MCP Prompts
+│   ├── prompts/                  # 23 个 MCP Prompts
 │   └── transports/http.ts        # Streamable HTTP 传输
 ├── __tests__/                    # 单元测试（node:test）
 ├── tests/                        # 集成测试

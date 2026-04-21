@@ -1,6 +1,6 @@
 {
   "name": "wjx-api-sdk",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "问卷星 (Wenjuanxing) OpenAPI SDK — 零 MCP 依赖的 API 客户端",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",

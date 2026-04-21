@@ -12,7 +12,7 @@
 
 - **零运行时依赖** — 仅使用 Node.js 内置 `fetch`，无需安装任何第三方包
 - **完整类型定义** — 所有输入/输出均有 TypeScript 类型，IDE 自动补全
-- **8 大模块、50+ 函数** — 覆盖问卷星 OpenAPI 全部功能
+- **8 大模块、48+ 函数** — 覆盖问卷星 OpenAPI 全部功能
 - **ESM-only** — 原生 ES Module，`import` 直接使用
 - **可测试设计** — 所有函数支持注入 `credentials` 和 `fetchImpl`
 
@@ -126,7 +126,7 @@ async function sdkFunction(
 | `validateQuestionsJson(json)` | 验证题目 JSON 格式 |
 | `getCorpId(creds)` | 获取企业 ID |
 
-### Survey — 问卷管理（11 函数）
+### Survey — 问卷管理（48+ 函数）
 
 | 函数 | 说明 |
 |------|------|
@@ -153,7 +153,7 @@ async function sdkFunction(
 | `typeToLabel(type)` | 题型代码转可读标签 |
 | `stripHtml(html)` | 去除 HTML 标签 |
 
-### Response — 答卷数据（9 函数）
+### Response — 答卷数据（48+ 函数）
 
 | 函数 | 说明 |
 |------|------|
@@ -167,7 +167,7 @@ async function sdkFunction(
 | `get360Report(input)` | 获取 360 报告 |
 | `clearResponses(input)` | 清空答卷 |
 
-### Contacts — 通讯录（14 函数）
+### Contacts — 通讯录（48+ 函数）
 
 | 函数 | 说明 |
 |------|------|
@@ -186,7 +186,7 @@ async function sdkFunction(
 | `modifyTag(input)` | 修改标签 |
 | `deleteTag(input)` | 删除标签 |
 
-### User System — 用户体系（6 函数）
+### User System — 用户体系（48+ 函数）
 
 | 函数 | 说明 |
 |------|------|
@@ -197,7 +197,7 @@ async function sdkFunction(
 | `querySurveyBinding(input)` | 查询问卷绑定 |
 | `queryUserSurveys(input)` | 查询用户问卷 |
 
-### Multi-User — 多用户管理（5 函数）
+### Multi-User — 多用户管理（48+ 函数）
 
 | 函数 | 说明 |
 |------|------|
@@ -207,7 +207,7 @@ async function sdkFunction(
 | `restoreSubAccount(input)` | 恢复子账号 |
 | `querySubAccounts(input)` | 查询子账号列表 |
 
-### SSO — 免登录（5 函数）
+### SSO — 免登录（48+ 函数）
 
 | 函数 | 说明 |
 |------|------|
@@ -217,7 +217,7 @@ async function sdkFunction(
 | `buildSurveyUrl(input)` | 生成问卷创建/编辑 URL |
 | `buildPreviewUrl(input)` | 生成问卷预览 URL |
 
-### Analytics — 本地分析（6 函数）
+### Analytics — 本地分析（48+ 函数）
 
 | 函数 | 说明 |
 |------|------|

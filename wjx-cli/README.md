@@ -7,7 +7,7 @@
 [![npm](https://img.shields.io/npm/v/wjx-cli)](https://www.npmjs.com/package/wjx-cli)
 [![tests](https://img.shields.io/badge/tests-133%20passing-brightgreen)](__tests__/cli.test.mjs)
 
-wjx-cli 是 [`wjx-ai-kit`](../) monorepo 的命令行入口，将 [wjx-api-sdk](../wjx-api-sdk/) 的 50+ 函数直接暴露为终端命令。设计目标：**让 AI Agent 和人类开发者都能用一行命令操作问卷星 OpenAPI**。
+wjx-cli 是 [`wjx-ai-kit`](../) monorepo 的命令行入口，将 [wjx-api-sdk](../wjx-api-sdk/) 的 48+ 函数直接暴露为终端命令。设计目标：**让 AI Agent 和人类开发者都能用一行命令操作问卷星 OpenAPI**。
 
 ---
 
@@ -48,7 +48,7 @@ wjx-cli 是 [`wjx-ai-kit`](../) monorepo 的命令行入口，将 [wjx-api-sdk](
 - **AI Agent 原生** — 默认 JSON stdout + 结构化 JSON stderr，退出码区分错误类型，适合程序解析
 - **stdin pipe** — `echo '{"vid":123}' | wjx --stdin survey get`，参数通过管道传入
 - **表格输出** — `--table` 切换为人类可读的 `console.table` 格式
-- **69 个子命令** — 覆盖问卷、答卷、通讯录、部门、管理员、标签、用户体系、子账号、SSO、数据分析
+- **67 个子命令** — 覆盖问卷、答卷、通讯录、部门、管理员、标签、用户体系、子账号、SSO、数据分析
 - **9 个本地命令** — SSO URL 生成和 analytics 计算无需 API Key，离线可用
 - **Shell 补全** — `wjx completion bash/zsh/fish` 生成自动补全脚本
 - **Dry-run 预览** — `--dry-run` 预览 API 请求（URL/Headers/Body）不实际发送
@@ -132,25 +132,25 @@ cat ~/.wjxrc
 
 ```
 wjx-ai-kit/                     # monorepo root
-├── wjx-api-sdk/                 # TypeScript SDK（50+ 函数，零依赖）
-├── wjx-mcp-server/              # MCP Server（57 tools，供 Claude/Cursor 使用）
+├── wjx-api-sdk/                 # TypeScript SDK（48+ 函数，零依赖）
+├── wjx-mcp-server/              # MCP Server（58 tools，供 Claude/Cursor 使用）
 └── wjx-cli/                     # ← 本项目
     ├── src/
     │   ├── index.ts             # Commander 入口 + 全局 preAction hook
     │   ├── commands/            # 13 个命令模块（每模块 1 个 register 函数）
     │   │   ├── init.ts          # wjx init 交互式配置向导
     │   │   ├── completion.ts    # wjx completion bash/zsh/fish
-    │   │   ├── survey.ts        # 14 subcommands
-    │   │   ├── response.ts      # 10 subcommands
-    │   │   ├── contacts.ts      # 3 subcommands
-    │   │   ├── department.ts    # 4 subcommands
-    │   │   ├── admin.ts         # 3 subcommands
-    │   │   ├── tag.ts           # 4 subcommands
-    │   │   ├── user-system.ts   # 6 subcommands
-    │   │   ├── account.ts       # 5 subcommands
-    │   │   ├── sso.ts           # 3 subcommands（无需 API Key）
-    │   │   ├── analytics.ts     # 6 subcommands（本地计算，无需 API Key）
-    │   │   └── diagnostics.ts   # 2 subcommands（whoami + doctor）
+    │   │   ├── survey.ts        # 67 subcommands
+    │   │   ├── response.ts      # 67 subcommands
+    │   │   ├── contacts.ts      # 67 subcommands
+    │   │   ├── department.ts    # 67 subcommands
+    │   │   ├── admin.ts         # 67 subcommands
+    │   │   ├── tag.ts           # 67 subcommands
+    │   │   ├── user-system.ts   # 67 subcommands
+    │   │   ├── account.ts       # 67 subcommands
+    │   │   ├── sso.ts           # 67 subcommands（无需 API Key）
+    │   │   ├── analytics.ts     # 67 subcommands（本地计算，无需 API Key）
+    │   │   └── diagnostics.ts   # 67 subcommands（whoami + doctor）
     │   └── lib/
     │       ├── config.ts           # ~/.wjxrc 配置文件读写 + applyConfigToEnv
     │       ├── command-helpers.ts  # executeCommand + strictInt + requireField + dry-run
@@ -185,13 +185,14 @@ wjx-ai-kit/                     # monorepo root
 
 ### survey — 问卷管理
 
-14 个子命令，覆盖问卷的完整生命周期。
+67 个子命令，覆盖问卷的完整生命周期。
 
 ```bash
 wjx survey list                          # 列出问卷
 wjx survey get --vid 12345               # 获取详情
-wjx survey create --title "新问卷"         # 创建问卷
-wjx survey create-by-text --text "..."   # 用 DSL 文本创建问卷
+wjx survey create-by-json --file q.jsonl # 创建问卷（唯一推荐，覆盖 70+ 题型）
+wjx survey create-by-text --text "..."   # 已弃用，仅兼容保留
+wjx survey create --title "新问卷"         # 已弃用，仅兼容保留
 wjx survey status --vid 12345 --state 1  # 发布（1=发布, 2=暂停, 3=删除）
 wjx survey export-text --vid 12345       # 导出为纯文本
 wjx survey url --mode create             # 生成创建/编辑 URL
@@ -239,6 +240,12 @@ wjx survey url --mode create             # 生成创建/编辑 URL
 | | `--type` | | int | 问卷类型（1=调查, 6=考试，默认 1） |
 | | `--publish` | | flag | 创建后立即发布 |
 | | `--creater` | | string | 创建者子账号 |
+| **create-by-json** | `--jsonl` | **是*** | string | JSONL 字符串（与 `--file` 二选一） |
+| | `--file` | **是*** | string | 从文件读取 JSONL（每行一题） |
+| | `--title` | | string | 覆盖 JSONL 中的问卷标题 |
+| | `--type` | | int | 问卷类型（1=调查, 6=考试，默认 1） |
+| | `--publish` | | flag | 创建后立即发布 |
+| | `--creater` | | string | 创建者子账号 |
 | **url** | `--mode` | | string | `create` 或 `edit`（默认 create） |
 | | `--name` | | string | 问卷名称（create 模式） |
 | | `--activity` | | int | 问卷 vid（edit 模式必填） |
@@ -247,7 +254,7 @@ wjx survey url --mode create             # 生成创建/编辑 URL
 
 ### response — 答卷管理
 
-10 个子命令，管理答卷数据的查询、提交、下载和统计。
+67 个子命令，管理答卷数据的查询、提交、下载和统计。
 
 ```bash
 wjx response count --vid 12345              # 获取答卷总数
@@ -405,7 +412,7 @@ wjx tag delete --tags '[{"id":1}]' --type 1
 
 ### user-system — 用户体系
 
-6 个子命令，管理用户系统中的参与者和问卷绑定。
+67 个子命令，管理用户系统中的参与者和问卷绑定。
 
 ```bash
 wjx user-system add-participants --sysid 1 --users '[...]'
@@ -887,8 +894,8 @@ export WJX_BASE_URL=https://your-test-server.com
 | 项目 | 说明 |
 |------|------|
 | [wjx-ai-kit](../) | Monorepo 根目录 |
-| [wjx-api-sdk](../wjx-api-sdk/) | TypeScript SDK（50+ 函数，零依赖） |
-| [wjx-mcp-server](../wjx-mcp-server/) | MCP Server（57 tools，供 Claude/Cursor 使用） |
+| [wjx-api-sdk](../wjx-api-sdk/) | TypeScript SDK（48+ 函数，零依赖） |
+| [wjx-mcp-server](../wjx-mcp-server/) | MCP Server（58 tools，供 Claude/Cursor 使用） |
 
 ---
 

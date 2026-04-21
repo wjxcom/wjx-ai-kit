@@ -21,6 +21,14 @@ export const TYPE_MAP = {
     "matrix-single": { q_type: 7, q_subtype: 702 },
     "matrix-multi": { q_type: 7, q_subtype: 703 },
     "matrix-fill": { q_type: 7, q_subtype: 704 },
+    "matrix-slider": { q_type: 7, q_subtype: 705 },
+    "matrix-numeric": { q_type: 7, q_subtype: 706 },
+    "table-fill": { q_type: 7, q_subtype: 707 },
+    "table-dropdown": { q_type: 7, q_subtype: 708 },
+    "table-combo": { q_type: 7, q_subtype: 709 },
+    "table-incremental": { q_type: 7, q_subtype: 710 },
+    "multi-file": { q_type: 7, q_subtype: 711 },
+    "multi-textarea": { q_type: 7, q_subtype: 712 },
     "paragraph": { q_type: 2, q_subtype: 2 },
     "file-upload": { q_type: 8, q_subtype: 8 },
     "drawing": { q_type: 8, q_subtype: 801 },
@@ -29,6 +37,16 @@ export const TYPE_MAP = {
 };
 /** Subtypes that need auto-incrementing item_score (1, 2, 3, ...) */
 const SCORING_SUBTYPES = new Set([302, 303, 401]);
+/** 内部类型是否使用矩阵风格 body（行/列）解析 */
+function isMatrixStyleType(type) {
+    return (type.startsWith("matrix") ||
+        type === "table-fill" ||
+        type === "table-dropdown" ||
+        type === "table-combo" ||
+        type === "table-incremental" ||
+        type === "multi-file" ||
+        type === "multi-textarea");
+}
 /** 矩阵子类型 → matrix_mode 映射（API §3.6 矩阵展现形式） */
 const MATRIX_MODE_MAP = {
     7: 0, // 矩阵通用 → 无
@@ -36,6 +54,14 @@ const MATRIX_MODE_MAP = {
     702: 103, // 矩阵单选 → 矩阵单选
     703: 102, // 矩阵多选 → 矩阵多选
     704: 201, // 矩阵填空 → 矩阵填空
+    705: 0, // 矩阵滑动条 → 默认
+    706: 0, // 矩阵数值题 → 默认
+    707: 201, // 表格填空题 → 矩阵填空
+    708: 0, // 表格下拉框 → 默认
+    709: 0, // 表格组合题 → 默认
+    710: 0, // 表格自增题 → 默认
+    711: 0, // 多项文件题 → 默认
+    712: 201, // 多项简答题 → 矩阵填空（行内填写文本）
 };
 /**
  * Convert ParsedQuestion array to API wire format (question JSON for createSurvey).
@@ -117,6 +143,23 @@ export function parsedQuestionsToWire(questions) {
                 item_index: i + 1,
                 item_title: col,
             }));
+        }
+        // Table / multi-file / multi-textarea (705-712 non-matrix prefix): same rows→items, cols→col_items
+        if (!q.type.startsWith("matrix") && isMatrixStyleType(q.type)) {
+            if (q.matrixRows && q.matrixRows.length > 0) {
+                wq.items = q.matrixRows.map((row, i) => ({
+                    q_index: qIdx,
+                    item_index: i + 1,
+                    item_title: row,
+                }));
+            }
+            if (q.matrixColumns && q.matrixColumns.length > 0) {
+                wq.col_items = q.matrixColumns.map((col, i) => ({
+                    q_index: qIdx,
+                    item_index: i + 1,
+                    item_title: col,
+                }));
+            }
         }
         // Matrix-scale: convert scaleRange to col_items (if no matrixColumns already set)
         if (q.type === "matrix-scale" && q.scaleRange && !wq.col_items) {
@@ -202,6 +245,14 @@ export const LABEL_TO_TYPE = {
     "矩阵单选题": "matrix-single",
     "矩阵多选题": "matrix-multi",
     "矩阵填空题": "matrix-fill",
+    "矩阵滑动条": "matrix-slider",
+    "矩阵数值题": "matrix-numeric",
+    "表格填空题": "table-fill",
+    "表格下拉框": "table-dropdown",
+    "表格组合题": "table-combo",
+    "表格自增题": "table-incremental",
+    "多项文件题": "multi-file",
+    "多项简答题": "multi-textarea",
     "段落说明": "paragraph",
     "比重题": "weight",
     "文件上传": "file-upload",
@@ -304,7 +355,7 @@ function parseQuestionBody(type, title, required, lines, cursor) {
                 break;
             }
             // For matrix types, continue across empty lines to collect scale range / column options
-            if (type.startsWith("matrix")) {
+            if (isMatrixStyleType(type)) {
                 cursor++;
                 continue;
             }
@@ -382,6 +433,14 @@ function buildQuestion(type, title, required, body) {
         case "matrix-single":
         case "matrix-multi":
         case "matrix-fill":
+        case "matrix-slider":
+        case "matrix-numeric":
+        case "table-fill":
+        case "table-dropdown":
+        case "table-combo":
+        case "table-incremental":
+        case "multi-file":
+        case "multi-textarea":
             // Matrix body: two formats supported
             // Format 1 (DSL): "行：" header, then "- row1", "- row2", ...
             // Format 2 (AI): space-separated column headers on first line, then plain row lines

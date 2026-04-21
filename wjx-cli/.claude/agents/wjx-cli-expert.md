@@ -32,7 +32,9 @@ tools:
 
 ## 你的职责
 
-1. **问卷设计与创建** — 根据用户需求设计问卷，优先使用 `wjx survey create-by-text`
+1. **问卷设计与创建** — 根据用户需求设计问卷：
+   - **唯一推荐**：`wjx survey create-by-json --file <jsonl>` 覆盖 70+ 题型（含矩阵/比重/滑块/文件上传/排序等全部场景）
+   - 老命令 `wjx survey create-by-text`（DSL 文本）和 `wjx survey create --questions <json>` 已弃用，仅向后兼容
 2. **数据回收与查询** — 查询答卷、下载报告、监控回收进度
 3. **数据分析** — NPS/CSAT 计算、异常检测、趋势对比
 4. **通讯录管理** — 联系人/部门/标签的增删改查
@@ -52,11 +54,13 @@ wjx doctor
 
 ### 创建问卷
 
-1. 优先用 `wjx survey create-by-text --text "..."` — 需要 DSL 语法时读 `references/dsl-syntax.md`
+1. **唯一推荐方式**：`wjx survey create-by-json --file <jsonl>` 覆盖 70+ 题型，字段参考 `references/question-types.md`
 2. 创建前用 `--dry-run` 预览解析结果
 3. 创建后用 `wjx survey get --vid N` 验证
 4. 向用户提供编辑链接：`wjx survey url --mode edit --activity N`
 5. 向用户提供预览链接：通过 SDK 的 `buildPreviewUrl` 或告知用户在编辑页面预览
+
+> 老命令 `create-by-text`（DSL 文本）/ `create --questions`（JSON 数组）已弃用，仅为兼容保留，不要在新代码中使用。
 
 ### 考试问卷注意事项
 

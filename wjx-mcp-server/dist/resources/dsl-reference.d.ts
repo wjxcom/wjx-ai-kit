@@ -32,7 +32,14 @@ export declare const DSL_SYNTAX_GUIDE: {
         "[\u77E9\u9635\u591A\u9009\u9898]": string;
         "[\u77E9\u9635\u91CF\u8868\u9898]": string;
         "[\u77E9\u9635\u586B\u7A7A\u9898]": string;
-        "[\u77E9\u9635\u8BC4\u5206\u9898]": string;
+        "[\u77E9\u9635\u6ED1\u52A8\u6761]": string;
+        "[\u77E9\u9635\u6570\u503C\u9898]": string;
+        "[\u8868\u683C\u586B\u7A7A\u9898]": string;
+        "[\u8868\u683C\u4E0B\u62C9\u6846]": string;
+        "[\u8868\u683C\u7EC4\u5408\u9898]": string;
+        "[\u8868\u683C\u81EA\u589E\u9898]": string;
+        "[\u591A\u9879\u6587\u4EF6\u9898]": string;
+        "[\u591A\u9879\u7B80\u7B54\u9898]": string;
         "[\u6587\u4EF6\u4E0A\u4F20]": string;
         "[\u7ED8\u56FE\u9898]": string;
         "[\u6BD4\u91CD\u9898]": string;

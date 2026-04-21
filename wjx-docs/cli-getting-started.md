@@ -6,7 +6,7 @@
 
 ## 什么是 wjx-cli
 
-wjx-cli 是问卷星的命令行工具，{{CLI_COMMAND_COUNT}} 个子命令覆盖问卷星全部 API 能力。它有两个特点：
+wjx-cli 是问卷星的命令行工具，67 个子命令覆盖问卷星全部 API 能力。它有两个特点：
 
 1. **AI Agent 原生**：默认输出 JSON，支持管道输入，结构化错误码。Claude Code、Cursor 等 AI 工具可以直接调用。
 2. **人类也好用**：`--table` 格式化输出、Shell 补全、`--dry-run` 预览、交互式配置向导。
@@ -23,7 +23,7 @@ npm install -g wjx-cli
 
 ```bash
 wjx --version
-# wjx-cli/{{VERSION}}
+# wjx-cli/0.2.1
 ```
 
 需要 Node.js >= 20。如果版本不够，运行 `wjx doctor` 会提示。
@@ -79,7 +79,7 @@ wjx doctor
 ✓ Config file: ~/.wjxrc
 ✓ API Key: sk-****...****
 ✓ API connectivity: OK (12 surveys found)
-✓ SDK version: wjx-api-sdk@{{VERSION}}
+✓ SDK version: wjx-api-sdk@0.2.1
 ```
 
 ---
@@ -142,9 +142,11 @@ wjx survey export-text --vid 12345
 ### 问卷生命周期
 
 ```bash
-# 创建
-wjx survey create-by-text --text "..." --publish
-wjx survey create --title "新问卷" --questions '[...]'
+# 创建（唯一推荐：JSONL，覆盖 70+ 题型）
+wjx survey create-by-json --file survey.jsonl --publish
+# 已弃用命令（仅兼容保留）
+# wjx survey create-by-text --text "..." --publish
+# wjx survey create --title "新问卷" --questions '[...]'
 
 # 查看
 wjx survey list --name_like "满意度"

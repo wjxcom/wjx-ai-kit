@@ -56,8 +56,21 @@ export {
 export { surveyToText, typeToLabel, stripHtml } from "./modules/survey/survey-to-text.js";
 export { textToSurvey, parsedQuestionsToWire, LABEL_TO_TYPE, TYPE_MAP } from "./modules/survey/text-to-survey.js";
 export type { WireQuestion, WireConversionResult } from "./modules/survey/text-to-survey.js";
-export { extractJsonlMetadata, normalizeJsonl, MAX_JSONL_SIZE } from "./modules/survey/json-to-survey.js";
-export type { JsonSurveyMetadata } from "./modules/survey/json-to-survey.js";
+export {
+  extractJsonlMetadata,
+  normalizeJsonl,
+  MAX_JSONL_SIZE,
+  parseJsonl,
+  jsonToSurvey,
+  jsonQuestionsToWire,
+  QTYPE_MAP,
+} from "./modules/survey/json-to-survey.js";
+export type {
+  JsonSurveyMetadata,
+  JsonSurveyQuestion,
+  JsonParsedSurvey,
+  JsonWireConversionResult,
+} from "./modules/survey/json-to-survey.js";
 export type {
   CreateSurveyInput,
   CreateSurveyByTextInput,

@@ -77,7 +77,7 @@ your-project/
 
 ### 使用 MCP Prompts 工作流
 
-Claude Desktop 内置支持 MCP Prompts。wjx-mcp-server 提供了 {{MCP_PROMPT_COUNT}} 个预设工作流模板（NPS 分析、满意度调查、考试出题、异常检测等），可直接在 Claude Desktop 对话中使用。
+Claude Desktop 内置支持 MCP Prompts。wjx-mcp-server 提供了 23 个预设工作流模板（NPS 分析、满意度调查、考试出题、异常检测等），可直接在 Claude Desktop 对话中使用。
 
 此外，你可以将 `skills/` 中的参考文档内容作为对话上下文粘贴给 Claude，提升问卷操作的准确度。
 
@@ -99,7 +99,7 @@ Claude Desktop 内置支持 MCP Prompts。wjx-mcp-server 提供了 {{MCP_PROMPT_
 
 ## 第三步：安装 CLI（可选）
 
-详见 [CLI 入门指南](./cli-getting-started.md)。CLI 提供 {{CLI_COMMAND_COUNT}} 个子命令，适合批量操作和自动化脚本。
+详见 [CLI 入门指南](./cli-getting-started.md)。CLI 提供 67 个子命令，适合批量操作和自动化脚本。
 
 ---
 
@@ -139,5 +139,5 @@ npm install -g wjx-mcp-server
 
 ## 下一步
 
-- [MCP Server 入门指南](./mcp-getting-started.md) — 了解 {{MCP_TOOL_COUNT}} 个工具的完整能力
+- [MCP Server 入门指南](./mcp-getting-started.md) — 了解 58 个工具的完整能力
 - [wjx-ai-kit 总览](./00-overview.md) — 了解 SDK、MCP、CLI 三合一架构

@@ -41,7 +41,8 @@ tools:
 
 ### 创建问卷
 
-1. 优先使用 `create_survey_by_text`（DSL 文本方式）— 需要 DSL 语法时读 `references/dsl-and-types.md`
+1. **唯一推荐方式**：`create_survey_by_json` 覆盖 70+ 题型，字段参考 `references/dsl-and-types.md`
+2. 老命令 `create_survey_by_text`（DSL 文本）和 `create_survey` 已弃用，仅向后兼容
 2. 创建前先查阅 `wjx://reference/dsl-syntax` MCP 资源确认语法
 3. 创建后调用 `get_survey` 验证问卷内容
 4. 主动使用 `build_survey_url` 提供编辑链接
