@@ -3,7 +3,7 @@ import { callWjxApi, getWjxCredentials } from "../../core/api-client.js";
 export { textToSurvey, parsedQuestionsToWire } from "./text-to-survey.js";
 import { textToSurvey, parsedQuestionsToWire } from "./text-to-survey.js";
 export { extractJsonlMetadata, normalizeJsonl } from "./json-to-survey.js";
-import { extractJsonlMetadata, normalizeJsonl, MAX_JSONL_SIZE } from "./json-to-survey.js";
+import { extractJsonlMetadata, normalizeJsonl, MAX_JSONL_SIZE, preprocessExamJsonl } from "./json-to-survey.js";
 export function validateQuestionsJson(questions) {
     let parsed;
     try {
@@ -192,15 +192,18 @@ export async function createSurveyByJson(input, credentials = getWjxCredentials(
     if (jsonl.length > MAX_JSONL_SIZE) {
         throw new Error(`jsonl exceeds maximum size of ${MAX_JSONL_SIZE} bytes (${jsonl.length})`);
     }
-    const metadata = extractJsonlMetadata(jsonl);
+    // 考试题型预处理：注入 isquiz="1"，并在用户未指定 atype 时推断为 6（考试）
+    const { jsonl: processedJsonl, hasExam } = preprocessExamJsonl(jsonl);
+    const metadata = extractJsonlMetadata(processedJsonl);
     const title = input.title ?? metadata.title;
     const description = metadata.description ?? "";
+    const atype = input.atype ?? (hasExam ? 6 : 1);
     return callWjxApi({
         action: Action.CREATE_SURVEY_BY_JSON,
         title,
-        atype: input.atype ?? 1,
+        atype,
         desc: description,
-        surveydatajson: jsonl,
+        surveydatajson: processedJsonl,
         publish: input.publish ?? false,
         ...(input.creater !== undefined ? { creater: input.creater } : {}),
     }, {

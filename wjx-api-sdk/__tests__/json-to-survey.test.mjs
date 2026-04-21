@@ -5,6 +5,9 @@ import {
   extractJsonlMetadata,
   normalizeJsonl,
   MAX_JSONL_SIZE,
+  preprocessExamJsonl,
+  EXAM_QTYPES,
+  createSurveyByJson,
 } from "../dist/index.js";
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -91,5 +94,106 @@ describe("normalizeJsonl", () => {
 describe("MAX_JSONL_SIZE", () => {
   it("should be 1_000_000", () => {
     assert.equal(MAX_JSONL_SIZE, 1_000_000);
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// preprocessExamJsonl
+// ═══════════════════════════════════════════════════════════════════════════════
+
+describe("preprocessExamJsonl", () => {
+  it("should detect exam qtypes and inject isquiz=\"1\"", () => {
+    const jsonl = [
+      '{"qtype":"问卷基础信息","title":"测试"}',
+      '{"qtype":"考试判断","title":"地球是圆的","select":["对","错"],"correctselect":["A"]}',
+    ].join("\n");
+    const { jsonl: out, hasExam } = preprocessExamJsonl(jsonl);
+    assert.equal(hasExam, true);
+    const examLine = JSON.parse(out.split("\n")[1]);
+    assert.equal(examLine.isquiz, "1");
+  });
+
+  it("should preserve user-supplied isquiz value", () => {
+    const jsonl = '{"qtype":"考试单选","title":"Q1","isquiz":"0"}';
+    const { jsonl: out, hasExam } = preprocessExamJsonl(jsonl);
+    assert.equal(hasExam, true);
+    assert.equal(JSON.parse(out).isquiz, "0");
+  });
+
+  it("should not touch non-exam questions", () => {
+    const jsonl = [
+      '{"qtype":"单选","title":"Q1","select":["A","B"]}',
+      '{"qtype":"多选","title":"Q2","select":["A","B"]}',
+    ].join("\n");
+    const { jsonl: out, hasExam } = preprocessExamJsonl(jsonl);
+    assert.equal(hasExam, false);
+    assert.equal(out, jsonl);
+  });
+
+  it("should preserve empty lines and malformed JSON", () => {
+    const jsonl = ["", "not json", '{"qtype":"考试单选","title":"Q"}'].join("\n");
+    const { jsonl: out, hasExam } = preprocessExamJsonl(jsonl);
+    assert.equal(hasExam, true);
+    const lines = out.split("\n");
+    assert.equal(lines[0], "");
+    assert.equal(lines[1], "not json");
+    assert.equal(JSON.parse(lines[2]).isquiz, "1");
+  });
+
+  it("EXAM_QTYPES should contain all 9 exam qtypes", () => {
+    assert.equal(EXAM_QTYPES.size, 9);
+    assert.ok(EXAM_QTYPES.has("考试判断"));
+    assert.ok(EXAM_QTYPES.has("考试绘图"));
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// createSurveyByJson — exam atype inference + isquiz injection
+// ═══════════════════════════════════════════════════════════════════════════════
+
+describe("createSurveyByJson exam handling", () => {
+  function makeFakeFetch() {
+    const captured = { body: null, url: null };
+    const fakeFetch = async (url, init) => {
+      captured.url = url;
+      captured.body = JSON.parse(init.body);
+      return new Response(
+        JSON.stringify({ result: true, data: { vid: 1 } }),
+        { status: 200, headers: { "content-type": "application/json" } },
+      );
+    };
+    return { fakeFetch, captured };
+  }
+
+  it("auto-infers atype=6 when JSONL contains exam qtypes", async () => {
+    const { fakeFetch, captured } = makeFakeFetch();
+    await createSurveyByJson(
+      { jsonl: '{"qtype":"考试判断","title":"Q","select":["对","错"]}' },
+      { apiKey: "k" },
+      fakeFetch,
+    );
+    assert.equal(captured.body.atype, 6);
+    const sentJsonl = captured.body.surveydatajson;
+    assert.equal(JSON.parse(sentJsonl).isquiz, "1");
+  });
+
+  it("preserves user-supplied atype even when exam qtypes present", async () => {
+    const { fakeFetch, captured } = makeFakeFetch();
+    await createSurveyByJson(
+      { jsonl: '{"qtype":"考试单选","title":"Q","select":["A"]}', atype: 1 },
+      { apiKey: "k" },
+      fakeFetch,
+    );
+    assert.equal(captured.body.atype, 1);
+  });
+
+  it("defaults atype=1 when no exam qtype present", async () => {
+    const { fakeFetch, captured } = makeFakeFetch();
+    await createSurveyByJson(
+      { jsonl: '{"qtype":"单选","title":"Q","select":["A"]}' },
+      { apiKey: "k" },
+      fakeFetch,
+    );
+    assert.equal(captured.body.atype, 1);
   });
 });

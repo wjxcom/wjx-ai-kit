@@ -110,6 +110,24 @@ export declare function normalizeJsonl(jsonl: string): string;
  * 与 `jsonToSurvey` 不同的是：不解析所有题目、出错不抛异常、适合快速元数据读取。
  */
 export declare function extractJsonlMetadata(jsonlText: string): JsonSurveyMetadata;
+/**
+ * 考试题型集合。JSONL 中的 qtype 属于此集合时：
+ * - 服务端需要同时满足 `atype=6`（考试问卷）+ 题目含 `isquiz="1"`，
+ *   才会按期望的考试子类型落库（如 判断题 305）。
+ * - 否则服务端会降级为普通题型（如 考试判断 → 评分单选 303）。
+ */
+export declare const EXAM_QTYPES: Set<string>;
+/**
+ * 扫描 JSONL 文本，若发现考试题型：
+ * - `hasExam=true`
+ * - 为每道考试题自动注入 `isquiz="1"`（用户已显式设置则保留原值）
+ *
+ * 非考试题、_meta 行、空行、无法解析的行保持原样。
+ */
+export declare function preprocessExamJsonl(jsonl: string): {
+    jsonl: string;
+    hasExam: boolean;
+};
 /** qtype 中文名 → API wire format { q_type, q_subtype } 映射表 */
 export declare const QTYPE_MAP: Record<string, {
     q_type: number;

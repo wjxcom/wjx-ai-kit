@@ -64,6 +64,8 @@ export {
   jsonToSurvey,
   jsonQuestionsToWire,
   QTYPE_MAP,
+  EXAM_QTYPES,
+  preprocessExamJsonl,
 } from "./modules/survey/json-to-survey.js";
 export type {
   JsonSurveyMetadata,

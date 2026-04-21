@@ -143,6 +143,57 @@ export function extractJsonlMetadata(jsonlText: string): JsonSurveyMetadata {
   return { title: "", description: "", endpageinformation: "", language: "zh" };
 }
 
+// ─── 考试题型预处理 ─────────────────────────────────────────────────
+
+/**
+ * 考试题型集合。JSONL 中的 qtype 属于此集合时：
+ * - 服务端需要同时满足 `atype=6`（考试问卷）+ 题目含 `isquiz="1"`，
+ *   才会按期望的考试子类型落库（如 判断题 305）。
+ * - 否则服务端会降级为普通题型（如 考试判断 → 评分单选 303）。
+ */
+export const EXAM_QTYPES = new Set<string>([
+  "考试单选",
+  "考试判断",
+  "考试多选",
+  "考试单项填空",
+  "考试多项填空",
+  "考试简答",
+  "考试文件",
+  "考试绘图",
+  "考试代码",
+]);
+
+/**
+ * 扫描 JSONL 文本，若发现考试题型：
+ * - `hasExam=true`
+ * - 为每道考试题自动注入 `isquiz="1"`（用户已显式设置则保留原值）
+ *
+ * 非考试题、_meta 行、空行、无法解析的行保持原样。
+ */
+export function preprocessExamJsonl(jsonl: string): { jsonl: string; hasExam: boolean } {
+  const lines = jsonl.split("\n");
+  let hasExam = false;
+  const processed = lines.map((line) => {
+    const trimmed = line.trim();
+    if (!trimmed) return line;
+    let obj: Record<string, unknown>;
+    try {
+      obj = JSON.parse(trimmed) as Record<string, unknown>;
+    } catch {
+      return line;
+    }
+    if (typeof obj.qtype === "string" && EXAM_QTYPES.has(obj.qtype)) {
+      hasExam = true;
+      if (obj.isquiz === undefined) {
+        obj.isquiz = "1";
+        return JSON.stringify(obj);
+      }
+    }
+    return line;
+  });
+  return { jsonl: processed.join("\n"), hasExam };
+}
+
 // ─── qtype → q_type/q_subtype mapping ──────────────────────────────
 
 /** qtype 中文名 → API wire format { q_type, q_subtype } 映射表 */
@@ -171,6 +222,7 @@ export const QTYPE_MAP: Record<string, { q_type: number; q_subtype: number }> = 
   "矩阵多选": { q_type: 7, q_subtype: 703 },
   "矩阵量表": { q_type: 7, q_subtype: 701 },
   "矩阵滑动条": { q_type: 7, q_subtype: 705 },
+  // 注意：矩阵数值题 706 在服务端可能被降级为普通填空 5/5（依赖问卷类型与字段配置）
   "矩阵数值题": { q_type: 7, q_subtype: 706 },
   "表格填空题": { q_type: 7, q_subtype: 707 },
   "表格下拉框": { q_type: 7, q_subtype: 708 },
@@ -229,6 +281,8 @@ export const QTYPE_MAP: Record<string, { q_type: number; q_subtype: number }> = 
   "姓名": { q_type: 5, q_subtype: 5 },
   "基本信息": { q_type: 7, q_subtype: 704 },
   "身份证号": { q_type: 5, q_subtype: 5 },
+  // 注意：以下地区/高校预设在无额外字段（如 relation/leveldata）时，
+  // 服务端可能降级为普通填空 5/5。若需多级下拉效果，建议显式使用 qtype="多级下拉" + leveldata。
   "国家及地区": { q_type: 5, q_subtype: 501 },
   "省市": { q_type: 5, q_subtype: 501 },
   "省市区": { q_type: 5, q_subtype: 501 },
