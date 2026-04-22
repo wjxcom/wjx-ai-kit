@@ -125,7 +125,7 @@ wjx-mcp-server 提供 58 个 MCP 工具、8 个参考资源和 23 个 prompt 模
 
 **问卷生成 — DSL 文本（7，已弃用，保留兼容）：** generate-survey, generate-nps-survey, generate-360-evaluation, generate-satisfaction-survey, generate-engagement-survey, generate-exam-from-document, generate-exam-from-knowledge
 
-**问卷生成 — JSON（4，唯一推荐）：** generate-survey-json, generate-major-survey-json, generate-exam-json, generate-form-json
+**问卷生成 — JSON（3，唯一推荐）：** generate-survey-json, generate-exam-json, generate-form-json
 
 ## 常用枚举值
 

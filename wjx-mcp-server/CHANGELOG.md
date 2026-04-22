@@ -4,6 +4,24 @@
 
 格式基于 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [0.2.4] - 2026-04-22
+
+### Changed
+
+- **prompt 合并**：`generate-major-survey-json` 并入 `generate-survey-json`（统一覆盖 atype∈{1,2,3,10,11} 调查/测评/投票/量表/民主测评，含 BWS/MaxDiff/联合分析/Kano/PSM 等专业模型）。**BREAKING**：旧名 `generate-major-survey-json` 不再注册。
+- **atype 引导扩展**：`generate-survey-json` 与 JSONL_FORMAT_INSTRUCTIONS 新增 atype=10（量表）/atype=11（民主测评/360 评估）选择规则。
+- prompt 总数：23 → 22。
+
+### Fixed
+
+- **`FORM_QTYPES` 白名单修正**：剔除错误混入的调查专业模型（BWS/MaxDiff/联合分析/Kano/SUS/品牌漏斗/BPTO/PSM/价格断裂点/层次分析/选项分类/CATI 等），改用服务端官方"7"白名单 42 项（新增签名题/地图/手机验证/折叠栏目/轮播图/表格数值/自增表格/图片OCR/商品题/预约题/密码 等真正的表单题型）。
+- **测试**：新增 `__tests__/prompts-survey-generation-json.test.mjs`（6 用例），覆盖 prompt 合并 + form 白名单 + atype 提示。
+
+### Verified
+
+- 服务端 atype 修复（`wa.QType = model.AType`）已端到端真实回归：vid 201104-201117，atype=1/2/3/6/7/11 共 6 个用例全部正确落库（环境：tanhao.sojump.cn）。
+- master commit `8076f41` 中"服务端实测仍忽略 atype，根因待定位"叙述已过时；SDK `injectAtypeIntoJsonl` 现作为防御性兜底保留。
+
 ## [0.1.4] - 2026-04-02
 
 ### Changed

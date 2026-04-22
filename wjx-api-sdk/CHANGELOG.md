@@ -2,6 +2,12 @@
 
 本文件记录项目的所有重要变更。
 
+## [0.2.4] - 2026-04-22
+
+### Changed
+
+- 版本号与 `wjx-mcp-server@0.2.4`、`wjx-cli@0.2.4` 对齐（本轮无 SDK 代码变更，仅 prompt 层调整，见 wjx-mcp-server CHANGELOG）
+
 ## [0.1.5] - 2026-04-02
 
 ### Added
