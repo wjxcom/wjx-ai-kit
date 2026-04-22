@@ -66,6 +66,11 @@ export {
   QTYPE_MAP,
   EXAM_QTYPES,
   preprocessExamJsonl,
+  injectDefaultRequir,
+  inferAtypeFromTitle,
+  validateSurveyTitle,
+  validateSurveyHasQuestions,
+  NON_QUESTION_QTYPE_SET,
 } from "./modules/survey/json-to-survey.js";
 export type {
   JsonSurveyMetadata,

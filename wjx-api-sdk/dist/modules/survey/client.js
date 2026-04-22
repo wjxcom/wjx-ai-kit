@@ -3,7 +3,7 @@ import { callWjxApi, getWjxCredentials } from "../../core/api-client.js";
 export { textToSurvey, parsedQuestionsToWire } from "./text-to-survey.js";
 import { textToSurvey, parsedQuestionsToWire } from "./text-to-survey.js";
 export { extractJsonlMetadata, normalizeJsonl } from "./json-to-survey.js";
-import { extractJsonlMetadata, normalizeJsonl, MAX_JSONL_SIZE, preprocessExamJsonl } from "./json-to-survey.js";
+import { extractJsonlMetadata, normalizeJsonl, MAX_JSONL_SIZE, preprocessExamJsonl, injectDefaultRequir, inferAtypeFromTitle, validateSurveyTitle, validateSurveyHasQuestions, } from "./json-to-survey.js";
 export function validateQuestionsJson(questions) {
     let parsed;
     try {
@@ -193,11 +193,19 @@ export async function createSurveyByJson(input, credentials = getWjxCredentials(
         throw new Error(`jsonl exceeds maximum size of ${MAX_JSONL_SIZE} bytes (${jsonl.length})`);
     }
     // 考试题型预处理：注入 isquiz="1"，并在用户未指定 atype 时推断为 6（考试）
-    const { jsonl: processedJsonl, hasExam } = preprocessExamJsonl(jsonl);
+    const { jsonl: examProcessed, hasExam } = preprocessExamJsonl(jsonl);
+    // 默认必答预处理：与页面创建行为保持一致，为题目行注入 requir=true（未指定时）
+    const processedJsonl = injectDefaultRequir(examProcessed);
     const metadata = extractJsonlMetadata(processedJsonl);
     const title = input.title ?? metadata.title;
     const description = metadata.description ?? "";
-    const atype = input.atype ?? (hasExam ? 6 : 1);
+    // 标题合理性校验：空/占位符/过短/黑名单全部拦截，给出可执行修复建议
+    validateSurveyTitle(title);
+    // 题目数校验：JSONL 至少包含 1 道真实题目（排除元数据/分页/段落/知情同意书）
+    validateSurveyHasQuestions(processedJsonl);
+    // atype 推断优先级：显式入参 > 考试题型 > 标题关键字 > 1（调查）
+    const atype = input.atype ??
+        (hasExam ? 6 : inferAtypeFromTitle(title) ?? 1);
     return callWjxApi({
         action: Action.CREATE_SURVEY_BY_JSON,
         title,

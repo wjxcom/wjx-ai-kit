@@ -594,25 +594,39 @@ export function registerSurveyTools(server) {
         title: "用 JSON 创建问卷",
         description: "（推荐，支持 70+ 题型）通过 JSONL 格式创建问卷。每行一个 JSON 对象，首行为 qtype='问卷基础信息' 的元数据。" +
             "支持 70+ 种题型（普通调查、专业调查模型、考试、表单），远多于 DSL 文本格式。" +
-            "【核心字段】qtype（题型名称）、title（标题）、select（选项数组）、rowtitle（行标题，仅矩阵/比重/Kano/PSM 使用）、requir（是否必填）。" +
+            "【核心字段】qtype（题型名称）、title（标题）、select（选项数组）、rowtitle（行标题，仅矩阵/比重/Kano/PSM/表格题 使用）、requir（是否必填）。" +
             "【专业模型】支持 BWS/MaxDiff(mdattr)、联合分析(columntitle)、品牌漏斗(brands)、Kano模型、SUS模型、PSM模型等。" +
             "【考试题型】支持 correctselect（正确答案）、quizscore（分值）、answeranalysis（答案解析）。" +
             "【关联逻辑】支持 relation（显示条件）、referselect（引用前题选项）。" +
+            "【硬性校验 — 不满足会被 SDK 拒绝】1) 标题不得为空、占位符（??? / 无标题 / TODO / xxx 等）或少于 2 字；2) JSONL 必须包含至少 1 道真实题目（_meta/分页栏/段落说明/知情同意书不计入）。" +
             "【多项填空必看】多项填空 qtype='多项填空'，子填空位数量由 title 中的 {_} 占位符数量决定，例如 title='电话 {_}，邮箱 {_}，微信 {_}' 会生成 3 个空位；**禁止用 rowtitle 数组**（多项填空不支持该字段，服务端会忽略并只生成 1 个空位）。考试多项填空/考试完形填空同理。" +
+            "【表格类题型 707-712】服务端原生支持，多字段批量录入场景请优先使用：" +
+            "表格填空题(707) 行=条目/列=字段名 全部填空；" +
+            "表格下拉框(708) 行=条目/列=维度，每格下拉评价；" +
+            "表格组合题(709) 行=成员/列=不同字段；" +
+            "表格自增题(710) 用户运行时自加行（仅传 select 列定义，不传 rowtitle）；" +
+            "多项文件题(711) rowtitle 列出每个上传项；" +
+            "多项简答题(712) rowtitle 列出每个简答子题。" +
             "输入示例（JSONL）：\n" +
             '{"qtype":"问卷基础信息","title":"客户满意度调查","introduction":"请认真填写"}\n' +
             '{"qtype":"单选","title":"您的性别","select":["男","女"]}\n' +
             '{"qtype":"多项填空","title":"联系方式：电话 {_}，邮箱 {_}"}\n' +
+            '{"qtype":"表格组合题","title":"团队成员","rowtitle":["成员1","成员2"],"select":["姓名","年龄","性别"]}\n' +
             '{"qtype":"量表题","title":"满意度评分","select":["1","2","3","4","5"],"minvaluetext":"非常不满意","maxvaluetext":"非常满意"}',
         inputSchema: {
-            jsonl: z.string().min(1).max(1_000_000).describe("JSONL 格式的问卷内容（每行一个 JSON 对象）"),
-            title: z.string().optional().describe("覆盖 JSONL 中的问卷标题"),
+            jsonl: z.string().min(1).max(1_000_000).describe("JSONL 格式的问卷内容（每行一个 JSON 对象）。" +
+                "硬性要求：1) 首行 _meta 的 title 必须是真实主题，不得为占位符 ??? / 无标题 / TODO / xxx；" +
+                "2) 必须包含 ≥1 道真实题目（元数据/分页/段落/知情同意书不计）；违反会被 SDK 拒绝。"),
+            title: z.string().optional().describe("覆盖 JSONL 中的问卷标题。同样适用占位符校验：禁止 ??? / 无标题 / TODO / xxx 等无语义值。"),
             atype: z
                 .number()
                 .int()
                 .optional()
-                .default(1)
-                .describe("问卷类型：1=调查（默认）, 2=测评, 3=投票, 6=考试, 7=表单"),
+                .describe("问卷类型（**调用方应主动判断并显式传入**，不要依赖兜底）：" +
+                "1=调查（默认）, 2=测评, 3=投票, 6=考试, 7=表单。" +
+                "硬性规则：投票场景 → 必传 atype=3；表单 → 必传 atype=7；考试 → 必传 atype=6；测评 → 必传 atype=2。" +
+                "兜底（仅用于调用方遗漏时挽救，不应作为正常路径）：含考试题型→6；标题含「投票」→3；含「表单/报名表/登记表/申请表」→7；含「测评」→2；其余 1。" +
+                "显式传值始终优先于兜底推断。"),
             publish: z.boolean().optional().default(false).describe("是否立即发布"),
             creater: z.string().optional().describe("创建者子账号用户名"),
         },

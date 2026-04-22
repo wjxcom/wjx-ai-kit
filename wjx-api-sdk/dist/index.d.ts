@@ -5,7 +5,7 @@ export { createSurvey, createSurveyByText, createSurveyByJson, validateQuestions
 export { surveyToText, typeToLabel, stripHtml } from "./modules/survey/survey-to-text.js";
 export { textToSurvey, parsedQuestionsToWire, LABEL_TO_TYPE, TYPE_MAP } from "./modules/survey/text-to-survey.js";
 export type { WireQuestion, WireConversionResult } from "./modules/survey/text-to-survey.js";
-export { extractJsonlMetadata, normalizeJsonl, MAX_JSONL_SIZE, parseJsonl, jsonToSurvey, jsonQuestionsToWire, QTYPE_MAP, EXAM_QTYPES, preprocessExamJsonl, } from "./modules/survey/json-to-survey.js";
+export { extractJsonlMetadata, normalizeJsonl, MAX_JSONL_SIZE, parseJsonl, jsonToSurvey, jsonQuestionsToWire, QTYPE_MAP, EXAM_QTYPES, preprocessExamJsonl, injectDefaultRequir, inferAtypeFromTitle, validateSurveyTitle, validateSurveyHasQuestions, NON_QUESTION_QTYPE_SET, } from "./modules/survey/json-to-survey.js";
 export type { JsonSurveyMetadata, JsonSurveyQuestion, JsonParsedSurvey, JsonWireConversionResult, } from "./modules/survey/json-to-survey.js";
 export type { CreateSurveyInput, CreateSurveyByTextInput, CreateSurveyByJsonInput, GetSurveyInput, ListSurveysInput, UpdateSurveyStatusInput, GetSurveySettingsInput, UpdateSurveySettingsInput, DeleteSurveyInput, GetQuestionTagsInput, GetTagDetailsInput, ClearRecycleBinInput, UploadFileInput, SurveyQuestionItem, SurveyQuestion, SurveyDetail, ParsedQuestion, ParsedSurvey, } from "./modules/survey/types.js";
 export { queryResponses, queryResponsesRealtime, downloadResponses, getReport, submitResponse, getFileLinks, getWinners, modifyResponse, get360Report, clearResponses, } from "./modules/response/client.js";

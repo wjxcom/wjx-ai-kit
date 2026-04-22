@@ -194,6 +194,158 @@ export function preprocessExamJsonl(jsonl: string): { jsonl: string; hasExam: bo
   return { jsonl: processed.join("\n"), hasExam };
 }
 
+// ─── 默认必答预处理 ─────────────────────────────────────────────────
+
+/**
+ * 非题目类 qtype（这些不需要注入 requir 字段）。
+ */
+const NON_QUESTION_QTYPES = new Set<string>([
+  "问卷基础信息",
+  "分页栏",
+  "段落说明",
+  "知情同意书",
+]);
+
+/**
+ * 扫描 JSONL 文本，为所有题目行注入 `requir: true`（用户未显式指定时）。
+ * - 与页面创建行为保持一致：默认必答
+ * - 非题目行（问卷基础信息、分页栏、段落说明、知情同意书）和空行/无法解析行保持原样
+ */
+export function injectDefaultRequir(jsonl: string): string {
+  const lines = jsonl.split("\n");
+  const processed = lines.map((line) => {
+    const trimmed = line.trim();
+    if (!trimmed) return line;
+    let obj: Record<string, unknown>;
+    try {
+      obj = JSON.parse(trimmed) as Record<string, unknown>;
+    } catch {
+      return line;
+    }
+    if (typeof obj.qtype !== "string" || NON_QUESTION_QTYPES.has(obj.qtype)) {
+      return line;
+    }
+    if (obj.requir === undefined) {
+      obj.requir = true;
+      return JSON.stringify(obj);
+    }
+    return line;
+  });
+  return processed.join("\n");
+}
+
+// ─── 从标题/元数据推断问卷类型（atype） ────────────────────────────
+
+/**
+ * 从问卷标题中根据关键字推断问卷类型（atype）。
+ * - 含"投票" → 3（投票）
+ * - 含"考试" / "测试题" / "试卷" → 6（考试）
+ * - 含"表单" / "报名表" / "登记表" / "申请表" → 7（表单）
+ * - 含"测评" / "测试（心理/能力）" → 2（测评）
+ * - 其他 → undefined（由调用方决定默认值）
+ *
+ * 用于 createSurveyByJson 在用户未显式指定 atype 时，根据问卷标题给出更合理的默认值。
+ */
+export function inferAtypeFromTitle(title: string): number | undefined {
+  if (!title) return undefined;
+  if (title.includes("投票")) return 3;
+  if (title.includes("考试") || title.includes("试卷") || title.includes("测试题")) return 6;
+  if (/表单|报名表|登记表|申请表/.test(title)) return 7;
+  if (title.includes("测评")) return 2;
+  return undefined;
+}
+
+// ─── 标题 & 题目数合理性校验 ────────────────────────────────────────
+
+/**
+ * 已知占位符标题黑名单（命中则拦截）。
+ * 只收录明显无语义、绝对不该落库的值；真实问卷主题（如 "客户满意度调查"）不会命中。
+ */
+const PLACEHOLDER_TITLES = new Set<string>([
+  "无标题", "未命名", "新问卷", "待定", "待填", "待补充", "暂无",
+  "untitled", "placeholder", "todo", "tbd", "na", "n/a",
+  "xxx", "xx", "xyz", "aaa", "test", "demo", "sample", "example",
+  "title", "问卷标题", "标题",
+]);
+
+/**
+ * 校验问卷标题是否合法。不合法时抛出带可执行修复建议的错误。
+ *
+ * 拦截规则：
+ * - 为空或全空白
+ * - 仅由 `?`/`？`/空白组成（典型的 LLM 占位输出 "???"/"？？？"）
+ * - 长度 < 2（单字标题通常是失败输出）
+ * - 命中 {@link PLACEHOLDER_TITLES} 黑名单（大小写不敏感）
+ *
+ * 真实业务标题（如 "员工满意度调查"、"2026 年评选投票"）一律放行。
+ */
+export function validateSurveyTitle(rawTitle: string): void {
+  const title = (rawTitle ?? "").trim();
+  const actionHint =
+    '请在 JSONL 首行 {"qtype":"问卷基础信息","title":"..."} 中填写真实问卷主题' +
+    '（例："2026 年员工满意度调查"、"新产品上市用户测试"），' +
+    "或在调用 create_survey_by_json 时传入 title 参数显式覆盖。";
+
+  if (!title) {
+    throw new Error(`问卷标题缺失：未在 JSONL 中找到有效的标题。${actionHint}`);
+  }
+  if (/^[?？\s]+$/.test(title)) {
+    throw new Error(
+      `问卷标题无效（"${rawTitle}"）：疑似 LLM 占位输出或编码错误。${actionHint}`,
+    );
+  }
+  if (title.length < 2) {
+    throw new Error(
+      `问卷标题过短（"${rawTitle}"）：至少需要 2 个字符。${actionHint}`,
+    );
+  }
+  if (PLACEHOLDER_TITLES.has(title.toLowerCase())) {
+    throw new Error(
+      `问卷标题为占位符（"${rawTitle}"）：禁止使用 无标题/未命名/untitled/placeholder/TODO/xxx 等无语义值。${actionHint}`,
+    );
+  }
+}
+
+/**
+ * 非题目类 qtype 只读集合（对外暴露，供调用方自行判断题目行）。
+ * 语义与内部的 NON_QUESTION_QTYPES 一致。
+ */
+export const NON_QUESTION_QTYPE_SET: ReadonlySet<string> = NON_QUESTION_QTYPES;
+
+/**
+ * 校验 JSONL 中至少包含 1 道真实题目。
+ *
+ * 排除项（不计入题目数）：
+ * - 无法解析为 JSON 的行、空行
+ * - qtype 缺失的行
+ * - NON_QUESTION_QTYPES：问卷基础信息 / 分页栏 / 段落说明 / 知情同意书
+ *
+ * 零题目通常源于上层 LLM 生成失败（只吐出 _meta 行），应在客户端拦截，避免服务端创建空问卷。
+ */
+export function validateSurveyHasQuestions(jsonl: string): void {
+  let questionCount = 0;
+  for (const line of jsonl.split("\n")) {
+    const trimmed = line.trim();
+    if (!trimmed) continue;
+    let obj: Record<string, unknown>;
+    try {
+      obj = JSON.parse(trimmed) as Record<string, unknown>;
+    } catch {
+      continue;
+    }
+    if (typeof obj.qtype !== "string") continue;
+    if (NON_QUESTION_QTYPES.has(obj.qtype)) continue;
+    questionCount++;
+  }
+  if (questionCount < 1) {
+    throw new Error(
+      "问卷中未找到有效题目：JSONL 仅包含元数据/分页栏/段落说明/知情同意书，没有真正的题目。" +
+        "请在 JSONL 中添加至少 1 道题目（如 {\"qtype\":\"单选\",\"title\":\"...\",\"select\":[...]}）。" +
+        "如果你是 AI Agent，请重新按主题生成完整题目列表，不要只输出 _meta 行。",
+    );
+  }
+}
+
 // ─── qtype → q_type/q_subtype mapping ──────────────────────────────
 
 /** qtype 中文名 → API wire format { q_type, q_subtype } 映射表 */
