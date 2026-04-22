@@ -5,6 +5,15 @@ import { loadConfig, saveConfig, CONFIG_PATH } from "../lib/config.js";
 import { maskApiKey } from "../lib/mask.js";
 import { installSkill } from "../lib/install-skill.js";
 const DEFAULT_BASE_URL = "https://www.wjx.cn";
+/** Detect AI Agent environment (Claude Code, Cursor, etc.). 仅在 AI 场景下提示安装技能。 */
+function isAiAgentEnv() {
+    return Boolean(process.env.CLAUDECODE ||
+        process.env.CLAUDE_CODE ||
+        process.env.CURSOR_AGENT ||
+        process.env.CURSOR_TRACE_ID ||
+        process.env.AI_AGENT ||
+        process.env.WJX_AGENT);
+}
 /** Validate API Key by calling listSurveys. Returns true if valid. */
 async function validateApiKey(apiKey) {
     stderr.write("验证 API Key...");
@@ -48,7 +57,7 @@ async function initWithArgs(opts) {
     }
     await validateApiKey(apiKey);
     saveAndReport(apiKey, baseUrl, corpId);
-    if (opts.installSkill) {
+    if (opts.installSkill && isAiAgentEnv()) {
         const result = installSkill(process.cwd(), { force: true });
         if (result.status === "error") {
             stderr.write(`技能安装失败: ${result.message}\n`);
@@ -83,10 +92,8 @@ async function initInteractive() {
         const defaultUrl = currentBaseUrl || DEFAULT_BASE_URL;
         const baseUrlInput = await rl.question(`  WJX_BASE_URL [${defaultUrl}]: `);
         const baseUrl = baseUrlInput.trim() || defaultUrl;
-        // 3. Corp ID (optional)
-        const corpHint = currentCorpId ? ` [${currentCorpId}]` : "";
-        const corpIdInput = await rl.question(`  WJX_CORP_ID${corpHint}: `);
-        const corpId = corpIdInput.trim() || currentCorpId || undefined;
+        // 3. Corp ID (保留已有值，不再默认询问以简化向导；如需配置请直接编辑 ~/.wjxrc)
+        const corpId = currentCorpId || undefined;
         // Apply base URL before validation so SDK uses the correct endpoint
         if (baseUrl !== DEFAULT_BASE_URL) {
             process.env.WJX_BASE_URL = baseUrl;
@@ -97,14 +104,16 @@ async function initInteractive() {
         await validateApiKey(apiKey);
         stderr.write("\n");
         saveAndReport(apiKey, baseUrl, corpId);
-        stderr.write("提示: 也可以直接编辑该文件修改配置。\n");
-        // 4. Skill installation
-        stderr.write("\n");
-        const installAnswer = await rl.question("推荐安装 wjx-cli-use 技能以获取完整体验？(y/n) ");
-        if (installAnswer.trim().toLowerCase() === "y") {
-            const result = installSkill(process.cwd(), { force: true });
-            if (result.status === "error") {
-                stderr.write(`技能安装失败: ${result.message}\n`);
+        stderr.write("提示: 也可以直接编辑该文件修改配置（如 WJX_CORP_ID 通讯录）。\n");
+        // 4. Skill installation — 仅在 AI Agent 场景下提示
+        if (isAiAgentEnv()) {
+            stderr.write("\n");
+            const installAnswer = await rl.question("检测到 AI Agent 环境，推荐安装 wjx-cli-use 技能以获取完整体验？(y/n) ");
+            if (installAnswer.trim().toLowerCase() === "y") {
+                const result = installSkill(process.cwd(), { force: true });
+                if (result.status === "error") {
+                    stderr.write(`技能安装失败: ${result.message}\n`);
+                }
             }
         }
     }
