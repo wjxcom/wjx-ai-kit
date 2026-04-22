@@ -186,7 +186,7 @@ your-project/
 本项目使用 wjx-ai-kit 管理问卷调研。
 
 ## MCP 工具使用规范
-- 创建问卷：优先使用 create_survey_by_text（DSL 文本模式）
+- 创建问卷：一律使用 create_survey_by_json（覆盖 70+ 题型）。create_survey_by_text 已弃用
 - 数据分析：先用 query_responses 获取数据，再用 calculate_nps / calculate_csat 分析
 - 通讯录操作：使用 add_contacts 批量导入，query_contacts 查询验证
 
@@ -214,7 +214,7 @@ your-project/
 
 ## 第三步：安装 CLI（可选）
 
-详见 [CLI 入门指南](./cli-getting-started.md)。CLI 提供 {{CLI_COMMAND_COUNT}} 个子命令，适合批量操作和自动化脚本。
+详见 [CLI 入门指南](./cli-getting-started.md)。CLI 提供 67 个子命令，适合批量操作和自动化脚本。
 
 ---
 
@@ -284,5 +284,5 @@ your-project/
 
 ## 下一步
 
-- [MCP Server 入门指南](./mcp-getting-started.md) — 了解 {{MCP_TOOL_COUNT}} 个工具的完整能力
+- [MCP Server 入门指南](./mcp-getting-started.md) — 了解 58 个工具的完整能力
 - [wjx-ai-kit 总览](./00-overview.md) — 了解 SDK、MCP、CLI 三合一架构

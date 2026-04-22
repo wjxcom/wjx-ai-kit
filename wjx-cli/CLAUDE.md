@@ -10,7 +10,7 @@ CLI 已完成 v0.1.23（~133 tests）。
 
 ## 关键文件
 
-- SDK barrel：`wjx-api-sdk/src/index.ts`（50+ 函数列表）
+- SDK barrel：`wjx-api-sdk/src/index.ts`（48+ 函数列表）
 - SDK 类型示例：`wjx-api-sdk/src/modules/survey/types.ts`
 - SDK client 示例：`wjx-api-sdk/src/modules/survey/client.ts`
 - MCP tools 参考：`wjx-mcp-server/src/modules/survey/tools.ts`

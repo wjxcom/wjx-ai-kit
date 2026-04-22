@@ -213,4 +213,4 @@ DSL 格式**不支持**以下功能：
 - 评分权重
 - 随机化设置
 
-这些功能需要使用 JSON 格式通过 `wjx survey create --questions <json>` 创建。详见 [survey-commands.md](survey-commands.md)。
+这些功能需要使用 JSONL 格式通过 `wjx survey create-by-json --file <jsonl>` 创建（覆盖 70+ 题型）。老命令 `wjx survey create --questions <json>` 仅向后兼容。详见 [survey-commands.md](survey-commands.md)。

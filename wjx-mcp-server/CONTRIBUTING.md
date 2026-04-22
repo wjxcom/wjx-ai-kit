@@ -19,23 +19,31 @@
 git clone https://github.com/wjxcom/wjx-ai-kit.git
 cd wjx-ai-kit
 
-# 2. 安装依赖
+# 2. 安装依赖（在仓库根目录执行）
 npm install
 
-# 3. 构建项目
-npm run build
+# 3. 构建（SDK 必须先构建，wjx-mcp-server 依赖它）
+npm run build --workspace=wjx-api-sdk
+npm run build --workspace=wjx-mcp-server
 
-# 4. 运行测试，确保一切正常
-npm test
+# 4. 运行测试
+npm test --workspace=wjx-mcp-server
 ```
+
+> 也可先 `cd wjx-mcp-server`，再直接运行包内脚本 `npm run build` / `npm test`。
 
 ### 可选：配置本地运行环境
 
-如果你需要本地启动服务器进行手动调试：
+如果你需要本地启动服务器进行手动调试（在仓库根目录执行）：
 
 ```bash
-cp .env.example .env
-# 编辑 .env，填入你的问卷星 OpenAPI 凭据
+# Linux / macOS
+cp wjx-mcp-server/.env.example wjx-mcp-server/.env
+
+# Windows PowerShell
+Copy-Item wjx-mcp-server/.env.example wjx-mcp-server/.env
+
+# 编辑 wjx-mcp-server/.env，填入你的问卷星 OpenAPI 凭据
 ```
 
 ---
@@ -67,13 +75,13 @@ cp .env.example .env
 
 ```bash
 # 全部测试（构建 + 单元 + 集成）
-npm test
+npm test --workspace=wjx-mcp-server
 
 # 仅单元测试
-npm run test:unit
+npm run test:unit --workspace=wjx-mcp-server
 
 # 仅集成测试
-npm run test:integration
+npm run test:integration --workspace=wjx-mcp-server
 ```
 
 ### 测试要求
@@ -87,8 +95,8 @@ npm run test:integration
 
 提交前请确保：
 
-1. `npm run build` — 编译 TypeScript
-2. `npm test` — 运行全部测试
+1. `npm run build --workspace=wjx-mcp-server` — 编译 TypeScript
+2. `npm test --workspace=wjx-mcp-server` — 运行全部测试
 3. `npm audit --omit=dev` — 安全审计
 
 ---

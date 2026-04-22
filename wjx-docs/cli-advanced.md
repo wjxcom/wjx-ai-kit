@@ -1,4 +1,4 @@
-# CLI 进阶指南：{{CLI_COMMAND_COUNT}} 个命令完全攻略
+# CLI 进阶指南：67 个命令完全攻略
 
 > 管道组合、自动化脚本、DSL 高级用法、AI Skill 系统
 
@@ -154,7 +154,7 @@ done
 
 ---
 
-## {{CLI_COMMAND_COUNT}} 个命令完整参考
+## 67 个命令完整参考
 
 ### 问卷管理 (14)
 
@@ -162,8 +162,9 @@ done
 |------|------|----------|
 | `survey list` | 列表查询 | `--name_like` `--status` `--atype` `--page_size` |
 | `survey get` | 获取详情 | `--vid` |
-| `survey create` | JSON 创建 | `--title` `--questions` `--source_vid` |
-| `survey create-by-text` | DSL 创建 | `--text` `--file` `--type` `--publish` |
+| `survey create-by-json` | 唯一推荐：JSONL 创建，覆盖 70+ 题型 | `--jsonl` `--file` `--title` `--type` `--publish` |
+| `survey create-by-text` | 已弃用：DSL 创建（仅兼容保留） | `--text` `--file` `--type` `--publish` |
+| `survey create` | 已弃用：老 JSON 创建（仅兼容保留） | `--title` `--questions` `--source_vid` |
 | `survey delete` | 删除 | `--vid` `--permanent` |
 | `survey status` | 修改状态 | `--vid` `--state (1=发布/2=暂停/3=删除)` |
 | `survey settings` | 获取设置 | `--vid` |
@@ -305,8 +306,8 @@ done
 
 AI Agent 不会一次加载所有文档。它按需读取：
 
-1. **Agent 定义**（~80 行）：职责范围、安全规则、工作原则
-2. **SKILL.md**（~110 行）：命令总览、核心工作流、枚举值
+1. **Agent 定义**（约 80 行）：职责范围、安全规则、工作原则
+2. **SKILL.md**（约 110 行）：命令总览、核心工作流、枚举值
 3. **References**（按需加载）：只在需要具体参数细节时才读取对应文件
 
 这样设计最大化利用了 AI 的上下文窗口——大部分任务只需要前两层就够了。

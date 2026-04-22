@@ -5,9 +5,68 @@
 > echo '{"vid":12345,"get_questions":true,"get_items":true,"format":"dsl"}' | wjx survey get --stdin
 > ```
 
-## wjx survey create
+## wjx survey create-by-json
 
-创建新问卷。
+用 JSONL 格式创建问卷（**唯一推荐方式**，覆盖 70+ 题型）。每行一道题，首行可选放元数据 `{"_meta":{...}}`。
+
+```bash
+wjx survey create-by-json --file survey.jsonl
+wjx survey create-by-json --file survey.jsonl --type 6 --publish
+wjx survey create-by-json --jsonl '{"_meta":{"title":"标题"}}
+{"q_index":1,"q_type":3,"q_subtype":3,"q_title":"性别","is_requir":true,"items":[{"q_index":1,"item_index":1,"item_title":"男"},{"q_index":1,"item_index":2,"item_title":"女"}]}'
+wjx survey create-by-json --file survey.jsonl --dry-run    # 预览解析结果
+cat survey.jsonl | wjx survey create-by-json --stdin
+```
+
+| Flag | 必填 | 说明 |
+|------|------|------|
+| `--jsonl <s>` | 三选一 | JSONL 字符串内容 |
+| `--file <path>` | 三选一 | 从文件读取 JSONL |
+| `--stdin` | 三选一 | 从 stdin 读取 |
+| `--title <s>` | 否 | 覆盖 JSONL 中的问卷标题 |
+| `--type <n>` | 否 | 1=调查, 2=测评, 3=投票, 6=考试, 7=表单（默认 1） |
+| `--publish` | 否 | 创建后立即发布 |
+| `--creater <s>` | 否 | 创建者子账号 |
+| `--dry-run` | 否 | 预览解析结果，不实际创建 |
+
+### JSONL 格式
+
+```jsonl
+{"_meta":{"title":"标题","description":"描述"}}
+{"q_index":1,"q_type":3,"q_subtype":3,"q_title":"单选题","is_requir":true,"items":[{"q_index":1,"item_index":1,"item_title":"A"},{"q_index":1,"item_index":2,"item_title":"B"}]}
+{"q_index":2,"q_type":7,"q_subtype":702,"q_title":"矩阵单选","is_requir":true,"items":[{"q_index":2,"item_index":1,"item_title":"行1"}],"exts":[{"q_index":2,"ext_index":1,"ext_title":"列1"},{"q_index":2,"ext_index":2,"ext_title":"列2"}]}
+```
+
+**何时用**：所有问卷创建一律首选本命令。覆盖 70+ 题型，包括矩阵（单选/多选/填空/量表）、比重、滑块、文件上传、排序、单选/多选/填空等全部场景。
+
+完整 q_type/q_subtype 编码见 [question-types.md](question-types.md)。
+
+## wjx survey create-by-text（已弃用）
+
+> **已弃用**：DSL 文本创建问卷。新项目请改用 `create-by-json`（覆盖更全、结构更清晰）。本命令仅为兼容保留。
+
+```bash
+wjx survey create-by-text --text "标题\n\n1. 题目[单选题]\n选项A\n选项B"
+wjx survey create-by-text --file survey.txt
+cat survey.txt | wjx survey create-by-text --stdin
+wjx survey create-by-text --text "..." --dry-run   # 预览解析结果
+```
+
+| Flag | 必填 | 说明 |
+|------|------|------|
+| `--text <s>` | 三选一 | DSL 文本内容 |
+| `--file <path>` | 三选一 | 从文件读取 DSL |
+| `--stdin` | 三选一 | 从 stdin 读取 |
+| `--type <n>` | 否 | 问卷类型（默认 1=调查，考试用 6） |
+| `--publish` | 否 | 创建后发布 |
+| `--creater <s>` | 否 | 创建者子账号 |
+| `--dry-run` | 否 | 预览解析结果，不实际创建 |
+
+DSL 语法详见 [dsl-syntax.md](dsl-syntax.md)。
+
+## wjx survey create（向后兼容，不再推荐）
+
+老的 JSON 数组创建命令。新项目请用 `create-by-json`（JSONL 更灵活）或 `create-by-text`（DSL 更直观）。
 
 ```bash
 wjx survey create --title "标题" --type 1 --description "描述" --questions '<JSON>'
@@ -48,29 +107,6 @@ wjx survey create --title "标题" --source_vid 12345   # 复制已有问卷
 - 多项填空（q_type=6）的 q_title 必须包含 `{_}` 占位符
 
 完整 q_type/q_subtype 编码见 [question-types.md](question-types.md)。
-
-## wjx survey create-by-text
-
-用 DSL 文本创建问卷（**推荐 AI Agent 使用**）。
-
-```bash
-wjx survey create-by-text --text "标题\n\n1. 题目[单选题]\n选项A\n选项B"
-wjx survey create-by-text --file survey.txt
-cat survey.txt | wjx survey create-by-text --stdin
-wjx survey create-by-text --text "..." --dry-run   # 预览解析结果
-```
-
-| Flag | 必填 | 说明 |
-|------|------|------|
-| `--text <s>` | 三选一 | DSL 文本内容 |
-| `--file <path>` | 三选一 | 从文件读取 DSL |
-| `--stdin` | 三选一 | 从 stdin 读取 |
-| `--type <n>` | 否 | 问卷类型（默认 1=调查，考试用 6） |
-| `--publish` | 否 | 创建后发布 |
-| `--creater <s>` | 否 | 创建者子账号 |
-| `--dry-run` | 否 | 预览解析结果，不实际创建 |
-
-DSL 语法详见 [dsl-syntax.md](dsl-syntax.md)。
 
 ## wjx survey list
 

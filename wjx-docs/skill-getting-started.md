@@ -20,7 +20,7 @@ Skill 是一种让 AI 助手获得特定能力的方式。问卷星 Skill 包含
 | | MCP Server | Skill 包 | CLI |
 |---|---|---|---|
 | **适合谁** | 所有 AI 工具用户 | Claw 系列 / 不想配 MCP 的用户 | 命令行 / 自动化脚本用户 |
-| **能力** | {{MCP_TOOL_COUNT}} 个工具 + AI 自动调用 | AI 读取指南 + 调用 CLI 命令 | {{CLI_COMMAND_COUNT}} 个子命令 |
+| **能力** | 58 个工具 + AI 自动调用 | AI 读取指南 + 调用 CLI 命令 | 67 个子命令 |
 | **安装** | 一行 npx 命令 | `npm install -g wjx-cli` | `npm install -g wjx-cli` |
 | **配置复杂度** | 低 | 最低 | 最低 |
 | **适合的 AI 工具** | Claude/Cursor/Windsurf/Cline/... | OpenClaw/KimiClaw/QClaw/... | 任何有终端的环境 |
@@ -118,10 +118,10 @@ wjx skill install
 │            你的 AI 助手                  │
 ├───────────────┬─────────────────────────┤
 │   Skill 包     │    MCP Server           │
-│ (读 SKILL.md   │ ({{MCP_TOOL_COUNT}} 个工具直接调用)      │
+│ (读 SKILL.md   │ (58 个工具直接调用)      │
 │  调 wjx 命令)  │                         │
 ├───────────────┴─────────────────────────┤
-│          wjx-cli ({{CLI_COMMAND_COUNT}} 子命令)             │
+│          wjx-cli (67 子命令)             │
 ├─────────────────────────────────────────┤
 │          wjx-api-sdk (基础层)            │
 ├─────────────────────────────────────────┤
@@ -130,7 +130,7 @@ wjx skill install
 ```
 
 - **Skill 包**：AI 读取 SKILL.md 学会用法，通过 `wjx` CLI 命令操作问卷星
-- **MCP Server**：AI 通过 MCP 协议直接调用 {{MCP_TOOL_COUNT}} 个工具，不需要命令行
+- **MCP Server**：AI 通过 MCP 协议直接调用 58 个工具，不需要命令行
 
 两者底层都走 `wjx-api-sdk`，能力一致。MCP Server 的工具调用更高效，Skill 包的安装更简单。
 

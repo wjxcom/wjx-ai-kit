@@ -306,7 +306,7 @@ server.registerTool("tool_name", { inputSchema }, async (args) => {
 
 ## 8. Resources 与 Prompts 设计
 
-### 8.1 Resources
+### 8.8 Resources
 
 当前注册了 8 个只读资源：
 
@@ -321,9 +321,9 @@ server.registerTool("tool_name", { inputSchema }, async (args) => {
 
 资源层的作用是把稳定字典、格式规范和分析基准放进 MCP 上下文，而不是每次让模型重复猜测编码意义。
 
-### 8.2 Prompts
+### 8.23 Prompts
 
-当前注册了 19 个 prompts，分为三组：
+当前注册了 23 个 prompts，分为三组：
 
 - 通用/运维 prompts（6）：`design-survey`、`analyze-results`、`create-nps-survey`、`configure-webhook`、`anomaly-detection`、`user-system-workflow`
 - 分析型 prompts（6）：`nps-analysis`、`csat-analysis`、`cross-tabulation`、`sentiment-analysis`、`survey-health-check`、`comparative-analysis`

@@ -3,7 +3,7 @@ import { callWjxApi, getWjxCredentials } from "../../core/api-client.js";
 export { textToSurvey, parsedQuestionsToWire } from "./text-to-survey.js";
 import { textToSurvey, parsedQuestionsToWire } from "./text-to-survey.js";
 export { extractJsonlMetadata, normalizeJsonl } from "./json-to-survey.js";
-import { extractJsonlMetadata, normalizeJsonl, MAX_JSONL_SIZE } from "./json-to-survey.js";
+import { extractJsonlMetadata, normalizeJsonl, MAX_JSONL_SIZE, preprocessExamJsonl, injectDefaultRequir, injectAtypeIntoJsonl, inferAtypeFromTitle, validateSurveyTitle, validateSurveyHasQuestions, } from "./json-to-survey.js";
 export function validateQuestionsJson(questions) {
     let parsed;
     try {
@@ -46,7 +46,12 @@ export async function createSurvey(input, credentials = getWjxCredentials(), fet
         params.compress_img = input.compress_img;
     if (input.is_string !== undefined)
         params.is_string = input.is_string;
-    return callWjxApi(params, { credentials, fetchImpl, maxRetries: 0 });
+    return callWjxApi(params, {
+        credentials,
+        fetchImpl,
+        maxRetries: 0,
+        timeoutMs: LONG_TIMEOUT_MS,
+    });
 }
 export async function getSurvey(input, credentials = getWjxCredentials(), fetchImpl = fetch) {
     const params = {
@@ -187,15 +192,30 @@ export async function createSurveyByJson(input, credentials = getWjxCredentials(
     if (jsonl.length > MAX_JSONL_SIZE) {
         throw new Error(`jsonl exceeds maximum size of ${MAX_JSONL_SIZE} bytes (${jsonl.length})`);
     }
-    const metadata = extractJsonlMetadata(jsonl);
+    // 考试题型预处理：注入 isquiz="1"，并在用户未指定 atype 时推断为 6（考试）
+    const { jsonl: examProcessed, hasExam } = preprocessExamJsonl(jsonl);
+    // 默认必答预处理：与页面创建行为保持一致，为题目行注入 requir=true（未指定时）
+    const requirInjected = injectDefaultRequir(examProcessed);
+    const metadata = extractJsonlMetadata(requirInjected);
     const title = input.title ?? metadata.title;
     const description = metadata.description ?? "";
+    // 标题合理性校验：空/占位符/过短/黑名单全部拦截，给出可执行修复建议
+    validateSurveyTitle(title);
+    // 题目数校验：JSONL 至少包含 1 道真实题目（排除元数据/分页/段落/知情同意书）
+    validateSurveyHasQuestions(requirInjected);
+    // atype 推断优先级：显式入参 > JSONL 元数据 atype > 考试题型 > 标题关键字 > 1（调查）
+    const atype = input.atype ??
+        metadata.atype ??
+        (hasExam ? 6 : inferAtypeFromTitle(title) ?? 1);
+    // 关键修复：服务端 action 1000106 实际只读 JSONL 内的 atype，忽略顶层字段。
+    // 必须把最终 atype 注入「问卷基础信息」行，否则页面落库会一律变成 atype=1。
+    const processedJsonl = injectAtypeIntoJsonl(requirInjected, atype);
     return callWjxApi({
         action: Action.CREATE_SURVEY_BY_JSON,
         title,
-        atype: input.atype ?? 1,
+        atype,
         desc: description,
-        surveydatajson: jsonl,
+        surveydatajson: processedJsonl,
         publish: input.publish ?? false,
         ...(input.creater !== undefined ? { creater: input.creater } : {}),
     }, {

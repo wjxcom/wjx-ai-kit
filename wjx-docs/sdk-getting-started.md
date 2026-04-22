@@ -1,6 +1,6 @@
 # SDK 入门指南：TypeScript 开发快速上手
 
-> 零依赖、类型安全、{{SDK_FUNCTION_COUNT}} 函数，5 分钟集成问卷能力
+> 零依赖、类型安全、48+ 函数，5 分钟集成问卷能力
 
 ---
 
@@ -10,7 +10,7 @@ wjx-api-sdk 是问卷星 OpenAPI 的 TypeScript SDK。它的特点是：
 
 - **零运行时依赖**：只用 Node.js 内置 API（fetch + crypto），无第三方包
 - **完整类型系统**：70+ TypeScript 类型定义，全程类型安全
-- **{{SDK_FUNCTION_COUNT}} 函数**：8 个模块覆盖问卷星全部 API 能力
+- **48+ 函数**：8 个模块覆盖问卷星全部 API 能力
 - **可测试设计**：fetch 注入 + 凭据提供者模式，623 个测试零网络调用
 
 ---
@@ -125,7 +125,7 @@ async function doSomething(
 
 ## 模块速查
 
-### 问卷管理（13 函数）
+### 问卷管理（48+ 函数）
 
 ```typescript
 import {
@@ -145,7 +145,7 @@ import {
 } from "wjx-api-sdk";
 ```
 
-### 答卷管理（10 函数）
+### 答卷管理（48+ 函数）
 
 ```typescript
 import {
@@ -162,7 +162,7 @@ import {
 } from "wjx-api-sdk";
 ```
 
-### 通讯录管理（14 函数）
+### 通讯录管理（48+ 函数）
 
 ```typescript
 import {
@@ -173,7 +173,7 @@ import {
 } from "wjx-api-sdk";
 ```
 
-### SSO 单点登录（5 函数）
+### SSO 单点登录（48+ 函数）
 
 ```typescript
 import {
@@ -185,7 +185,7 @@ import {
 } from "wjx-api-sdk";
 ```
 
-### 数据分析（6 函数，纯本地计算）
+### 数据分析（48+ 函数，纯本地计算）
 
 ```typescript
 import {
@@ -198,7 +198,7 @@ import {
 } from "wjx-api-sdk";
 ```
 
-### DSL 文本转换（6 函数）
+### DSL 文本转换（48+ 函数）
 
 ```typescript
 import {
@@ -214,11 +214,11 @@ import {
 ### 其他模块
 
 ```typescript
-// 用户体系（6 函数）
+// 用户体系（48+ 函数）
 import { addParticipants, modifyParticipants, deleteParticipants,
          bindActivity, querySurveyBinding, queryUserSurveys } from "wjx-api-sdk";
 
-// 子账号（5 函数）
+// 子账号（48+ 函数）
 import { addSubAccount, modifySubAccount, deleteSubAccount,
          restoreSubAccount, querySubAccounts } from "wjx-api-sdk";
 ```

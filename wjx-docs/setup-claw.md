@@ -160,7 +160,7 @@ wjx-ai-kit 的 Skill 已上架 [ClawHub 市场](https://clawhub.ai/skills?q=wjx)
 
 ## 第三步：安装 CLI（可选）
 
-详见 [CLI 入门指南](./cli-getting-started.md)。CLI 提供 {{CLI_COMMAND_COUNT}} 个子命令，适合批量操作和自动化脚本。
+详见 [CLI 入门指南](./cli-getting-started.md)。CLI 提供 67 个子命令，适合批量操作和自动化脚本。
 
 ---
 
@@ -200,5 +200,5 @@ wjx-ai-kit 的 Skill 已上架 [ClawHub 市场](https://clawhub.ai/skills?q=wjx)
 
 ## 下一步
 
-- [MCP Server 入门指南](./mcp-getting-started.md) — 了解 {{MCP_TOOL_COUNT}} 个工具的完整能力
+- [MCP Server 入门指南](./mcp-getting-started.md) — 了解 58 个工具的完整能力
 - [wjx-ai-kit 总览](./00-overview.md) — 了解 SDK、MCP、CLI 三合一架构

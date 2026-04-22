@@ -1,5 +1,5 @@
 import { readFileSync } from "node:fs";
-import { createSurvey, createSurveyByText, createSurveyByJson, getSurvey, listSurveys, updateSurveyStatus, getSurveySettings, updateSurveySettings, deleteSurvey, getQuestionTags, getTagDetails, clearRecycleBin, uploadFile, buildSurveyUrl, surveyToText, textToSurvey, parsedQuestionsToWire, extractJsonlMetadata, normalizeJsonl, MAX_JSONL_SIZE, } from "wjx-api-sdk";
+import { createSurvey, createSurveyByText, createSurveyByJson, getSurvey, listSurveys, updateSurveyStatus, getSurveySettings, updateSurveySettings, deleteSurvey, getQuestionTags, getTagDetails, clearRecycleBin, uploadFile, buildSurveyUrl, surveyToText, textToSurvey, parsedQuestionsToWire, MAX_JSONL_SIZE, } from "wjx-api-sdk";
 import { formatOutput } from "../lib/output.js";
 import { CliError, handleError } from "../lib/errors.js";
 import { getCredentials } from "../lib/auth.js";
@@ -13,8 +13,17 @@ export function registerSurveyCommands(program) {
         .option("--page <n>", "页码", strictInt)
         .option("--page_size <n>", "每页数量", strictInt)
         .option("--status <n>", "状态筛选", strictInt)
-        .option("--atype <n>", "问卷类型", strictInt)
+        .option("--atype <n>", "问卷类型筛选：1=调查, 2=测评, 3=投票, 4=360度评估, 5=360评估无测评关系, 6=考试, 7=表单, 8=用户体系, 9=教学评估, 10=量表, 11=民主评议", strictInt)
         .option("--name_like <s>", "名称搜索")
+        .option("--sort <n>", "排序规则：0=ID升序, 1=ID降序, 2=开始时间升序, 3=开始时间降序, 4=创建时间升序, 5=创建时间降序", strictInt)
+        .option("--creater <s>", "创建者（子账号用户名）")
+        .option("--folder <s>", "文件夹名称筛选")
+        .option("--is_xingbiao", "仅显示星标问卷")
+        .option("--query_all", "查询所有问卷（含子账号）")
+        .option("--verify_status <n>", "审核状态筛选", strictInt)
+        .option("--time_type <n>", "时间类型：0=创建时间, 1=最后修改时间", strictInt)
+        .option("--begin_time <n>", "起始时间（毫秒时间戳）", strictInt)
+        .option("--end_time <n>", "结束时间（毫秒时间戳）", strictInt)
         .action(async (_opts, cmd) => {
         await executeCommand(program, cmd, listSurveys, (m) => ({
             page_index: m.page,
@@ -22,6 +31,15 @@ export function registerSurveyCommands(program) {
             status: m.status,
             atype: m.atype,
             name_like: m.name_like,
+            sort: m.sort,
+            creater: m.creater,
+            folder: m.folder,
+            is_xingbiao: m.is_xingbiao,
+            query_all: m.query_all,
+            verify_status: m.verify_status,
+            time_type: m.time_type,
+            begin_time: m.begin_time,
+            end_time: m.end_time,
         }));
     });
     // --- get ---
@@ -29,10 +47,26 @@ export function registerSurveyCommands(program) {
         .command("get")
         .description("获取问卷详情")
         .option("--vid <n>", "问卷ID", strictInt)
+        .option("--get_questions", "返回题目信息")
+        .option("--get_items", "返回选项信息")
+        .option("--get_exts", "返回扩展信息")
+        .option("--get_setting", "返回设置信息")
+        .option("--get_page_cut", "返回分页信息")
+        .option("--get_tags", "返回标签信息")
+        .option("--showtitle", "显示标题")
         .action(async (_opts, cmd) => {
         await executeCommand(program, cmd, getSurvey, (m) => {
             requireField(m, "vid");
-            return { vid: m.vid };
+            return {
+                vid: m.vid,
+                get_questions: m.get_questions,
+                get_items: m.get_items,
+                get_exts: m.get_exts,
+                get_setting: m.get_setting,
+                get_page_cut: m.get_page_cut,
+                get_tags: m.get_tags,
+                showtitle: m.showtitle,
+            };
         });
     });
     // --- create ---
@@ -153,20 +187,20 @@ export function registerSurveyCommands(program) {
             if (!jsonlText) {
                 throw new CliError("INPUT_ERROR", "必须提供 --jsonl 或 --file 参数");
             }
-            const normalized = normalizeJsonl(jsonlText.trim());
             const globalOpts = program.opts();
+            const creds = getCredentials(globalOpts);
             if (globalOpts.dryRun) {
-                const metadata = extractJsonlMetadata(normalized);
-                const lineCount = normalized.split("\n").filter((l) => l.trim()).length;
-                process.stderr.write(JSON.stringify({
-                    dry_run: true,
-                    metadata,
-                    line_count: lineCount,
-                    jsonl_size: normalized.length,
-                }, null, 2) + "\n");
+                const { fetchImpl, getCapturedRequest } = createCapturingFetch();
+                await createSurveyByJson({
+                    jsonl: jsonlText,
+                    title: merged.title,
+                    atype: merged.type,
+                    publish: merged.publish,
+                    creater: merged.creater,
+                }, creds, fetchImpl);
+                printDryRunPreview(getCapturedRequest());
                 return;
             }
-            const creds = getCredentials(globalOpts);
             const result = await createSurveyByJson({
                 jsonl: jsonlText,
                 title: merged.title,

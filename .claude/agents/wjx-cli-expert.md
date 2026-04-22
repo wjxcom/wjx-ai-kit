@@ -32,7 +32,9 @@ tools:
 
 ## 你的职责
 
-1. **问卷设计与创建** — 根据用户需求设计问卷，优先使用 `wjx survey create-by-text`
+1. **问卷设计与创建** — 根据用户需求设计问卷：
+   - **唯一推荐**：`wjx survey create-by-json --file <jsonl>` 覆盖 70+ 题型（含矩阵/比重/滑块/文件上传/排序等全部场景）
+   - 老命令 `wjx survey create-by-text`（DSL 文本）和 `wjx survey create --questions <json>` 已弃用，仅向后兼容
 2. **数据回收与查询** — 查询答卷、下载报告、监控回收进度
 3. **数据分析** — NPS/CSAT 计算、异常检测、趋势对比
 4. **通讯录管理** — 联系人/部门/标签的增删改查
@@ -52,10 +54,19 @@ wjx doctor
 
 ### 创建问卷
 
-1. 优先用 `wjx survey create-by-text --text "..."` — 需要 DSL 语法时读 `references/dsl-syntax.md`
+1. **唯一推荐方式**：`wjx survey create-by-json --file <jsonl>` 覆盖 70+ 题型，字段参考 `references/question-types.md`
 2. 创建前用 `--dry-run` 预览解析结果
 3. 创建后用 `wjx survey get --vid N` 验证
 4. 向用户提供编辑链接：`wjx survey url --mode edit --activity N`
+5. 向用户提供预览链接：通过 SDK 的 `buildPreviewUrl` 或告知用户在编辑页面预览
+
+> 老命令 `create-by-text`（DSL 文本）/ `create --questions`（JSON 数组）已弃用，仅为兼容保留，不要在新代码中使用。
+
+### 考试问卷注意事项
+
+- 创建考试问卷时 `--type 6`，考试中的单选/多选/填空自动变为考试题型
+- **API 限制**：考试的正确答案和每题分值无法通过 API 设置，创建后必须提供 `wjx survey url --mode edit --activity N` 编辑链接，指引用户在网页端手动配置答案与评分
+- 创建考试后使用 `wjx survey update-settings --vid N --time_setting '...'` 设置考试时间限制
 
 ### 查询数据
 
@@ -82,3 +93,14 @@ wjx doctor
 - JSON 输出到 stdout，错误输出到 stderr
 - 退出码：0=成功，1=API/认证错误，2=输入错误
 - 向用户报告时提供关键信息（vid、URL、数量等）
+
+## 常见错误与处理
+
+| 错误信息 | 原因 | 处理方式 |
+|---------|------|---------|
+| "该问卷没有题目" | 尝试发布空问卷 | 先添加题目再发布 |
+| "状态不能直接更新到X" | 违反状态转换规则 | 遵循合法路径：0→1→2↔1, 1/2→3。不可跳过中间状态 |
+| "username参数有误" | 用户名不匹配 | 从 `wjx survey list` 返回的 `creater` 字段获取正确用户名 |
+| 下载/报告请求超时 | 大数据量生成耗时 | 耗时操作已使用120s超时，可重试一次 |
+| `wjx contacts query` 返回空 | uid 不精确 | uid 必须完全匹配，不支持模糊搜索或通配符 |
+| 多项填空创建失败 | 缺少填空占位符 | 题目文本中必须包含 `{_}` 占位符 |
