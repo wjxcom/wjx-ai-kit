@@ -321,7 +321,7 @@ server.registerTool("tool_name", { inputSchema }, async (args) => {
 
 资源层的作用是把稳定字典、格式规范和分析基准放进 MCP 上下文，而不是每次让模型重复猜测编码意义。
 
-### 8.23 Prompts
+### 8.22 Prompts
 
 当前注册了 23 个 prompts，分为三组：
 

@@ -7,7 +7,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 wjx-ai-kit is a monorepo (npm workspaces) wrapping the Wenjuanxing (问卷星) OpenAPI. Three packages provide the same API surface through different interfaces:
 
 - **wjx-api-sdk** — Zero-dependency TypeScript SDK (48+ functions, foundation layer)
-- **wjx-mcp-server** — MCP Server (58 tools, 8 resources, 23 prompts) for AI clients
+- **wjx-mcp-server** — MCP Server (58 tools, 8 resources, 22 prompts) for AI clients
 - **wjx-cli** — Commander.js CLI (67 subcommands) designed for AI Agent consumption
 
 ## Build & Test Commands
