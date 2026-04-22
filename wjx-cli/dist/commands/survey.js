@@ -1,5 +1,5 @@
 import { readFileSync } from "node:fs";
-import { createSurvey, createSurveyByText, createSurveyByJson, getSurvey, listSurveys, updateSurveyStatus, getSurveySettings, updateSurveySettings, deleteSurvey, getQuestionTags, getTagDetails, clearRecycleBin, uploadFile, buildSurveyUrl, surveyToText, textToSurvey, parsedQuestionsToWire, extractJsonlMetadata, normalizeJsonl, MAX_JSONL_SIZE, } from "wjx-api-sdk";
+import { createSurvey, createSurveyByText, createSurveyByJson, getSurvey, listSurveys, updateSurveyStatus, getSurveySettings, updateSurveySettings, deleteSurvey, getQuestionTags, getTagDetails, clearRecycleBin, uploadFile, buildSurveyUrl, surveyToText, textToSurvey, parsedQuestionsToWire, MAX_JSONL_SIZE, } from "wjx-api-sdk";
 import { formatOutput } from "../lib/output.js";
 import { CliError, handleError } from "../lib/errors.js";
 import { getCredentials } from "../lib/auth.js";
@@ -187,20 +187,20 @@ export function registerSurveyCommands(program) {
             if (!jsonlText) {
                 throw new CliError("INPUT_ERROR", "必须提供 --jsonl 或 --file 参数");
             }
-            const normalized = normalizeJsonl(jsonlText.trim());
             const globalOpts = program.opts();
+            const creds = getCredentials(globalOpts);
             if (globalOpts.dryRun) {
-                const metadata = extractJsonlMetadata(normalized);
-                const lineCount = normalized.split("\n").filter((l) => l.trim()).length;
-                process.stderr.write(JSON.stringify({
-                    dry_run: true,
-                    metadata,
-                    line_count: lineCount,
-                    jsonl_size: normalized.length,
-                }, null, 2) + "\n");
+                const { fetchImpl, getCapturedRequest } = createCapturingFetch();
+                await createSurveyByJson({
+                    jsonl: jsonlText,
+                    title: merged.title,
+                    atype: merged.type,
+                    publish: merged.publish,
+                    creater: merged.creater,
+                }, creds, fetchImpl);
+                printDryRunPreview(getCapturedRequest());
                 return;
             }
-            const creds = getCredentials(globalOpts);
             const result = await createSurveyByJson({
                 jsonl: jsonlText,
                 title: merged.title,

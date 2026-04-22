@@ -8,6 +8,7 @@ import {
   preprocessExamJsonl,
   EXAM_QTYPES,
   injectDefaultRequir,
+  injectAtypeIntoJsonl,
   inferAtypeFromTitle,
   validateSurveyTitle,
   validateSurveyHasQuestions,
@@ -545,5 +546,138 @@ describe("createSurveyByJson 强化校验", () => {
     assert.ok(NON_QUESTION_QTYPE_SET.has("分页栏"));
     assert.ok(NON_QUESTION_QTYPE_SET.has("段落说明"));
     assert.ok(NON_QUESTION_QTYPE_SET.has("知情同意书"));
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// injectAtypeIntoJsonl + atype 注入到 JSONL（修复服务端忽略顶层 atype 的 bug）
+// ═══════════════════════════════════════════════════════════════════════════════
+
+describe("injectAtypeIntoJsonl", () => {
+  it("inject atype into existing 问卷基础信息 line", () => {
+    const jsonl = [
+      '{"qtype":"问卷基础信息","title":"投票"}',
+      '{"qtype":"单选","title":"Q","select":["A"]}',
+    ].join("\n");
+    const out = injectAtypeIntoJsonl(jsonl, 3);
+    const meta = JSON.parse(out.split("\n")[0]);
+    assert.equal(meta.atype, 3);
+    assert.equal(meta.title, "投票");
+  });
+
+  it("overwrite existing atype in 问卷基础信息", () => {
+    const jsonl = '{"qtype":"问卷基础信息","title":"X","atype":1}\n{"qtype":"单选","title":"Q","select":["A"]}';
+    const out = injectAtypeIntoJsonl(jsonl, 7);
+    assert.equal(JSON.parse(out.split("\n")[0]).atype, 7);
+  });
+
+  it("prepend 问卷基础信息 line when missing", () => {
+    const jsonl = '{"qtype":"单选","title":"Q","select":["A"]}';
+    const out = injectAtypeIntoJsonl(jsonl, 6);
+    const lines = out.split("\n");
+    const meta = JSON.parse(lines[0]);
+    assert.equal(meta.qtype, "问卷基础信息");
+    assert.equal(meta.atype, 6);
+    assert.equal(lines[1], jsonl);
+  });
+
+  it("skip empty/malformed lines", () => {
+    const jsonl = ['', 'not json', '{"qtype":"问卷基础信息","title":"X"}'].join("\n");
+    const out = injectAtypeIntoJsonl(jsonl, 2);
+    const lines = out.split("\n");
+    assert.equal(lines[0], "");
+    assert.equal(lines[1], "not json");
+    assert.equal(JSON.parse(lines[2]).atype, 2);
+  });
+});
+
+describe("createSurveyByJson 注入 atype 到 JSONL（修复服务端忽略顶层 atype）", () => {
+  function makeFakeFetch() {
+    const captured = { body: null };
+    const fakeFetch = async (_url, init) => {
+      captured.body = JSON.parse(init.body);
+      return new Response(
+        JSON.stringify({ result: true, data: { vid: 1 } }),
+        { status: 200, headers: { "content-type": "application/json" } },
+      );
+    };
+    return { fakeFetch, captured };
+  }
+
+  it("--type 3 投票：顶层 atype + JSONL 内 atype 都为 3", async () => {
+    const { fakeFetch, captured } = makeFakeFetch();
+    await createSurveyByJson(
+      {
+        jsonl: [
+          '{"qtype":"问卷基础信息","title":"2026 年度歌手投票"}',
+          '{"qtype":"单选","title":"Q","select":["A","B"]}',
+        ].join("\n"),
+        atype: 3,
+      },
+      { apiKey: "k" },
+      fakeFetch,
+    );
+    assert.equal(captured.body.atype, 3);
+    const metaLine = JSON.parse(captured.body.surveydatajson.split("\n")[0]);
+    assert.equal(metaLine.atype, 3, "JSONL 首行必须含 atype=3，否则服务端会落库为 1");
+    assert.equal(metaLine.qtype, "问卷基础信息");
+  });
+
+  it("--type 7 表单：顶层和 JSONL 内 atype 双写", async () => {
+    const { fakeFetch, captured } = makeFakeFetch();
+    await createSurveyByJson(
+      {
+        jsonl: [
+          '{"qtype":"问卷基础信息","title":"活动报名表"}',
+          '{"qtype":"单选","title":"Q","select":["A"]}',
+        ].join("\n"),
+        atype: 7,
+      },
+      { apiKey: "k" },
+      fakeFetch,
+    );
+    assert.equal(captured.body.atype, 7);
+    assert.equal(JSON.parse(captured.body.surveydatajson.split("\n")[0]).atype, 7);
+  });
+
+  it("用户在 JSONL 内显式声明 atype 时优先于标题推断", async () => {
+    const { fakeFetch, captured } = makeFakeFetch();
+    await createSurveyByJson(
+      {
+        // 标题含「投票」推断 = 3，JSONL 内显式声明 = 1
+        jsonl: '{"qtype":"问卷基础信息","title":"年度投票","atype":1}\n{"qtype":"单选","title":"Q","select":["A"]}',
+      },
+      { apiKey: "k" },
+      fakeFetch,
+    );
+    assert.equal(captured.body.atype, 1);
+    assert.equal(JSON.parse(captured.body.surveydatajson.split("\n")[0]).atype, 1);
+  });
+
+  it("input.atype 优先级最高（覆盖 JSONL 内的 atype）", async () => {
+    const { fakeFetch, captured } = makeFakeFetch();
+    await createSurveyByJson(
+      {
+        jsonl: '{"qtype":"问卷基础信息","title":"客户满意度","atype":1}\n{"qtype":"单选","title":"Q","select":["A"]}',
+        atype: 3,
+      },
+      { apiKey: "k" },
+      fakeFetch,
+    );
+    assert.equal(captured.body.atype, 3);
+    assert.equal(JSON.parse(captured.body.surveydatajson.split("\n")[0]).atype, 3);
+  });
+
+  it("默认 atype=1（普通调查）也写入 JSONL", async () => {
+    const { fakeFetch, captured } = makeFakeFetch();
+    await createSurveyByJson(
+      {
+        jsonl: '{"qtype":"问卷基础信息","title":"客户满意度调查"}\n{"qtype":"单选","title":"Q","select":["A"]}',
+      },
+      { apiKey: "k" },
+      fakeFetch,
+    );
+    assert.equal(captured.body.atype, 1);
+    assert.equal(JSON.parse(captured.body.surveydatajson.split("\n")[0]).atype, 1);
   });
 });

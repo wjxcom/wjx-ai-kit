@@ -865,20 +865,26 @@ describe("survey create-by-json", () => {
     assert.equal(err.code, "INPUT_ERROR");
   });
 
-  it("create-by-json --dry-run shows metadata and line count", async () => {
+  it("create-by-json --dry-run captures real POST body with atype injected into JSONL", async () => {
     const jsonl = [
-      '{"qtype":"问卷基础信息","title":"测试问卷","introduction":"请填写"}',
+      '{"qtype":"问卷基础信息","title":"活动报名表","introduction":"请填写"}',
       '{"qtype":"单选","title":"性别","select":["男","女"]}',
     ].join("\n");
     const result = await runFull(
-      ["survey", "create-by-json", "--jsonl", jsonl, "--dry-run"],
+      ["survey", "create-by-json", "--jsonl", jsonl, "--type", "7", "--dry-run"],
       { env: { WJX_API_KEY: "fake-key-1234567890", ...NO_CONFIG } },
     );
     assert.equal(result.exitCode, 0);
     const preview = JSON.parse(result.stderr);
     assert.equal(preview.dry_run, true);
-    assert.equal(preview.metadata.title, "测试问卷");
-    assert.equal(preview.line_count, 2);
+    assert.equal(preview.request.method, "POST");
+    assert.match(preview.request.url, /action=1000106/);
+    const body = JSON.parse(preview.request.body);
+    assert.equal(body.atype, 7, "顶层 atype 必须为 7");
+    assert.equal(body.title, "活动报名表");
+    const metaLine = JSON.parse(body.surveydatajson.split("\n")[0]);
+    assert.equal(metaLine.qtype, "问卷基础信息");
+    assert.equal(metaLine.atype, 7, "JSONL 内首行也必须含 atype=7（服务端实际读取的位置）");
   });
 
   it("create-by-json without api-key → AUTH_ERROR exit 1", async () => {

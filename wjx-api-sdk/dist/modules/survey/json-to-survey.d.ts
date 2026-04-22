@@ -5,6 +5,8 @@ export interface JsonSurveyMetadata {
     description: string;
     endpageinformation: string;
     language: string;
+    /** 用户在 JSONL 内部声明的 atype（1=调查 / 2=测评 / 3=投票 / 6=考试 / 7=表单）。未声明时为 undefined。 */
+    atype?: number;
 }
 /** A raw JSON question object parsed from JSONL input. */
 export interface JsonSurveyQuestion {
@@ -134,6 +136,16 @@ export declare function preprocessExamJsonl(jsonl: string): {
  * - 非题目行（问卷基础信息、分页栏、段落说明、知情同意书）和空行/无法解析行保持原样
  */
 export declare function injectDefaultRequir(jsonl: string): string;
+/**
+ * 将 `atype` 写入 JSONL 首行的「问卷基础信息」对象（覆盖已有值）。
+ * - 存在「问卷基础信息」行：就地注入/覆盖 atype 字段
+ * - 不存在「问卷基础信息」行：在 JSONL 头部插入一行 `{"qtype":"问卷基础信息","atype":<n>}`
+ *
+ * 背景：问卷星 action 1000106（create_survey_by_json）服务端实际只从 JSONL 内的
+ * 「问卷基础信息」行读取 atype，忽略顶层 POST 参数的 atype。顶层字段仍需保留作为
+ * 冗余双保险，但必须同时把 atype 注入 JSONL，否则无论顶层传什么都落库为 atype=1。
+ */
+export declare function injectAtypeIntoJsonl(jsonl: string, atype: number): string;
 /**
  * 从问卷标题中根据关键字推断问卷类型（atype）。
  * - 含"投票" → 3（投票）

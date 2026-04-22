@@ -67,6 +67,7 @@ export {
   EXAM_QTYPES,
   preprocessExamJsonl,
   injectDefaultRequir,
+  injectAtypeIntoJsonl,
   inferAtypeFromTitle,
   validateSurveyTitle,
   validateSurveyHasQuestions,

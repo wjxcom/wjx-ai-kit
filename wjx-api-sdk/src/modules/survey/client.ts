@@ -10,6 +10,7 @@ import {
   MAX_JSONL_SIZE,
   preprocessExamJsonl,
   injectDefaultRequir,
+  injectAtypeIntoJsonl,
   inferAtypeFromTitle,
   validateSurveyTitle,
   validateSurveyHasQuestions,
@@ -276,8 +277,8 @@ export async function createSurveyByJson<T = unknown>(
   // 考试题型预处理：注入 isquiz="1"，并在用户未指定 atype 时推断为 6（考试）
   const { jsonl: examProcessed, hasExam } = preprocessExamJsonl(jsonl);
   // 默认必答预处理：与页面创建行为保持一致，为题目行注入 requir=true（未指定时）
-  const processedJsonl = injectDefaultRequir(examProcessed);
-  const metadata = extractJsonlMetadata(processedJsonl);
+  const requirInjected = injectDefaultRequir(examProcessed);
+  const metadata = extractJsonlMetadata(requirInjected);
   const title = input.title ?? metadata.title;
   const description = metadata.description ?? "";
 
@@ -285,12 +286,17 @@ export async function createSurveyByJson<T = unknown>(
   validateSurveyTitle(title);
 
   // 题目数校验：JSONL 至少包含 1 道真实题目（排除元数据/分页/段落/知情同意书）
-  validateSurveyHasQuestions(processedJsonl);
+  validateSurveyHasQuestions(requirInjected);
 
-  // atype 推断优先级：显式入参 > 考试题型 > 标题关键字 > 1（调查）
+  // atype 推断优先级：显式入参 > JSONL 元数据 atype > 考试题型 > 标题关键字 > 1（调查）
   const atype =
     input.atype ??
+    metadata.atype ??
     (hasExam ? 6 : inferAtypeFromTitle(title) ?? 1);
+
+  // 关键修复：服务端 action 1000106 实际只读 JSONL 内的 atype，忽略顶层字段。
+  // 必须把最终 atype 注入「问卷基础信息」行，否则页面落库会一律变成 atype=1。
+  const processedJsonl = injectAtypeIntoJsonl(requirInjected, atype);
 
   return callWjxApi<T>(
     {

@@ -18,8 +18,6 @@ import {
   surveyToText,
   textToSurvey,
   parsedQuestionsToWire,
-  extractJsonlMetadata,
-  normalizeJsonl,
   MAX_JSONL_SIZE,
 } from "wjx-api-sdk";
 import { formatOutput } from "../lib/output.js";
@@ -219,23 +217,22 @@ export function registerSurveyCommands(program: Command): void {
           throw new CliError("INPUT_ERROR", "必须提供 --jsonl 或 --file 参数");
         }
 
-        const normalized = normalizeJsonl(jsonlText.trim());
-
         const globalOpts = program.opts();
+        const creds = getCredentials(globalOpts);
 
         if (globalOpts.dryRun) {
-          const metadata = extractJsonlMetadata(normalized);
-          const lineCount = normalized.split("\n").filter((l: string) => l.trim()).length;
-          process.stderr.write(JSON.stringify({
-            dry_run: true,
-            metadata,
-            line_count: lineCount,
-            jsonl_size: normalized.length,
-          }, null, 2) + "\n");
+          const { fetchImpl, getCapturedRequest } = createCapturingFetch();
+          await createSurveyByJson({
+            jsonl: jsonlText,
+            title: merged.title as string | undefined,
+            atype: merged.type as number | undefined,
+            publish: merged.publish as boolean | undefined,
+            creater: merged.creater as string | undefined,
+          }, creds, fetchImpl);
+          printDryRunPreview(getCapturedRequest());
           return;
         }
 
-        const creds = getCredentials(globalOpts);
         const result = await createSurveyByJson({
           jsonl: jsonlText,
           title: merged.title as string | undefined,

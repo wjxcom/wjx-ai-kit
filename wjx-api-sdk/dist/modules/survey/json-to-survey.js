@@ -24,11 +24,18 @@ export function extractJsonlMetadata(jsonlText) {
         try {
             const obj = JSON.parse(trimmed);
             if (obj.qtype === "问卷基础信息") {
+                const rawAtype = obj.atype;
+                const atype = typeof rawAtype === "number" && Number.isFinite(rawAtype)
+                    ? rawAtype
+                    : typeof rawAtype === "string" && /^\d+$/.test(rawAtype)
+                        ? Number(rawAtype)
+                        : undefined;
                 return {
                     title: typeof obj.title === "string" ? obj.title : "",
                     description: typeof obj.introduction === "string" ? obj.introduction : "",
                     endpageinformation: typeof obj.endpageinformation === "string" ? obj.endpageinformation : "",
                     language: typeof obj.language === "string" ? obj.language : "zh",
+                    atype,
                 };
             }
         }
@@ -126,6 +133,44 @@ export function injectDefaultRequir(jsonl) {
         return line;
     });
     return processed.join("\n");
+}
+// ─── atype 注入到 JSONL 首行 ───────────────────────────────────────
+/**
+ * 将 `atype` 写入 JSONL 首行的「问卷基础信息」对象（覆盖已有值）。
+ * - 存在「问卷基础信息」行：就地注入/覆盖 atype 字段
+ * - 不存在「问卷基础信息」行：在 JSONL 头部插入一行 `{"qtype":"问卷基础信息","atype":<n>}`
+ *
+ * 背景：问卷星 action 1000106（create_survey_by_json）服务端实际只从 JSONL 内的
+ * 「问卷基础信息」行读取 atype，忽略顶层 POST 参数的 atype。顶层字段仍需保留作为
+ * 冗余双保险，但必须同时把 atype 注入 JSONL，否则无论顶层传什么都落库为 atype=1。
+ */
+export function injectAtypeIntoJsonl(jsonl, atype) {
+    const lines = jsonl.split("\n");
+    let injected = false;
+    const out = lines.map((line) => {
+        if (injected)
+            return line;
+        const trimmed = line.trim();
+        if (!trimmed)
+            return line;
+        let obj;
+        try {
+            obj = JSON.parse(trimmed);
+        }
+        catch {
+            return line;
+        }
+        if (obj.qtype === "问卷基础信息") {
+            obj.atype = atype;
+            injected = true;
+            return JSON.stringify(obj);
+        }
+        return line;
+    });
+    if (!injected) {
+        return `${JSON.stringify({ qtype: "问卷基础信息", atype })}\n${jsonl}`;
+    }
+    return out.join("\n");
 }
 // ─── 从标题/元数据推断问卷类型（atype） ────────────────────────────
 /**
