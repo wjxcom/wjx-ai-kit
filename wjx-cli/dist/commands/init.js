@@ -5,6 +5,52 @@ import { loadConfig, saveConfig, CONFIG_PATH } from "../lib/config.js";
 import { maskApiKey } from "../lib/mask.js";
 import { installSkill } from "../lib/install-skill.js";
 const DEFAULT_BASE_URL = "https://www.wjx.cn";
+/**
+ * Detect AI Agent environment. 仅在 AI 场景下提示安装技能。
+ *
+ * 策略：
+ * 1. 高置信度厂商变量（官方文档或已观察到的会注入到子进程环境）
+ * 2. 通用 opt-in 变量 WJX_AGENT/AI_AGENT —— 文档中约定"未知 agent 请在启动配置注入 WJX_AGENT=1"
+ * 3. 避免依赖 VSCODE_PID/TERM_PROGRAM 这类过宽信号（普通 VS Code 终端会误触发）
+ */
+function isAiAgentEnv() {
+    const KNOWN_AI_ENV_VARS = [
+        // Anthropic
+        "CLAUDECODE",
+        "CLAUDE_CODE",
+        "CLAUDE_CODE_ENTRYPOINT",
+        "CLAUDE_CODE_SSE_PORT",
+        // Cursor
+        "CURSOR_AGENT",
+        "CURSOR_TRACE_ID",
+        // Windsurf / Codeium
+        "CODEIUM_API_KEY",
+        "WINDSURF_SESSION",
+        "WINDSURF",
+        // Cline / Continue / Aider / Codex
+        "CLINE_AGENT",
+        "CONTINUE_GLOBAL_DIR",
+        "AIDER_MODEL",
+        "CODEX_AGENT",
+        "OPENAI_CODEX",
+        // 字节 Trae / 阿里 Qoder / 通义灵码 / 腾讯 WorkBuddy·CodeBuddy
+        "TRAE_AGENT",
+        "QODER_AGENT",
+        "LINGMA_AGENT",
+        "CODEBUDDY_AGENT",
+        "WORKBUDDY_AGENT",
+        // Manus
+        "MANUS_AGENT",
+        // Claw 家族（OpenClaw / KimiClaw / QClaw / LinClaw / MaxClaw / EasyClaw / ArkClaw / DuClaw）
+        "OPENCLAW",
+        "OPENCLAW_GATEWAY_TOKEN",
+        "CLAW_AGENT",
+        // 通用 opt-in（未识别的 agent 可通过设置此变量启用 AI 行为）
+        "AI_AGENT",
+        "WJX_AGENT",
+    ];
+    return KNOWN_AI_ENV_VARS.some((name) => Boolean(process.env[name]));
+}
 /** Validate API Key by calling listSurveys. Returns true if valid. */
 async function validateApiKey(apiKey) {
     stderr.write("验证 API Key...");
@@ -48,7 +94,7 @@ async function initWithArgs(opts) {
     }
     await validateApiKey(apiKey);
     saveAndReport(apiKey, baseUrl, corpId);
-    if (opts.installSkill) {
+    if (opts.installSkill && isAiAgentEnv()) {
         const result = installSkill(process.cwd(), { force: true });
         if (result.status === "error") {
             stderr.write(`技能安装失败: ${result.message}\n`);
@@ -83,10 +129,8 @@ async function initInteractive() {
         const defaultUrl = currentBaseUrl || DEFAULT_BASE_URL;
         const baseUrlInput = await rl.question(`  WJX_BASE_URL [${defaultUrl}]: `);
         const baseUrl = baseUrlInput.trim() || defaultUrl;
-        // 3. Corp ID (optional)
-        const corpHint = currentCorpId ? ` [${currentCorpId}]` : "";
-        const corpIdInput = await rl.question(`  WJX_CORP_ID${corpHint}: `);
-        const corpId = corpIdInput.trim() || currentCorpId || undefined;
+        // 3. Corp ID (保留已有值，不再默认询问以简化向导；如需配置请直接编辑 ~/.wjxrc)
+        const corpId = currentCorpId || undefined;
         // Apply base URL before validation so SDK uses the correct endpoint
         if (baseUrl !== DEFAULT_BASE_URL) {
             process.env.WJX_BASE_URL = baseUrl;
@@ -97,14 +141,16 @@ async function initInteractive() {
         await validateApiKey(apiKey);
         stderr.write("\n");
         saveAndReport(apiKey, baseUrl, corpId);
-        stderr.write("提示: 也可以直接编辑该文件修改配置。\n");
-        // 4. Skill installation
-        stderr.write("\n");
-        const installAnswer = await rl.question("推荐安装 wjx-cli-use 技能以获取完整体验？(y/n) ");
-        if (installAnswer.trim().toLowerCase() === "y") {
-            const result = installSkill(process.cwd(), { force: true });
-            if (result.status === "error") {
-                stderr.write(`技能安装失败: ${result.message}\n`);
+        stderr.write("提示: 也可以直接编辑该文件修改配置（如 WJX_CORP_ID 通讯录）。\n");
+        // 4. Skill installation — 仅在 AI Agent 场景下提示
+        if (isAiAgentEnv()) {
+            stderr.write("\n");
+            const installAnswer = await rl.question("检测到 AI Agent 环境，推荐安装 wjx-cli-use 技能以获取完整体验？(y/n) ");
+            if (installAnswer.trim().toLowerCase() === "y") {
+                const result = installSkill(process.cwd(), { force: true });
+                if (result.status === "error") {
+                    stderr.write(`技能安装失败: ${result.message}\n`);
+                }
             }
         }
     }

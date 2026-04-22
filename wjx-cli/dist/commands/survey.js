@@ -98,7 +98,7 @@ export function registerSurveyCommands(program) {
         .description("用 DSL 文本创建问卷（推荐 AI Agent 使用）")
         .option("--text <s>", "DSL 格式问卷文本")
         .option("--file <path>", "从文件读取 DSL 文本")
-        .option("--type <n>", "问卷类型：1=调查, 2=测评, 3=投票, 6=考试, 7=表单", strictInt)
+        .option("--type <n>", "问卷类型：1=调查, 2=测评, 3=投票, 6=考试, 7=表单, 10=量表, 11=民主测评", strictInt)
         .option("--publish", "创建后发布")
         .option("--creater <s>", "创建者子账号")
         .action(async (_opts, cmd) => {
@@ -159,7 +159,7 @@ export function registerSurveyCommands(program) {
         .option("--jsonl <s>", "JSONL 格式问卷文本")
         .option("--file <path>", "从文件读取 JSONL 文本")
         .option("--title <s>", "覆盖 JSONL 中的问卷标题")
-        .option("--type <n>", "问卷类型：1=调查, 2=测评, 3=投票, 6=考试, 7=表单", strictInt)
+        .option("--type <n>", "问卷类型：1=调查, 2=测评, 3=投票, 6=考试, 7=表单, 10=量表, 11=民主测评", strictInt)
         .option("--publish", "创建后发布")
         .option("--creater <s>", "创建者子账号")
         .action(async (_opts, cmd) => {

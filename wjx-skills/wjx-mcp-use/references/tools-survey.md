@@ -18,7 +18,7 @@
 
 ## create_survey_by_json — 用 JSON 创建问卷（推荐）
 
-**首选方式**：支持 70+ 题型，覆盖全部 q_type/q_subtype 编码。配合 prompt 模板（generate-survey-json、generate-major-survey-json、generate-exam-json、generate-form-json）使用效果最佳。
+**首选方式**：支持 70+ 题型，覆盖全部 q_type/q_subtype 编码。配合 prompt 模板（generate-survey-json、generate-exam-json、generate-form-json）使用效果最佳。
 
 | 参数 | 类型 | 必填 | 说明 |
 |------|------|------|------|
