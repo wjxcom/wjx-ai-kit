@@ -9,16 +9,51 @@ import type { WjxConfig } from "../lib/config.js";
 
 const DEFAULT_BASE_URL = "https://www.wjx.cn";
 
-/** Detect AI Agent environment (Claude Code, Cursor, etc.). 仅在 AI 场景下提示安装技能。 */
+/**
+ * Detect AI Agent environment. 仅在 AI 场景下提示安装技能。
+ *
+ * 策略：
+ * 1. 高置信度厂商变量（官方文档或已观察到的会注入到子进程环境）
+ * 2. 通用 opt-in 变量 WJX_AGENT/AI_AGENT —— 文档中约定"未知 agent 请在启动配置注入 WJX_AGENT=1"
+ * 3. 避免依赖 VSCODE_PID/TERM_PROGRAM 这类过宽信号（普通 VS Code 终端会误触发）
+ */
 function isAiAgentEnv(): boolean {
-  return Boolean(
-    process.env.CLAUDECODE ||
-      process.env.CLAUDE_CODE ||
-      process.env.CURSOR_AGENT ||
-      process.env.CURSOR_TRACE_ID ||
-      process.env.AI_AGENT ||
-      process.env.WJX_AGENT,
-  );
+  const KNOWN_AI_ENV_VARS = [
+    // Anthropic
+    "CLAUDECODE",
+    "CLAUDE_CODE",
+    "CLAUDE_CODE_ENTRYPOINT",
+    "CLAUDE_CODE_SSE_PORT",
+    // Cursor
+    "CURSOR_AGENT",
+    "CURSOR_TRACE_ID",
+    // Windsurf / Codeium
+    "CODEIUM_API_KEY",
+    "WINDSURF_SESSION",
+    "WINDSURF",
+    // Cline / Continue / Aider / Codex
+    "CLINE_AGENT",
+    "CONTINUE_GLOBAL_DIR",
+    "AIDER_MODEL",
+    "CODEX_AGENT",
+    "OPENAI_CODEX",
+    // 字节 Trae / 阿里 Qoder / 通义灵码 / 腾讯 WorkBuddy·CodeBuddy
+    "TRAE_AGENT",
+    "QODER_AGENT",
+    "LINGMA_AGENT",
+    "CODEBUDDY_AGENT",
+    "WORKBUDDY_AGENT",
+    // Manus
+    "MANUS_AGENT",
+    // Claw 家族（OpenClaw / KimiClaw / QClaw / LinClaw / MaxClaw / EasyClaw / ArkClaw / DuClaw）
+    "OPENCLAW",
+    "OPENCLAW_GATEWAY_TOKEN",
+    "CLAW_AGENT",
+    // 通用 opt-in（未识别的 agent 可通过设置此变量启用 AI 行为）
+    "AI_AGENT",
+    "WJX_AGENT",
+  ];
+  return KNOWN_AI_ENV_VARS.some((name) => Boolean(process.env[name]));
 }
 
 /** Validate API Key by calling listSurveys. Returns true if valid. */
