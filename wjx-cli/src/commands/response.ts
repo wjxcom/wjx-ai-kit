@@ -10,21 +10,12 @@ import {
   get360Report,
   clearResponses,
   getSurvey,
+  normalizeSubmitdata,
 } from "wjx-api-sdk";
 import type { WjxCredentials } from "wjx-api-sdk";
 import { executeCommand, strictInt, requireField, ensureJsonString } from "../lib/command-helpers.js";
 
-/** 修正排序题 submitdata 中的管道符为逗号 */
-function fixRankingSubmitdata(data: string, rankingIndices: Set<number>): string {
-  return data.split("}").map(part => {
-    const idx = part.indexOf("$");
-    if (idx === -1) return part;
-    const qNum = parseInt(part.slice(0, idx), 10);
-    if (!rankingIndices.has(qNum)) return part;
-    return part.slice(0, idx + 1) + part.slice(idx + 1).replace(/\|/g, ",");
-  }).join("}");
-}
-
+/** 规范化 submitdata 中的题号、矩阵题和排序题答案格式 */
 export function registerResponseCommands(program: Command): void {
   const response = program.command("response").description("答卷管理");
 
@@ -165,19 +156,18 @@ export function registerResponseCommands(program: Command): void {
         };
       }, {
         transformInput: async (input, creds) => {
-          // 自动修正排序题 submitdata：AI 常误用 | 分隔，问卷星要求用逗号
+          // 自动规范化 submitdata：题号、矩阵题和排序题答案格式由 SDK 统一处理
           try {
             const survey = await getSurvey(
               { vid: input.vid as number },
               creds as WjxCredentials,
             );
-            const data = survey?.data as { questions?: Array<{ q_index: number; q_subtype: number }> } | undefined;
+            const data = survey?.data as {
+              questions?: Array<{ q_index: number; q_type: number; q_subtype: number }>;
+            } | undefined;
             const questions = data?.questions ?? [];
-            const rankingIndices = new Set<number>(
-              questions.filter((q) => q.q_subtype === 402).map((q) => q.q_index),
-            );
-            if (rankingIndices.size > 0 && typeof input.submitdata === "string") {
-              return { ...input, submitdata: fixRankingSubmitdata(input.submitdata, rankingIndices) };
+            if (questions.length > 0 && typeof input.submitdata === "string") {
+              return { ...input, submitdata: normalizeSubmitdata(input.submitdata, questions) };
             }
           } catch {
             // 获取问卷结构失败时不阻塞提交

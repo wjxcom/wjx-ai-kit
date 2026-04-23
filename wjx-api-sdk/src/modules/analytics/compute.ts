@@ -12,7 +12,8 @@ import type {
 // ─── decodeResponses ─────────────────────────────────────────────────────────
 // Format: "题号$答案}题号$答案"
 // Multi-choice answers use pipe separator: "1|2|3"
-// Matrix answers use comma-separated sub-answers: "row1_col1,row1_col2"
+// Matrix answers use comma-separated sub-answers: "row1!col1,row2!col2"
+// Legacy "_" separators are still accepted for backward compatibility.
 // Fill-in answers are plain text
 //
 // NOTE: Without question metadata, type detection is heuristic-based.
@@ -40,6 +41,8 @@ export function decodeResponses(submitdata: string): DecodeResponsesResult {
     const rawValue = trimmed.substring(dollarIdx + 1);
 
     // Detect type based on content patterns
+    const matrixValue = parseMatrixValue(rawValue);
+
     if (rawValue.includes("|")) {
       // Multi-choice: values separated by pipe
       answers.push({
@@ -47,19 +50,11 @@ export function decodeResponses(submitdata: string): DecodeResponsesResult {
         type: "multi",
         value: rawValue.split("|"),
       });
-    } else if (rawValue.includes(",") && rawValue.split(",").every((p) => p.includes("_"))) {
-      // Matrix: "row_col,row_col" pattern
-      const pairs: Record<string, string> = {};
-      for (const pair of rawValue.split(",")) {
-        const underIdx = pair.indexOf("_");
-        if (underIdx !== -1) {
-          pairs[pair.substring(0, underIdx)] = pair.substring(underIdx + 1);
-        }
-      }
+    } else if (matrixValue) {
       answers.push({
         questionIndex: qIdx,
         type: "matrix",
-        value: pairs,
+        value: matrixValue,
       });
     } else if (/^\d+$/.test(rawValue)) {
       // Single choice: numeric answer
@@ -79,6 +74,36 @@ export function decodeResponses(submitdata: string): DecodeResponsesResult {
   }
 
   return { answers, count: answers.length };
+}
+
+function parseMatrixValue(rawValue: string): Record<string, string> | null {
+  const parts = rawValue
+    .split(",")
+    .map((part) => part.trim())
+    .filter(Boolean);
+
+  if (parts.length === 0) return null;
+
+  const pairs: Record<string, string> = {};
+
+  for (const part of parts) {
+    const bangIdx = part.indexOf("!");
+    const underIdx = bangIdx === -1 ? part.indexOf("_") : -1;
+    const sepIdx = bangIdx !== -1 ? bangIdx : underIdx;
+
+    if (sepIdx <= 0 || sepIdx >= part.length - 1) {
+      return null;
+    }
+
+    const rowKey = part.substring(0, sepIdx);
+    if (!/^\d+$/.test(rowKey)) {
+      return null;
+    }
+
+    pairs[rowKey] = part.substring(sepIdx + 1);
+  }
+
+  return Object.keys(pairs).length > 0 ? pairs : null;
 }
 
 // ─── calculateNps ────────────────────────────────────────────────────────────

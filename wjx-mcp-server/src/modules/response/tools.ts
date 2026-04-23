@@ -11,23 +11,10 @@ import {
   get360Report,
   clearResponses,
 } from "./client.js";
-import { getSurvey } from "wjx-api-sdk";
+import { getSurvey, normalizeSubmitdata } from "wjx-api-sdk";
 import { wrapToolHandler, assertJson } from "../../helpers.js";
 
-/**
- * 修正排序题 submitdata 中的管道符为逗号。
- * AI 经常误用 | 分隔排序题答案（与多选格式混淆），但问卷星 API 要求排序题用英文逗号。
- */
-function fixRankingSubmitdata(data: string, rankingIndices: Set<number>): string {
-  return data.split("}").map(part => {
-    const idx = part.indexOf("$");
-    if (idx === -1) return part;
-    const qNum = parseInt(part.slice(0, idx), 10);
-    if (!rankingIndices.has(qNum)) return part;
-    return part.slice(0, idx + 1) + part.slice(idx + 1).replace(/\|/g, ",");
-  }).join("}");
-}
-
+/** 规范化 submitdata 中的题号、矩阵题和排序题答案格式。 */
 export function registerResponseTools(server: McpServer): void {
   // ─── query_responses ──────────────────────────────────────────────
   server.registerTool(
@@ -214,7 +201,7 @@ export function registerResponseTools(server: McpServer): void {
       inputSchema: {
         vid: z.number().int().positive().describe("问卷编号"),
         inputcosttime: z.number().int().min(2).describe("填写时间（秒），需>1秒否则视为机器提交"),
-        submitdata: z.string().min(1).describe("答卷内容字符串，格式：题号$答案}题号$答案。单选：题号$选项序号；多选：题号$选项1|选项2（竖线分隔）；填空：题号$文本；排序题：题号$选项序号1,选项序号2,选项序号3（英文逗号分隔，按排名顺序列出所有选项序号）"),
+        submitdata: z.string().min(1).describe("答卷内容字符串，格式：题号$答案}题号$答案。单选：题号$选项序号；多选/排序题：题号$选项1|选项2（竖线分隔，排序题按排名顺序列出所有选项序号）；填空：题号$文本"),
         udsid: z.number().int().optional().describe("自定义来源编号"),
         sojumpparm: z.string().optional().describe("自定义链接参数"),
         submittime: z.string().optional().describe("答卷提交时间，日期时间字符串，默认当前时间"),
@@ -227,17 +214,16 @@ export function registerResponseTools(server: McpServer): void {
       },
     },
     wrapToolHandler(async (args) => {
-      // 自动修正排序题 submitdata：AI 常误用 | 分隔，问卷星要求用逗号
+      // 自动规范化 submitdata：题号、矩阵题和排序题答案格式由 SDK 统一处理
       let submitdata = args.submitdata;
       try {
         const survey = await getSurvey({ vid: args.vid });
-        const data = survey?.data as { questions?: Array<{ q_index: number; q_subtype: number }> } | undefined;
+        const data = survey?.data as {
+          questions?: Array<{ q_index: number; q_type: number; q_subtype: number }>;
+        } | undefined;
         const questions = data?.questions ?? [];
-        const rankingIndices = new Set<number>(
-          questions.filter((q) => q.q_subtype === 402).map((q) => q.q_index),
-        );
-        if (rankingIndices.size > 0) {
-          submitdata = fixRankingSubmitdata(submitdata, rankingIndices);
+        if (questions.length > 0) {
+          submitdata = normalizeSubmitdata(submitdata, questions);
         }
       } catch {
         // 获取问卷结构失败时不阻塞提交，使用原始 submitdata

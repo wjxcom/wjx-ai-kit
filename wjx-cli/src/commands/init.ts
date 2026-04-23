@@ -9,53 +9,6 @@ import type { WjxConfig } from "../lib/config.js";
 
 const DEFAULT_BASE_URL = "https://www.wjx.cn";
 
-/**
- * Detect AI Agent environment. 仅在 AI 场景下提示安装技能。
- *
- * 策略：
- * 1. 高置信度厂商变量（官方文档或已观察到的会注入到子进程环境）
- * 2. 通用 opt-in 变量 WJX_AGENT/AI_AGENT —— 文档中约定"未知 agent 请在启动配置注入 WJX_AGENT=1"
- * 3. 避免依赖 VSCODE_PID/TERM_PROGRAM 这类过宽信号（普通 VS Code 终端会误触发）
- */
-function isAiAgentEnv(): boolean {
-  const KNOWN_AI_ENV_VARS = [
-    // Anthropic
-    "CLAUDECODE",
-    "CLAUDE_CODE",
-    "CLAUDE_CODE_ENTRYPOINT",
-    "CLAUDE_CODE_SSE_PORT",
-    // Cursor
-    "CURSOR_AGENT",
-    "CURSOR_TRACE_ID",
-    // Windsurf / Codeium
-    "CODEIUM_API_KEY",
-    "WINDSURF_SESSION",
-    "WINDSURF",
-    // Cline / Continue / Aider / Codex
-    "CLINE_AGENT",
-    "CONTINUE_GLOBAL_DIR",
-    "AIDER_MODEL",
-    "CODEX_AGENT",
-    "OPENAI_CODEX",
-    // 字节 Trae / 阿里 Qoder / 通义灵码 / 腾讯 WorkBuddy·CodeBuddy
-    "TRAE_AGENT",
-    "QODER_AGENT",
-    "LINGMA_AGENT",
-    "CODEBUDDY_AGENT",
-    "WORKBUDDY_AGENT",
-    // Manus
-    "MANUS_AGENT",
-    // Claw 家族（OpenClaw / KimiClaw / QClaw / LinClaw / MaxClaw / EasyClaw / ArkClaw / DuClaw）
-    "OPENCLAW",
-    "OPENCLAW_GATEWAY_TOKEN",
-    "CLAW_AGENT",
-    // 通用 opt-in（未识别的 agent 可通过设置此变量启用 AI 行为）
-    "AI_AGENT",
-    "WJX_AGENT",
-  ];
-  return KNOWN_AI_ENV_VARS.some((name) => Boolean(process.env[name]));
-}
-
 /** Validate API Key by calling listSurveys. Returns true if valid. */
 async function validateApiKey(apiKey: string): Promise<boolean> {
   stderr.write("验证 API Key...");
@@ -87,7 +40,12 @@ function saveAndReport(apiKey: string, baseUrl: string, corpId: string | undefin
   stderr.write(`已保存到 ${CONFIG_PATH}\n`);
 }
 
-/** Non-interactive init: wjx init --api-key <key> [--base-url <url>] [--corp-id <id>] */
+/**
+ * Non-interactive init: wjx init --api-key <key> [--base-url <url>] [--corp-id <id>]
+ *
+ * 参数模式视为脚本/AI Agent 自动化场景。`opts.installSkill` 默认 true，
+ * 调用方可通过 `--no-install-skill` 显式关闭。不再尝试基于环境变量"猜测" AI Agent。
+ */
 async function initWithArgs(opts: {
   apiKey: string;
   baseUrl?: string;
@@ -108,7 +66,7 @@ async function initWithArgs(opts: {
   await validateApiKey(apiKey);
   saveAndReport(apiKey, baseUrl, corpId);
 
-  if (opts.installSkill && isAiAgentEnv()) {
+  if (opts.installSkill) {
     const result = installSkill(process.cwd(), { force: true });
     if (result.status === "error") {
       stderr.write(`技能安装失败: ${result.message}\n`);
@@ -116,7 +74,12 @@ async function initWithArgs(opts: {
   }
 }
 
-/** Interactive init wizard (original behavior). */
+/**
+ * Interactive init wizard.
+ *
+ * 普通用户（人工敲命令）走这条路径，结束后**不再弹技能安装 y/n**，
+ * 改为打印一行明确提示。AI Agent 应改用参数模式 `wjx init --api-key <key>` 自动安装。
+ */
 async function initInteractive(): Promise<void> {
   const config = loadConfig();
   const currentApiKey = process.env.WJX_API_KEY || config?.apiKey || "";
@@ -162,20 +125,8 @@ async function initInteractive(): Promise<void> {
     stderr.write("\n");
     saveAndReport(apiKey, baseUrl, corpId);
     stderr.write("提示: 也可以直接编辑该文件修改配置（如 WJX_CORP_ID 通讯录）。\n");
-
-    // 4. Skill installation — 仅在 AI Agent 场景下提示
-    if (isAiAgentEnv()) {
-      stderr.write("\n");
-      const installAnswer = await rl.question(
-        "检测到 AI Agent 环境，推荐安装 wjx-cli-use 技能以获取完整体验？(y/n) ",
-      );
-      if (installAnswer.trim().toLowerCase() === "y") {
-        const result = installSkill(process.cwd(), { force: true });
-        if (result.status === "error") {
-          stderr.write(`技能安装失败: ${result.message}\n`);
-        }
-      }
-    }
+    stderr.write("\n如需在 AI Agent (Claude Code / Cursor / Windsurf 等) 中使用，运行:\n");
+    stderr.write("  wjx skill install\n");
   } finally {
     rl.close();
   }
@@ -187,7 +138,7 @@ export function registerInitCommands(program: Command): void {
     .description("初始化配置（交互式向导，或 --api-key 参数模式跳过交互）")
     .option("--base-url <url>", "Base URL")
     .option("--corp-id <id>", "Corp ID")
-    .option("--no-install-skill", "跳过技能安装（参数模式下默认安装）")
+    .option("--no-install-skill", "跳过技能安装（仅参数模式生效；交互模式不会自动装）")
     .action(async (opts: {
       baseUrl?: string;
       corpId?: string;
