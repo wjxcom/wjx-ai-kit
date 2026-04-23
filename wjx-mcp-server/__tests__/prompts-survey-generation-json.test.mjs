@@ -57,8 +57,7 @@ describe("survey-generation-json prompts", () => {
       assert.ok(text.includes("MaxDiff"));
       assert.ok(text.includes("Kano"));
       assert.ok(text.includes("PSM"));
-      // atype 提示
-      assert.ok(text.includes("atype=3"), "should hint atype=3 for 投票");
+      // atype 提示（投票类型已禁用，不再校验 atype=3）
       assert.ok(text.includes("atype=2") || text.includes("atype=10"), "should hint 测评/量表 atype");
       assert.ok(text.includes("atype=11"), "should hint atype=11 for 民主测评");
       // JSONL 工具调用提示

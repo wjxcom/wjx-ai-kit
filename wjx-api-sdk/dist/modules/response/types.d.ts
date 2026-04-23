@@ -54,6 +54,11 @@ export interface SubmitResponseInput {
     sojumpparm?: string;
     submittime?: string;
 }
+export interface SubmitdataQuestionMeta {
+    q_index: number;
+    q_type: number;
+    q_subtype: number;
+}
 export interface GetFileLinksInput {
     vid: number;
     file_keys: string;

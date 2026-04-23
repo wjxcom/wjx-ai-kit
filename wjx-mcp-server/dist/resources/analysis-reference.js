@@ -4,9 +4,9 @@ export const ANALYSIS_METHODS = {
         formula: "NPS = 推荐者比例 - 贬损者比例",
         scale: "0-10分",
         categories: {
-            promoters: "9-10分 (推荐者)",
-            passives: "7-8分 (被动者)",
-            detractors: "0-6分 (贬损者)",
+            promoters: "9-10分（推荐者）",
+            passives: "7-8分（被动者）",
+            detractors: "0-6分（贬损者）",
         },
         benchmarks: {
             excellent: ">70",
@@ -45,13 +45,19 @@ export const RESPONSE_FORMAT_GUIDE = {
         question: "}",
         answer: "$",
         option: "|",
+        matrix_pair: "!",
     },
     examples: {
-        single_choice: "1$1 (第1题选第1个选项)",
-        multiple_choice: "2$1|3 (第2题选第1和第3个选项)",
+        single_choice: "1$1（第1题选第1项）",
+        multiple_choice: "2$1|3（第2题选第1和第3项）",
         fill_in: "3$答案文本",
-        scale: "4$8 (第4题选8分)",
-        ranking: "5$2,3,1 (第5题排序：第2选项第1名、第3选项第2名、第1选项第3名，按排名顺序用英文逗号分隔所有选项序号。注意：排序题用逗号，多选题用竖线|)",
+        scale: "4$8（第4题选8分）",
+        ranking: "5$2|3|1（排序题按名次顺序使用竖线分隔）",
+        matrix_scale: "6$1!3,2!3,3!4,4!3（第6题矩阵量表：第1行选3，第2行选3，第3行选4，第4行选3）",
     },
+    notes: [
+        "矩阵/矩阵量表题使用 ! 连接“行号”和“值”，整体格式为 题号$行号!值,行号!值",
+        "旧的 row_col 写法（如 1_3）在 submit_response / response submit 中会被自动归一化为 ! 格式",
+    ],
 };
 //# sourceMappingURL=analysis-reference.js.map

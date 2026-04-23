@@ -6,13 +6,19 @@ export function registerPrompts(server) {
     server.prompt("design-survey", "引导 AI 设计问卷结构，包含题型选择、逻辑跳转和选项设计", {
         topic: z.string().describe("问卷主题（如：员工满意度、客户反馈、产品调研）"),
         target_audience: z.string().optional().describe("目标受众（如：企业员工、消费者、学生）"),
-        survey_type: z.string().optional().describe("问卷类型：调查/测评/考试/投票/表单"),
-    }, async ({ topic, target_audience, survey_type }) => ({
-        messages: [{
-                role: "user",
-                content: {
-                    type: "text",
-                    text: `请帮我设计一份关于「${topic}」的${survey_type ?? "调查"}问卷。
+        survey_type: z.string().optional().describe("问卷类型：调查/测评/考试/表单（不支持投票）"),
+    }, async ({ topic, target_audience, survey_type }) => {
+        const isVoteSurvey = survey_type?.includes("投票") ?? false;
+        const resolvedSurveyType = isVoteSurvey ? "调查" : (survey_type ?? "调查");
+        const voteNotice = isVoteSurvey
+            ? "\n\n注意：当前接口不支持创建投票类型问卷，请改为调查、测评、考试或表单方案。"
+            : "";
+        return {
+            messages: [{
+                    role: "user",
+                    content: {
+                        type: "text",
+                        text: `请帮我设计一份关于「${topic}」的${resolvedSurveyType}问卷。
 
 目标受众：${target_audience ?? "通用"}
 
@@ -26,15 +32,16 @@ JSONL 格式说明（每行一个 JSON 对象）：
 - 首行为问卷元数据：{"qtype":"问卷基础信息","title":"问卷标题","introduction":"问卷描述"}
 - 后续每行一个题目，如：{"qtype":"单选","title":"题目标题","select":["选项1","选项2"]}
 - 常用 qtype：单选、多选、单项填空、多项填空、下拉框、量表题、评分单选、评分多选、排序题、判断题、矩阵量表题、矩阵单选题、矩阵多选题、矩阵填空题、文件上传、比重题、滑动条
-- 选填题设 requir=false
+- 默认所有题目必答；单项填空、简答题、意见建议题、开放题默认也必须必答。只有用户明确指定某个题号/题目/字段为选填时，才给该题设 requir=false
 - 量表题可用 minvaluetext/maxvaluetext 标注两端文字
 - 多项填空必须在 title 中用 {_} 占位符表示每个子填空位，如 {"qtype":"多项填空","title":"电话 {_}，邮箱 {_}"}；**不要用 rowtitle 数组**（那是矩阵题字段，多项填空不支持，会导致只生成 1 个空位）
 - 更多 qtype 及字段请参考 generate-survey-json prompt
 
-如果问卷仅涉及简单题型（约 25 种），也可退而使用 DSL 文本格式 + create_survey_by_text 工具。`,
-                },
-            }],
-    }));
+如果问卷仅涉及简单题型（约 25 种），也可退而使用 DSL 文本格式 + create_survey_by_text 工具。${voteNotice}`,
+                    },
+                }],
+        };
+    });
     server.prompt("analyze-results", "引导 AI 获取并分析问卷数据，生成洞察报告", {
         survey_id: z.string().describe("问卷编号 (vid)"),
         focus_areas: z.string().optional().describe("关注重点（如：满意度趋势、NPS 分析、交叉分析）"),
@@ -75,7 +82,7 @@ ${focus_areas ? `关注重点：${focus_areas}` : ""}
 The survey should include:
 1. NPS Question: "How likely are you to recommend ${product_name} to a friend or colleague?" (Scale 0-10, use q_type=3, q_subtype=302 for 量表题, with 11 items indexed 0-10)
 2. Follow-up: "What is the primary reason for your score?" (Open text, q_type=5)
-3. Optional: "What could we improve?" (Open text, q_type=5)
+3. "What could we improve?" (Open text, q_type=5, required by default)
 
 Use survey type 1 (survey) and output the create_survey tool call with properly formatted questions JSON.`
                             : `请使用 create_survey 工具为「${product_name}」创建一份标准 NPS 问卷。
@@ -83,7 +90,7 @@ Use survey type 1 (survey) and output the create_survey tool call with properly 
 问卷应包含：
 1. NPS 核心题：「您有多大可能向朋友或同事推荐${product_name}？」（0-10分量表，使用 q_type=3, q_subtype=302，items 数组包含 0-10 共 11 个选项）
 2. 跟进题：「您给出这个评分的主要原因是什么？」（填空题，q_type=5）
-3. 可选：「您觉得我们还可以在哪些方面改进？」（填空题，q_type=5）
+3. 「您觉得我们还可以在哪些方面改进？」（填空题，q_type=5，默认必答）
 
 使用问卷类型 1（调查），输出 create_survey 工具调用，questions 参数为正确格式的 JSON。`,
                     },

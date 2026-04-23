@@ -4,7 +4,31 @@ export { textToSurvey, parsedQuestionsToWire } from "./text-to-survey.js";
 import { textToSurvey, parsedQuestionsToWire } from "./text-to-survey.js";
 export { extractJsonlMetadata, normalizeJsonl } from "./json-to-survey.js";
 import { extractJsonlMetadata, normalizeJsonl, MAX_JSONL_SIZE, preprocessExamJsonl, injectDefaultRequir, injectAtypeIntoJsonl, inferAtypeFromTitle, validateSurveyTitle, validateSurveyHasQuestions, } from "./json-to-survey.js";
-export function validateQuestionsJson(questions) {
+const DISABLED_CREATE_SURVEY_ATYPES = new Set([3]);
+const FORM_BLOCKED_SUBTYPES = new Map([
+    [706, "表格数值"],
+    [707, "表格填空"],
+    [708, "表格下拉框"],
+    [709, "表格组合"],
+    [710, "自增表格"],
+]);
+const FORM_BLOCKED_JSONL_QTYPES = new Map([
+    ["矩阵数值题", "表格数值"],
+    ["表格数值", "表格数值"],
+    ["表格填空题", "表格填空"],
+    ["表格填空", "表格填空"],
+    ["表格下拉框", "表格下拉框"],
+    ["表格组合题", "表格组合"],
+    ["表格组合", "表格组合"],
+    ["表格自增题", "自增表格"],
+    ["自增表格", "自增表格"],
+]);
+function assertCreatableSurveyAtype(atype) {
+    if (DISABLED_CREATE_SURVEY_ATYPES.has(atype)) {
+        throw new Error("当前接口不支持创建投票类型问卷，请改用调查、测评、考试或表单类型。");
+    }
+}
+function parseQuestionsJsonArray(questions) {
     let parsed;
     try {
         parsed = JSON.parse(questions);
@@ -16,7 +40,8 @@ export function validateQuestionsJson(questions) {
     if (!Array.isArray(parsed)) {
         throw new Error("questions must be a JSON array");
     }
-    for (const [i, q] of parsed.entries()) {
+    const questionList = parsed;
+    for (const [i, q] of questionList.entries()) {
         if (typeof q.q_index !== "number") {
             throw new Error(`questions[${i}] missing required field "q_index" (number)`);
         }
@@ -24,6 +49,61 @@ export function validateQuestionsJson(questions) {
             throw new Error(`questions[${i}] missing required field "q_type" (number)`);
         }
     }
+    return questionList;
+}
+function normalizeQuestionsForCreate(questions, atype) {
+    const questionList = parseQuestionsJsonArray(questions);
+    let modified = false;
+    const blockedFormTypes = new Set();
+    for (const question of questionList) {
+        if (question.is_requir === undefined) {
+            question.is_requir = true;
+            modified = true;
+        }
+        if (atype === 7 &&
+            question.q_type === 7 &&
+            typeof question.q_subtype === "number") {
+            const blockedType = FORM_BLOCKED_SUBTYPES.get(question.q_subtype);
+            if (blockedType) {
+                blockedFormTypes.add(blockedType);
+            }
+        }
+    }
+    if (blockedFormTypes.size > 0) {
+        throw new Error(`表单类型问卷不支持以下题型：${Array.from(blockedFormTypes).join("、")}。` +
+            "请改用单项填空、多项填空、多项简答题或多项文件题等支持题型。");
+    }
+    return modified ? JSON.stringify(questionList) : questions;
+}
+function validateJsonlQuestionTypesForCreate(jsonl, atype) {
+    if (atype !== 7)
+        return;
+    const blockedFormTypes = new Set();
+    for (const line of jsonl.split("\n")) {
+        const trimmed = line.trim();
+        if (!trimmed)
+            continue;
+        let obj;
+        try {
+            obj = JSON.parse(trimmed);
+        }
+        catch {
+            continue;
+        }
+        if (typeof obj.qtype !== "string")
+            continue;
+        const blockedType = FORM_BLOCKED_JSONL_QTYPES.get(obj.qtype);
+        if (blockedType) {
+            blockedFormTypes.add(blockedType);
+        }
+    }
+    if (blockedFormTypes.size > 0) {
+        throw new Error(`表单类型问卷不支持以下题型：${Array.from(blockedFormTypes).join("、")}。` +
+            "请改用单项填空、多项填空、多项简答题或多项文件题等支持题型。");
+    }
+}
+export function validateQuestionsJson(questions) {
+    parseQuestionsJsonArray(questions);
 }
 export async function createSurvey(input, credentials = getWjxCredentials(), fetchImpl = fetch) {
     const params = {
@@ -34,10 +114,10 @@ export async function createSurvey(input, credentials = getWjxCredentials(), fet
         params.source_vid = input.source_vid;
     }
     else {
+        assertCreatableSurveyAtype(input.type);
         params.atype = input.type;
         params.desc = input.description;
-        params.questions = input.questions;
-        validateQuestionsJson(input.questions);
+        params.questions = normalizeQuestionsForCreate(input.questions, input.type);
     }
     params.publish = input.publish ?? false;
     if (input.creater !== undefined)
@@ -207,6 +287,8 @@ export async function createSurveyByJson(input, credentials = getWjxCredentials(
     const atype = input.atype ??
         metadata.atype ??
         (hasExam ? 6 : inferAtypeFromTitle(title) ?? 1);
+    assertCreatableSurveyAtype(atype);
+    validateJsonlQuestionTypesForCreate(requirInjected, atype);
     // 关键修复：服务端 action 1000106 实际只读 JSONL 内的 atype，忽略顶层字段。
     // 必须把最终 atype 注入「问卷基础信息」行，否则页面落库会一律变成 atype=1。
     const processedJsonl = injectAtypeIntoJsonl(requirInjected, atype);
