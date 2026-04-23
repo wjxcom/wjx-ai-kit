@@ -679,7 +679,8 @@ export function registerSurveyTools(server: McpServer): void {
       description:
         "（推荐，支持 70+ 题型）通过 JSONL 格式创建问卷。每行一个 JSON 对象，首行为 qtype='问卷基础信息' 的元数据。" +
         "支持 70+ 种题型（普通调查、专业调查模型、考试、表单），远多于 DSL 文本格式。" +
-        "【核心字段】qtype（题型名称）、title（标题）、select（选项数组）、rowtitle（行标题，仅矩阵/比重/Kano/PSM/表格题 使用）、requir（是否必填）。" +
+        "【核心字段】qtype（题型名称）、title（标题）、select（选项数组）、rowtitle（行标题，仅矩阵/比重/Kano/PSM/表格题 使用）、requir（是否必填；缺省时 SDK 注入 true）。" +
+        "【必答规则】默认所有题型都是必答题，包括单项填空、简答题、意见建议题、开放题；只有用户明确指定某个题号/题目/字段为选填时，才给该题传 requir=false。" +
         "【专业模型】支持 BWS/MaxDiff(mdattr)、联合分析(columntitle)、品牌漏斗(brands)、Kano模型、SUS模型、PSM模型等。" +
         "【考试题型】支持 correctselect（正确答案）、quizscore（分值）、answeranalysis（答案解析）。" +
         "【关联逻辑】支持 relation（显示条件）、referselect（引用前题选项）。" +
@@ -703,7 +704,8 @@ export function registerSurveyTools(server: McpServer): void {
         jsonl: z.string().min(1).max(1_000_000).describe(
           "JSONL 格式的问卷内容（每行一个 JSON 对象）。" +
             "硬性要求：1) 首行 _meta 的 title 必须是真实主题，不得为占位符 ??? / 无标题 / TODO / xxx；" +
-            "2) 必须包含 ≥1 道真实题目（元数据/分页/段落/知情同意书不计）；违反会被 SDK 拒绝。",
+            "2) 必须包含 ≥1 道真实题目（元数据/分页/段落/知情同意书不计）；" +
+            "3) 默认所有题型必答，未指定 requir 时 SDK 会补 true，只有用户明确指定具体题目选填时才传 requir=false；违反会被 SDK 拒绝。",
         ),
         title: z.string().optional().describe(
           "覆盖 JSONL 中的问卷标题。同样适用占位符校验：禁止 ??? / 无标题 / TODO / xxx 等无语义值。",
