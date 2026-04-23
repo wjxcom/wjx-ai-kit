@@ -39,7 +39,7 @@ export function registerSurveyTools(server: McpServer): void {
           .number()
           .int()
           .optional()
-          .describe("问卷类型：1=调查（默认）, 2=测评, 3=投票, 6=考试, 7=表单。考试问卷必须设为6，考试中的单选/多选/填空自动变为考试题型。注意：4(360度评估)、5(360评估无测评关系)、8(用户体系)、9(教学评估)、11(民主评议) 不支持通过 API 创建。不使用 source_vid 时必填"),
+          .describe("问卷类型：1=调查（默认）, 2=测评, 6=考试, 7=表单。当前不支持投票类型创建。考试问卷必须设为6，考试中的单选/多选/填空自动变为考试题型。注意：4(360度评估)、5(360评估无测评关系)、8(用户体系)、9(教学评估)、11(民主评议) 不支持通过 API 创建。不使用 source_vid 时必填"),
         desc: z.string().optional().describe("问卷描述。不使用 source_vid 时必填"),
         publish: z.boolean().optional().default(false).describe("是否立即发布"),
         questions: z
@@ -637,7 +637,7 @@ export function registerSurveyTools(server: McpServer): void {
         "请认真填写\n\n" +
         "1. 整体满意度[单选题]\n" +
         "非常满意\n满意\n不满意\n\n" +
-        "2. 建议[填空题]（选填）",
+        "2. 建议[填空题]",
       inputSchema: {
         text: z.string().min(1).describe("DSL 格式的问卷文本"),
         atype: z
@@ -645,7 +645,7 @@ export function registerSurveyTools(server: McpServer): void {
           .int()
           .optional()
           .default(1)
-          .describe("问卷类型：1=调查（默认）, 2=测评, 3=投票, 6=考试, 7=表单"),
+          .describe("问卷类型：1=调查（默认）, 2=测评, 6=考试, 7=表单（投票类型已禁用）"),
         publish: z.boolean().optional().default(false).describe("是否立即发布"),
         creater: z.string().optional().describe("创建者子账号用户名"),
       },
@@ -692,6 +692,7 @@ export function registerSurveyTools(server: McpServer): void {
         "表格自增题(710) 用户运行时自加行（仅传 select 列定义，不传 rowtitle）；" +
         "多项文件题(711) rowtitle 列出每个上传项；" +
         "多项简答题(712) rowtitle 列出每个简答子题。" +
+        "注意：当 atype=7（表单）时，表格数值、表格组合、表格填空、表格下拉框、自增表格不允许创建。" +
         "输入示例（JSONL）：\n" +
         '{"qtype":"问卷基础信息","title":"客户满意度调查","introduction":"请认真填写"}\n' +
         '{"qtype":"单选","title":"您的性别","select":["男","女"]}\n' +
@@ -713,9 +714,9 @@ export function registerSurveyTools(server: McpServer): void {
           .optional()
           .describe(
             "问卷类型（**调用方应主动判断并显式传入**，不要依赖兜底）：" +
-              "1=调查（默认）, 2=测评, 3=投票, 6=考试, 7=表单。" +
-              "硬性规则：投票场景 → 必传 atype=3；表单 → 必传 atype=7；考试 → 必传 atype=6；测评 → 必传 atype=2。" +
-              "兜底（仅用于调用方遗漏时挽救，不应作为正常路径）：含考试题型→6；标题含「投票」→3；含「表单/报名表/登记表/申请表」→7；含「测评」→2；其余 1。" +
+              "1=调查（默认）, 2=测评, 6=考试, 7=表单。" +
+              "硬性规则：表单 → 必传 atype=7；考试 → 必传 atype=6；测评 → 必传 atype=2；投票类型不允许创建。" +
+              "兜底（仅用于调用方遗漏时挽救，不应作为正常路径）：含考试题型→6；含「表单/报名表/登记表/申请表」→7；含「测评」→2；其余 1。" +
               "显式传值始终优先于兜底推断。",
           ),
         publish: z.boolean().optional().default(false).describe("是否立即发布"),

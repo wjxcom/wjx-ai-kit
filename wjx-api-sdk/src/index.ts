@@ -113,6 +113,7 @@ export {
   get360Report,
   clearResponses,
 } from "./modules/response/client.js";
+export { normalizeSubmitdata } from "./modules/response/submitdata.js";
 export type {
   QueryResponsesInput,
   QueryResponsesRealtimeInput,
@@ -124,6 +125,7 @@ export type {
   ModifyResponseInput,
   Get360ReportInput,
   ClearResponsesInput,
+  SubmitdataQuestionMeta,
 } from "./modules/response/types.js";
 
 // Contacts module
