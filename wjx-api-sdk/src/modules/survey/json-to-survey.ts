@@ -223,6 +223,14 @@ const NON_QUESTION_QTYPES = new Set<string>([
   "知情同意书",
 ]);
 
+function buildOptionalTitleSet(optionalTitles: string[] = []): Set<string> {
+  return new Set(
+    optionalTitles
+      .map((title) => title.trim())
+      .filter((title) => title.length > 0),
+  );
+}
+
 /**
  * 扫描 JSONL 文本，为所有题目行注入 `requir: true`（用户未显式指定时）。
  * - 与页面创建行为保持一致：默认必答
@@ -249,6 +257,49 @@ export function injectDefaultRequir(jsonl: string): string {
     return line;
   });
   return processed.join("\n");
+}
+
+/**
+ * 校验 JSONL 中显式写出的 `requir:false` 是否真的被调用方明确允许。
+ * 默认所有题目必答；只有标题列入 optionalTitles 的题目，才允许非必答。
+ */
+export function validateExplicitOptionalQuestionsInJsonl(
+  jsonl: string,
+  optionalTitles: string[] = [],
+): void {
+  const allowedTitles = buildOptionalTitleSet(optionalTitles);
+  const lines = jsonl.split("\n");
+
+  for (const [lineIndex, line] of lines.entries()) {
+    const trimmed = line.trim();
+    if (!trimmed) continue;
+
+    let obj: Record<string, unknown>;
+    try {
+      obj = JSON.parse(trimmed) as Record<string, unknown>;
+    } catch {
+      continue;
+    }
+
+    if (typeof obj.qtype !== "string" || NON_QUESTION_QTYPES.has(obj.qtype)) {
+      continue;
+    }
+    if (obj.requir !== false) {
+      continue;
+    }
+
+    const title = typeof obj.title === "string" ? obj.title.trim() : "";
+    if (!title) {
+      throw new Error(
+        `第 ${lineIndex + 1} 行题目显式设置了 requir=false，但缺少可匹配的 title。默认所有题目必答；如需设为选填，请提供明确标题并把它加入 optionalTitles。`,
+      );
+    }
+    if (!allowedTitles.has(title)) {
+      throw new Error(
+        `题目「${title}」显式设置了 requir=false，但未在 optionalTitles 中声明。默认所有题目必答；如需设为选填，请把该标题加入 optionalTitles。`,
+      );
+    }
+  }
 }
 
 // ─── atype 注入到 JSONL 首行 ───────────────────────────────────────

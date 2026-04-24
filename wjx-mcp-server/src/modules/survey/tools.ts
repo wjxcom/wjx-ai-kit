@@ -55,6 +55,10 @@ export function registerSurveyTools(server: McpServer): void {
             "选择题需包含 items 数组，q_title 不要包含题型标记。" +
             "示例：[{\"q_index\":1,\"q_type\":3,\"q_subtype\":301,\"q_title\":\"城市\",\"items\":[{\"q_index\":1,\"item_index\":1,\"item_title\":\"北京\"},{\"q_index\":1,\"item_index\":2,\"item_title\":\"上海\"}]}]",
           ),
+        optional_titles: z
+          .array(z.string().min(1))
+          .optional()
+          .describe("允许设为选填的题目标题列表。默认所有题目必答；只有列在这里的题目才允许 is_requir=false"),
         source_vid: z
           .string()
           .optional()
@@ -82,6 +86,7 @@ export function registerSurveyTools(server: McpServer): void {
     async (args) => {
       try {
         let questionsStr = args.questions ?? "";
+        let optionalTitles = args.optional_titles;
         // Auto-fix questions JSON before sending to API
         if (questionsStr) {
           try {
@@ -91,10 +96,14 @@ export function registerSurveyTools(server: McpServer): void {
               for (const q of questions) {
                 // Auto-insert {_} placeholders for multi-fill questions (q_type=6)
                 if (q.q_type === 6 && q.q_title && !q.q_title.includes("{_}")) {
+                  const originalTitle = q.q_title;
                   const count = (q.items && q.items.length > 0) ? q.items.length : 2;
                   const placeholders = Array.from({ length: count }, () => "{_}").join("，");
                   const sep = /[：:，,、。.；;）)》>\s]$/.test(q.q_title) ? "" : "：";
                   q.q_title = `${q.q_title}${sep}${placeholders}`;
+                  if (optionalTitles?.includes(originalTitle)) {
+                    optionalTitles = optionalTitles.map((title) => title === originalTitle ? q.q_title : title);
+                  }
                   modified = true;
                 }
                 // Auto-assign item_score for scoring subtypes (量表302, 评分单选303, 评分多选401)
@@ -119,6 +128,7 @@ export function registerSurveyTools(server: McpServer): void {
           description: args.desc ?? "",
           publish: args.publish,
           questions: questionsStr,
+          optionalTitles,
           source_vid: args.source_vid,
           creater: args.creater,
           compress_img: args.compress_img,
@@ -707,6 +717,10 @@ export function registerSurveyTools(server: McpServer): void {
         title: z.string().optional().describe(
           "覆盖 JSONL 中的问卷标题。同样适用占位符校验：禁止 ??? / 无标题 / TODO / xxx 等无语义值。",
         ),
+        optional_titles: z
+          .array(z.string().min(1))
+          .optional()
+          .describe("允许设为选填的题目标题列表。默认所有题目必答；只有列在这里的题目才允许 requir=false"),
         atype: z
           .number()
           .int()
@@ -734,6 +748,7 @@ export function registerSurveyTools(server: McpServer): void {
           jsonl: args.jsonl,
           title: args.title,
           atype: args.atype,
+          optionalTitles: args.optional_titles,
           publish: args.publish,
           creater: args.creater,
         });

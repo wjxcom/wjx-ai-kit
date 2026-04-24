@@ -14,6 +14,7 @@ import {
   inferAtypeFromTitle,
   validateSurveyTitle,
   validateSurveyHasQuestions,
+  validateExplicitOptionalQuestionsInJsonl,
 } from "./json-to-survey.js";
 import type {
   CreateSurveyInput,
@@ -62,8 +63,46 @@ function parseQuestionsJsonArray(questions: string): Record<string, unknown>[] {
   return questionList;
 }
 
-function normalizeQuestionsForCreate(questions: string, atype: number): string {
+function buildOptionalTitleSet(optionalTitles: string[] = []): Set<string> {
+  return new Set(
+    optionalTitles
+      .map((title) => title.trim())
+      .filter((title) => title.length > 0),
+  );
+}
+
+function validateExplicitOptionalQuestions(
+  questionList: Record<string, unknown>[],
+  optionalTitles: string[] = [],
+): void {
+  const allowedTitles = buildOptionalTitleSet(optionalTitles);
+
+  for (const [i, question] of questionList.entries()) {
+    if (question.is_requir !== false) {
+      continue;
+    }
+
+    const title = typeof question.q_title === "string" ? question.q_title.trim() : "";
+    if (!title) {
+      throw new Error(
+        `questions[${i}] 显式设置了 is_requir=false，但缺少可匹配的 q_title。默认所有题目必答；如需设为选填，请提供明确标题并把它加入 optionalTitles。`,
+      );
+    }
+    if (!allowedTitles.has(title)) {
+      throw new Error(
+        `题目「${title}」显式设置了 is_requir=false，但未在 optionalTitles 中声明。默认所有题目必答；如需设为选填，请把该标题加入 optionalTitles。`,
+      );
+    }
+  }
+}
+
+function normalizeQuestionsForCreate(
+  questions: string,
+  atype: number,
+  optionalTitles: string[] = [],
+): string {
   const questionList = parseQuestionsJsonArray(questions);
+  validateExplicitOptionalQuestions(questionList, optionalTitles);
   let modified = false;
 
   for (const question of questionList) {
@@ -100,7 +139,7 @@ export async function createSurvey<T = unknown>(
     assertCreatableSurveyAtype(input.type);
     params.atype = input.type;
     params.desc = input.description;
-    params.questions = normalizeQuestionsForCreate(input.questions, input.type);
+    params.questions = normalizeQuestionsForCreate(input.questions, input.type, input.optionalTitles);
   }
   params.publish = input.publish ?? false;
   if (input.creater !== undefined) params.creater = input.creater;
@@ -272,6 +311,9 @@ export async function createSurveyByText<T = unknown>(
   // 解析 DSL 文本为结构化数据，然后通过 createSurvey API 创建
   const parsed = textToSurvey(input.text);
   const { questions: wireQuestions } = parsedQuestionsToWire(parsed.questions);
+  const optionalTitles = wireQuestions
+    .filter((question) => question.is_requir === false && typeof question.q_title === "string")
+    .map((question) => question.q_title);
   const title = input.title ?? parsed.title;
   const description = parsed.description ?? "";
 
@@ -281,6 +323,7 @@ export async function createSurveyByText<T = unknown>(
       type: input.atype ?? 1,
       description,
       questions: JSON.stringify(wireQuestions),
+      optionalTitles,
       publish: input.publish,
       creater: input.creater,
     },
@@ -309,6 +352,7 @@ export async function createSurveyByJson<T = unknown>(
 
   // 考试题型预处理：注入 isquiz="1"，并在用户未指定 atype 时推断为 6（考试）
   const { jsonl: examProcessed, hasExam } = preprocessExamJsonl(jsonl);
+  validateExplicitOptionalQuestionsInJsonl(examProcessed, input.optionalTitles);
   // 默认必答预处理：与页面创建行为保持一致，为题目行注入 requir=true（未指定时）
   const requirInjected = injectDefaultRequir(examProcessed);
   const metadata = extractJsonlMetadata(requirInjected);
