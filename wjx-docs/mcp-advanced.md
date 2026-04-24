@@ -107,7 +107,7 @@ services:
 - aname (string, 必填): 问卷标题
 - questions (array): 题目 JSON 数组
 - source_vid (number): 从已有问卷复制
-- atype (number): 问卷类型（1=调查 3=投票 6=考试 7=表单）
+- atype (number): 问卷类型（1=调查 6=考试 7=表单）
 - adesc (string): 问卷描述
 - publish (boolean): 创建后自动发布
 ```
@@ -120,7 +120,7 @@ services:
 参数：
 - jsonl (string, 必填): JSONL 格式问卷文本（首行可选 `{"_meta":{"title":"...","description":"..."}}`）
 - title (string): 覆盖 JSONL 中的问卷标题
-- atype (number): 问卷类型（1=调查 3=投票 6=考试 7=表单）
+- atype (number): 问卷类型（1=调查 6=考试 7=表单）
 - publish (boolean): 创建后自动发布
 - creater (string): 创建者子账号
 ```

@@ -33,26 +33,6 @@ import type {
 
 const DISABLED_CREATE_SURVEY_ATYPES = new Set([3]);
 
-const FORM_BLOCKED_SUBTYPES = new Map<number, string>([
-  [706, "表格数值"],
-  [707, "表格填空"],
-  [708, "表格下拉框"],
-  [709, "表格组合"],
-  [710, "自增表格"],
-]);
-
-const FORM_BLOCKED_JSONL_QTYPES = new Map<string, string>([
-  ["矩阵数值题", "表格数值"],
-  ["表格数值", "表格数值"],
-  ["表格填空题", "表格填空"],
-  ["表格填空", "表格填空"],
-  ["表格下拉框", "表格下拉框"],
-  ["表格组合题", "表格组合"],
-  ["表格组合", "表格组合"],
-  ["表格自增题", "自增表格"],
-  ["自增表格", "自增表格"],
-]);
-
 function assertCreatableSurveyAtype(atype: number): void {
   if (DISABLED_CREATE_SURVEY_ATYPES.has(atype)) {
     throw new Error("当前接口不支持创建投票类型问卷，请改用调查、测评、考试或表单类型。");
@@ -85,64 +65,20 @@ function parseQuestionsJsonArray(questions: string): Record<string, unknown>[] {
 function normalizeQuestionsForCreate(questions: string, atype: number): string {
   const questionList = parseQuestionsJsonArray(questions);
   let modified = false;
-  const blockedFormTypes = new Set<string>();
 
   for (const question of questionList) {
     if (question.is_requir === undefined) {
       question.is_requir = true;
       modified = true;
     }
-
-    if (
-      atype === 7 &&
-      question.q_type === 7 &&
-      typeof question.q_subtype === "number"
-    ) {
-      const blockedType = FORM_BLOCKED_SUBTYPES.get(question.q_subtype);
-      if (blockedType) {
-        blockedFormTypes.add(blockedType);
-      }
-    }
-  }
-
-  if (blockedFormTypes.size > 0) {
-    throw new Error(
-      `表单类型问卷不支持以下题型：${Array.from(blockedFormTypes).join("、")}。` +
-        "请改用单项填空、多项填空、多项简答题或多项文件题等支持题型。",
-    );
   }
 
   return modified ? JSON.stringify(questionList) : questions;
 }
 
 function validateJsonlQuestionTypesForCreate(jsonl: string, atype: number): void {
-  if (atype !== 7) return;
-
-  const blockedFormTypes = new Set<string>();
-  for (const line of jsonl.split("\n")) {
-    const trimmed = line.trim();
-    if (!trimmed) continue;
-
-    let obj: Record<string, unknown>;
-    try {
-      obj = JSON.parse(trimmed) as Record<string, unknown>;
-    } catch {
-      continue;
-    }
-
-    if (typeof obj.qtype !== "string") continue;
-    const blockedType = FORM_BLOCKED_JSONL_QTYPES.get(obj.qtype);
-    if (blockedType) {
-      blockedFormTypes.add(blockedType);
-    }
-  }
-
-  if (blockedFormTypes.size > 0) {
-    throw new Error(
-      `表单类型问卷不支持以下题型：${Array.from(blockedFormTypes).join("、")}。` +
-        "请改用单项填空、多项填空、多项简答题或多项文件题等支持题型。",
-    );
-  }
+  void jsonl;
+  void atype;
 }
 
 export function validateQuestionsJson(questions: string): void {

@@ -231,14 +231,26 @@ export function registerSsoTools(server: McpServer): void {
     {
       title: "生成问卷预览链接",
       description:
-        "生成问卷预览链接（无需签名），可在浏览器中预览问卷效果。创建问卷后推荐使用此工具返回预览地址。",
-      inputSchema: {
-        vid: z.number().int().positive().describe("问卷编号"),
+        "生成问卷预览链接（无需签名），可在浏览器中预览问卷效果。优先传 create_survey_* 返回的 sid；仅在没有 sid 时再传 vid。",
+      inputSchema: z.object({
+        vid: z.number().optional().describe("问卷编号（无 sid 时使用）"),
+        sid: z
+          .string()
+          .trim()
+          .optional()
+          .describe("问卷短链 ID，例如 create_survey_* 返回的 sid"),
         source: z
           .string()
           .optional()
           .describe("来源标识（可选，用于追踪）"),
-      },
+      }).refine(
+        (args) => {
+          const sid = args.sid?.trim();
+          if (sid) return true;
+          return args.vid !== undefined && Number.isInteger(args.vid) && args.vid > 0;
+        },
+        { message: "需要提供 sid，或提供正整数 vid" },
+      ),
       annotations: {
         destructiveHint: false,
         idempotentHint: true,
@@ -248,10 +260,18 @@ export function registerSsoTools(server: McpServer): void {
     },
     async (args) => {
       try {
-        const url = buildPreviewUrl({
-          vid: args.vid,
-          source: args.source,
-        });
+        const url = args.sid !== undefined
+          ? buildPreviewUrl({
+            sid: args.sid,
+            vid: args.vid,
+            source: args.source,
+          })
+          : args.vid !== undefined
+            ? buildPreviewUrl({
+              vid: args.vid,
+              source: args.source,
+            })
+            : (() => { throw new Error("build_preview_url 需要提供 sid 或 vid"); })();
         return toolResult({ result: true, url }, false);
       } catch (error) {
         return toolError(error);

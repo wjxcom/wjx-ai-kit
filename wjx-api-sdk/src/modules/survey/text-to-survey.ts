@@ -44,6 +44,17 @@ export interface WireQuestionItem {
   item_index: number;
   item_title: string;
   item_score?: number;
+  verify?: number;
+  is_requir?: boolean;
+  need_only?: boolean;
+  item_choice?: string;
+  min_words?: number;
+  max_words?: number;
+  ext?: string;
+  max_size?: number;
+  referselect?: string;
+  column_type?: string;
+  column_data?: string;
 }
 
 export interface WireQuestion {
@@ -58,8 +69,10 @@ export interface WireQuestion {
   row_width?: number;
   /** 多项填空题填空数量（q_type=6 必填） */
   gap_count?: number;
-  /** 矩阵展现形式（q_type=7 必填）：0=无, 101=量表, 102=多选, 103=单选, 201=填空 */
+  /** 矩阵展现形式（q_type=7 必填）：0=无, 101/102/103=矩阵, 201/202=矩阵填空/滑动条, 203/204=多项文件/简答, 301/302/303=表格数值/填空/下拉 */
   matrix_mode?: number;
+  /** 表格展现形式（q_type=7 的表格组合/自增表格会用到）：0=无, 1=表格组合, 2=表格自增 */
+  table_mode?: number;
   /** 矩阵样式模式（q_type=7 必填）：0=常规 */
   style_mode?: number;
   /** 滑动条最小值（q_type=10 必填） */
@@ -97,14 +110,19 @@ const MATRIX_MODE_MAP: Record<number, number> = {
   702: 103, // 矩阵单选 → 矩阵单选
   703: 102, // 矩阵多选 → 矩阵多选
   704: 201, // 矩阵填空 → 矩阵填空
-  705: 0,   // 矩阵滑动条 → 默认
+  705: 202, // 矩阵滑动条 → 矩阵滑动条
   706: 0,   // 矩阵数值题 → 默认
-  707: 201, // 表格填空题 → 矩阵填空
-  708: 0,   // 表格下拉框 → 默认
+  707: 302, // 表格填空题 → 表格填空
+  708: 303, // 表格下拉框 → 表格下拉框
   709: 0,   // 表格组合题 → 默认
   710: 0,   // 表格自增题 → 默认
-  711: 0,   // 多项文件题 → 默认
-  712: 201, // 多项简答题 → 矩阵填空（行内填写文本）
+  711: 203, // 多项文件题 → 多项文件
+  712: 204, // 多项简答题 → 多项简答
+};
+
+const TABLE_MODE_MAP: Record<number, number> = {
+  709: 1, // 表格组合
+  710: 2, // 表格自增
 };
 
 /**
@@ -247,6 +265,9 @@ export function parsedQuestionsToWire(questions: ParsedQuestion[]): WireConversi
     // Matrix (q_type=7): matrix_mode + style_mode are required
     if (typeInfo.q_type === 7) {
       wq.matrix_mode = MATRIX_MODE_MAP[typeInfo.q_subtype] ?? 0;
+      if (TABLE_MODE_MAP[typeInfo.q_subtype] !== undefined) {
+        wq.table_mode = TABLE_MODE_MAP[typeInfo.q_subtype];
+      }
       wq.style_mode = 0; // 常规
     }
 

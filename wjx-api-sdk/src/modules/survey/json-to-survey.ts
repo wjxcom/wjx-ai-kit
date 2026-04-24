@@ -70,6 +70,10 @@ export interface JsonSurveyQuestion {
   mdattr?: string[];
   /** 联合分析 */
   columntitle?: string[];
+  /** 表格题字段类型（与 rowtitle 一一对应） */
+  columntype?: string[];
+  /** 表格题字段补充数据（与 rowtitle / columntype 一一对应） */
+  columndata?: string[];
   /** 品牌漏斗 */
   brands?: string[];
   /** 企业信息模糊查询 */
@@ -79,6 +83,9 @@ export interface JsonSurveyQuestion {
   /** 分页栏 */
   mintime?: number;
   maxtime?: number;
+  /** 自增表格 */
+  min_rows?: number;
+  max_rows?: number;
   /** 答卷摄像 */
   cameratype?: string;
   /** PSM 模型 */
@@ -423,10 +430,15 @@ export const QTYPE_MAP: Record<string, { q_type: number; q_subtype: number }> = 
   "矩阵滑动条": { q_type: 7, q_subtype: 705 },
   // 注意：矩阵数值题 706 在服务端可能被降级为普通填空 5/5（依赖问卷类型与字段配置）
   "矩阵数值题": { q_type: 7, q_subtype: 706 },
+  "表格数值题": { q_type: 7, q_subtype: 706 },
+  "表格数值": { q_type: 7, q_subtype: 706 },
   "表格填空题": { q_type: 7, q_subtype: 707 },
+  "表格填空": { q_type: 7, q_subtype: 707 },
   "表格下拉框": { q_type: 7, q_subtype: 708 },
   "表格组合题": { q_type: 7, q_subtype: 709 },
+  "表格组合": { q_type: 7, q_subtype: 709 },
   "表格自增题": { q_type: 7, q_subtype: 710 },
+  "自增表格": { q_type: 7, q_subtype: 710 },
   "多项文件题": { q_type: 7, q_subtype: 711 },
   "多项简答题": { q_type: 7, q_subtype: 712 },
 
@@ -517,6 +529,151 @@ export const QTYPE_MAP: Record<string, { q_type: number; q_subtype: number }> = 
 /** Subtypes that need auto-incrementing item_score (量表302, 评分单选303, 评分多选401) */
 const SCORING_SUBTYPES = new Set([302, 303, 401]);
 
+const QTYPE_ALIAS_MAP: Record<string, string> = {
+  "表格数值题": "表格数值",
+  "表格填空题": "表格填空",
+  "表格组合题": "表格组合",
+  "表格自增题": "自增表格",
+};
+
+const TEXT_VERIFY_MAP: Record<string, number> = {
+  "表格数值": 1,
+  "数字": 1,
+  "小数": 2,
+  "日期": 3,
+  "手机": 4,
+  "下拉框": 5,
+  "表格下拉框": 5,
+  "单选": 5,
+  "固话": 6,
+  "电话": 7,
+  "邮箱": 8,
+  "Email": 8,
+  "身份证号": 15,
+  "姓名": 19,
+  "单项填空": 0,
+  "表格填空": 0,
+};
+
+const TABLE_MATRIX_MODE_BY_QTYPE: Record<string, number> = {
+  "表格数值": 301,
+  "表格填空": 302,
+  "表格下拉框": 303,
+  "多项文件题": 203,
+  "多项简答题": 204,
+};
+
+const TABLE_MODE_BY_QTYPE: Record<string, number> = {
+  "表格组合": 1,
+  "自增表格": 2,
+};
+
+function normalizeQtype(qtype: string): string {
+  return QTYPE_ALIAS_MAP[qtype] ?? qtype;
+}
+
+function isSchemaDrivenTableQuestion(q: JsonSurveyQuestion, qtype: string): boolean {
+  if (!Array.isArray(q.columntype) || q.columntype.length === 0) return false;
+  return ["表格数值", "表格填空", "表格下拉框", "表格组合", "自增表格"].includes(qtype);
+}
+
+function normalizeChoiceList(raw: string | undefined): string | undefined {
+  if (typeof raw !== "string") return undefined;
+  const trimmed = raw.trim();
+  if (!trimmed) return undefined;
+  return trimmed
+    .split("|")
+    .map((item) => item.trim())
+    .filter(Boolean)
+    .join(",");
+}
+
+function buildTableSchemaColumns(
+  q: JsonSurveyQuestion,
+  qIdx: number,
+): WireQuestion["col_items"] | undefined {
+  const titles = Array.isArray(q.rowtitle) ? q.rowtitle : [];
+  const columnTypes = Array.isArray(q.columntype) ? q.columntype : [];
+  const columnData = Array.isArray(q.columndata) ? q.columndata : [];
+  if (titles.length === 0 || columnTypes.length === 0) return undefined;
+
+  return titles.map((title, i) => {
+    const columnType = columnTypes[i] ?? "单项填空";
+    const rawData = columnData[i];
+    const normalizedChoices = normalizeChoiceList(rawData);
+    const sharedSelectChoices =
+      normalizedChoices ?? (
+        (columnType === "下拉框" || columnType === "表格下拉框" || columnType === "单选") &&
+        Array.isArray(q.select) &&
+        q.select.length > 0
+          ? q.select.join(",")
+          : undefined
+      );
+
+    const item: NonNullable<WireQuestion["col_items"]>[number] = {
+      q_index: qIdx,
+      item_index: i + 1,
+      item_title: title,
+      is_requir: q.requir !== false,
+      column_type: columnType,
+    };
+
+    const verify = TEXT_VERIFY_MAP[columnType];
+    if (verify !== undefined) item.verify = verify;
+    if (sharedSelectChoices) item.item_choice = sharedSelectChoices;
+    if (columnType === "多选" && normalizedChoices) item.item_choice = normalizedChoices;
+    if (columnType === "referselect" && typeof rawData === "string" && rawData.trim()) {
+      item.referselect = rawData.trim();
+    }
+
+    // 保留原始列数据，便于上层调用方继续透传或做二次处理。
+    if (typeof rawData === "string" && rawData.trim()) {
+      item.column_data = rawData.trim();
+    }
+
+    return item;
+  });
+}
+
+function applyQuestionModes(wq: WireQuestion, qtype: string, subtype: number): void {
+  if (wq.q_type === 6) {
+    const matches = wq.q_title.match(/\{_\}/g);
+    wq.gap_count = matches ? matches.length : 2;
+    return;
+  }
+
+  if (wq.q_type === 7) {
+    wq.matrix_mode = TABLE_MATRIX_MODE_BY_QTYPE[qtype] ?? 0;
+    if (TABLE_MODE_BY_QTYPE[qtype] !== undefined) {
+      wq.table_mode = TABLE_MODE_BY_QTYPE[qtype];
+    }
+    if (!wq.matrix_mode) {
+      const fallbackMatrixMode: Record<number, number> = {
+        701: 101,
+        702: 103,
+        703: 102,
+        704: 201,
+        705: 202,
+        711: 203,
+        712: 204,
+      };
+      wq.matrix_mode = fallbackMatrixMode[subtype] ?? 0;
+    }
+    wq.style_mode = 0;
+    return;
+  }
+
+  if (wq.q_type === 9) {
+    wq.total = Number.parseInt(String(wq.total ?? 100), 10) || 100;
+    wq.row_width = 15;
+    return;
+  }
+
+  if (wq.q_type === 10) {
+    return;
+  }
+}
+
 // ─── JSONL parsing ──────────────────────────────────────────────────
 
 /**
@@ -580,7 +737,8 @@ export function jsonQuestionsToWire(questions: JsonSurveyQuestion[]): JsonWireCo
   let qIdx = 1;
 
   for (const q of questions) {
-    const typeInfo = QTYPE_MAP[q.qtype];
+    const qtype = normalizeQtype(q.qtype);
+    const typeInfo = QTYPE_MAP[qtype];
     if (!typeInfo) {
       skippedTypes.push({ qtype: q.qtype, title: q.title ?? "" });
       continue;
@@ -593,10 +751,30 @@ export function jsonQuestionsToWire(questions: JsonSurveyQuestion[]): JsonWireCo
       q_title: q.title ?? "",
       is_requir: q.requir !== false,
     };
+    const schemaDrivenTable = isSchemaDrivenTableQuestion(q, qtype);
+    if (schemaDrivenTable) {
+      wq.col_items = buildTableSchemaColumns(q, qIdx);
+    }
 
     // ── 选项 items 构建 ──
-    if (isMatrixLikeType(q.qtype)) {
+    if (isMatrixLikeType(qtype)) {
       // 矩阵类：rowtitle → items（行标题），select → col_items（列选项）
+      if (!schemaDrivenTable && q.rowtitle && q.rowtitle.length > 0) {
+        wq.items = q.rowtitle.map((row, i) => ({
+          q_index: qIdx,
+          item_index: i + 1,
+          item_title: row,
+        }));
+      }
+      if (!schemaDrivenTable && q.select && q.select.length > 0) {
+        wq.col_items = q.select.map((col, i) => ({
+          q_index: qIdx,
+          item_index: i + 1,
+          item_title: col,
+        }));
+      }
+    } else if (isLegacyRowColumnTableType(qtype)) {
+      // 兼容旧格式：rowtitle → items，select → col_items
       if (q.rowtitle && q.rowtitle.length > 0) {
         wq.items = q.rowtitle.map((row, i) => ({
           q_index: qIdx,
@@ -611,7 +789,7 @@ export function jsonQuestionsToWire(questions: JsonSurveyQuestion[]): JsonWireCo
           item_title: col,
         }));
       }
-    } else if (isWeightType(q.qtype)) {
+    } else if (isWeightType(qtype)) {
       // 比重题：rowtitle → items
       if (q.rowtitle && q.rowtitle.length > 0) {
         wq.items = q.rowtitle.map((row, i) => ({
@@ -620,7 +798,7 @@ export function jsonQuestionsToWire(questions: JsonSurveyQuestion[]): JsonWireCo
           item_title: row,
         }));
       }
-    } else if (isMaxDiffType(q.qtype)) {
+    } else if (isMaxDiffType(qtype)) {
       // BWS / MaxDiff / 图片PK：mdattr → items
       const attrs = q.mdattr ?? q.select;
       if (attrs && attrs.length > 0) {
@@ -630,7 +808,7 @@ export function jsonQuestionsToWire(questions: JsonSurveyQuestion[]): JsonWireCo
           item_title: attr,
         }));
       }
-    } else if (q.qtype === "品牌漏斗") {
+    } else if (qtype === "品牌漏斗") {
       // 品牌漏斗：brands → items
       const brands = q.brands ?? q.select;
       if (brands && brands.length > 0) {
@@ -640,7 +818,7 @@ export function jsonQuestionsToWire(questions: JsonSurveyQuestion[]): JsonWireCo
           item_title: b,
         }));
       }
-    } else if (q.qtype === "联合分析") {
+    } else if (qtype === "联合分析") {
       // 联合分析：columntitle → col_items
       if (q.columntitle && q.columntitle.length > 0) {
         wq.col_items = q.columntitle.map((col, i) => ({
@@ -649,7 +827,7 @@ export function jsonQuestionsToWire(questions: JsonSurveyQuestion[]): JsonWireCo
           item_title: col,
         }));
       }
-    } else if (isSliderType(q.qtype)) {
+    } else if (isSliderType(qtype)) {
       // 滑动条 / 矩阵滑动条：minvalue/maxvalue → items
       if (q.minvalue !== undefined && q.maxvalue !== undefined) {
         const min = parseInt(q.minvalue, 10);
@@ -676,7 +854,7 @@ export function jsonQuestionsToWire(questions: JsonSurveyQuestion[]): JsonWireCo
     }
 
     // ── 矩阵填空 / 基本信息 / 邮寄地址：rowtitle → items（无 col_items） ──
-    if (isMatrixFillType(q.qtype) && q.rowtitle && q.rowtitle.length > 0 && !wq.items) {
+    if (!schemaDrivenTable && isMatrixFillType(qtype) && q.rowtitle && q.rowtitle.length > 0 && !wq.items) {
       wq.items = q.rowtitle.map((row, i) => ({
         q_index: qIdx,
         item_index: i + 1,
@@ -711,6 +889,23 @@ export function jsonQuestionsToWire(questions: JsonSurveyQuestion[]): JsonWireCo
       }
     }
 
+    if (typeInfo.q_type === 9) {
+      wq.total = q.total ? Number.parseInt(q.total, 10) || 100 : 100;
+      wq.row_width = 15;
+    }
+    if (typeInfo.q_type === 10) {
+      if (q.minvalue !== undefined) {
+        const min = Number.parseInt(q.minvalue, 10);
+        if (!Number.isNaN(min)) wq.min_value = min;
+      }
+      if (q.maxvalue !== undefined) {
+        const max = Number.parseInt(q.maxvalue, 10);
+        if (!Number.isNaN(max)) wq.max_value = max;
+      }
+    }
+
+    applyQuestionModes(wq, qtype, typeInfo.q_subtype);
+
     wire.push(wq);
     qIdx++;
   }
@@ -723,7 +918,7 @@ export function jsonQuestionsToWire(questions: JsonSurveyQuestion[]): JsonWireCo
 function isMatrixLikeType(qtype: string): boolean {
   return [
     "矩阵单选", "矩阵多选", "矩阵量表", "矩阵滑动条", "矩阵数值题",
-    "表格下拉框", "表格组合题",
+    "表格数值", "表格下拉框", "表格组合",
     "Kano模型", "SUS模型", "BPTO模型", "价格断裂点",
     "层次分析", "选项分类", "文字点睛", "循环评价",
     "社会阶层", "PSM模型",
@@ -733,8 +928,12 @@ function isMatrixLikeType(qtype: string): boolean {
 function isMatrixFillType(qtype: string): boolean {
   return [
     "矩阵填空", "基本信息", "邮寄地址", "企业信息",
-    "表格填空题", "表格自增题", "多项文件题", "多项简答题",
+    "表格填空", "自增表格", "多项文件题", "多项简答题",
   ].includes(qtype);
+}
+
+function isLegacyRowColumnTableType(qtype: string): boolean {
+  return ["表格数值", "表格填空"].includes(qtype);
 }
 
 function isWeightType(qtype: string): boolean {
