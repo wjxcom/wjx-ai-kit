@@ -53,13 +53,6 @@ const FORM_BLOCKED_JSONL_QTYPES = new Map<string, string>([
   ["自增表格", "自增表格"],
 ]);
 
-function throwBlockedQuestionTypes(blockedTypes: Set<string>): never {
-  throw new Error(
-    `创建或编辑问卷时不支持以下题型：${Array.from(blockedTypes).join("、")}。` +
-      "请改用单项填空、多项填空、多项简答题或多项文件题等支持题型。",
-  );
-}
-
 function assertCreatableSurveyAtype(atype: number): void {
   if (DISABLED_CREATE_SURVEY_ATYPES.has(atype)) {
     throw new Error("当前接口不支持创建投票类型问卷，请改用调查、测评、考试或表单类型。");
@@ -101,6 +94,7 @@ function normalizeQuestionsForCreate(questions: string, atype: number): string {
     }
 
     if (
+      atype === 7 &&
       question.q_type === 7 &&
       typeof question.q_subtype === "number"
     ) {
@@ -112,7 +106,6 @@ function normalizeQuestionsForCreate(questions: string, atype: number): string {
   }
 
   if (blockedFormTypes.size > 0) {
-    throwBlockedQuestionTypes(blockedFormTypes);
     throw new Error(
       `表单类型问卷不支持以下题型：${Array.from(blockedFormTypes).join("、")}。` +
         "请改用单项填空、多项填空、多项简答题或多项文件题等支持题型。",
@@ -123,6 +116,8 @@ function normalizeQuestionsForCreate(questions: string, atype: number): string {
 }
 
 function validateJsonlQuestionTypesForCreate(jsonl: string, atype: number): void {
+  if (atype !== 7) return;
+
   const blockedFormTypes = new Set<string>();
   for (const line of jsonl.split("\n")) {
     const trimmed = line.trim();
@@ -143,7 +138,6 @@ function validateJsonlQuestionTypesForCreate(jsonl: string, atype: number): void
   }
 
   if (blockedFormTypes.size > 0) {
-    throwBlockedQuestionTypes(blockedFormTypes);
     throw new Error(
       `表单类型问卷不支持以下题型：${Array.from(blockedFormTypes).join("、")}。` +
         "请改用单项填空、多项填空、多项简答题或多项文件题等支持题型。",
