@@ -6,7 +6,7 @@
 [![license](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 [![node](https://img.shields.io/badge/node-%3E%3D20-green)](https://nodejs.org/)
 
-通过 Claude、Cursor 或任何 MCP 兼容的 AI 客户端，以自然语言创建、管理和分析问卷。服务器封装了问卷星 OpenAPI，提供 **58 个 Tools**、**8 个 Resources** 和 **23 个 Prompts**。
+通过 Claude、Cursor 或任何 MCP 兼容的 AI 客户端，以自然语言创建、管理和分析问卷。服务器封装了问卷星 OpenAPI，提供 **58 个 Tools**、**8 个 Resources** 和 **22 个 Prompts**。
 
 ---
 
@@ -28,7 +28,7 @@
 
 AI 客户端可直接读取的参考数据：`survey-types`、`question-types`、`survey-statuses`、`analysis-methods`、`response-format`、`user-roles`、`push-format`、`dsl-syntax`。
 
-### 23 个 MCP Prompts
+### 22 个 MCP Prompts
 
 预置工作流模板，分三组：
 
@@ -59,7 +59,7 @@ flowchart LR
     HTTP --> Server
 
     Server --> R[Resources ×8]
-    Server --> P[Prompts ×23]
+    Server --> P[Prompts ×22]
     Server --> Tools[Tools ×58]
 
     Tools --> S1[survey ×12]
@@ -257,7 +257,7 @@ wjx-mcp-server/
 │   │   ├── multi-user/           # 多用户管理（58 tools）
 │   │   └── analytics/            # 本地分析（58 tools）
 │   ├── resources/                # 8 个 MCP Resources
-│   ├── prompts/                  # 23 个 MCP Prompts
+│   ├── prompts/                  # 22 个 MCP Prompts
 │   └── transports/http.ts        # Streamable HTTP 传输
 ├── __tests__/                    # 单元测试（node:test）
 ├── tests/                        # 集成测试

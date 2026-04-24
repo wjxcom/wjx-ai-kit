@@ -18,7 +18,7 @@ export function registerSurveyTools(server) {
                 .number()
                 .int()
                 .optional()
-                .describe("问卷类型：1=调查（默认）, 2=测评, 3=投票, 6=考试, 7=表单。考试问卷必须设为6，考试中的单选/多选/填空自动变为考试题型。注意：4(360度评估)、5(360评估无测评关系)、8(用户体系)、9(教学评估)、11(民主评议) 不支持通过 API 创建。不使用 source_vid 时必填"),
+                .describe("问卷类型：1=调查（默认）, 2=测评, 6=考试, 7=表单。当前不支持投票类型创建。考试问卷必须设为6，考试中的单选/多选/填空自动变为考试题型。注意：4(360度评估)、5(360评估无测评关系)、8(用户体系)、9(教学评估)、11(民主评议) 不支持通过 API 创建。不使用 source_vid 时必填"),
             desc: z.string().optional().describe("问卷描述。不使用 source_vid 时必填"),
             publish: z.boolean().optional().default(false).describe("是否立即发布"),
             questions: z
@@ -557,7 +557,7 @@ export function registerSurveyTools(server) {
             "请认真填写\n\n" +
             "1. 整体满意度[单选题]\n" +
             "非常满意\n满意\n不满意\n\n" +
-            "2. 建议[填空题]（选填）",
+            "2. 建议[填空题]",
         inputSchema: {
             text: z.string().min(1).describe("DSL 格式的问卷文本"),
             atype: z
@@ -565,7 +565,7 @@ export function registerSurveyTools(server) {
                 .int()
                 .optional()
                 .default(1)
-                .describe("问卷类型：1=调查（默认）, 2=测评, 3=投票, 6=考试, 7=表单"),
+                .describe("问卷类型：1=调查（默认）, 2=测评, 6=考试, 7=表单（投票类型已禁用）"),
             publish: z.boolean().optional().default(false).describe("是否立即发布"),
             creater: z.string().optional().describe("创建者子账号用户名"),
         },
@@ -594,7 +594,8 @@ export function registerSurveyTools(server) {
         title: "用 JSON 创建问卷",
         description: "（推荐，支持 70+ 题型）通过 JSONL 格式创建问卷。每行一个 JSON 对象，首行为 qtype='问卷基础信息' 的元数据。" +
             "支持 70+ 种题型（普通调查、专业调查模型、考试、表单），远多于 DSL 文本格式。" +
-            "【核心字段】qtype（题型名称）、title（标题）、select（选项数组）、rowtitle（行标题，仅矩阵/比重/Kano/PSM/表格题 使用）、requir（是否必填）。" +
+            "【核心字段】qtype（题型名称）、title（标题）、select（选项数组）、rowtitle（行标题，仅矩阵/比重/Kano/PSM/表格题 使用）、requir（是否必填；缺省时 SDK 注入 true）。" +
+            "【必答规则】默认所有题型都是必答题，包括单项填空、简答题、意见建议题、开放题；只有用户明确指定某个题号/题目/字段为选填时，才给该题传 requir=false。" +
             "【专业模型】支持 BWS/MaxDiff(mdattr)、联合分析(columntitle)、品牌漏斗(brands)、Kano模型、SUS模型、PSM模型等。" +
             "【考试题型】支持 correctselect（正确答案）、quizscore（分值）、answeranalysis（答案解析）。" +
             "【关联逻辑】支持 relation（显示条件）、referselect（引用前题选项）。" +
@@ -607,6 +608,7 @@ export function registerSurveyTools(server) {
             "表格自增题(710) 用户运行时自加行（仅传 select 列定义，不传 rowtitle）；" +
             "多项文件题(711) rowtitle 列出每个上传项；" +
             "多项简答题(712) rowtitle 列出每个简答子题。" +
+            "注意：当 atype=7（表单）时，表格数值、表格组合、表格填空、表格下拉框、自增表格不允许创建。" +
             "输入示例（JSONL）：\n" +
             '{"qtype":"问卷基础信息","title":"客户满意度调查","introduction":"请认真填写"}\n' +
             '{"qtype":"单选","title":"您的性别","select":["男","女"]}\n' +
@@ -616,16 +618,17 @@ export function registerSurveyTools(server) {
         inputSchema: {
             jsonl: z.string().min(1).max(1_000_000).describe("JSONL 格式的问卷内容（每行一个 JSON 对象）。" +
                 "硬性要求：1) 首行 _meta 的 title 必须是真实主题，不得为占位符 ??? / 无标题 / TODO / xxx；" +
-                "2) 必须包含 ≥1 道真实题目（元数据/分页/段落/知情同意书不计）；违反会被 SDK 拒绝。"),
+                "2) 必须包含 ≥1 道真实题目（元数据/分页/段落/知情同意书不计）；" +
+                "3) 默认所有题型必答，未指定 requir 时 SDK 会补 true，只有用户明确指定具体题目选填时才传 requir=false；违反会被 SDK 拒绝。"),
             title: z.string().optional().describe("覆盖 JSONL 中的问卷标题。同样适用占位符校验：禁止 ??? / 无标题 / TODO / xxx 等无语义值。"),
             atype: z
                 .number()
                 .int()
                 .optional()
                 .describe("问卷类型（**调用方应主动判断并显式传入**，不要依赖兜底）：" +
-                "1=调查（默认）, 2=测评, 3=投票, 6=考试, 7=表单。" +
-                "硬性规则：投票场景 → 必传 atype=3；表单 → 必传 atype=7；考试 → 必传 atype=6；测评 → 必传 atype=2。" +
-                "兜底（仅用于调用方遗漏时挽救，不应作为正常路径）：含考试题型→6；标题含「投票」→3；含「表单/报名表/登记表/申请表」→7；含「测评」→2；其余 1。" +
+                "1=调查（默认）, 2=测评, 6=考试, 7=表单。" +
+                "硬性规则：表单 → 必传 atype=7；考试 → 必传 atype=6；测评 → 必传 atype=2；投票类型不允许创建。" +
+                "兜底（仅用于调用方遗漏时挽救，不应作为正常路径）：含考试题型→6；含「表单/报名表/登记表/申请表」→7；含「测评」→2；其余 1。" +
                 "显式传值始终优先于兜底推断。"),
             publish: z.boolean().optional().default(false).describe("是否立即发布"),
             creater: z.string().optional().describe("创建者子账号用户名"),

@@ -8,6 +8,7 @@ export { textToSurvey, parsedQuestionsToWire, LABEL_TO_TYPE, TYPE_MAP } from "./
 export { extractJsonlMetadata, normalizeJsonl, MAX_JSONL_SIZE, parseJsonl, jsonToSurvey, jsonQuestionsToWire, QTYPE_MAP, EXAM_QTYPES, preprocessExamJsonl, injectDefaultRequir, injectAtypeIntoJsonl, inferAtypeFromTitle, validateSurveyTitle, validateSurveyHasQuestions, NON_QUESTION_QTYPE_SET, } from "./modules/survey/json-to-survey.js";
 // Response module
 export { queryResponses, queryResponsesRealtime, downloadResponses, getReport, submitResponse, getFileLinks, getWinners, modifyResponse, get360Report, clearResponses, } from "./modules/response/client.js";
+export { normalizeSubmitdata } from "./modules/response/submitdata.js";
 // Contacts module
 export { queryContacts, addContacts, deleteContacts, addAdmin, deleteAdmin, restoreAdmin, listDepartments, addDepartment, modifyDepartment, deleteDepartment, listTags, addTag, modifyTag, deleteTag, } from "./modules/contacts/client.js";
 // User System module

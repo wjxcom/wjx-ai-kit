@@ -1,6 +1,6 @@
 ---
 name: wjx-mcp-use
-description: "Guide for using wjx-mcp-server MCP tools to interact with the Wenjuanxing (问卷星) platform. Use when the user mentions: 问卷, 调查, 收集, 表单, 投票, 考试, 测评, 满意度, NPS, 问卷星, wjx, survey, questionnaire — or wants to create surveys, query responses, analyze data, manage contacts, or generate SSO links via MCP protocol. Covers 58 tools, 8 resources, and 23 prompts."
+description: "Guide for using wjx-mcp-server MCP tools to interact with the Wenjuanxing (问卷星) platform. Use when the user mentions: 问卷, 调查, 收集, 表单, 投票, 考试, 测评, 满意度, NPS, 问卷星, wjx, survey, questionnaire — or wants to create surveys, query responses, analyze data, manage contacts, or generate SSO links via MCP protocol. Covers 58 tools, 8 resources, and 22 prompts."
 ---
 
 # wjx-mcp-server Usage Guide

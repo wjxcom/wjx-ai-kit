@@ -77,7 +77,7 @@ your-project/
 
 ### 使用 MCP Prompts 工作流
 
-Claude Desktop 内置支持 MCP Prompts。wjx-mcp-server 提供了 23 个预设工作流模板（NPS 分析、满意度调查、考试出题、异常检测等），可直接在 Claude Desktop 对话中使用。
+Claude Desktop 内置支持 MCP Prompts。wjx-mcp-server 提供了 22 个预设工作流模板（NPS 分析、满意度调查、考试出题、异常检测等），可直接在 Claude Desktop 对话中使用。
 
 此外，你可以将 `skills/` 中的参考文档内容作为对话上下文粘贴给 Claude，提升问卷操作的准确度。
 

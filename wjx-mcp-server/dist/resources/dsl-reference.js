@@ -84,7 +84,7 @@ export const DSL_SYNTAX_GUIDE = {
 - 团队协作
 - 管理支持
 
-5. 您的改进建议[填空题]（选填）`,
+5. 您的改进建议[填空题]`,
     matrix_column_format: {
         description: "矩阵题支持自定义列标签（列头），有3种写法",
         formats: [

@@ -45,6 +45,7 @@ export declare const RESPONSE_FORMAT_GUIDE: {
         question: string;
         answer: string;
         option: string;
+        matrix_pair: string;
     };
     examples: {
         single_choice: string;
@@ -52,5 +53,7 @@ export declare const RESPONSE_FORMAT_GUIDE: {
         fill_in: string;
         scale: string;
         ranking: string;
+        matrix_scale: string;
     };
+    notes: string[];
 };

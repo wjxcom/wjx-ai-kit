@@ -8,7 +8,10 @@
 
 ### Changed
 
-- 版本号与 `wjx-api-sdk@0.2.4`、`wjx-mcp-server@0.2.4` 对齐（本轮无 CLI 代码变更，仅 prompt 层调整，见 wjx-mcp-server CHANGELOG）
+- **`wjx init` 简化**：移除部分冗余交互，仅在 AI Agent 场景下提示安装 Skill 包。
+- **`isAiAgentEnv()` 扩展**：识别 wjx-docs 中提及的全部 AI Agent 场景（Claude ​Code/Desktop、Cursor、Windsurf、Cline、Copilot、Trae、Gemini、Qoder、各类 Claw/工作台）。
+- **`create-by-{json,text}` help 文案**：补充 atype=10（量表）/atype=11（民主测评）说明。
+- 版本号与 `wjx-api-sdk@0.2.4`、`wjx-mcp-server@0.2.4` 对齐。
 
 ## [0.1.12] - 2026-04-03
 

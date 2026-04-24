@@ -82,7 +82,8 @@ function parseMatrixValue(rawValue: string): Record<string, string> | null {
     .map((part) => part.trim())
     .filter(Boolean);
 
-  if (parts.length === 0) return null;
+  // 至少两段才视作 matrix，避免把 "hello_world" 这种 fill 文本误判。
+  if (parts.length < 2) return null;
 
   const pairs: Record<string, string> = {};
 
@@ -95,12 +96,7 @@ function parseMatrixValue(rawValue: string): Record<string, string> | null {
       return null;
     }
 
-    const rowKey = part.substring(0, sepIdx);
-    if (!/^\d+$/.test(rowKey)) {
-      return null;
-    }
-
-    pairs[rowKey] = part.substring(sepIdx + 1);
+    pairs[part.substring(0, sepIdx)] = part.substring(sepIdx + 1);
   }
 
   return Object.keys(pairs).length > 0 ? pairs : null;

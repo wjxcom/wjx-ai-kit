@@ -18,7 +18,7 @@
 ```
 wjx-ai-kit/
 ├── wjx-api-sdk/       # 零依赖 TypeScript SDK（50+ API 函数）
-├── wjx-mcp-server/    # MCP Server（58 Tools / 8 Resources / 23 Prompts）
+├── wjx-mcp-server/    # MCP Server（58 Tools / 8 Resources / 22 Prompts）
 ├── wjx-cli/           # 命令行工具（AI Agent 原生 CLI）
 ├── wjx-agents/        # 2 个专家 Agent 定义
 ├── wjx-skills/        # 2 套 Skill 参考文档（可打包分发 zip）
@@ -28,9 +28,9 @@ wjx-ai-kit/
 
 | 包                                   | 版本     | 说明                                                                                |
 | ----------------------------------- | ------ | --------------------------------------------------------------------------------- |
-| [`wjx-api-sdk`](wjx-api-sdk/)       | 0.2.3 | 零依赖 TypeScript SDK。8 模块、48+ 函数，可在任意 Node.js 项目中使用                                 |
-| [`wjx-mcp-server`](wjx-mcp-server/) | 0.2.3 | [MCP](https://modelcontextprotocol.io/) Server。接入 Claude、Cursor、Windsurf 等 AI 客户端 |
-| [`wjx-cli`](wjx-cli/)               | 0.2.3 | 命令行工具。67 子命令，支持 stdin pipe、JSON/表格输出                                              |
+| [`wjx-api-sdk`](wjx-api-sdk/)       | 0.2.4 | 零依赖 TypeScript SDK。8 模块、48+ 函数，可在任意 Node.js 项目中使用                                 |
+| [`wjx-mcp-server`](wjx-mcp-server/) | 0.2.4 | [MCP](https://modelcontextprotocol.io/) Server。接入 Claude、Cursor、Windsurf 等 AI 客户端 |
+| [`wjx-cli`](wjx-cli/)               | 0.2.4 | 命令行工具。67 子命令，支持 stdin pipe、JSON/表格输出                                              |
 
 ---
 
