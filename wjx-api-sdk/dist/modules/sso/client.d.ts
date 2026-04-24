@@ -17,6 +17,6 @@ export declare function buildSsoPartnerUrl(input: SsoPartnerInput): string;
 export declare function buildSurveyUrl(input: BuildSurveyUrlInput): string;
 /**
  * Build a survey preview/fill URL (the respondent-facing page).
- * Pattern: {baseUrl}/vm/{vid}.aspx
+ * Pattern: {baseUrl}/vm/{sid|vid}.aspx
  */
 export declare function buildPreviewUrl(input: BuildPreviewUrlInput): string;

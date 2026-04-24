@@ -66,6 +66,10 @@ export interface JsonSurveyQuestion {
     mdattr?: string[];
     /** 联合分析 */
     columntitle?: string[];
+    /** 表格题字段类型（与 rowtitle 一一对应） */
+    columntype?: string[];
+    /** 表格题字段补充数据（与 rowtitle / columntype 一一对应） */
+    columndata?: string[];
     /** 品牌漏斗 */
     brands?: string[];
     /** 企业信息模糊查询 */
@@ -75,6 +79,9 @@ export interface JsonSurveyQuestion {
     /** 分页栏 */
     mintime?: number;
     maxtime?: number;
+    /** 自增表格 */
+    min_rows?: number;
+    max_rows?: number;
     /** 答卷摄像 */
     cameratype?: string;
     /** PSM 模型 */
@@ -136,6 +143,11 @@ export declare function preprocessExamJsonl(jsonl: string): {
  * - 非题目行（问卷基础信息、分页栏、段落说明、知情同意书）和空行/无法解析行保持原样
  */
 export declare function injectDefaultRequir(jsonl: string): string;
+/**
+ * 校验 JSONL 中显式写出的 `requir:false` 是否真的被调用方明确允许。
+ * 默认所有题目必答；只有标题列入 optionalTitles 的题目，才允许非必答。
+ */
+export declare function validateExplicitOptionalQuestionsInJsonl(jsonl: string, optionalTitles?: string[]): void;
 /**
  * 将 `atype` 写入 JSONL 首行的「问卷基础信息」对象（覆盖已有值）。
  * - 存在「问卷基础信息」行：就地注入/覆盖 atype 字段

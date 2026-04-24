@@ -3,26 +3,8 @@ import { callWjxApi, getWjxCredentials } from "../../core/api-client.js";
 export { textToSurvey, parsedQuestionsToWire } from "./text-to-survey.js";
 import { textToSurvey, parsedQuestionsToWire } from "./text-to-survey.js";
 export { extractJsonlMetadata, normalizeJsonl } from "./json-to-survey.js";
-import { extractJsonlMetadata, normalizeJsonl, MAX_JSONL_SIZE, preprocessExamJsonl, injectDefaultRequir, injectAtypeIntoJsonl, inferAtypeFromTitle, validateSurveyTitle, validateSurveyHasQuestions, } from "./json-to-survey.js";
+import { extractJsonlMetadata, normalizeJsonl, MAX_JSONL_SIZE, preprocessExamJsonl, injectDefaultRequir, injectAtypeIntoJsonl, inferAtypeFromTitle, validateSurveyTitle, validateSurveyHasQuestions, validateExplicitOptionalQuestionsInJsonl, } from "./json-to-survey.js";
 const DISABLED_CREATE_SURVEY_ATYPES = new Set([3]);
-const FORM_BLOCKED_SUBTYPES = new Map([
-    [706, "表格数值"],
-    [707, "表格填空"],
-    [708, "表格下拉框"],
-    [709, "表格组合"],
-    [710, "自增表格"],
-]);
-const FORM_BLOCKED_JSONL_QTYPES = new Map([
-    ["矩阵数值题", "表格数值"],
-    ["表格数值", "表格数值"],
-    ["表格填空题", "表格填空"],
-    ["表格填空", "表格填空"],
-    ["表格下拉框", "表格下拉框"],
-    ["表格组合题", "表格组合"],
-    ["表格组合", "表格组合"],
-    ["表格自增题", "自增表格"],
-    ["自增表格", "自增表格"],
-]);
 function assertCreatableSurveyAtype(atype) {
     if (DISABLED_CREATE_SURVEY_ATYPES.has(atype)) {
         throw new Error("当前接口不支持创建投票类型问卷，请改用调查、测评、考试或表单类型。");
@@ -51,56 +33,41 @@ function parseQuestionsJsonArray(questions) {
     }
     return questionList;
 }
-function normalizeQuestionsForCreate(questions, atype) {
+function buildOptionalTitleSet(optionalTitles = []) {
+    return new Set(optionalTitles
+        .map((title) => title.trim())
+        .filter((title) => title.length > 0));
+}
+function validateExplicitOptionalQuestions(questionList, optionalTitles = []) {
+    const allowedTitles = buildOptionalTitleSet(optionalTitles);
+    for (const [i, question] of questionList.entries()) {
+        if (question.is_requir !== false) {
+            continue;
+        }
+        const title = typeof question.q_title === "string" ? question.q_title.trim() : "";
+        if (!title) {
+            throw new Error(`questions[${i}] 显式设置了 is_requir=false，但缺少可匹配的 q_title。默认所有题目必答；如需设为选填，请提供明确标题并把它加入 optionalTitles。`);
+        }
+        if (!allowedTitles.has(title)) {
+            throw new Error(`题目「${title}」显式设置了 is_requir=false，但未在 optionalTitles 中声明。默认所有题目必答；如需设为选填，请把该标题加入 optionalTitles。`);
+        }
+    }
+}
+function normalizeQuestionsForCreate(questions, atype, optionalTitles = []) {
     const questionList = parseQuestionsJsonArray(questions);
+    validateExplicitOptionalQuestions(questionList, optionalTitles);
     let modified = false;
-    const blockedFormTypes = new Set();
     for (const question of questionList) {
         if (question.is_requir === undefined) {
             question.is_requir = true;
             modified = true;
         }
-        if (atype === 7 &&
-            question.q_type === 7 &&
-            typeof question.q_subtype === "number") {
-            const blockedType = FORM_BLOCKED_SUBTYPES.get(question.q_subtype);
-            if (blockedType) {
-                blockedFormTypes.add(blockedType);
-            }
-        }
-    }
-    if (blockedFormTypes.size > 0) {
-        throw new Error(`表单类型问卷不支持以下题型：${Array.from(blockedFormTypes).join("、")}。` +
-            "请改用单项填空、多项填空、多项简答题或多项文件题等支持题型。");
     }
     return modified ? JSON.stringify(questionList) : questions;
 }
 function validateJsonlQuestionTypesForCreate(jsonl, atype) {
-    if (atype !== 7)
-        return;
-    const blockedFormTypes = new Set();
-    for (const line of jsonl.split("\n")) {
-        const trimmed = line.trim();
-        if (!trimmed)
-            continue;
-        let obj;
-        try {
-            obj = JSON.parse(trimmed);
-        }
-        catch {
-            continue;
-        }
-        if (typeof obj.qtype !== "string")
-            continue;
-        const blockedType = FORM_BLOCKED_JSONL_QTYPES.get(obj.qtype);
-        if (blockedType) {
-            blockedFormTypes.add(blockedType);
-        }
-    }
-    if (blockedFormTypes.size > 0) {
-        throw new Error(`表单类型问卷不支持以下题型：${Array.from(blockedFormTypes).join("、")}。` +
-            "请改用单项填空、多项填空、多项简答题或多项文件题等支持题型。");
-    }
+    void jsonl;
+    void atype;
 }
 export function validateQuestionsJson(questions) {
     parseQuestionsJsonArray(questions);
@@ -117,7 +84,7 @@ export async function createSurvey(input, credentials = getWjxCredentials(), fet
         assertCreatableSurveyAtype(input.type);
         params.atype = input.type;
         params.desc = input.description;
-        params.questions = normalizeQuestionsForCreate(input.questions, input.type);
+        params.questions = normalizeQuestionsForCreate(input.questions, input.type, input.optionalTitles);
     }
     params.publish = input.publish ?? false;
     if (input.creater !== undefined)
@@ -248,6 +215,9 @@ export async function createSurveyByText(input, credentials = getWjxCredentials(
     // 解析 DSL 文本为结构化数据，然后通过 createSurvey API 创建
     const parsed = textToSurvey(input.text);
     const { questions: wireQuestions } = parsedQuestionsToWire(parsed.questions);
+    const optionalTitles = wireQuestions
+        .filter((question) => question.is_requir === false && typeof question.q_title === "string")
+        .map((question) => question.q_title);
     const title = input.title ?? parsed.title;
     const description = parsed.description ?? "";
     return createSurvey({
@@ -255,6 +225,7 @@ export async function createSurveyByText(input, credentials = getWjxCredentials(
         type: input.atype ?? 1,
         description,
         questions: JSON.stringify(wireQuestions),
+        optionalTitles,
         publish: input.publish,
         creater: input.creater,
     }, credentials, fetchImpl);
@@ -274,6 +245,7 @@ export async function createSurveyByJson(input, credentials = getWjxCredentials(
     }
     // 考试题型预处理：注入 isquiz="1"，并在用户未指定 atype 时推断为 6（考试）
     const { jsonl: examProcessed, hasExam } = preprocessExamJsonl(jsonl);
+    validateExplicitOptionalQuestionsInJsonl(examProcessed, input.optionalTitles);
     // 默认必答预处理：与页面创建行为保持一致，为题目行注入 requir=true（未指定时）
     const requirInjected = injectDefaultRequir(examProcessed);
     const metadata = extractJsonlMetadata(requirInjected);

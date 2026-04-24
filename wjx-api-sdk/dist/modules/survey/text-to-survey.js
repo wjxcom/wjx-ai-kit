@@ -54,14 +54,18 @@ const MATRIX_MODE_MAP = {
     702: 103, // 矩阵单选 → 矩阵单选
     703: 102, // 矩阵多选 → 矩阵多选
     704: 201, // 矩阵填空 → 矩阵填空
-    705: 0, // 矩阵滑动条 → 默认
+    705: 202, // 矩阵滑动条 → 矩阵滑动条
     706: 0, // 矩阵数值题 → 默认
-    707: 201, // 表格填空题 → 矩阵填空
-    708: 0, // 表格下拉框 → 默认
+    707: 302, // 表格填空题 → 表格填空
+    708: 303, // 表格下拉框 → 表格下拉框
     709: 0, // 表格组合题 → 默认
     710: 0, // 表格自增题 → 默认
-    711: 0, // 多项文件题 → 默认
-    712: 201, // 多项简答题 → 矩阵填空（行内填写文本）
+    711: 203, // 多项文件题 → 多项文件
+    712: 204, // 多项简答题 → 多项简答
+};
+const TABLE_MODE_MAP = {
+    709: 1, // 表格组合
+    710: 2, // 表格自增
 };
 /**
  * Convert ParsedQuestion array to API wire format (question JSON for createSurvey).
@@ -189,6 +193,9 @@ export function parsedQuestionsToWire(questions) {
         // Matrix (q_type=7): matrix_mode + style_mode are required
         if (typeInfo.q_type === 7) {
             wq.matrix_mode = MATRIX_MODE_MAP[typeInfo.q_subtype] ?? 0;
+            if (TABLE_MODE_MAP[typeInfo.q_subtype] !== undefined) {
+                wq.table_mode = TABLE_MODE_MAP[typeInfo.q_subtype];
+            }
             wq.style_mode = 0; // 常规
         }
         // Weight questions (q_type=9) require total and row_width

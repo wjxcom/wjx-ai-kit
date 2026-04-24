@@ -89,10 +89,20 @@ export function buildSurveyUrl(input) {
 }
 /**
  * Build a survey preview/fill URL (the respondent-facing page).
- * Pattern: {baseUrl}/vm/{vid}.aspx
+ * Pattern: {baseUrl}/vm/{sid|vid}.aspx
  */
 export function buildPreviewUrl(input) {
-    const base = `${getWjxBaseUrl()}/vm/${input.vid}.aspx`;
+    const sid = input.sid?.trim();
+    const vid = input.vid;
+    const hasValidVid = vid !== undefined && Number.isInteger(vid) && vid > 0;
+    if (!sid && vid !== undefined && !hasValidVid) {
+        throw new Error("buildPreviewUrl 的 vid 必须是正整数");
+    }
+    const target = sid || (hasValidVid ? vid.toString() : "");
+    if (!target) {
+        throw new Error("buildPreviewUrl 需要提供 sid 或 vid");
+    }
+    const base = `${getWjxBaseUrl()}/vm/${encodeURIComponent(target)}.aspx`;
     if (input.source) {
         return `${base}?source=${encodeURIComponent(input.source)}`;
     }

@@ -9,6 +9,17 @@ export interface WireQuestionItem {
     item_index: number;
     item_title: string;
     item_score?: number;
+    verify?: number;
+    is_requir?: boolean;
+    need_only?: boolean;
+    item_choice?: string;
+    min_words?: number;
+    max_words?: number;
+    ext?: string;
+    max_size?: number;
+    referselect?: string;
+    column_type?: string;
+    column_data?: string;
 }
 export interface WireQuestion {
     q_index: number;
@@ -22,8 +33,10 @@ export interface WireQuestion {
     row_width?: number;
     /** 多项填空题填空数量（q_type=6 必填） */
     gap_count?: number;
-    /** 矩阵展现形式（q_type=7 必填）：0=无, 101=量表, 102=多选, 103=单选, 201=填空 */
+    /** 矩阵展现形式（q_type=7 必填）：0=无, 101/102/103=矩阵, 201/202=矩阵填空/滑动条, 203/204=多项文件/简答, 301/302/303=表格数值/填空/下拉 */
     matrix_mode?: number;
+    /** 表格展现形式（q_type=7 的表格组合/自增表格会用到）：0=无, 1=表格组合, 2=表格自增 */
+    table_mode?: number;
     /** 矩阵样式模式（q_type=7 必填）：0=常规 */
     style_mode?: number;
     /** 滑动条最小值（q_type=10 必填） */

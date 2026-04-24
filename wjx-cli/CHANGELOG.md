@@ -4,6 +4,12 @@
 
 格式基于 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [0.2.6] - 2026-04-24
+
+### Added
+
+- `survey create-by-json` 支持表格类题型，命令层传参补齐必答题设置（联动 SDK 0.2.6）。
+
 ## [0.2.4] - 2026-04-22
 
 ### Changed

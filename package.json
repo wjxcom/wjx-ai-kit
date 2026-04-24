@@ -15,5 +15,8 @@
     "wjx-api-sdk",
     "wjx-mcp-server",
     "wjx-cli"
-  ]
+  ],
+  "devDependencies": {
+    "marked": "^18.0.2"
+  }
 }

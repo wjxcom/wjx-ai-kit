@@ -40,6 +40,7 @@ export declare function getMerged(cmd: Command): Record<string, unknown>;
  * a JSON-encoded string (double-encoded in the POST body).
  */
 export declare function ensureJsonString(value: unknown, fieldName: string): string | undefined;
+export declare function ensureStringArray(value: unknown, fieldName: string): string[] | undefined;
 type SdkFunction = (input: any, creds: any, ...rest: any[]) => Promise<WjxApiResponse<any>>;
 /**
  * Central command executor.

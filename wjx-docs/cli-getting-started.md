@@ -23,7 +23,7 @@ npm install -g wjx-cli
 
 ```bash
 wjx --version
-# wjx-cli/0.2.4
+# wjx-cli/0.2.6
 ```
 
 需要 Node.js >= 20。如果版本不够，运行 `wjx doctor` 会提示。
@@ -79,7 +79,7 @@ wjx doctor
 ✓ Config file: ~/.wjxrc
 ✓ API Key: sk-****...****
 ✓ API connectivity: OK (12 surveys found)
-✓ SDK version: wjx-api-sdk@0.2.4
+✓ SDK version: wjx-api-sdk@0.2.6
 ```
 
 ---

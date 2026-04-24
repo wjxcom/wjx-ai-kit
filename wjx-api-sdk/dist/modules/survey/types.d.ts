@@ -4,6 +4,8 @@ export interface CreateSurveyInput {
     description: string;
     publish?: boolean;
     questions: string;
+    /** 允许显式设为非必答的题目标题列表；未列入时，is_requir=false 会被拒绝 */
+    optionalTitles?: string[];
     creater?: string;
     source_vid?: string;
     compress_img?: boolean;
@@ -28,6 +30,8 @@ export interface CreateSurveyByJsonInput {
     title?: string;
     /** 问卷类型：1=调查, 2=测评, 6=考试, 7=表单（投票类型已禁用） */
     atype?: number;
+    /** 允许显式设为非必答的题目标题列表；未列入时，requir=false 会被拒绝 */
+    optionalTitles?: string[];
     /** 是否立即发布 */
     publish?: boolean;
     /** 创建者子账号用户名 */

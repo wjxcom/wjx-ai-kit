@@ -85,6 +85,16 @@ export function ensureJsonString(value, fieldName) {
     }
     throw new CliError("INPUT_ERROR", `${fieldName} 必须是 JSON 字符串或对象`);
 }
+export function ensureStringArray(value, fieldName) {
+    const json = ensureJsonString(value, fieldName);
+    if (json === undefined)
+        return undefined;
+    const parsed = JSON.parse(json);
+    if (!Array.isArray(parsed) || parsed.some((item) => typeof item !== "string")) {
+        throw new CliError("INPUT_ERROR", `${fieldName} 必须是字符串 JSON 数组`);
+    }
+    return parsed;
+}
 /**
  * Central command executor.
  * - Merges stdin data with CLI opts (source-aware)

@@ -3,7 +3,7 @@ import { createSurvey, createSurveyByText, createSurveyByJson, getSurvey, listSu
 import { formatOutput } from "../lib/output.js";
 import { CliError, handleError } from "../lib/errors.js";
 import { getCredentials } from "../lib/auth.js";
-import { executeCommand, strictInt, requireField, getMerged, createCapturingFetch, printDryRunPreview, ensureJsonString } from "../lib/command-helpers.js";
+import { executeCommand, strictInt, requireField, getMerged, createCapturingFetch, printDryRunPreview, ensureJsonString, ensureStringArray } from "../lib/command-helpers.js";
 export function registerSurveyCommands(program) {
     const survey = program.command("survey").description("问卷管理");
     // --- list ---
@@ -77,6 +77,7 @@ export function registerSurveyCommands(program) {
         .option("--type <n>", "问卷类型", strictInt)
         .option("--description <s>", "问卷描述")
         .option("--questions <json>", "题目JSON数组")
+        .option("--optional_titles <json>", "允许设为选填的题目标题 JSON 数组")
         .option("--source_vid <s>", "复制源问卷ID")
         .option("--publish", "创建后发布")
         .action(async (_opts, cmd) => {
@@ -87,6 +88,7 @@ export function registerSurveyCommands(program) {
                 type: m.type ?? 0,
                 description: m.description ?? "",
                 questions: ensureJsonString(m.questions, "questions") ?? "[]",
+                optionalTitles: ensureStringArray(m.optional_titles, "optional_titles"),
                 source_vid: m.source_vid,
                 publish: m.publish,
             };
@@ -160,6 +162,7 @@ export function registerSurveyCommands(program) {
         .option("--file <path>", "从文件读取 JSONL 文本")
         .option("--title <s>", "覆盖 JSONL 中的问卷标题")
         .option("--type <n>", "问卷类型：1=调查, 2=测评, 3=投票, 6=考试, 7=表单, 10=量表, 11=民主测评", strictInt)
+        .option("--optional_titles <json>", "允许设为选填的题目标题 JSON 数组")
         .option("--publish", "创建后发布")
         .option("--creater <s>", "创建者子账号")
         .action(async (_opts, cmd) => {
@@ -195,6 +198,7 @@ export function registerSurveyCommands(program) {
                     jsonl: jsonlText,
                     title: merged.title,
                     atype: merged.type,
+                    optionalTitles: ensureStringArray(merged.optional_titles, "optional_titles"),
                     publish: merged.publish,
                     creater: merged.creater,
                 }, creds, fetchImpl);
@@ -205,6 +209,7 @@ export function registerSurveyCommands(program) {
                 jsonl: jsonlText,
                 title: merged.title,
                 atype: merged.type,
+                optionalTitles: ensureStringArray(merged.optional_titles, "optional_titles"),
                 publish: merged.publish,
                 creater: merged.creater,
             }, creds);
