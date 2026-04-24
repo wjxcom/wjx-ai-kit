@@ -71,9 +71,20 @@ export interface BuildSurveyUrlInput {
 }
 
 /** Input for generating a survey preview/fill URL. */
-export interface BuildPreviewUrlInput {
-  /** Survey vid (required). */
-  vid: number;
-  /** Optional source tracking parameter. */
-  source?: string;
-}
+export type BuildPreviewUrlInput =
+  | {
+    /** Survey vid. When both vid and sid exist, sid should be preferred. */
+    vid: number;
+    /** Survey short id returned by create APIs, for example "Y3eWs". */
+    sid?: string;
+    /** Optional source tracking parameter. */
+    source?: string;
+  }
+  | {
+    /** Survey vid. When both vid and sid exist, sid should be preferred. */
+    vid?: number;
+    /** Survey short id returned by create APIs, for example "Y3eWs". */
+    sid: string;
+    /** Optional source tracking parameter. */
+    source?: string;
+  };

@@ -112,6 +112,17 @@ export function ensureJsonString(value: unknown, fieldName: string): string | un
   throw new CliError("INPUT_ERROR", `${fieldName} 必须是 JSON 字符串或对象`);
 }
 
+export function ensureStringArray(value: unknown, fieldName: string): string[] | undefined {
+  const json = ensureJsonString(value, fieldName);
+  if (json === undefined) return undefined;
+
+  const parsed = JSON.parse(json);
+  if (!Array.isArray(parsed) || parsed.some((item) => typeof item !== "string")) {
+    throw new CliError("INPUT_ERROR", `${fieldName} 必须是字符串 JSON 数组`);
+  }
+  return parsed;
+}
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type SdkFunction = (input: any, creds: any, ...rest: any[]) => Promise<WjxApiResponse<any>>;
 
