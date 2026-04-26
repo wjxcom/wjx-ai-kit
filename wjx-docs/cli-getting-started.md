@@ -1,12 +1,14 @@
 # CLI 入门指南：命令行操作问卷星
 
 > 安装 → 配置 → 第一个问卷，5 分钟上手
+>
+> **CLI 是 wjx-ai-kit 的主入口**：任何能执行 shell 命令的 AI 工具都能用（不依赖 MCP 协议），升级只需 `npm update -g`，一次配完所有会话共享。
 
 ---
 
-## 🚀 最快开始：让 AI 帮你装好
+## 🚀 最快开始：让 AI 帮你装好（推荐）
 
-打开你常用的 AI（Claude Code / Cursor / Windsurf / Cline / Trae / Copilot 等任何能在终端里执行命令的工具），把下面这段话发给它：
+打开你常用的 AI（Claude Code / Cursor / Windsurf / Cline / Trae / Copilot / Claw / Manus / WorkBuddy / QoderWork 等任何能在终端里执行命令的工具），把下面这段话发给它：
 
 ````text
 请帮我安装并配置问卷星 CLI（wjx-cli）：

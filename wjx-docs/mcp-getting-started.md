@@ -12,6 +12,10 @@ MCP (Model Context Protocol) 是 AI 工具调用的标准协议。wjx-mcp-server
 
 ---
 
+> 💡 **建议先装 wjx-cli**（[CLI 入门](./cli-getting-started.md)）。CLI 是 wjx-ai-kit 的主入口——任何 AI 工具都能用，升级简单，一次配完处处生效。**MCP 是 CLI 之外的可选增强**：让支持 MCP 协议的 AI（Claude Code/Desktop/Cursor 等）能直接调 58 个工具，对话更流畅。不支持 MCP 的工具（WorkBuddy/Manus/部分 Claw）只用 CLI 就够了。
+
+---
+
 ## 🚀 最快接入：把这段话发给你的 AI
 
 如果你已经在用 Claude Code / Claude Desktop / Cursor / Windsurf / Cline 等支持 MCP 的工具，**直接复制下面这段对话**给它，全程不用读文档：
