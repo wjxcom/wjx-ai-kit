@@ -4,6 +4,39 @@
 
 ---
 
+## 🚀 最快接入：让 Claude 自己写配置
+
+Claude Desktop 不能改自己的配置文件——但你可以**先打开 Claude Code 或任意支持文件编辑的 AI**（甚至直接对话里让 Claude 帮你算路径），把下面这段话发过去：
+
+````text
+请帮我接入问卷星 MCP Server 到 Claude Desktop：
+1. 检查 node --version >= 20
+2. 让我去 https://www.wjx.cn/weixinlogin.aspx?redirecturl=%2Fnewwjx%2Fmanage%2Fuserinfo.aspx%3FshowApiKey%3D1 微信扫码取 API Key
+3. 拿到 Key 后，把以下 JSON 写入 Claude Desktop 配置文件（如已存在 mcpServers 就把 wjx 这一项合并进去）：
+   - macOS: ~/Library/Application Support/Claude/claude_desktop_config.json
+   - Windows: %APPDATA%\Claude\claude_desktop_config.json
+   ```json
+   {
+     "mcpServers": {
+       "wjx": {
+         "command": "npx",
+         "args": ["-y", "wjx-mcp-server@latest"],
+         "env": { "WJX_API_KEY": "<我的Key>" }
+       }
+     }
+   }
+   ```
+4. 校验 JSON 没有多余逗号 / 引号错误
+5. 提醒我**完全退出**（不是最小化）并重新启动 Claude Desktop
+6. 重启后让我对 Claude 说"列出我的问卷"验证
+````
+
+> **私有化部署用户**：在 env 里加 `"WJX_BASE_URL": "https://你的域名"`。
+>
+> **完全没有任何 AI 工具？** 跳到下面的"准备工作"按手动步骤做。
+
+---
+
 ## 准备工作
 
 1. **安装 Claude Desktop** — 前往 [claude.ai/download](https://claude.ai/download) 下载并安装
@@ -30,7 +63,7 @@
   "mcpServers": {
     "wjx": {
       "command": "npx",
-      "args": ["wjx-mcp-server"],
+      "args": ["-y", "wjx-mcp-server@latest"],
       "env": {
         "WJX_API_KEY": "替换为你的 API Key"
       }

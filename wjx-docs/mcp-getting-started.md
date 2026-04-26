@@ -12,7 +12,32 @@ MCP (Model Context Protocol) 是 AI 工具调用的标准协议。wjx-mcp-server
 
 ---
 
-## 准备工作
+## 🚀 最快接入：把这段话发给你的 AI
+
+如果你已经在用 Claude Code / Claude Desktop / Cursor / Windsurf / Cline 等支持 MCP 的工具，**直接复制下面这段对话**给它，全程不用读文档：
+
+````text
+请帮我接入问卷星 MCP Server：
+
+1. 检查 Node.js 是否 ≥ 20，版本过低引导我去 https://nodejs.org 升级
+2. 让我去 https://www.wjx.cn/weixinlogin.aspx?redirecturl=%2Fnewwjx%2Fmanage%2Fuserinfo.aspx%3FshowApiKey%3D1 微信扫码取 API Key（私有化部署用户把 www.wjx.cn 换成自己的域名），等我把 Key 发给你
+3. 根据我的 AI 工具自动选配置方式：
+   - Claude Code：执行 `claude mcp add wjx --env WJX_API_KEY=<我的Key> -- npx -y wjx-mcp-server@latest`
+   - 其他 MCP 客户端：写入它们的 MCP 配置文件
+     ```json
+     {"mcpServers":{"wjx":{"command":"npx","args":["-y","wjx-mcp-server@latest"],"env":{"WJX_API_KEY":"<我的Key>"}}}}
+     ```
+4. 配置完提醒我**完全重启** AI 工具
+5. 重启后调用 `list_surveys` 验证
+````
+
+> 用了 `wjx-mcp-server@latest`，每次重启自动拉最新版，不用手动清 npx 缓存。
+
+不喜欢 AI 自动安装？继续往下读手动接入步骤。
+
+---
+
+## 准备工作（手动安装）
 
 ### 1. 获取问卷星 API Key
 
@@ -52,7 +77,7 @@ npm install -g wjx-mcp-server
   "mcpServers": {
     "wjx": {
       "command": "npx",
-      "args": ["wjx-mcp-server"],
+      "args": ["-y", "wjx-mcp-server@latest"],
       "env": {
         "WJX_API_KEY": "替换为你的API Key"
       }
@@ -84,7 +109,7 @@ Claude 会调用 `list_surveys` 工具，返回你账户下的问卷列表。如
   "mcpServers": {
     "wjx": {
       "command": "npx",
-      "args": ["wjx-mcp-server"],
+      "args": ["-y", "wjx-mcp-server@latest"],
       "env": {
         "WJX_API_KEY": "替换为你的API Key"
       }
@@ -102,7 +127,7 @@ Claude 会调用 `list_surveys` 工具，返回你账户下的问卷列表。如
 ## 接入 Claude Code
 
 ```bash
-claude mcp add wjx --env WJX_API_KEY=你的APIKey -- npx wjx-mcp-server
+claude mcp add wjx --env WJX_API_KEY=你的APIKey -- npx -y wjx-mcp-server@latest
 ```
 
 > Claude Code 支持完整的 Agent + Skill 体验，详见 [Claude Code 配置指南](./setup-claude-code.md)。
@@ -249,14 +274,14 @@ AI 可以随时查阅 8 个参考资源，不需要你提供文档：
 1. 配置文件路径是否正确
 2. API Key 是否已填入
 3. 是否重启了 Claude Desktop / Cursor
-4. 运行 `npx wjx-mcp-server` 看是否有报错
+4. 运行 `npx -y wjx-mcp-server@latest` 看是否有报错
 
 **Q: AI 创建问卷失败，说认证错误**
 
 确认 API Key 是否有效。可以在终端测试：
 
 ```bash
-WJX_API_KEY=你的Key npx wjx-mcp-server
+WJX_API_KEY=你的Key npx -y wjx-mcp-server@latest
 ```
 
 然后在 Claude 中重试。

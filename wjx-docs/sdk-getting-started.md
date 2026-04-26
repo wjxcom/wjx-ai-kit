@@ -32,6 +32,10 @@ npm run build --workspace=wjx-api-sdk
 
 需要 Node.js >= 20（使用内置 fetch）。
 
+> **获取 API Key**：微信扫码登录 [API Key 获取页](https://www.wjx.cn/weixinlogin.aspx?redirecturl=%2Fnewwjx%2Fmanage%2Fuserinfo.aspx%3FshowApiKey%3D1)，登录后页面直接显示 API Key。私有化部署用户把 `www.wjx.cn` 换成自己的域名。
+>
+> **想在 AI 对话里用，不写代码？** 不是 SDK 你要的——去看 [MCP Server 入门](./mcp-getting-started.md) 或 [CLI 入门](./cli-getting-started.md)，那里有"让 AI 帮你装"的一键提示。
+
 ---
 
 ## 认证配置

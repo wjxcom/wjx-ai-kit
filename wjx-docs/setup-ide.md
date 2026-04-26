@@ -4,6 +4,36 @@
 
 ---
 
+## 🚀 最快接入：让 IDE 里的 AI 自己装
+
+打开你 IDE 的 AI 对话窗（Cursor Chat / Windsurf Cascade / Cline / Copilot Chat / Trae / Gemini / Qoder），把下面这段话发给它：
+
+````text
+请帮我接入问卷星 MCP Server。我用的 IDE 是 <Cursor / Windsurf / Cline / Copilot / Trae / Gemini Code Assist / Qoder>。
+
+1. 检查 node --version >= 20
+2. 让我去 https://www.wjx.cn/weixinlogin.aspx?redirecturl=%2Fnewwjx%2Fmanage%2Fuserinfo.aspx%3FshowApiKey%3D1 微信扫码取 API Key
+3. 找到我这个 IDE 对应的 MCP 配置文件路径（Cursor: .cursor/mcp.json 或 ~/.cursor/mcp.json；Windsurf: ~/.codeium/windsurf/mcp_config.json；Cline: VS Code globalStorage 里的 cline_mcp_settings.json；Copilot: .github/copilot-mcp.json，VS Code settings.json 用 mcp.servers 不是 mcpServers；Trae: .trae/mcp.json；Qoder: 设置面板）
+4. 把以下 JSON 合并进去：
+   ```json
+   {
+     "mcpServers": {
+       "wjx": {
+         "command": "npx",
+         "args": ["-y", "wjx-mcp-server@latest"],
+         "env": { "WJX_API_KEY": "<我的Key>" }
+       }
+     }
+   }
+   ```
+5. 提醒我**重启 IDE 或重新加载窗口**（VS Code 系：Ctrl/Cmd+Shift+P → Reload Window）
+6. 重启后让我说"列出我的问卷"验证
+````
+
+> 各 IDE 的 MCP 配置入口和重载方式都不一样，让 AI 帮你定位是最稳的。下面是按 IDE 拆开的手动步骤。
+
+---
+
 ## 准备工作
 
 1. **安装你的 IDE 插件** — 见下表
@@ -33,7 +63,7 @@
   "mcpServers": {
     "wjx": {
       "command": "npx",
-      "args": ["wjx-mcp-server"],
+      "args": ["-y", "wjx-mcp-server@latest"],
       "env": {
         "WJX_API_KEY": "替换为你的 API Key"
       }
@@ -67,7 +97,7 @@
 <details>
 <summary><b>Cline</b></summary>
 
-**通过 UI**（推荐）：VS Code 侧边栏 Cline 面板 → Settings 齿轮图标 → MCP Servers → Add MCP Server → 填入名称 `wjx`、命令 `npx`、参数 `wjx-mcp-server`、环境变量 `WJX_API_KEY`。
+**通过 UI**（推荐）：VS Code 侧边栏 Cline 面板 → Settings 齿轮图标 → MCP Servers → Add MCP Server → 填入名称 `wjx`、命令 `npx`、参数 `-y wjx-mcp-server@latest`、环境变量 `WJX_API_KEY`。
 
 **配置文件**：编辑 VS Code globalStorage 中的 `cline_mcp_settings.json`。
 </details>
@@ -84,7 +114,7 @@
     "servers": {
       "wjx": {
         "command": "npx",
-        "args": ["wjx-mcp-server"],
+        "args": ["-y", "wjx-mcp-server@latest"],
         "env": { "WJX_API_KEY": "你的 API Key" }
       }
     }

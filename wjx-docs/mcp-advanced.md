@@ -12,10 +12,10 @@
 
 ```bash
 # 环境变量方式
-MCP_TRANSPORT=http PORT=3000 MCP_AUTH_TOKEN=your_secret npx wjx-mcp-server
+MCP_TRANSPORT=http PORT=3000 MCP_AUTH_TOKEN=your_secret npx -y wjx-mcp-server@latest
 
 # 或命令行参数
-npx wjx-mcp-server --http
+npx -y wjx-mcp-server@latest --http
 ```
 
 ### 端点说明

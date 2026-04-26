@@ -6,11 +6,13 @@ import { fileURLToPath } from "node:url";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { setCredentialProvider } from "wjx-api-sdk";
 import { getRequestCredentials } from "./core/context.js";
+import { checkLatestVersion } from "./core/version-check.js";
 import { createServer } from "./server.js";
 // Wire MCP-server's per-request credential store into the SDK
 setCredentialProvider(getRequestCredentials);
 export { createServer } from "./server.js";
 export async function main() {
+    checkLatestVersion();
     const transportMode = process.argv.includes("--http")
         ? "http"
         : (process.env.MCP_TRANSPORT ?? "stdio");

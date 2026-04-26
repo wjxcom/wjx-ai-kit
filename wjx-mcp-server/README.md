@@ -145,7 +145,7 @@ MCP_TRANSPORT=http PORT=3000 MCP_AUTH_TOKEN=my-secret node dist/index.js
   "mcpServers": {
     "wjx": {
       "command": "npx",
-      "args": ["wjx-mcp-server"],
+      "args": ["-y", "wjx-mcp-server@latest"],
       "env": {
         "WJX_API_KEY": "your_api_key"
       }
@@ -157,7 +157,7 @@ MCP_TRANSPORT=http PORT=3000 MCP_AUTH_TOKEN=my-secret node dist/index.js
 将此 JSON 配置添加到你的 AI 工具的 MCP 配置文件中：
 
 - **Claude Desktop**: `~/Library/Application Support/Claude/claude_desktop_config.json`（macOS）或 `%APPDATA%\Claude\claude_desktop_config.json`（Windows）
-- **Claude Code**: `claude mcp add wjx --env WJX_API_KEY=your_api_key -- npx wjx-mcp-server`
+- **Claude Code**: `claude mcp add wjx --env WJX_API_KEY=your_api_key -- npx -y wjx-mcp-server@latest`
 - **Cursor**: `.cursor/mcp.json`
 - **其他工具**: 详见 [AI 工具配置指南](../wjx-docs/00-overview.md#ai-工具配置指南)
 

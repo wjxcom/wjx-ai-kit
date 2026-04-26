@@ -10,9 +10,60 @@
 
 ---
 
-## AI 工具配置指南
+## 🚀 最快开始：把这段话发给你的 AI
 
-在你常用的 AI 工具中接入问卷星。点击对应指南，5 分钟内完成配置。
+不用读文档，不用记命令——把下面这段**完整复制**发给你正在用的 AI（Claude Code / Claude Desktop / Cursor / Windsurf / Cline / Copilot / Trae / Gemini / Qoder / Claw 系列等任何支持 MCP 的工具）：
+
+````text
+请帮我接入问卷星 wjx-ai-kit（MCP Server）：
+
+1. 检查 Node.js 是否 ≥ 20（运行 `node --version`），版本过低请引导我升级到 https://nodejs.org
+
+2. 引导我获取问卷星 API Key：
+   - 公网用户：让我访问 https://www.wjx.cn/weixinlogin.aspx?redirecturl=%2Fnewwjx%2Fmanage%2Fuserinfo.aspx%3FshowApiKey%3D1 微信扫码登录后复制 Key
+   - 私有化部署用户：把上面的 www.wjx.cn 换成我的域名（例如 xxx.sojump.cn）
+   等我把 Key 发给你（可能还会附带域名）
+
+3. 拿到 Key 后，根据我的 AI 工具自动选择配置方式：
+   - Claude Code：执行 `claude mcp add wjx --env WJX_API_KEY=<我的Key> -- npx -y wjx-mcp-server@latest`
+     （私有化域名用户额外加 `--env WJX_BASE_URL=<我的域名>`）
+   - Claude Desktop / Cursor / Windsurf / Cline / Copilot / Trae / Gemini / Qoder / Claw：
+     找到对应 MCP 配置文件，写入：
+     ```json
+     {
+       "mcpServers": {
+         "wjx": {
+           "command": "npx",
+           "args": ["-y", "wjx-mcp-server@latest"],
+           "env": {
+             "WJX_API_KEY": "<我的Key>",
+             "WJX_BASE_URL": "<我的域名，默认 https://www.wjx.cn 时不写>"
+           }
+         }
+       }
+     }
+     ```
+   - 各工具配置文件路径不确定时，参考 https://github.com/wjxcom/wjx-ai-kit/tree/master/wjx-docs
+
+4. 配置完成后提醒我**完全重启 AI 工具**（不是最小化），让它重新拉起 MCP server
+
+5. 重启后调用 `list_surveys` 工具验证，如果返回我的问卷列表就接入成功
+
+6. 顺便帮我把 CLI 也装上作为 fallback：`npm install -g wjx-cli` 然后 `wjx init --api-key <我的Key>`，最后 `wjx doctor` 验证
+````
+
+> **配置后必须重启 AI 工具**：MCP 客户端启动时一次性拉起 server 子进程，npm 升级不会自动通知它。配置里用了 `wjx-mcp-server@latest`，重启即拿最新版，不必手动清缓存。
+
+不喜欢一次性安装 MCP？还有两条更轻的路径：
+
+- **只装 CLI（Skill 路径）**：[Skill 包入门指南](./skill-getting-started.md)——`npm install -g wjx-cli` + `wjx init`，AI 通过命令行调用问卷星，适合 Claw 系列或不想配 MCP 的工具
+- **手动配 MCP**：见下方"AI 工具配置指南"表格，按工具类型挑对应的逐步指南
+
+---
+
+## AI 工具配置指南（手动）
+
+如果你想自己改配置文件、或上面的 AI 自动安装出问题想看具体步骤，按你的工具点对应指南：
 
 | AI 工具 | 一句话说明 | 配置指南 |
 |---------|----------|---------|
@@ -21,8 +72,6 @@
 | **IDE 插件** | Cursor / Windsurf / Cline / Copilot / Trae / Gemini / Qoder | [配置指南](./setup-ide.md) |
 | **Claw 系列** | OpenClaw / KimiClaw / QClaw / LinClaw / MaxClaw 等 | [配置指南](./setup-claw.md) |
 | **AI 工作台** | Manus / WorkBuddy / QoderWork | [配置指南](./setup-workbench.md) |
-
-> 不确定该用哪个？先试 [Skill 包入门指南](./skill-getting-started.md)，让 AI 一句话帮你安装，最快上手。
 
 ---
 
@@ -72,7 +121,7 @@ wjx-api-sdk 是零运行时依赖的 TypeScript SDK，提供 48+ 类型安全的
 ```
 你想怎么用问卷星？
 │
-├─ 最快上手：让 AI 帮你装 ──→ Skill 包入门指南
+├─ 最快上手：把上面的安装提示发给你的 AI（推荐）
 │
 ├─ 在 AI 对话中操作 ──→ 选择你的 AI 工具（见上方配置指南）
 │

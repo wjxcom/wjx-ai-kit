@@ -4,6 +4,24 @@
 
 ---
 
+## 🚀 最快开始：让 AI 帮你装好
+
+打开你常用的 AI（Claude Code / Cursor / Windsurf / Cline / Trae / Copilot 等任何能在终端里执行命令的工具），把下面这段话发给它：
+
+````text
+请帮我安装并配置问卷星 CLI（wjx-cli）：
+1. 检查 node --version >= 20，过低引导我升级
+2. 执行 `npm install -g wjx-cli`
+3. 让我去 https://www.wjx.cn/weixinlogin.aspx?redirecturl=%2Fnewwjx%2Fmanage%2Fuserinfo.aspx%3FshowApiKey%3D1 微信扫码取 API Key（私有化部署用户把 www.wjx.cn 换成自己域名）
+4. 拿到 Key 后执行 `wjx init --api-key <我的Key>`（私有化用户加 --base-url <我的域名>）
+5. 跑 `wjx doctor` 验证连接
+6. 跑 `wjx survey list --table` 列出我的问卷确认
+````
+
+下面是手动安装步骤。
+
+---
+
 ## 什么是 wjx-cli
 
 wjx-cli 是问卷星的命令行工具，67 个子命令覆盖问卷星全部 API 能力。它有两个特点：

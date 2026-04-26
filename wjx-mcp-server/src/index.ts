@@ -8,6 +8,7 @@ import { fileURLToPath } from "node:url";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { setCredentialProvider } from "wjx-api-sdk";
 import { getRequestCredentials } from "./core/context.js";
+import { checkLatestVersion } from "./core/version-check.js";
 
 import { createServer } from "./server.js";
 
@@ -17,6 +18,8 @@ setCredentialProvider(getRequestCredentials);
 export { createServer } from "./server.js";
 
 export async function main(): Promise<void> {
+
+  checkLatestVersion();
 
   const transportMode = process.argv.includes("--http")
     ? "http"
