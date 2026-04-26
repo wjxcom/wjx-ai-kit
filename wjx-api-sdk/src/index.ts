@@ -66,6 +66,7 @@ export {
   QTYPE_MAP,
   EXAM_QTYPES,
   preprocessExamJsonl,
+  hasVoteJsonlQtype,
   injectDefaultRequir,
   injectAtypeIntoJsonl,
   inferAtypeFromTitle,

@@ -17,7 +17,7 @@ export interface CreateSurveyByTextInput {
   text: string;
   /** 问卷标题（可选，不传则从 DSL 文本第一行提取） */
   title?: string;
-  /** 问卷类型：1=调查, 2=测评, 6=考试, 7=表单（投票类型已禁用） */
+  /** 问卷类型：1=调查, 2=测评, 3=投票, 6=考试, 7=表单, 10=量表, 11=民主评议 */
   atype?: number;
   /** 是否立即发布 */
   publish?: boolean;
@@ -30,7 +30,7 @@ export interface CreateSurveyByJsonInput {
   jsonl: string;
   /** 问卷标题（可选，不传则从"问卷基础信息"条目提取） */
   title?: string;
-  /** 问卷类型：1=调查, 2=测评, 6=考试, 7=表单（投票类型已禁用） */
+  /** 问卷类型：1=调查, 2=测评, 3=投票, 6=考试, 7=表单, 10=量表, 11=民主评议 */
   atype?: number;
   /** 允许显式设为非必答的题目标题列表；未列入时，requir=false 会被拒绝 */
   optionalTitles?: string[];

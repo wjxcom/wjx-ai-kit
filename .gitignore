@@ -1,6 +1,25 @@
 # 依赖
 node_modules/
 
+# 构建产物
+dist/
+**/dist/
+build/
+**/build/
+
+# 测试源码与产物
+__tests__/
+**/__tests__/
+*.test.mjs
+*.test.ts
+*.test.js
+*.spec.mjs
+*.spec.ts
+*.spec.js
+coverage/
+**/coverage/
+.nyc_output/
+
 # 环境变量
 .env
 .env.*

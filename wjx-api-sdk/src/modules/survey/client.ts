@@ -9,6 +9,7 @@ import {
   normalizeJsonl,
   MAX_JSONL_SIZE,
   preprocessExamJsonl,
+  hasVoteJsonlQtype,
   injectDefaultRequir,
   injectAtypeIntoJsonl,
   inferAtypeFromTitle,
@@ -32,11 +33,11 @@ import type {
   UploadFileInput,
 } from "./types.js";
 
-const DISABLED_CREATE_SURVEY_ATYPES = new Set([3]);
+const DISABLED_CREATE_SURVEY_ATYPES = new Set<number>();
 
 function assertCreatableSurveyAtype(atype: number): void {
   if (DISABLED_CREATE_SURVEY_ATYPES.has(atype)) {
-    throw new Error("当前接口不支持创建投票类型问卷，请改用调查、测评、考试或表单类型。");
+    throw new Error(`当前接口不支持创建 atype=${atype} 类型的问卷。`);
   }
 }
 
@@ -365,11 +366,13 @@ export async function createSurveyByJson<T = unknown>(
   // 题目数校验：JSONL 至少包含 1 道真实题目（排除元数据/分页/段落/知情同意书）
   validateSurveyHasQuestions(requirInjected);
 
-  // atype 推断优先级：显式入参 > JSONL 元数据 atype > 考试题型 > 标题关键字 > 1（调查）
+  const hasVote = hasVoteJsonlQtype(requirInjected);
+
+  // atype 推断优先级：显式入参 > JSONL 元数据 atype > 考试题型 > 投票题型 > 标题关键字 > 1（调查）
   const atype =
     input.atype ??
     metadata.atype ??
-    (hasExam ? 6 : inferAtypeFromTitle(title) ?? 1);
+    (hasExam ? 6 : hasVote ? 3 : inferAtypeFromTitle(title) ?? 1);
 
   assertCreatableSurveyAtype(atype);
   validateJsonlQuestionTypesForCreate(requirInjected, atype);

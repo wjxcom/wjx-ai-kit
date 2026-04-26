@@ -9,15 +9,15 @@ export function registerPrompts(server: McpServer): void {
     "design-survey",
     "引导 AI 设计问卷结构，包含题型选择、逻辑跳转和选项设计",
     {
-      topic: z.string().describe("问卷主题（如：员工满意度、客户反馈、产品调研）"),
+      topic: z.string().describe("问卷主题（如：员工满意度、客户反馈、产品调研、年度评选投票）"),
       target_audience: z.string().optional().describe("目标受众（如：企业员工、消费者、学生）"),
-      survey_type: z.string().optional().describe("问卷类型：调查/测评/考试/表单（不支持投票）"),
+      survey_type: z.string().optional().describe("问卷类型：调查/投票/测评/考试/表单"),
     },
     async ({ topic, target_audience, survey_type }) => {
-      const isVoteSurvey = survey_type?.includes("投票") ?? false;
-      const resolvedSurveyType = isVoteSurvey ? "调查" : (survey_type ?? "调查");
+      const resolvedSurveyType = survey_type ?? "调查";
+      const isVoteSurvey = resolvedSurveyType.includes("投票");
       const voteNotice = isVoteSurvey
-        ? "\n\n注意：当前接口不支持创建投票类型问卷，请改为调查、测评、考试或表单方案。"
+        ? "\n\n投票题专用 qtype：「投票单选」/「投票多选」（作答页会显示每选项票数和百分比）。调用 create_survey_by_json 时请显式传 atype=3。"
         : "";
       return {
         messages: [{
@@ -37,7 +37,10 @@ export function registerPrompts(server: McpServer): void {
 JSONL 格式说明（每行一个 JSON 对象）：
 - 首行为问卷元数据：{"qtype":"问卷基础信息","title":"问卷标题","introduction":"问卷描述"}
 - 后续每行一个题目，如：{"qtype":"单选","title":"题目标题","select":["选项1","选项2"]}
+- title 只写题目正文，不要写题目序号或题目类型；题目类型只写在 qtype 字段
 - 常用 qtype：单选、多选、单项填空、多项填空、下拉框、量表题、评分单选、评分多选、排序题、判断题、矩阵量表题、矩阵单选题、矩阵多选题、矩阵填空题、文件上传、比重题、滑动条
+- 表格题标准格式示例：{"qtype":"表格组合","title":"活动时间与场地偏好","rowtitle":["可参加时段","偏好场地类型","备注"],"types":["多选","下拉","文本"],"selects":[["工作日晚上","周末上午","周末下午","周末晚上"],["木地板","塑胶地","不限"],[]]}
+- 投票题标准格式示例：{"qtype":"投票单选","title":"你最喜欢哪个网站","select":["淘宝网","开心网","百度","腾讯","人人网"]}，调用 create_survey_by_json 时显式传 atype=3
 - 默认所有题目必答；单项填空、简答题、意见建议题、开放题默认也必须必答。只有用户明确指定某个题号/题目/字段为选填时，才给该题设 requir=false
 - 量表题可用 minvaluetext/maxvaluetext 标注两端文字
 - 多项填空必须在 title 中用 {_} 占位符表示每个子填空位，如 {"qtype":"多项填空","title":"电话 {_}，邮箱 {_}"}；**不要用 rowtitle 数组**（那是矩阵题字段，多项填空不支持，会导致只生成 1 个空位）

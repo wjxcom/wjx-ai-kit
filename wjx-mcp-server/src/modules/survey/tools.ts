@@ -39,7 +39,7 @@ export function registerSurveyTools(server: McpServer): void {
           .number()
           .int()
           .optional()
-          .describe("问卷类型：1=调查（默认）, 2=测评, 6=考试, 7=表单。当前不支持投票类型创建。考试问卷必须设为6，考试中的单选/多选/填空自动变为考试题型。注意：4(360度评估)、5(360评估无测评关系)、8(用户体系)、9(教学评估)、11(民主评议) 不支持通过 API 创建。不使用 source_vid 时必填"),
+          .describe("问卷类型：1=调查（默认）, 2=测评, 3=投票, 6=考试, 7=表单, 10=量表, 11=民主评议。考试问卷必须设为6，考试中的单选/多选/填空自动变为考试题型；投票问卷用 atype=3，题目仍是普通单选/多选（作答页会显示票数和百分比）。注意：4(360度评估)、5(360评估无测评关系)、8(用户体系)、9(教学评估) 不支持通过 API 创建。不使用 source_vid 时必填"),
         desc: z.string().optional().describe("问卷描述。不使用 source_vid 时必填"),
         publish: z.boolean().optional().default(false).describe("是否立即发布"),
         questions: z
@@ -655,7 +655,7 @@ export function registerSurveyTools(server: McpServer): void {
           .int()
           .optional()
           .default(1)
-          .describe("问卷类型：1=调查（默认）, 2=测评, 6=考试, 7=表单（投票类型已禁用）"),
+          .describe("问卷类型：1=调查（默认）, 2=测评, 3=投票, 6=考试, 7=表单, 10=量表, 11=民主评议"),
         publish: z.boolean().optional().default(false).describe("是否立即发布"),
         creater: z.string().optional().describe("创建者子账号用户名"),
       },
@@ -688,24 +688,30 @@ export function registerSurveyTools(server: McpServer): void {
       title: "用 JSON 创建问卷",
       description:
         "（推荐，支持 70+ 题型）通过 JSONL 格式创建问卷。每行一个 JSON 对象，首行为 qtype='问卷基础信息' 的元数据。" +
-        "支持 70+ 种题型（普通调查、专业调查模型、考试、表单），远多于 DSL 文本格式。" +
-        "【核心字段】qtype（题型名称）、title（标题）、select（选项数组）、rowtitle（行标题或表格字段名）、requir（是否必填；缺省时 SDK 注入 true）。表格数值/表格填空/表格下拉框/表格组合/自增表格推荐补充 columntype（字段类型数组）与 columndata（字段补充数据数组）。" +
+        "支持 70+ 种题型（普通调查、投票、专业调查模型、考试、表单），远多于 DSL 文本格式。" +
+        "【核心字段】qtype（题型名称）、title（标题，只写题目正文，不写题目类型）、select（选项数组）、rowtitle（行标题或表格字段名）、requir（是否必填；缺省时 SDK 注入 true）。" +
         "【必答规则】默认所有题型都是必答题，包括单项填空、简答题、意见建议题、开放题；只有用户明确指定某个题号/题目/字段为选填时，才给该题传 requir=false。" +
         "【专业模型】支持 BWS/MaxDiff(mdattr)、联合分析(columntitle)、品牌漏斗(brands)、Kano模型、SUS模型、PSM模型等。" +
         "【考试题型】支持 correctselect（正确答案）、quizscore（分值）、answeranalysis（答案解析）。" +
         "【关联逻辑】支持 relation（显示条件）、referselect（引用前题选项）。" +
         "【硬性校验 — 不满足会被 SDK 拒绝】1) 标题不得为空、占位符（??? / 无标题 / TODO / xxx 等）或少于 2 字；2) JSONL 必须包含至少 1 道真实题目（_meta/分页栏/段落说明/知情同意书不计入）。" +
         "【多项填空必看】多项填空 qtype='多项填空'，子填空位数量由 title 中的 {_} 占位符数量决定，例如 title='电话 {_}，邮箱 {_}，微信 {_}' 会生成 3 个空位；**禁止用 rowtitle 数组**（多项填空不支持该字段，服务端会忽略并只生成 1 个空位）。考试多项填空/考试完形填空同理。" +
-        "【表格类题型 706-712】服务端原生支持，多字段批量录入场景请优先使用：" +
-        "表格数值(706) / 表格填空(707) / 表格下拉框(708) / 表格组合(709) / 自增表格(710) 推荐统一使用 rowtitle=字段名数组、columntype=字段类型数组、columndata=字段补充数据数组；" +
-        "其中下拉框/单选/多选的候选值用 columndata 里的 | 分隔字符串表示，referselect 用 '前题标题>>>字段名' 引用前文表格字段；" +
+        "【表格类题型 706-710】生成 JSONL 时必须优先使用标准格式：" +
+        "表格数值/表格填空使用 rowtitle；表格下拉框使用 rowtitle+selects；表格组合使用 rowtitle+types+selects；自增表格使用 rowtitle+selects（一行模板）+minvalue/maxvalue。" +
         "多项文件题(711) rowtitle 列出每个上传项；" +
         "多项简答题(712) rowtitle 列出每个简答子题。" +
+        "【投票题】投票单选/投票多选使用 qtype='投票单选'/'投票多选' + select，并在调用工具时显式传 atype=3。" +
         "输入示例（JSONL）：\n" +
         '{"qtype":"问卷基础信息","title":"客户满意度调查","introduction":"请认真填写"}\n' +
         '{"qtype":"单选","title":"您的性别","select":["男","女"]}\n' +
         '{"qtype":"多项填空","title":"联系方式：电话 {_}，邮箱 {_}"}\n' +
-        '{"qtype":"表格组合","title":"主力队员技术特点","rowtitle":["队员姓名","擅长技术","技术等级"],"columntype":["referselect","多选","表格下拉框"],"columndata":["队员信息表>>>姓名","杀球|吊球|搓球|推球|挑球|高远球","业余初级|业余中级|业余高级|专业级"]}\n' +
+        '{"qtype":"表格填空","title":"报名人基础信息","rowtitle":["姓名","手机号","微信号","紧急联系人"]}\n' +
+        '{"qtype":"表格数值","title":"活动参与与体能数据","rowtitle":["计划参与人数","每周打球次数","可接受人均费用(元)"],"minvalue":"0","maxvalue":"999"}\n' +
+        '{"qtype":"表格下拉框","title":"个人水平与装备情况","rowtitle":["羽毛球水平","是否自带球拍","是否需要拼车"],"selects":[["新手","初级","中级","高级","校队/专业"],["是","否"],["是","否"]]}\n' +
+        '{"qtype":"表格组合","title":"活动时间与场地偏好","rowtitle":["可参加时段","偏好场地类型","备注"],"types":["多选","下拉","文本"],"selects":[["工作日晚上","周末上午","周末下午","周末晚上"],["木地板","塑胶地","不限"],[]]}\n' +
+        '{"qtype":"自增表格","title":"可参加日期清单","rowtitle":["可参加日期","可参加时段","是否可候补"],"selects":[["","工作日晚上|周末上午|周末下午|周末晚上","可以|不可以"]],"minvalue":"1","maxvalue":"5"}\n' +
+        '{"qtype":"投票单选","title":"你最喜欢哪个网站","select":["淘宝网","开心网","百度","腾讯","人人网"]}\n' +
+        '{"qtype":"投票多选","title":"哪些网站是你经常使用的","select":["淘宝网","开心网","百度","腾讯","人人网"]}\n' +
         '{"qtype":"量表题","title":"满意度评分","select":["1","2","3","4","5"],"minvaluetext":"非常不满意","maxvaluetext":"非常满意"}',
       inputSchema: {
         jsonl: z.string().min(1).max(1_000_000).describe(
@@ -727,9 +733,9 @@ export function registerSurveyTools(server: McpServer): void {
           .optional()
           .describe(
             "问卷类型（**调用方应主动判断并显式传入**，不要依赖兜底）：" +
-              "1=调查（默认）, 2=测评, 6=考试, 7=表单。" +
-              "硬性规则：表单 → 必传 atype=7；考试 → 必传 atype=6；测评 → 必传 atype=2；投票类型不允许创建。" +
-              "兜底（仅用于调用方遗漏时挽救，不应作为正常路径）：含考试题型→6；含「表单/报名表/登记表/申请表」→7；含「测评」→2；其余 1。" +
+              "1=调查（默认）, 2=测评, 3=投票, 6=考试, 7=表单, 10=量表, 11=民主评议。" +
+              "硬性规则：投票（含投票单选/投票多选） → 必传 atype=3；表单 → 必传 atype=7；考试 → 必传 atype=6；测评 → 必传 atype=2。" +
+              "兜底（仅用于调用方遗漏时挽救，不应作为正常路径）：含考试题型→6；含投票题型或标题含「投票/评选」→3；含「表单/报名表/登记表/申请表」→7；含「测评」→2；其余 1。" +
               "显式传值始终优先于兜底推断。",
           ),
         publish: z.boolean().optional().default(false).describe("是否立即发布"),

@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "wjx": {
+      "command": "node",
+      "args": ["wjx-mcp-server/dist/index.js"]
+    }
+  }
+}

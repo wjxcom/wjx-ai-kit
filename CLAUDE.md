@@ -116,7 +116,7 @@ MCP server has its own .env parser (`src/core/load-env.ts`, no dotenv dependency
 - **Node >= 20** required
 - **TypeScript strict mode**: ES2022 target, identical tsconfig across packages
 - **Conventional Commits**: `feat:`, `fix:`, `docs:`, `refactor:`, `chore:`
-- **dist/ is checked into the repo**
+- **dist/ is gitignored**: build locally before publishing/testing
 - **No linter/formatter**: no ESLint or Prettier configured
 - **Style**: 2-space indent, double quotes, semicolons
 - **Git**: branch `develop`, remote on GitHub

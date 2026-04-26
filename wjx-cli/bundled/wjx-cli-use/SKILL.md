@@ -13,11 +13,11 @@ wjx-cli 是问卷星 OpenAPI 的命令行工具。命令格式：`wjx <模块> <
 
 ### 规则 1：一个需求 = 一个问卷
 
-无论用户要求多少种题型，**必须在一次 `create-by-text` 调用中包含所有题目**。一个问卷可包含任意数量、任意类型的题目。
+无论用户要求多少种题型，**必须在一次 `create-by-json` 调用中包含所有题目**。一个问卷可包含任意数量、任意类型的题目。
 
 ### 规则 2：问卷类型 ≠ 题目类型
 
-"投票/考试/调查"是**问卷类型**（`--type` 参数），不是题型标签。`--type 3` + `[单选题]` = 投票单选，不存在 `[投票单选题]` 标签。
+"投票/考试/调查"是**问卷类型**（`--type` 参数）。JSONL 创建投票时使用 `qtype:"投票单选"` / `qtype:"投票多选"`，并显式传 `--type 3`；只有旧 DSL 文本格式才使用普通 `[单选题]` / `[多选题]`，不存在 `[投票单选题]` 标签。
 
 ### 规则 3：不支持的题型要明确告知
 
@@ -136,7 +136,7 @@ wjx survey create-by-json --file survey.jsonl
 wjx survey create-by-json --jsonl "$(cat survey.jsonl)"
 ```
 
-JSONL 每行一道题（首行可放 `{"_meta":{"title":"...","description":"..."}}`），字段命名见 [references/question-types.md](references/question-types.md) 的 q_type/q_subtype 映射表，覆盖 70+ 题型（含矩阵/比重/滑块/文件上传/排序）。
+JSONL 每行一道题（首行可放 `{"_meta":{"title":"...","description":"..."}}`），字段命名见 [references/question-types.md](references/question-types.md) 的 q_type/q_subtype 映射表，覆盖 70+ 题型（含矩阵/比重/滑块/文件上传/排序）。题目 `title` 只写正文，不写题目类型；表格组合标准写法为 `rowtitle + types + selects`，投票题标准写法为 `qtype:"投票单选"` / `qtype:"投票多选"` + `select`。
 
 问卷类型：`--type 1` 调查（默认），`3` 投票，`6` 考试，`7` 表单。
 
