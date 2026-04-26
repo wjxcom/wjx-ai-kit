@@ -70,6 +70,19 @@ export interface JsonSurveyQuestion {
     columntype?: string[];
     /** 表格题字段补充数据（与 rowtitle / columntype 一一对应） */
     columndata?: string[];
+    /**
+     * 表格题列输入类型（表格组合专用，与 rowtitle 等长）。
+     * 支持值：单选 / 多选 / 下拉 / 数字 / 小数 / 日期 / 手机 / Email / 文本。
+     */
+    types?: string[];
+    /**
+     * 表格题选项数据：
+     * - 表格下拉框 / 表格组合：长度 = rowtitle，selects[i] 是第 i 列的选项数组（如 ["新手","初级","中级"]）；
+     *   表格组合中文本/数字等无选项类型可传 [] 占位。
+     * - 自增表格：单层数组 [rowTmpl]；rowTmpl[i] 是第 i 列的输入模板：
+     *     ""（空字符串）→ 文本；"a|b|c"（| 分隔）→ 下拉，选项 a/b/c。
+     */
+    selects?: string[][];
     /** 品牌漏斗 */
     brands?: string[];
     /** 企业信息模糊查询 */
@@ -137,6 +150,7 @@ export declare function preprocessExamJsonl(jsonl: string): {
     jsonl: string;
     hasExam: boolean;
 };
+export declare function hasVoteJsonlQtype(jsonl: string): boolean;
 /**
  * 扫描 JSONL 文本，为所有题目行注入 `requir: true`（用户未显式指定时）。
  * - 与页面创建行为保持一致：默认必答

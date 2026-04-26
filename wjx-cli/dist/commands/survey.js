@@ -97,7 +97,7 @@ export function registerSurveyCommands(program) {
     // --- create-by-text ---
     survey
         .command("create-by-text")
-        .description("用 DSL 文本创建问卷（推荐 AI Agent 使用）")
+        .description("⚠️ 已弃用：用 DSL 文本创建问卷，仅作向后兼容保留。请使用 create-by-json（支持 70+ 题型，无 DSL 转义陷阱）")
         .option("--text <s>", "DSL 格式问卷文本")
         .option("--file <path>", "从文件读取 DSL 文本")
         .option("--type <n>", "问卷类型：1=调查, 2=测评, 3=投票, 6=考试, 7=表单, 10=量表, 11=民主测评", strictInt)
@@ -106,6 +106,7 @@ export function registerSurveyCommands(program) {
         .action(async (_opts, cmd) => {
         try {
             const merged = getMerged(cmd);
+            const globalOpts = program.opts();
             // Resolve DSL text: --text > --file > stdin.text
             let dslText;
             if (typeof merged.text === "string" && merged.text) {
@@ -122,7 +123,6 @@ export function registerSurveyCommands(program) {
             if (!dslText) {
                 throw new CliError("INPUT_ERROR", "必须提供 --text 或 --file 参数");
             }
-            const globalOpts = program.opts();
             if (globalOpts.dryRun) {
                 const parsed = textToSurvey(dslText);
                 const { questions: wireQuestions, skippedParagraphs } = parsedQuestionsToWire(parsed.questions);
@@ -139,6 +139,12 @@ export function registerSurveyCommands(program) {
                 return;
             }
             const creds = getCredentials(globalOpts);
+            // 弃用警告：在所有输入校验和 dry-run 之后、真实请求之前打印
+            // 这样测试解析 stderr 失败/dry-run JSON 时不会被警告污染
+            process.stderr.write("[wjx] ⚠️ create-by-text 已弃用，建议改用 create-by-json：\n" +
+                "      wjx survey create-by-json --file <path>.jsonl\n" +
+                "      JSON 路径覆盖 70+ 题型，无 DSL 转义陷阱（PowerShell $ 变量、行内逗号等）。\n" +
+                "      除非你明确需要 DSL 兼容，否则请改用 create-by-json。\n");
             const result = await createSurveyByText({
                 text: dslText,
                 atype: merged.type,
@@ -246,11 +252,16 @@ export function registerSurveyCommands(program) {
         .description("更新问卷状态（1=发布, 2=暂停, 3=删除）")
         .option("--vid <n>", "问卷ID", strictInt)
         .option("--state <n>", "目标状态", strictInt)
+        .option("--status <n>", "目标状态（--state 的别名，兼容直觉命名）", strictInt)
         .action(async (_opts, cmd) => {
         await executeCommand(program, cmd, updateSurveyStatus, (m) => {
             requireField(m, "vid");
-            requireField(m, "state");
-            return { vid: m.vid, state: m.state };
+            // 接受 --state 或 --status，任一即可
+            const state = m.state ?? m.status;
+            if (state === undefined || state === null) {
+                throw new CliError("INPUT_ERROR", "Missing required option: --state（或 --status）");
+            }
+            return { vid: m.vid, state };
         });
     });
     // --- settings ---

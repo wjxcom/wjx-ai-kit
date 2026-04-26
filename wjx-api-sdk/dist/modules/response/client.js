@@ -50,7 +50,7 @@ export async function submitResponse(input, credentials = getWjxCredentials(), f
         inputcosttime: input.inputcosttime,
         submitdata: input.submitdata,
     };
-    assignDefined(params, input, ["udsid", "sojumpparm", "submittime"]);
+    assignDefined(params, input, ["udsid", "sojumpparm", "submittime", "jpmversion"]);
     return callWjxApi(params, { credentials, fetchImpl, maxRetries: 0 });
 }
 export async function getFileLinks(input, credentials = getWjxCredentials(), fetchImpl = fetch) {

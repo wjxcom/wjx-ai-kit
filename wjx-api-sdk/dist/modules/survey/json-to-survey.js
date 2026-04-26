@@ -95,6 +95,23 @@ export function preprocessExamJsonl(jsonl) {
     });
     return { jsonl: processed.join("\n"), hasExam };
 }
+export function hasVoteJsonlQtype(jsonl) {
+    for (const line of jsonl.split("\n")) {
+        const trimmed = line.trim();
+        if (!trimmed)
+            continue;
+        try {
+            const obj = JSON.parse(trimmed);
+            if (obj.qtype === "投票单选" || obj.qtype === "投票多选") {
+                return true;
+            }
+        }
+        catch {
+            // 保持轻量扫描：无效行交给后续服务端/校验流程处理。
+        }
+    }
+    return false;
+}
 // ─── 默认必答预处理 ─────────────────────────────────────────────────
 /**
  * 非题目类 qtype（这些不需要注入 requir 字段）。
@@ -370,6 +387,8 @@ export const QTYPE_MAP = {
     "AI访谈": { q_type: 5, q_subtype: 5 },
     // ── 专业调查模型 ──
     "情景随机": { q_type: 3, q_subtype: 304 },
+    "投票单选": { q_type: 3, q_subtype: 3 },
+    "投票多选": { q_type: 4, q_subtype: 4 },
     "BWS": { q_type: 3, q_subtype: 3 },
     "MaxDiff": { q_type: 3, q_subtype: 3 },
     "Maxdiff": { q_type: 3, q_subtype: 3 },
@@ -464,6 +483,144 @@ const TABLE_MODE_BY_QTYPE = {
 };
 function normalizeQtype(qtype) {
     return QTYPE_ALIAS_MAP[qtype] ?? qtype;
+}
+/**
+ * 表格题列输入类型映射（spec types → 内部 columntype）。
+ * spec 允许的 types：单选 / 多选 / 下拉 / 数字 / 小数 / 日期 / 手机 / Email / 文本。
+ */
+const TABLE_TYPE_TO_COLUMNTYPE = {
+    "单选": "单选",
+    "多选": "多选",
+    "下拉": "下拉框",
+    "下拉框": "下拉框",
+    "数字": "表格数值",
+    "整数": "表格数值",
+    "小数": "小数",
+    "日期": "日期",
+    "手机": "手机",
+    "Email": "邮箱",
+    "邮箱": "邮箱",
+    "文本": "单项填空",
+};
+function joinChoicePipe(choices) {
+    if (!Array.isArray(choices))
+        return "";
+    return choices.map((c) => String(c)).filter((s) => s.length > 0).join("|");
+}
+/**
+ * 把 spec 简化字段（selects/types + minvalue/maxvalue）翻译为内部 columntype/columndata 格式。
+ * 仅在题目未显式提供 columntype 时介入，避免覆盖用户已用的旧格式。
+ *
+ * 两种输入模式：
+ * (A) 简化模式：仅传 rowtitle（+ 其他字段），rowtitle 作为列字段
+ * (B) 显式列模式：同时传 rowtitle（=行标签）和 columntitle（=列字段）；自增表格允许省略 rowtitle
+ *     显式列模式下 rowtitle 为真实多行，columntype/columndata 由 columntitle 驱动；
+ *     表格下拉框使用共享 select 而非每列独立 selects。
+ *
+ * spec 规则参考 designnew.aspx 五种表格题型：
+ * - 表格数值：rowtitle 即每行数值字段；minvalue/maxvalue 默认 0/100，不需 columntype。
+ * - 表格填空：rowtitle 即字段名；columntype 全部填充 "单项填空"。
+ * - 表格下拉框：rowtitle 与 selects 长度一致；selects[i] 为第 i 列下拉项。
+ * - 表格组合：rowtitle/types/selects 三者长度一致；types[i] 决定列输入类型。
+ * - 自增表格：selects 仅一层 [行模板]；selects[0][i] 为 "" → 文本，"a|b|c" → 下拉。
+ *   minvalue/maxvalue 默认 1/10，写入 min_rows/max_rows。
+ */
+function normalizeSpecTableSchema(q, qtype) {
+    const isTableQtype = ["表格数值", "表格填空", "表格下拉框", "表格组合", "自增表格"].includes(qtype);
+    if (!isTableQtype)
+        return;
+    if (Array.isArray(q.columntype) && q.columntype.length > 0)
+        return; // 已用旧格式，跳过
+    // 显式列模式：同时传了 rowtitle 和 columntitle（自增表格允许只传 columntitle）
+    // 此时不反推 columntype/columndata —— 保留 rowtitle/columntitle/types/selects 原样透传给服务端，
+    // 由 A1000106 SurveyJsonlParser 走 tag=301/302/303 的显式列分支构建真实多行 × 多列结构。
+    const columntitle = Array.isArray(q.columntitle) ? q.columntitle : [];
+    const rowtitleArr = Array.isArray(q.rowtitle) ? q.rowtitle : [];
+    const isExplicitColsMode = columntitle.length > 0 &&
+        (rowtitleArr.length > 0 || qtype === "自增表格");
+    if (isExplicitColsMode) {
+        if (qtype === "表格数值") {
+            if (q.minvalue === undefined)
+                q.minvalue = "0";
+            if (q.maxvalue === undefined)
+                q.maxvalue = "100";
+        }
+        if (qtype === "自增表格") {
+            if (q.minvalue === undefined)
+                q.minvalue = "1";
+            if (q.maxvalue === undefined)
+                q.maxvalue = "10";
+            if (q.min_rows === undefined) {
+                const n = Number.parseInt(String(q.minvalue), 10);
+                if (!Number.isNaN(n))
+                    q.min_rows = n;
+            }
+            if (q.max_rows === undefined) {
+                const n = Number.parseInt(String(q.maxvalue), 10);
+                if (!Number.isNaN(n))
+                    q.max_rows = n;
+            }
+        }
+        return;
+    }
+    const rowtitle = rowtitleArr;
+    if (rowtitle.length === 0)
+        return;
+    if (qtype === "表格数值") {
+        // rowtitle 保留为行标题，不生成 col_items；minvalue/maxvalue 默认 0/100
+        if (q.minvalue === undefined)
+            q.minvalue = "0";
+        if (q.maxvalue === undefined)
+            q.maxvalue = "100";
+        return;
+    }
+    if (qtype === "表格填空") {
+        q.columntype = rowtitle.map(() => "单项填空");
+        q.columndata = rowtitle.map(() => "");
+        return;
+    }
+    if (qtype === "表格下拉框") {
+        const selects = Array.isArray(q.selects) ? q.selects : [];
+        q.columntype = rowtitle.map(() => "下拉框");
+        q.columndata = rowtitle.map((_, i) => joinChoicePipe(selects[i]));
+        return;
+    }
+    if (qtype === "表格组合") {
+        const types = Array.isArray(q.types) ? q.types : [];
+        const selects = Array.isArray(q.selects) ? q.selects : [];
+        q.columntype = rowtitle.map((_, i) => TABLE_TYPE_TO_COLUMNTYPE[types[i] ?? "文本"] ?? "单项填空");
+        q.columndata = rowtitle.map((_, i) => {
+            const opts = selects[i];
+            return Array.isArray(opts) && opts.length > 0 ? joinChoicePipe(opts) : "";
+        });
+        return;
+    }
+    if (qtype === "自增表格") {
+        const tmpl = Array.isArray(q.selects) && Array.isArray(q.selects[0]) ? q.selects[0] : [];
+        q.columntype = rowtitle.map((_, i) => {
+            const slot = tmpl[i];
+            return typeof slot === "string" && slot.length > 0 ? "下拉框" : "单项填空";
+        });
+        q.columndata = rowtitle.map((_, i) => {
+            const slot = tmpl[i];
+            return typeof slot === "string" ? slot : "";
+        });
+        if (q.minvalue === undefined)
+            q.minvalue = "1";
+        if (q.maxvalue === undefined)
+            q.maxvalue = "10";
+        if (q.min_rows === undefined) {
+            const n = Number.parseInt(String(q.minvalue), 10);
+            if (!Number.isNaN(n))
+                q.min_rows = n;
+        }
+        if (q.max_rows === undefined) {
+            const n = Number.parseInt(String(q.maxvalue), 10);
+            if (!Number.isNaN(n))
+                q.max_rows = n;
+        }
+        return;
+    }
 }
 function isSchemaDrivenTableQuestion(q, qtype) {
     if (!Array.isArray(q.columntype) || q.columntype.length === 0)
@@ -619,6 +776,8 @@ export function jsonQuestionsToWire(questions) {
             skippedTypes.push({ qtype: q.qtype, title: q.title ?? "" });
             continue;
         }
+        // 表格题：把 spec 的 selects/types 规范化为内部 columntype/columndata
+        normalizeSpecTableSchema(q, qtype);
         const wq = {
             q_index: qIdx,
             q_type: typeInfo.q_type,
@@ -649,15 +808,15 @@ export function jsonQuestionsToWire(questions) {
             }
         }
         else if (isLegacyRowColumnTableType(qtype)) {
-            // 兼容旧格式：rowtitle → items，select → col_items
-            if (q.rowtitle && q.rowtitle.length > 0) {
+            // 兼容旧格式：rowtitle → items，select → col_items；schema 驱动时跳过（避免与 col_items 重复）
+            if (!schemaDrivenTable && q.rowtitle && q.rowtitle.length > 0) {
                 wq.items = q.rowtitle.map((row, i) => ({
                     q_index: qIdx,
                     item_index: i + 1,
                     item_title: row,
                 }));
             }
-            if (q.select && q.select.length > 0) {
+            if (!schemaDrivenTable && q.select && q.select.length > 0) {
                 wq.col_items = q.select.map((col, i) => ({
                     q_index: qIdx,
                     item_index: i + 1,

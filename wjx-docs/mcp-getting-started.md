@@ -145,7 +145,7 @@ claude mcp add wjx --env WJX_API_KEY=你的APIKey -- npx -y wjx-mcp-server@lates
 
 AI 会：
 1. 设计问卷结构
-2. 调用 `create_survey_by_json`（覆盖 70+ 题型，含矩阵/比重/滑块/文件上传/排序）创建问卷
+2. 调用 `create_survey_by_json`（覆盖 70+ 题型：单选/多选/矩阵/比重/滑块/排序/文件上传，**投票**=`投票单选`/`投票多选` + atype=3，**表格**=`表格数值`/`表格填空`/`表格下拉框`/`表格组合`/`自增表格`，专业模型如 NPS/360 等）创建问卷
 3. 返回问卷 ID 和预览链接
 
 整个过程不到 1 分钟。

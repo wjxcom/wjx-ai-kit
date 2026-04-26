@@ -134,13 +134,15 @@ export function registerResponseCommands(program: Command): void {
   // --- submit ---
   response
     .command("submit")
-    .description("提交答卷")
+    .description("提交答卷（默认会先 getSurvey 拿当前 version 自动注入 jpmversion，避免『问卷已被修改』错误）")
     .option("--vid <n>", "问卷ID", strictInt)
     .option("--inputcosttime <n>", "填写耗时(秒)", strictInt)
-    .option("--submitdata <s>", "提交数据")
+    .option("--submitdata <s>", "提交数据。Windows PowerShell 用户必须用单引号包裹（双引号会让 $1/$2/$3 被识别为变量并吞掉）")
     .option("--udsid <n>", "用户系统ID", strictInt)
     .option("--sojumpparm <s>", "自定义参数")
     .option("--submittime <s>", "提交时间")
+    .option("--jpmversion <n>", "问卷版本号；不传时默认自动从 getSurvey 取", strictInt)
+    .option("--no-auto-version", "关闭自动获取 jpmversion（适用于显式传入或不需要校验场景）")
     .action(async (_opts, cmd) => {
       await executeCommand(program, cmd, submitResponse, (m) => {
         requireField(m, "vid");
@@ -153,26 +155,46 @@ export function registerResponseCommands(program: Command): void {
           udsid: m.udsid,
           sojumpparm: m.sojumpparm,
           submittime: m.submittime,
+          jpmversion: m.jpmversion,
+          // commander 把 --no-auto-version 解析成 autoVersion=false
+          autoVersion: (m as Record<string, unknown>).autoVersion !== false,
         };
       }, {
         transformInput: async (input, creds) => {
-          // 自动规范化 submitdata：题号、矩阵题和排序题答案格式由 SDK 统一处理
-          try {
-            const survey = await getSurvey(
-              { vid: input.vid as number },
-              creds as WjxCredentials,
-            );
-            const data = survey?.data as {
-              questions?: Array<{ q_index: number; q_type: number; q_subtype: number }>;
-            } | undefined;
-            const questions = data?.questions ?? [];
-            if (questions.length > 0 && typeof input.submitdata === "string") {
-              return { ...input, submitdata: normalizeSubmitdata(input.submitdata, questions) };
+          const explicitVersion = input.jpmversion;
+          const autoVersion = (input as Record<string, unknown>).autoVersion !== false;
+          // 仅在未显式传 jpmversion 且未关闭自动注入时才请求 getSurvey
+          // 同时复用 getSurvey 结果做 submitdata 规范化
+          let survey: Awaited<ReturnType<typeof getSurvey>> | null = null;
+          if (autoVersion || typeof input.submitdata === "string") {
+            try {
+              survey = await getSurvey(
+                { vid: input.vid as number },
+                creds as WjxCredentials,
+              );
+            } catch {
+              // 拿不到结构不阻塞提交
             }
-          } catch {
-            // 获取问卷结构失败时不阻塞提交
           }
-          return input;
+
+          const data = survey?.data as {
+            version?: number;
+            questions?: Array<{ q_index: number; q_type: number; q_subtype: number }>;
+          } | undefined;
+
+          const result: Record<string, unknown> = { ...input };
+          // 不要把内部 autoVersion 透到 SDK
+          delete result.autoVersion;
+
+          if (explicitVersion === undefined && autoVersion && typeof data?.version === "number") {
+            result.jpmversion = data.version;
+          }
+
+          const questions = data?.questions ?? [];
+          if (questions.length > 0 && typeof input.submitdata === "string") {
+            result.submitdata = normalizeSubmitdata(input.submitdata, questions);
+          }
+          return result;
         },
       });
     });

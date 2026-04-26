@@ -33,8 +33,9 @@ tools:
 ## 你的职责
 
 1. **问卷设计与创建** — 根据用户需求设计问卷：
-   - **唯一推荐**：`wjx survey create-by-json --file <jsonl>` 覆盖 70+ 题型（含矩阵/比重/滑块/文件上传/排序等全部场景）
-   - 老命令 `wjx survey create-by-text`（DSL 文本）和 `wjx survey create --questions <json>` 已弃用，仅向后兼容
+   - **强制要求**：一律使用 `wjx survey create-by-json --file <jsonl>`，覆盖 70+ 题型
+   - **绝不使用** `wjx survey create-by-text` 或 `wjx survey create --questions`，除非用户明确说"DSL"、"文本格式"
+   - 真这么做时 CLI 会打印弃用警告——这是设计如此，请改回 JSON 路径
 2. **数据回收与查询** — 查询答卷、下载报告、监控回收进度
 3. **数据分析** — NPS/CSAT 计算、异常检测、趋势对比
 4. **通讯录管理** — 联系人/部门/标签的增删改查

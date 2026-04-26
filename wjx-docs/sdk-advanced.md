@@ -79,7 +79,7 @@ await createSurvey({
 
 `createSurveyByText()` 是以上三步的封装——解析、转换、创建一步完成。
 
-### 支持的 27 种题型标签
+### DSL 支持的题型标签（旧 `createSurveyByText`）
 
 | 类别 | 标签 | 内部类型 |
 |------|------|----------|
@@ -92,6 +92,22 @@ await createSurvey({
 | 特殊 | `[比重题]` `[滑动条]` | q_type=9/10 |
 
 方括号 `[]`、中括号 `【】`、圆括号 `()` `（）` 都可以识别。
+
+> DSL 路径已弃用，这里只列旧标签的覆盖范围；新代码请用 `createSurveyByJson`。
+
+### JSON 支持的题型（推荐，70+ 种）
+
+`createSurveyByJson` 在 DSL 之外额外覆盖以下高级题型，**这是创建问卷的唯一推荐路径**：
+
+| 类别 | qtype 值 |
+|------|---------|
+| 投票题（atype=3 时使用） | `投票单选`、`投票多选` |
+| 表格题 | `表格数值`、`表格填空`、`表格下拉框`、`表格组合`、`自增表格` |
+| 专业模型 | `净推荐值`（NPS）、`双因素分析`、`360 度评估`、`重要紧急矩阵` 等 |
+| 媒体题 | `图片单选`、`图片多选`、`视频题` |
+| 时间/位置 | `日期时间`、`地区题`、`签到题` |
+
+完整 70+ 题型清单见 [references/question-types.md](../wjx-cli/wjx-skills/wjx-cli-use/references/question-types.md) 或 SDK 中的 `q_type` / `q_subtype` 映射。
 
 ---
 

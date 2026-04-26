@@ -9,9 +9,13 @@ wjx-mcp-server 提供 58 个 MCP 工具、8 个参考资源和 23 个 prompt 模
 
 ## AI Agent 行为准则（必读）
 
+### 规则 0：创建问卷只用 `create_survey_by_json`（强制）
+
+**禁止使用 `create_survey_by_text` 与 `create_survey`**——除非用户用"DSL"、"文本格式"、"老版接口"等字眼明确要求。原因：DSL 只覆盖 27 种题型而 JSON 覆盖 70+，且 DSL 容易被字符转义破坏。所有题型、投票、考试、表单都走 `create_survey_by_json`。
+
 ### 规则 1：一个需求 = 一个问卷
 
-无论用户要求多少种题型，**必须在一次 `create_survey_by_json` 调用中包含所有题目**。一个问卷可包含任意数量、任意类型的题目。`create_survey_by_text` 已弃用，新项目一律使用 `create_survey_by_json`。
+无论用户要求多少种题型，**必须在一次 `create_survey_by_json` 调用中包含所有题目**。一个问卷可包含任意数量、任意类型的题目。
 
 ### 规则 2：问卷类型 ≠ 题目类型
 
@@ -33,6 +37,10 @@ wjx-mcp-server 提供 58 个 MCP 工具、8 个参考资源和 23 个 prompt 模
 - **base_url 与用户域名不符**：引导添加 `WJX_BASE_URL` 环境变量（如 `https://xxx.sojump.cn`）
 - **获取 API Key**：让用户访问 `https://<域名>/weixinlogin.aspx?redirecturl=%2Fnewwjx%2Fmanage%2Fuserinfo.aspx%3FshowApiKey%3D1`，微信扫码登录后复制 Key
 - **cli_version 未安装**：可选，安装 `npm install -g wjx-cli` 后用 `wjx init --api-key <key>` 统一配置
+
+### 规则 6：提交答卷无需手动管 jpmversion
+
+`submit_response` 内部会自动 `get_survey` 取最新 `version` 并注入 `jpmversion`，**不要**手动算或省略。仅当外部已自行管理版本时才显式传入 `jpmversion` 参数。问卷被发布/编辑后服务端 `version` 自增，不带最新版本号会被拒绝并报"问卷已被修改请刷新"。
 
 ## 快速路由
 

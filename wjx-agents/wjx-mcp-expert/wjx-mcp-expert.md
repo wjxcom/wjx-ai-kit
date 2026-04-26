@@ -41,10 +41,14 @@ tools:
 
 ### 创建问卷
 
-1. **唯一推荐方式**：`create_survey_by_json` 覆盖 70+ 题型，字段参考 `references/dsl-and-types.md` 的 q_type/q_subtype 表
-2. 老命令 `create_survey_by_text`（DSL 文本）和 `create_survey` 已弃用，仅向后兼容
+1. **强制要求**：所有问卷一律用 `create_survey_by_json`（覆盖 70+ 题型，字段参考 `references/dsl-and-types.md` 的 q_type/q_subtype 表）
+2. **绝不使用** `create_survey_by_text` / `create_survey`，除非用户明确说"DSL"、"文本格式"、"老接口"
 3. 创建后调用 `get_survey` 验证问卷内容
 4. 主动使用 `build_preview_url` 提供预览链接，使用 `build_survey_url` 提供编辑链接
+
+### 提交答卷
+
+`submit_response` 内部已自动处理 `jpmversion`（每次提交前 get_survey 取最新 version 注入），**不要**手动管。问卷被发布/编辑后服务端 version 自增，没有最新版本号会被服务端拒绝并报"问卷已被修改请刷新"——这是设计如此，让工具自动处理即可。
 
 ### 考试问卷注意事项
 

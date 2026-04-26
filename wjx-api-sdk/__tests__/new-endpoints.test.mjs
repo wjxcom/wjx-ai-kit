@@ -429,6 +429,30 @@ test("submitResponse", async (t) => {
     assert.equal(body.sojumpparm, "custom123");
   });
 
+  await t.test("should forward jpmversion when provided (defends against 『问卷已被修改』）", async () => {
+    const mock = mockFetch({ result: true, data: {} });
+    await submitResponse(
+      { vid: 800, inputcosttime: 30, submitdata: "1$1", jpmversion: 7 },
+      credentials,
+      mock.impl,
+    );
+
+    const body = parsedBody(mock);
+    assert.equal(body.jpmversion, 7);
+  });
+
+  await t.test("should omit jpmversion when not provided", async () => {
+    const mock = mockFetch({ result: true, data: {} });
+    await submitResponse(
+      { vid: 800, inputcosttime: 30, submitdata: "1$1" },
+      credentials,
+      mock.impl,
+    );
+
+    const body = parsedBody(mock);
+    assert.ok(!("jpmversion" in body), "jpmversion should not be present when undefined");
+  });
+
   await t.test("should not retry (write operation)", async () => {
     let callCount = 0;
     const impl = async () => {

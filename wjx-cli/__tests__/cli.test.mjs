@@ -239,6 +239,18 @@ describe("required field validation (post-merge)", () => {
     assert.ok(err.message.includes("state"));
   });
 
+  it("survey status accepts --status as alias for --state (--dry-run)", async () => {
+    const result = await runFull(
+      ["--dry-run", "survey", "status", "--vid", "123", "--status", "1"],
+      { env: { WJX_API_KEY: "fake-key-1234567890", ...NO_CONFIG } },
+    );
+    assert.equal(result.exitCode, 0);
+    const dry = JSON.parse(result.stderr.trim());
+    const sentBody = JSON.parse(dry.request.body);
+    assert.equal(sentBody.state, 1);
+    assert.equal(sentBody.vid, 123);
+  });
+
   it("survey create without --title → INPUT_ERROR exit 2", async () => {
     const result = await runFull(["survey", "create"]);
     assert.equal(result.exitCode, 2);

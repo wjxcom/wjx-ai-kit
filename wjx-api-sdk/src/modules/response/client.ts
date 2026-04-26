@@ -91,7 +91,7 @@ export async function submitResponse<T = unknown>(
     inputcosttime: input.inputcosttime,
     submitdata: input.submitdata,
   };
-  assignDefined(params, input, ["udsid", "sojumpparm", "submittime"]);
+  assignDefined(params, input, ["udsid", "sojumpparm", "submittime", "jpmversion"]);
 
   return callWjxApi<T>(params, { credentials, fetchImpl, maxRetries: 0 });
 }

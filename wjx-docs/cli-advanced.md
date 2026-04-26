@@ -162,7 +162,7 @@ done
 |------|------|----------|
 | `survey list` | 列表查询 | `--name_like` `--status` `--atype` `--page_size` |
 | `survey get` | 获取详情 | `--vid` |
-| `survey create-by-json` | 唯一推荐：JSONL 创建，覆盖 70+ 题型 | `--jsonl` `--file` `--title` `--type` `--publish` |
+| `survey create-by-json` | 唯一推荐：JSONL 创建，覆盖 70+ 题型（含投票、表格、矩阵、专业模型） | `--jsonl` `--file` `--title` `--type` `--publish` |
 | `survey create-by-text` | 已弃用：DSL 创建（仅兼容保留） | `--text` `--file` `--type` `--publish` |
 | `survey create` | 已弃用：老 JSON 创建（仅兼容保留） | `--title` `--questions` `--source_vid` |
 | `survey delete` | 删除 | `--vid` `--permanent` |

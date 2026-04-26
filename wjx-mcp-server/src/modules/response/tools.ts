@@ -197,14 +197,16 @@ export function registerResponseTools(server: McpServer): void {
     {
       title: "答卷提交",
       description:
-        "向问卷提交答卷数据（代填/导入）。答卷格式：题号$答案}题号$答案，详见问卷星答卷格式规范。",
+        "向问卷提交答卷数据（代填/导入）。答卷格式：题号$答案}题号$答案，详见问卷星答卷格式规范。" +
+        "默认会先 getSurvey 取最新 version 自动注入 jpmversion，避免『问卷已被修改请刷新』错误。",
       inputSchema: {
         vid: z.number().int().positive().describe("问卷编号"),
-        inputcosttime: z.number().int().min(2).describe("填写时间（秒），需>1秒否则视为机器提交"),
+        inputcosttime: z.number().int().min(2).describe("填写时间（秒），��>1秒否则视为机器提交"),
         submitdata: z.string().min(1).describe("答卷内容字符串，格式：题号$答案}题号$答案。单选：题号$选项序号；多选/排序题：题号$选项1|选项2（竖线分隔，排序题按排名顺序列出所有选项序号）；填空：题号$文本"),
         udsid: z.number().int().optional().describe("自定义来源编号"),
         sojumpparm: z.string().optional().describe("自定义链接参数"),
         submittime: z.string().optional().describe("答卷提交时间，日期时间字符串，默认当前时间"),
+        jpmversion: z.number().int().optional().describe("问卷版本号；不传时会自动 getSurvey 取最新 version。仅在调用方已自行管理版本时显式传入。"),
       },
       annotations: {
         destructiveHint: false,
@@ -214,19 +216,24 @@ export function registerResponseTools(server: McpServer): void {
       },
     },
     wrapToolHandler(async (args) => {
-      // 自动规范化 submitdata：题号、矩阵题和排序题答案格式由 SDK 统一处理
+      // 复用一次 getSurvey：既规范化 submitdata，又自动取 jpmversion
       let submitdata = args.submitdata;
+      let jpmversion = args.jpmversion;
       try {
         const survey = await getSurvey({ vid: args.vid });
         const data = survey?.data as {
+          version?: number;
           questions?: Array<{ q_index: number; q_type: number; q_subtype: number }>;
         } | undefined;
         const questions = data?.questions ?? [];
         if (questions.length > 0) {
           submitdata = normalizeSubmitdata(submitdata, questions);
         }
+        if (jpmversion === undefined && typeof data?.version === "number") {
+          jpmversion = data.version;
+        }
       } catch {
-        // 获取问卷结构失败时不阻塞提交，使用原始 submitdata
+        // 获取问卷结构失败时不阻塞提交，使用原始 submitdata 与无版本号
       }
       return submitResponse({
         vid: args.vid,
@@ -235,6 +242,7 @@ export function registerResponseTools(server: McpServer): void {
         udsid: args.udsid,
         sojumpparm: args.sojumpparm,
         submittime: args.submittime,
+        jpmversion,
       });
     }),
   );

@@ -330,22 +330,19 @@ describe("createSurveyByJson 默认必答 & atype 推断 & 标题校验", () => 
     assert.equal(JSON.parse(sentLines[1]).requir, true);
   });
 
-  it("标题含「投票」时仍然抛错（投票类型已禁用）", async () => {
-    const { fakeFetch } = makeFakeFetch();
-    await assert.rejects(
-      () =>
-        createSurveyByJson(
-          {
-            jsonl: [
-              '{"qtype":"问卷基础信息","title":"2026华语音乐投票"}',
-              '{"qtype":"单选","title":"Q","select":["A"]}',
-            ].join("\n"),
-          },
-          { apiKey: "k" },
-          fakeFetch,
-        ),
-      /不支持创建投票类型问卷/,
+  it("标题含「投票」不再抛错（投票类型已支持，atype 自动推断为 3）", async () => {
+    const { fakeFetch, captured } = makeFakeFetch();
+    await createSurveyByJson(
+      {
+        jsonl: [
+          '{"qtype":"问卷基础信息","title":"2026华语音乐投票"}',
+          '{"qtype":"单选","title":"Q","select":["A"]}',
+        ].join("\n"),
+      },
+      { apiKey: "k" },
+      fakeFetch,
     );
+    assert.equal(captured.body.atype, 3);
   });
 
   it("标题含「表单」时推断 atype=7", async () => {
@@ -607,23 +604,21 @@ describe("createSurveyByJson 注入 atype 到 JSONL（修复服务端忽略顶�
     return { fakeFetch, captured };
   }
 
-  it("--type 3 投票：显式请求被拒绝（投票类型已禁用）", async () => {
-    const { fakeFetch } = makeFakeFetch();
-    await assert.rejects(
-      () =>
-        createSurveyByJson(
-          {
-            jsonl: [
-              '{"qtype":"问卷基础信息","title":"2026 年度歌手投票"}',
-              '{"qtype":"单选","title":"Q","select":["A","B"]}',
-            ].join("\n"),
-            atype: 3,
-          },
-          { apiKey: "k" },
-          fakeFetch,
-        ),
-      /不支持创建投票类型问卷/,
+  it("--type 3 投票：显式请求成功透传到 wire", async () => {
+    const { fakeFetch, captured } = makeFakeFetch();
+    await createSurveyByJson(
+      {
+        jsonl: [
+          '{"qtype":"问卷基础信息","title":"2026 年度歌手投票"}',
+          '{"qtype":"单选","title":"Q","select":["A","B"]}',
+        ].join("\n"),
+        atype: 3,
+      },
+      { apiKey: "k" },
+      fakeFetch,
     );
+    assert.equal(captured.body.atype, 3);
+    assert.equal(JSON.parse(captured.body.surveydatajson.split("\n")[0]).atype, 3);
   });
 
   it("--type 7 表单：顶层和 JSONL 内 atype 双写", async () => {
@@ -657,20 +652,18 @@ describe("createSurveyByJson 注入 atype 到 JSONL（修复服务端忽略顶�
     assert.equal(JSON.parse(captured.body.surveydatajson.split("\n")[0]).atype, 1);
   });
 
-  it("input.atype=3 优先级最高且因禁用投票而抛错", async () => {
-    const { fakeFetch } = makeFakeFetch();
-    await assert.rejects(
-      () =>
-        createSurveyByJson(
-          {
-            jsonl: '{"qtype":"问卷基础信息","title":"客户满意度","atype":1}\n{"qtype":"单选","title":"Q","select":["A"]}',
-            atype: 3,
-          },
-          { apiKey: "k" },
-          fakeFetch,
-        ),
-      /不支持创建投票类型问卷/,
+  it("input.atype=3 优先级最高，覆盖 JSONL 内的 atype=1", async () => {
+    const { fakeFetch, captured } = makeFakeFetch();
+    await createSurveyByJson(
+      {
+        jsonl: '{"qtype":"问卷基础信息","title":"客户满意度","atype":1}\n{"qtype":"单选","title":"Q","select":["A"]}',
+        atype: 3,
+      },
+      { apiKey: "k" },
+      fakeFetch,
     );
+    assert.equal(captured.body.atype, 3);
+    assert.equal(JSON.parse(captured.body.surveydatajson.split("\n")[0]).atype, 3);
   });
 
   it("默认 atype=1（普通调查）也写入 JSONL", async () => {

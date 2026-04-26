@@ -3,11 +3,11 @@ import { callWjxApi, getWjxCredentials } from "../../core/api-client.js";
 export { textToSurvey, parsedQuestionsToWire } from "./text-to-survey.js";
 import { textToSurvey, parsedQuestionsToWire } from "./text-to-survey.js";
 export { extractJsonlMetadata, normalizeJsonl } from "./json-to-survey.js";
-import { extractJsonlMetadata, normalizeJsonl, MAX_JSONL_SIZE, preprocessExamJsonl, injectDefaultRequir, injectAtypeIntoJsonl, inferAtypeFromTitle, validateSurveyTitle, validateSurveyHasQuestions, validateExplicitOptionalQuestionsInJsonl, } from "./json-to-survey.js";
-const DISABLED_CREATE_SURVEY_ATYPES = new Set([3]);
+import { extractJsonlMetadata, normalizeJsonl, MAX_JSONL_SIZE, preprocessExamJsonl, hasVoteJsonlQtype, injectDefaultRequir, injectAtypeIntoJsonl, inferAtypeFromTitle, validateSurveyTitle, validateSurveyHasQuestions, validateExplicitOptionalQuestionsInJsonl, } from "./json-to-survey.js";
+const DISABLED_CREATE_SURVEY_ATYPES = new Set();
 function assertCreatableSurveyAtype(atype) {
     if (DISABLED_CREATE_SURVEY_ATYPES.has(atype)) {
-        throw new Error("当前接口不支持创建投票类型问卷，请改用调查、测评、考试或表单类型。");
+        throw new Error(`当前接口不支持创建 atype=${atype} 类型的问卷。`);
     }
 }
 function parseQuestionsJsonArray(questions) {
@@ -255,10 +255,11 @@ export async function createSurveyByJson(input, credentials = getWjxCredentials(
     validateSurveyTitle(title);
     // 题目数校验：JSONL 至少包含 1 道真实题目（排除元数据/分页/段落/知情同意书）
     validateSurveyHasQuestions(requirInjected);
-    // atype 推断优先级：显式入参 > JSONL 元数据 atype > 考试题型 > 标题关键字 > 1（调查）
+    const hasVote = hasVoteJsonlQtype(requirInjected);
+    // atype 推断优先级：显式入参 > JSONL 元数据 atype > 考试题型 > 投票题型 > 标题关键字 > 1（调查）
     const atype = input.atype ??
         metadata.atype ??
-        (hasExam ? 6 : inferAtypeFromTitle(title) ?? 1);
+        (hasExam ? 6 : hasVote ? 3 : inferAtypeFromTitle(title) ?? 1);
     assertCreatableSurveyAtype(atype);
     validateJsonlQuestionTypesForCreate(requirInjected, atype);
     // 关键修复：服务端 action 1000106 实际只读 JSONL 内的 atype，忽略顶层字段。
