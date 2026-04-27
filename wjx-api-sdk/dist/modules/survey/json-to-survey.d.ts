@@ -222,6 +222,18 @@ export declare const QTYPE_MAP: Record<string, {
  */
 export declare function parseJsonl(jsonlText: string): JsonSurveyQuestion[];
 /**
+ * JSONL 预检：在交给后续解析前，扫一遍每行结构，发现典型 AI 写错的形态时
+ * 抛出**带定位 + 修复建议**的错误，避免后续抛出晦涩的 "qtype 不识别"/"标题缺失"。
+ *
+ * 检测项（按优先级）：
+ * 1. 第一行非"问卷基础信息" → 提示加首行元数据
+ * 2. 行用了 `q_type`/`type` 字段但缺 `qtype` → 提示用中文 qtype（字符串）
+ * 3. `qtype` 是数字（误把 q_type 数字塞过来）→ 列出常见中文映射
+ * 4a. `qtype` 是英文（radio/checkbox/rating 等）→ 给出精确的中文替换
+ * 4b. `qtype` 字符串但不在 QTYPE_MAP → 给出"你是不是想写 X"
+ */
+export declare function preflightJsonl(jsonlText: string): void;
+/**
  * Parse JSONL text into a structured survey: extract metadata from "问卷基础信息" entry,
  * remaining entries become the questions array.
  */

@@ -35,18 +35,51 @@ wjx response query --vid 12345 --page_size 50 --sort 1 --begin_time 170000000000
 
 答卷数据使用编码格式 `题号$答案}题号$答案`：
 
+**题号**：服务端按 `getSurvey` 返回的原始 `q_index` 严格校验——"问卷基础信息"元数据占 `q_index=1`，真实题目从 2 开始。**手算很容易错**，直接用 `wjx response submit-template --vid <问卷ID>` 拿模板，里面给的就是服务端认可的题号。
+
+**选项序号**：1-based（从 1 数到 N）。
+
 | 分隔符 | 含义 |
 |--------|------|
 | `}` | 题目之间分隔 |
 | `$` | 题号与答案分隔 |
-| `\|` | 多选选项之间分隔 |
+| `\|` | 多选 / 排序 / 矩阵多选的列之间分隔 |
+| `,` | 矩阵题的多行之间分隔 |
+| `!` | 矩阵题的「行号!列号」内部分隔 |
 
-示例：
-- 单选：`1$1`（第1题选第1个选项）
-- 多选：`2$1|3`（第2题选第1和第3个选项）
+**1-based 速记**：
+- 题号一律用 `submit-template` 返回值——服务端要的是 raw `q_index`，元数据占 1，真实题目从 2 起。
+- 选项序号 1-based：第 1 个选项是 1，以此类推。即使问卷里删过某个选项导致 item_index 不连续，模板生成时也会按 1, 2, 3... 重排——直接按你看到的 placeholder 顺序填。
+
+示例（单题）：
+- 单选：`1$1`（第 1 题选第 1 个选项）
+- 多选：`2$1|3`（第 2 题选第 1 和第 3 个选项，用 `|` 分隔）
 - 填空：`3$答案文本`
-- 量表：`4$8`（第4题选8分）
-- 排序：`5$2|3|1`（第5题排序：选项2第1名、选项3第2名、选项1第3名，按排名顺序用竖线`|`分隔所有选项序号。注意：排序题和多选题都用竖线`|`）
+- 量表：`4$8`（第 4 题选 8 分）
+- 排序：`5$2|3|1`（第 5 题排序：第 1 名是选项 2，第 2 名是选项 3，第 3 名是选项 1。注意：排序题用 `|` 分隔的是名次顺序）
+
+矩阵题示例（**每题 3 条可复制**，题号 `N` 用 submit-template 返回的真实 q_index 替换）：
+
+```bash
+# 矩阵单选（q_subtype=702）：3 行，每行选 1 列
+# 含义：第 N 题第1行选第1列、第2行选第3列、第3行选第2列
+N$1!1,2!3,3!2
+
+# 矩阵多选（q_subtype=703）：3 行，每行可选多列
+# 含义：第 N 题第1行选第1+2列、第2行选第3列、第3行选第1+4列
+N$1!1|2,2!3,3!1|4
+
+# 矩阵量表（q_subtype=701）：等同矩阵单选写法（行!分值）
+# 含义：第 N 题第1行打5分、第2行打4分、第3行打3分
+N$1!5,2!4,3!3
+```
+
+**多题拼接**：上面每题用 `}` 接起来。假设问卷有一道单选（q_index=2）+ 一道多选（q_index=3）+ 一道矩阵单选（q_index=4）：
+```
+2$1}3$1|3}4$1!1,2!3,3!2
+```
+
+**忘了格式？** 直接跑 `wjx response submit-template --vid <问卷ID>`：返回每题的 1-based placeholder + hint，AI 改成真实答案即可一键 submit。
 
 ## wjx response report
 
@@ -101,18 +134,72 @@ wjx response download --vid 12345 --taskid "abc123"   # 轮询异步任务
 
 提交答卷（代填/数据导入）。
 
+**推荐流程（AI Agent 一定走这条路）**：
 ```bash
+# 1. 拉模板：拿到每题 1-based placeholder
+wjx response submit-template --vid 12345 > template.json
+
+# 2. 把 template.json 里的 submitdata 字段改成真实答案，存成 submitdata.txt
+#    （或直接用 --raw 模式拿纯字符串：wjx response submit-template --vid 12345 --raw > submitdata.txt）
+
+# 3. 用 --submitdata-file 提交，绕开 PowerShell/bash 的 $ 变量展开陷阱
+wjx response submit --vid 12345 --inputcosttime 30 --submitdata-file submitdata.txt
+```
+
+**直接传字符串（不推荐，易踩 shell 转义坑）**：
+```bash
+# Linux/macOS bash：转义 $
 wjx response submit --vid 12345 --submitdata "1\$1}2\$hello" --inputcosttime 30
+# Windows PowerShell：必须用单引号（双引号会让 $1/$2 被当变量吞掉）
+wjx response submit --vid 12345 --submitdata '1$1}2$hello' --inputcosttime 30
 ```
 
 | Flag | 必填 | 说明 |
 |------|------|------|
 | `--vid <n>` | 是 | 问卷编号 |
 | `--inputcosttime <n>` | 是 | 填写耗时（秒），必须 >1 否则视为机器提交 |
-| `--submitdata <s>` | 是 | 答卷数据，格式：`题号$答案}题号$答案` |
+| `--submitdata <s>` | 二选一 | 答卷数据，格式：`题号$答案}题号$答案`（按 1, 2, 3... 写） |
+| `--submitdata-file <path>` | 二选一 | 从文件读 submitdata（推荐：彻底绕开 shell `$` 转义） |
 | `--udsid <n>` | 否 | 自定义来源编号 |
 | `--sojumpparm <s>` | 否 | 自定义链接参数 |
 | `--submittime <s>` | 否 | 提交时间（日期时间字符串，默认当前） |
+| `--jpmversion <n>` | 否 | 问卷版本号；不传时自动从 getSurvey 取 |
+| `--no-auto-version` | 否 | 关闭自动获取 jpmversion |
+
+**$ sanity check**：CLI 会在提交前检查 submitdata 里至少含一个 `$`。如果一个都没有，立即报 INPUT_ERROR——这几乎必然意味着 shell 把 `$1/$2` 当变量吞掉了，请改用 `--submitdata-file` 或单引号包裹。
+
+## wjx response submit-template
+
+根据问卷结构拉一份 submitdata 模板，给每题生成 **1-based placeholder + hint**，AI 改成真实答案后即可一键 submit。
+
+```bash
+# JSON 包裹（默认，含每题 hint）：
+wjx response submit-template --vid 12345
+
+# 直接吐 submitdata 字符串，便于重定向到文件：
+wjx response submit-template --vid 12345 --raw > submitdata.txt
+```
+
+| Flag | 必填 | 说明 |
+|------|------|------|
+| `--vid <n>` | 是 | 问卷编号 |
+| `--raw` | 否 | 直接输出 submitdata 字符串（不包裹 JSON） |
+
+输出（JSON 模式）：
+```json
+{
+  "vid": 12345,
+  "title": "...",
+  "submitdata": "1$1}2$1|2}3$__请填写__}4$1!1,2!1,3!1",
+  "questions": [
+    { "q_index": 1, "q_type": 3, "q_title": "性别", "placeholder": "1$1", "hint": "选项序号（1-based）..." },
+    { "q_index": 2, "q_type": 4, "q_title": "爱好", "placeholder": "2$1|2", "hint": "多选：用 | 分隔..." },
+    { "q_index": 3, "q_type": 5, "q_title": "建议", "placeholder": "3$__请填写__", "hint": "填空：直接写答案文本" },
+    { "q_index": 4, "q_type": 7, "q_subtype": 702, "q_title": "评估", "placeholder": "4$1!1,2!1,3!1", "hint": "矩阵单选：行号!列号..." }
+  ],
+  "next_step": "把每题 placeholder 改成真实答案，存为 submitdata.txt 后运行：wjx response submit --vid 12345 --inputcosttime 30 --submitdata-file submitdata.txt"
+}
+```
 
 ## wjx response modify
 

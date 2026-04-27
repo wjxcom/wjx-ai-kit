@@ -912,11 +912,186 @@ export function parseJsonl(jsonlText: string): JsonSurveyQuestion[] {
   return results;
 }
 
+// ─── JSONL preflight ─────────────────────────────────────────────────
+
+/** 已知 qtype 名（用于建议） */
+const ALL_KNOWN_QTYPES: ReadonlySet<string> = new Set([
+  ...Object.keys(QTYPE_MAP),
+  ...NON_QUESTION_QTYPES,
+]);
+
+/** Levenshtein distance（小串足够用） */
+function strDist(a: string, b: string): number {
+  if (a === b) return 0;
+  if (!a) return b.length;
+  if (!b) return a.length;
+  const dp: number[] = Array.from({ length: b.length + 1 }, (_, i) => i);
+  for (let i = 1; i <= a.length; i++) {
+    let prev = dp[0];
+    dp[0] = i;
+    for (let j = 1; j <= b.length; j++) {
+      const tmp = dp[j];
+      dp[j] = a[i - 1] === b[j - 1] ? prev : Math.min(prev, dp[j], dp[j - 1]) + 1;
+      prev = tmp;
+    }
+  }
+  return dp[b.length];
+}
+
+function suggestQtype(input: string): string | null {
+  let best: { name: string; d: number } | null = null;
+  for (const name of ALL_KNOWN_QTYPES) {
+    const d = strDist(input, name);
+    if (d <= 3 && (best === null || d < best.d)) {
+      best = { name, d };
+    }
+  }
+  return best?.name ?? null;
+}
+
+/**
+ * 常见英文 qtype → 中文 qtype 的映射。命中时给出"请改中文"的明确提示，
+ * 避免依赖 Levenshtein 猜测（英文→中文距离永远很大，suggest 永远为 null）。
+ */
+const ENGLISH_QTYPE_HINTS: Record<string, string> = {
+  radio: "单选",
+  single: "单选",
+  single_choice: "单选",
+  singlechoice: "单选",
+  checkbox: "多选",
+  multiple: "多选",
+  multi: "多选",
+  multiple_choice: "多选",
+  multiplechoice: "多选",
+  text: "单项填空",
+  textarea: "简答题",
+  input: "单项填空",
+  fillblank: "单项填空",
+  fill_blank: "单项填空",
+  rating: "量表题",
+  scale: "量表题",
+  likert: "量表题",
+  nps: "NPS量表",
+  matrix: "矩阵单选",
+  matrix_single: "矩阵单选",
+  matrix_multiple: "矩阵多选",
+  matrix_scale: "矩阵量表",
+  rank: "排序",
+  ranking: "排序",
+  sort: "排序",
+  slider: "滑动条",
+  dropdown: "下拉框",
+  select: "下拉框",
+  upload: "文件上传",
+  file: "文件上传",
+  date: "日期",
+  vote: "投票单选",
+  voting: "投票单选",
+  survey_meta: "问卷基础信息",
+  meta: "问卷基础信息",
+  metadata: "问卷基础信息",
+  header: "问卷基础信息",
+};
+
+function matchEnglishQtype(input: string): string | null {
+  const key = input.trim().toLowerCase().replace(/[\s-]+/g, "_");
+  return ENGLISH_QTYPE_HINTS[key] ?? null;
+}
+
+/**
+ * JSONL 预检：在交给后续解析前，扫一遍每行结构，发现典型 AI 写错的形态时
+ * 抛出**带定位 + 修复建议**的错误，避免后续抛出晦涩的 "qtype 不识别"/"标题缺失"。
+ *
+ * 检测项（按优先级）：
+ * 1. 第一行非"问卷基础信息" → 提示加首行元数据
+ * 2. 行用了 `q_type`/`type` 字段但缺 `qtype` → 提示用中文 qtype（字符串）
+ * 3. `qtype` 是数字（误把 q_type 数字塞过来）→ 列出常见中文映射
+ * 4a. `qtype` 是英文（radio/checkbox/rating 等）→ 给出精确的中文替换
+ * 4b. `qtype` 字符串但不在 QTYPE_MAP → 给出"你是不是想写 X"
+ */
+export function preflightJsonl(jsonlText: string): void {
+  const lines = jsonlText.split("\n");
+  let firstNonEmptyLineIndex = -1;
+  let firstNonEmptyObj: Record<string, unknown> | null = null;
+
+  for (let i = 0; i < lines.length; i++) {
+    const trimmed = lines[i].trim();
+    if (!trimmed) continue;
+    let obj: Record<string, unknown>;
+    try {
+      obj = JSON.parse(trimmed) as Record<string, unknown>;
+    } catch {
+      continue;
+    }
+    if (firstNonEmptyLineIndex === -1) {
+      firstNonEmptyLineIndex = i;
+      firstNonEmptyObj = obj;
+    }
+
+    // 检测 2：用了 q_type/type 但没有 qtype
+    if (typeof obj.qtype === "undefined") {
+      if ("q_type" in obj || "type" in obj) {
+        throw new Error(
+          `JSONL 第 ${i + 1} 行字段名错误：找到 ${"q_type" in obj ? "`q_type`" : "`type`"} 但缺少 \`qtype\`。` +
+          `本工具用中文字符串 \`qtype\` 区分题型（不是数字 q_type）。` +
+          `修复：把 ${"q_type" in obj ? "q_type" : "type"} 字段改名为 qtype，并填中文题型名。` +
+          `常见值："单选"、"多选"、"填空"、"量表题"、"矩阵单选"、"矩阵量表"、"投票单选"、"问卷基础信息"。` +
+          `运行 \`wjx survey jsonl-template\` 获取完整骨架。`,
+        );
+      }
+      // qtype 缺失但也没有 q_type/type，可能是非题目数据，跳过
+      continue;
+    }
+
+    // 检测 3：qtype 是数字
+    if (typeof obj.qtype !== "string") {
+      throw new Error(
+        `JSONL 第 ${i + 1} 行 qtype 必须是中文字符串（如 "单选"），收到类型：${typeof obj.qtype}。` +
+        `修复：qtype 字段填中文题型名，例如 \`"qtype": "单选"\`。` +
+        `运行 \`wjx survey jsonl-template\` 获取完整骨架。`,
+      );
+    }
+
+    // 检测 4：qtype 字符串但不识别
+    const normalized = QTYPE_ALIAS_MAP[obj.qtype] ?? obj.qtype;
+    if (!QTYPE_MAP[normalized] && !NON_QUESTION_QTYPES.has(normalized)) {
+      // 4a：英文 qtype（radio/checkbox/rating/...）→ 明确告诉要用中文
+      const englishMatch = matchEnglishQtype(obj.qtype);
+      if (englishMatch) {
+        throw new Error(
+          `JSONL 第 ${i + 1} 行 qtype "${obj.qtype}" 是英文值，本工具只接受中文 qtype。` +
+          `修复：改成 \`"qtype": "${englishMatch}"\`。` +
+          `其他常见映射：radio→单选, checkbox→多选, rating/scale→量表题, matrix→矩阵单选, rank→排序, dropdown→下拉框, upload→文件上传。` +
+          `完整列表见 references/question-types.md，或运行 \`wjx survey jsonl-template\` 获取骨架。`,
+        );
+      }
+      // 4b：中文但拼错（Levenshtein 距离 ≤ 3）
+      const suggestion = suggestQtype(obj.qtype);
+      const hint = suggestion ? `你是不是想写 "${suggestion}"？` : "";
+      throw new Error(
+        `JSONL 第 ${i + 1} 行 qtype "${obj.qtype}" 不识别。${hint} ` +
+        `常见值："单选"、"多选"、"填空"、"量表题"、"矩阵单选"、"矩阵量表"、"投票单选"、"投票多选"、"表格数值"、"表格填空"、"问卷基础信息"。` +
+        `完整列表见 references/question-types.md，或运行 \`wjx survey jsonl-template\` 获取骨架。`,
+      );
+    }
+  }
+
+  // 检测 1：首行非"问卷基础信息"
+  if (firstNonEmptyObj && firstNonEmptyObj.qtype !== "问卷基础信息") {
+    throw new Error(
+      `JSONL 第 ${firstNonEmptyLineIndex + 1} 行（首个非空行）不是"问卷基础信息"。` +
+      `JSONL 必须以一行元数据开头：\`{"qtype":"问卷基础信息","title":"你的问卷标题"}\`，紧接着每行一道题。` +
+      `运行 \`wjx survey jsonl-template\` 获取完整骨架，或 \`wjx survey jsonl-template --type 3\` 获取投票模板。`,
+    );
+  }
+}
+
 /**
  * Parse JSONL text into a structured survey: extract metadata from "问卷基础信息" entry,
  * remaining entries become the questions array.
  */
 export function jsonToSurvey(jsonlText: string): JsonParsedSurvey {
+  preflightJsonl(jsonlText);
   const all = parseJsonl(jsonlText);
 
   let title = "";

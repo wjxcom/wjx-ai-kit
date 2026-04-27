@@ -2,7 +2,7 @@ import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { execFileSync, execFile } from "node:child_process";
 import { resolve, dirname } from "node:path";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import { mkdirSync, readFileSync, rmSync } from "node:fs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -57,7 +57,7 @@ describe("wjx CLI", () => {
 
   it("survey --help lists all subcommands", () => {
     const out = run(["survey", "--help"]);
-    for (const cmd of ["list", "get", "create", "create-by-json", "delete", "status", "settings", "update-settings", "tags", "tag-details", "clear-bin", "upload", "url"]) {
+    for (const cmd of ["list", "get", "create", "create-by-json", "jsonl-template", "delete", "status", "settings", "update-settings", "tags", "tag-details", "clear-bin", "upload", "url"]) {
       assert.match(out, new RegExp(cmd), `missing subcommand: ${cmd}`);
     }
   });
@@ -444,7 +444,7 @@ describe("survey export-text", () => {
 describe("response subcommands", () => {
   it("response --help lists all subcommands", () => {
     const out = run(["response", "--help"]);
-    for (const cmd of ["count", "query", "realtime", "download", "submit", "modify", "clear", "report", "winners", "360-report"]) {
+    for (const cmd of ["count", "query", "realtime", "download", "submit", "submit-template", "modify", "clear", "report", "winners", "360-report"]) {
       assert.match(out, new RegExp(cmd), `missing subcommand: ${cmd}`);
     }
   });
@@ -474,6 +474,189 @@ describe("response subcommands", () => {
     assert.equal(result.exitCode, 2);
     const err = JSON.parse(result.stderr.trim());
     assert.ok(err.message.includes("username"));
+  });
+
+  it("response submit submitdata 缺 $ → INPUT_ERROR + 修复建议", async () => {
+    const result = await runFull(
+      ["response", "submit", "--vid", "123", "--inputcosttime", "10", "--submitdata", "1@A|2@B"],
+      { env: { WJX_API_KEY: "fake-key-1234567890", ...NO_CONFIG } },
+    );
+    assert.equal(result.exitCode, 2);
+    const err = JSON.parse(result.stderr.trim());
+    assert.equal(err.code, "INPUT_ERROR");
+    assert.match(err.message, /\$|分隔符/);
+    assert.match(err.message, /submitdata-file|submit-template/);
+  });
+
+  it("response submit --submitdata-file 不存在的路径 → INPUT_ERROR", async () => {
+    const result = await runFull(
+      ["response", "submit", "--vid", "123", "--inputcosttime", "10", "--submitdata-file", "/tmp/__no_such_submitdata_99887.txt"],
+      { env: { WJX_API_KEY: "fake-key-1234567890", ...NO_CONFIG } },
+    );
+    assert.equal(result.exitCode, 2);
+    const err = JSON.parse(result.stderr.trim());
+    assert.equal(err.code, "INPUT_ERROR");
+    assert.match(err.message, /submitdata-file|无法读取/);
+  });
+
+  it("response submit 既无 --submitdata 也无 --submitdata-file → INPUT_ERROR", async () => {
+    const result = await runFull(
+      ["response", "submit", "--vid", "123", "--inputcosttime", "10"],
+      { env: { WJX_API_KEY: "fake-key-1234567890", ...NO_CONFIG } },
+    );
+    assert.equal(result.exitCode, 2);
+    const err = JSON.parse(result.stderr.trim());
+    assert.equal(err.code, "INPUT_ERROR");
+    assert.match(err.message, /submitdata/);
+  });
+
+  it("response submit --help 含 --submitdata-file 选项", () => {
+    const out = run(["response", "submit", "--help"]);
+    assert.match(out, /--submitdata-file/);
+  });
+
+  it("response submit-template without --vid → INPUT_ERROR exit 2", async () => {
+    const result = await runFull(["response", "submit-template"]);
+    assert.equal(result.exitCode, 2);
+    const err = JSON.parse(result.stderr.trim());
+    assert.equal(err.code, "INPUT_ERROR");
+    assert.ok(err.message.includes("vid"));
+  });
+
+  it("response submit-template --dry-run 能走到 getSurvey 请求", async () => {
+    const result = await runFull(
+      ["response", "submit-template", "--vid", "123", "--dry-run"],
+      { env: { WJX_API_KEY: "fake-key-1234567890", ...NO_CONFIG } },
+    );
+    assert.equal(result.exitCode, 0);
+    const preview = JSON.parse(result.stderr);
+    assert.equal(preview.dry_run, true);
+    assert.match(preview.request.url, /action=1000001/);
+    const body = JSON.parse(preview.request.body);
+    assert.equal(body.vid, 123);
+    assert.equal(body.get_questions, true);
+    assert.equal(body.get_items, true);
+  });
+});
+
+// ═══════════════════════════════════════
+// buildSubmitTemplate — unit coverage
+// ═══════════════════════════════════════
+
+const { buildSubmitTemplate } = await import(
+  pathToFileURL(resolve(__dirname, "..", "dist", "commands", "response.js")).href
+);
+
+describe("buildSubmitTemplate", () => {
+  it("导出存在", () => {
+    assert.equal(typeof buildSubmitTemplate, "function");
+  });
+
+  it("单选题生成 1-based 选项序号", () => {
+    const r = buildSubmitTemplate([
+      { q_index: 1, q_type: 3, q_subtype: 3, q_title: "性别", items: [{ item_index: 1 }, { item_index: 2 }] },
+    ]);
+    assert.equal(r.submitdata, "1$1");
+    assert.equal(r.questions[0].placeholder, "1$1");
+  });
+
+  it("多选题用 | 分隔", () => {
+    const r = buildSubmitTemplate([
+      { q_index: 1, q_type: 4, q_subtype: 4, q_title: "爱好", items: [{ item_index: 1 }, { item_index: 2 }, { item_index: 3 }] },
+    ]);
+    assert.match(r.submitdata, /^1\$1\|2$/);
+  });
+
+  it("排序题 (q_subtype=402) 按名次给所有选项", () => {
+    const r = buildSubmitTemplate([
+      { q_index: 1, q_type: 4, q_subtype: 402, q_title: "排序", items: [{ item_index: 1 }, { item_index: 2 }, { item_index: 3 }] },
+    ]);
+    assert.match(r.submitdata, /^1\$1\|2\|3$/);
+  });
+
+  it("矩阵单选生成 行!列 的逗号序列", () => {
+    const r = buildSubmitTemplate([
+      {
+        q_index: 1, q_type: 7, q_subtype: 702, q_title: "评估",
+        items: [{ item_index: 1 }, { item_index: 2 }, { item_index: 3 }],
+        col_items: [{ item_index: 1 }, { item_index: 2 }],
+      },
+    ]);
+    assert.equal(r.submitdata, "1$1!1,2!1,3!1");
+  });
+
+  it("矩阵多选用 | 分隔列", () => {
+    const r = buildSubmitTemplate([
+      {
+        q_index: 1, q_type: 7, q_subtype: 703, q_title: "多选矩阵",
+        items: [{ item_index: 1 }, { item_index: 2 }],
+      },
+    ]);
+    assert.equal(r.submitdata, "1$1!1|2,2!1|2");
+  });
+
+  it("多项填空使用 gap_count 决定占位数", () => {
+    const r = buildSubmitTemplate([
+      { q_index: 1, q_type: 6, q_subtype: 6, q_title: "姓名地址", gap_count: 3 },
+    ]);
+    assert.match(r.submitdata, /^1\$__填空1__\|__填空2__\|__填空3__$/);
+  });
+
+  it("比重题分值之和为 100", () => {
+    const r = buildSubmitTemplate([
+      { q_index: 1, q_type: 9, q_title: "预算分配", items: [{ item_index: 1 }, { item_index: 2 }, { item_index: 3 }] },
+    ]);
+    const value = r.submitdata.slice(2);
+    const total = value.split(",")
+      .map((seg) => Number(seg.split("!")[1]))
+      .reduce((a, b) => a + b, 0);
+    assert.equal(total, 100);
+  });
+
+  it("跳过分页栏/段落说明，保留原始 q_index（不重排）", () => {
+    // 实测验证：submitResponse 要 raw q_index（含元数据占位后的原始编号），
+    // 重排 answerable 1-based 反而被服务端拒收"5〒答案不符合要求"。
+    const r = buildSubmitTemplate([
+      { q_index: 1, q_type: 1, q_title: "分页" },
+      { q_index: 2, q_type: 3, q_subtype: 3, q_title: "Q1", items: [{ item_index: 1 }] },
+      { q_index: 3, q_type: 2, q_title: "说明" },
+      { q_index: 4, q_type: 5, q_title: "Q2" },
+    ]);
+    const parts = r.submitdata.split("}");
+    assert.equal(parts.length, 2);
+    assert.match(parts[0], /^2\$/);
+    assert.match(parts[1], /^4\$/);
+    assert.equal(r.questions.length, 2);
+    assert.equal(r.questions[0].q_index, 2);
+    assert.equal(r.questions[1].q_index, 4);
+  });
+
+  it("矩阵题用 item_rows 决定行数，items 是列", () => {
+    // 回归 Bug A：getSurvey 返回的 matrix items 是列（列头），item_rows 才是行。
+    const r = buildSubmitTemplate([
+      {
+        q_index: 3, q_type: 7, q_subtype: 702, q_title: "技能评估",
+        // 实际 3 行
+        item_rows: [{ item_index: 1 }, { item_index: 2 }, { item_index: 3 }],
+        // 实际 4 列
+        items: [{ item_index: 1 }, { item_index: 2 }, { item_index: 3 }, { item_index: 4 }],
+      },
+    ]);
+    assert.equal(r.submitdata, "3$1!1,2!1,3!1", "应给 3 行（不是 items 的 4 列）");
+  });
+
+  it("填空题给出 __请填写__ 占位", () => {
+    const r = buildSubmitTemplate([
+      { q_index: 1, q_type: 5, q_title: "建议" },
+    ]);
+    assert.equal(r.submitdata, "1$__请填写__");
+  });
+
+  it("滑动条 q_type=10 给出数字占位", () => {
+    const r = buildSubmitTemplate([
+      { q_index: 1, q_type: 10, q_title: "满意度" },
+    ]);
+    assert.equal(r.submitdata, "1$5");
   });
 });
 
@@ -908,6 +1091,66 @@ describe("survey create-by-json", () => {
     assert.equal(result.exitCode, 1);
     const err = JSON.parse(result.stderr.trim());
     assert.equal(err.code, "AUTH_ERROR");
+  });
+});
+
+// ═══════════════════════════════════════
+// survey jsonl-template
+// ═══════════════════════════════════════
+
+describe("survey jsonl-template", () => {
+  it("默认 --type 1 输出调查骨架（JSON 包裹）", () => {
+    const out = run(["survey", "jsonl-template"]);
+    const parsed = JSON.parse(out);
+    assert.equal(parsed.atype, 1);
+    assert.ok(typeof parsed.template === "string" && parsed.template.length > 0);
+    const firstLine = parsed.template.trim().split("\n")[0];
+    const meta = JSON.parse(firstLine);
+    assert.equal(meta.qtype, "问卷基础信息");
+    assert.equal(meta.atype, 1);
+    assert.ok(meta.title && meta.title.length > 0);
+  });
+
+  it("--raw 直接输出 JSONL 文本（不包裹 JSON）", () => {
+    const out = run(["survey", "jsonl-template", "--raw"]);
+    assert.doesNotMatch(out.trim(), /^\{\s*\n\s*"atype"/); // 不是包裹对象
+    const lines = out.trim().split("\n");
+    for (const line of lines) {
+      assert.doesNotThrow(() => JSON.parse(line), `每行都应是合法 JSON: ${line}`);
+    }
+    assert.equal(JSON.parse(lines[0]).qtype, "问卷基础信息");
+  });
+
+  it("--type 3 输出投票骨架，含投票单选/多选", () => {
+    const out = run(["survey", "jsonl-template", "--type", "3", "--raw"]);
+    assert.match(out, /投票单选/);
+    assert.match(out, /投票多选/);
+    const firstLine = out.trim().split("\n")[0];
+    assert.equal(JSON.parse(firstLine).atype, 3);
+  });
+
+  it("--type 6 输出考试骨架，含 correctselect / quizscore", () => {
+    const out = run(["survey", "jsonl-template", "--type", "6", "--raw"]);
+    assert.match(out, /考试单选/);
+    assert.match(out, /correctselect/);
+    assert.match(out, /quizscore/);
+  });
+
+  it("--type 99（无效值）→ INPUT_ERROR exit 2", async () => {
+    const result = await runFull(["survey", "jsonl-template", "--type", "99"]);
+    assert.equal(result.exitCode, 2);
+    const err = JSON.parse(result.stderr.trim());
+    assert.equal(err.code, "INPUT_ERROR");
+    assert.match(err.message, /--type|可选值/);
+  });
+
+  it("骨架可直接通过 preflight（配合 create-by-json --dry-run）", async () => {
+    const tmpl = run(["survey", "jsonl-template", "--raw"]);
+    const result = await runFull(
+      ["survey", "create-by-json", "--jsonl", tmpl, "--dry-run"],
+      { env: { WJX_API_KEY: "fake-key-1234567890", ...NO_CONFIG } },
+    );
+    assert.equal(result.exitCode, 0, `dry-run 应成功，stderr=${result.stderr}`);
   });
 });
 

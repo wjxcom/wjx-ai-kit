@@ -73,6 +73,7 @@ export {
   validateSurveyTitle,
   validateSurveyHasQuestions,
   NON_QUESTION_QTYPE_SET,
+  preflightJsonl,
 } from "./modules/survey/json-to-survey.js";
 export type {
   JsonSurveyMetadata,

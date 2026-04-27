@@ -190,6 +190,38 @@ wjx survey update-settings --vid 12345 --time_setting '{"exam_min_seconds":60,"e
 | `--sojumpparm_setting <json>` | 自定义参数：`{"params":[{"name":"source","type":0}]}` |
 | `--time_setting <json>` | 时间设置：`{"start_time":"2026-04-01 00:00","exam_min_seconds":60}` |
 
+### 候选字段速查（按业务模块猜值）
+
+OpenAPI 没有正式公开 settings 各 JSON 的全部字段。下表是从问卷星管理后台 / 公开抓包总结的常见字段，**不保证服务端一定接受**——遇到不生效时按"调试方法"自行确认：
+
+| 业务诉求 | 字段所在 setting | 候选字段（按推测可能性排序） |
+|----------|------------------|------------------------------|
+| 开启验证码（防机器答卷） | `api_setting` 或 `msg_setting` | `is_open_yzm` / `yzm_enable` / `open_captcha` / `captcha_enable` |
+| 开启智能验证（无感） | `api_setting` | `nv_enable` / `enable_nvc` / `smart_verify` |
+| 限制单 IP 答卷次数 | `api_setting` | `ip_limit` / `ip_max_times` / `ip_limit_count` |
+| 限制单微信号 | `api_setting` | `wx_limit` / `weixin_limit` |
+| 防多次提交 | `api_setting` | `cookie_limit` / `device_limit` |
+| 隐藏问卷星 logo | `api_setting` | `hide_logo` / `is_hide_logo` |
+| 强制必答 | `api_setting` | `must_answer` / `force_required` |
+| 答题进度条 | `api_setting` | `show_process` / `show_progress` |
+| 微信 OA 推送通知 | `msg_setting` | `oa_enable` / `wx_notify` |
+| 提交后发邮件 | `msg_setting` | `email_enable` / `notify_email` |
+
+**调试方法**：
+```bash
+# 1) 在问卷星网页端先把目标功能打开/调好；
+# 2) 用 settings 查当前值，找出与默认不同的字段：
+wjx survey settings --vid 12345
+
+# 3) 把那个字段对应的 JSON 整段塞回 update-settings：
+wjx survey update-settings --vid 12345 --api_setting '{"is_open_yzm":1,"nv_enable":1}'
+
+# 4) 再 settings 一次确认服务端是否落库；如果没生效，多半是字段名不对——
+#    再回到第 2 步对比，或换上表的候选名重试。
+```
+
+> 同一业务在不同问卷类型/账户版本下字段名可能不同；上表只是候选，真实接受的字段以服务端 settings 返回为准。如果有命中的字段值，欢迎提 PR 补到这里。
+
 ## wjx survey delete
 
 删除问卷（**不可逆**）。

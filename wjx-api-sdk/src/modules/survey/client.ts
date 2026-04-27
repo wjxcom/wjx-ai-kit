@@ -16,6 +16,7 @@ import {
   validateSurveyTitle,
   validateSurveyHasQuestions,
   validateExplicitOptionalQuestionsInJsonl,
+  preflightJsonl,
 } from "./json-to-survey.js";
 import type {
   CreateSurveyInput,
@@ -350,6 +351,10 @@ export async function createSurveyByJson<T = unknown>(
   if (jsonl.length > MAX_JSONL_SIZE) {
     throw new Error(`jsonl exceeds maximum size of ${MAX_JSONL_SIZE} bytes (${jsonl.length})`);
   }
+
+  // 预检：拦截英文/拼错/错字段名的 qtype，给出精确的中文修复建议
+  // 必须在 preprocessExamJsonl 等预处理之前跑，这样错误信息里的行号与用户输入一致
+  preflightJsonl(jsonl);
 
   // 考试题型预处理：注入 isquiz="1"，并在用户未指定 atype 时推断为 6（考试）
   const { jsonl: examProcessed, hasExam } = preprocessExamJsonl(jsonl);

@@ -45,7 +45,13 @@ function classifyError(err: unknown): CliError {
     if (
       err.message.includes("must be valid JSON") ||
       err.message.includes("must be a JSON array") ||
-      err.message.includes("missing required field")
+      err.message.includes("missing required field") ||
+      // JSONL preflight / 标题 / 题目校验：本地输入错，不是服务端返回
+      err.message.includes("JSONL 第") ||
+      err.message.includes("问卷标题") ||
+      err.message.includes("未找到有效题目") ||
+      err.message.includes("optionalTitles") ||
+      err.message.startsWith("题目「")
     ) {
       return new CliError("INPUT_ERROR", err.message);
     }

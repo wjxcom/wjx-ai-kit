@@ -3,7 +3,7 @@ import { callWjxApi, getWjxCredentials } from "../../core/api-client.js";
 export { textToSurvey, parsedQuestionsToWire } from "./text-to-survey.js";
 import { textToSurvey, parsedQuestionsToWire } from "./text-to-survey.js";
 export { extractJsonlMetadata, normalizeJsonl } from "./json-to-survey.js";
-import { extractJsonlMetadata, normalizeJsonl, MAX_JSONL_SIZE, preprocessExamJsonl, hasVoteJsonlQtype, injectDefaultRequir, injectAtypeIntoJsonl, inferAtypeFromTitle, validateSurveyTitle, validateSurveyHasQuestions, validateExplicitOptionalQuestionsInJsonl, } from "./json-to-survey.js";
+import { extractJsonlMetadata, normalizeJsonl, MAX_JSONL_SIZE, preprocessExamJsonl, hasVoteJsonlQtype, injectDefaultRequir, injectAtypeIntoJsonl, inferAtypeFromTitle, validateSurveyTitle, validateSurveyHasQuestions, validateExplicitOptionalQuestionsInJsonl, preflightJsonl, } from "./json-to-survey.js";
 const DISABLED_CREATE_SURVEY_ATYPES = new Set();
 function assertCreatableSurveyAtype(atype) {
     if (DISABLED_CREATE_SURVEY_ATYPES.has(atype)) {
@@ -243,6 +243,9 @@ export async function createSurveyByJson(input, credentials = getWjxCredentials(
     if (jsonl.length > MAX_JSONL_SIZE) {
         throw new Error(`jsonl exceeds maximum size of ${MAX_JSONL_SIZE} bytes (${jsonl.length})`);
     }
+    // 预检：拦截英文/拼错/错字段名的 qtype，给出精确的中文修复建议
+    // 必须在 preprocessExamJsonl 等预处理之前跑，这样错误信息里的行号与用户输入一致
+    preflightJsonl(jsonl);
     // 考试题型预处理：注入 isquiz="1"，并在用户未指定 atype 时推断为 6（考试）
     const { jsonl: examProcessed, hasExam } = preprocessExamJsonl(jsonl);
     validateExplicitOptionalQuestionsInJsonl(examProcessed, input.optionalTitles);

@@ -383,6 +383,31 @@ export function registerSurveyCommands(program) {
             handleError(e);
         }
     });
+    // --- jsonl-template ---
+    survey
+        .command("jsonl-template")
+        .description("输出 create-by-json 可直接使用的 JSONL 骨架（按 --type 切换调查/投票/考试/表单等）")
+        .option("--type <n>", "问卷类型：1=调查（默认）, 2=测评, 3=投票, 6=考试, 7=表单, 10=量表", strictInt)
+        .option("--raw", "直接输出 JSONL 文本（不包裹 JSON），便于重定向到文件")
+        .action(async (_opts, cmd) => {
+        try {
+            const merged = getMerged(cmd);
+            const atype = merged.type ?? 1;
+            const jsonl = buildJsonlTemplate(atype);
+            const globalOpts = program.opts();
+            if (merged.raw || globalOpts.table) {
+                process.stdout.write(jsonl);
+                if (!jsonl.endsWith("\n"))
+                    process.stdout.write("\n");
+            }
+            else {
+                console.log(JSON.stringify({ atype, template: jsonl }, null, 2));
+            }
+        }
+        catch (e) {
+            handleError(e);
+        }
+    });
     // --- url ---
     survey
         .command("url")
@@ -415,5 +440,60 @@ export function registerSurveyCommands(program) {
             handleError(e);
         }
     });
+}
+const TEMPLATE_QUESTIONS_BY_ATYPE = {
+    1: [
+        { qtype: "单选", title: "您的性别", select: ["男", "女"] },
+        { qtype: "多选", title: "您平时喜欢的运动（多选）", select: ["跑步", "游泳", "球类", "瑜伽"] },
+        { qtype: "量表题", title: "您对当前服务的满意度（1=非常不满意, 5=非常满意）", select: ["1", "2", "3", "4", "5"] },
+        { qtype: "矩阵单选", title: "请评价以下方面", rowtitle: ["响应速度", "服务态度", "问题解决"], select: ["差", "一般", "好", "很好"] },
+        { qtype: "简答题", title: "您还有什么建议？" },
+    ],
+    2: [
+        { qtype: "单选", title: "请选择最贴近您的描述", select: ["A 选项", "B 选项", "C 选项"] },
+        { qtype: "量表题", title: "您对此观点的认同程度（1=完全不认同, 5=完全认同）", select: ["1", "2", "3", "4", "5"] },
+        { qtype: "矩阵单选", title: "请按以下维度评估", rowtitle: ["维度一", "维度二", "维度三"], select: ["低", "中", "高"] },
+    ],
+    3: [
+        { qtype: "投票单选", title: "请选出您最喜欢的候选项（单选）", select: ["候选 A", "候选 B", "候选 C"] },
+        { qtype: "投票多选", title: "请选出您支持的候选项（最多 2 项）", select: ["候选 A", "候选 B", "候选 C", "候选 D"] },
+    ],
+    6: [
+        { qtype: "考试单选", title: "下列说法正确的是？", select: ["A. 错误说法", "B. 正确说法", "C. 错误说法"], correctselect: ["B"], quizscore: "10" },
+        { qtype: "考试多选", title: "请选出所有正确选项", select: ["A. 正确", "B. 错误", "C. 正确", "D. 错误"], correctselect: ["A", "C"], quizscore: "10" },
+        { qtype: "考试判断", title: "1+1=2", select: ["对", "错"], correctselect: ["对"], quizscore: "5" },
+        { qtype: "考试简答", title: "请简述你的看法", quizscore: "20" },
+    ],
+    7: [
+        { qtype: "单项填空", title: "您的姓名" },
+        { qtype: "邮箱", title: "您的邮箱" },
+        { qtype: "手机", title: "您的手机号" },
+        { qtype: "单选", title: "请选择您的部门", select: ["研发", "产品", "运营", "其他"] },
+    ],
+    10: [
+        { qtype: "矩阵量表", title: "请按以下维度打分（1-7 分）", rowtitle: ["条目 1", "条目 2", "条目 3"], select: ["1", "2", "3", "4", "5", "6", "7"] },
+        { qtype: "量表题", title: "总体感受（1-7 分）", select: ["1", "2", "3", "4", "5", "6", "7"] },
+    ],
+};
+const TEMPLATE_TITLE_BY_ATYPE = {
+    1: "示例调查问卷（请改成你的标题）",
+    2: "示例测评（请改成你的标题）",
+    3: "示例投票（请改成你的标题）",
+    6: "示例考试（请改成你的标题）",
+    7: "示例表单（请改成你的标题）",
+    10: "示例量表（请改成你的标题）",
+};
+function buildJsonlTemplate(atype) {
+    const validAtypes = new Set([1, 2, 3, 6, 7, 10]);
+    if (!validAtypes.has(atype)) {
+        throw new CliError("INPUT_ERROR", `无效的 --type "${atype}"，可选值：1=调查, 2=测评, 3=投票, 6=考试, 7=表单, 10=量表`);
+    }
+    const meta = {
+        qtype: "问卷基础信息",
+        title: TEMPLATE_TITLE_BY_ATYPE[atype],
+        atype,
+    };
+    const questions = TEMPLATE_QUESTIONS_BY_ATYPE[atype] ?? [];
+    return [meta, ...questions].map((q) => JSON.stringify(q)).join("\n") + "\n";
 }
 //# sourceMappingURL=survey.js.map

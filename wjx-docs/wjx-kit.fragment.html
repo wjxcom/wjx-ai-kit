@@ -1,4 +1,4 @@
-<!-- wjx-ai-kit 文档 · v0.3.0 · fragment for CMS/wangEditor --><style>
+<!-- wjx-ai-kit 文档 · v0.3.1 · fragment for CMS/wangEditor --><style>
 .wjx-docs-frag { max-width: 960px; margin: 0 auto; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC", "Microsoft YaHei", sans-serif; font-size: 15px; line-height: 1.7; color: #333; }
 .wjx-docs-frag a:hover { text-decoration: underline; }
 .wjx-docs-frag tr:nth-child(even) td { background: #fafbfc; }
@@ -136,7 +136,7 @@
 <pre style="background:#f6f8fa;border:1px solid #e8e8e8;border-radius:6px;padding:12px;overflow-x:auto;margin:0 0 10px;font-family:SFMono-Regular,Consolas,Menlo,monospace;font-size:13px;line-height:1.5;white-space:pre;"><code style="background:none;padding:0;font-size:13px;white-space:pre;">npm install -g wjx-cli</code></pre>
 <p style="margin:0 0 8px;line-height:1.7;">验证安装：</p>
 <pre style="background:#f6f8fa;border:1px solid #e8e8e8;border-radius:6px;padding:12px;overflow-x:auto;margin:0 0 10px;font-family:SFMono-Regular,Consolas,Menlo,monospace;font-size:13px;line-height:1.5;white-space:pre;"><code style="background:none;padding:0;font-size:13px;white-space:pre;">wjx --version
-# wjx-cli/0.3.0</code></pre>
+# wjx-cli/0.3.1</code></pre>
 <p style="margin:0 0 8px;line-height:1.7;">需要 Node.js &gt;= 20。如果版本不够，运行 <code style="font-family:SFMono-Regular,Consolas,Menlo,monospace;font-size:13px;background:#f6f8fa;padding:2px 6px;border-radius:3px;">wjx doctor</code> 会提示。</p><hr style="border:none;border-top:1px solid #e8e8e8;margin:14px 0;"><h2 style="font-size:20px;color:#222;margin:18px 0 8px;padding-bottom:4px;border-bottom:1px solid #f0f0f0;">配置</h2><h3 style="font-size:17px;color:#333;margin:14px 0 6px;">方式 1：交互式配置（推荐新用户）</h3>
 <pre style="background:#f6f8fa;border:1px solid #e8e8e8;border-radius:6px;padding:12px;overflow-x:auto;margin:0 0 10px;font-family:SFMono-Regular,Consolas,Menlo,monospace;font-size:13px;line-height:1.5;white-space:pre;"><code style="background:none;padding:0;font-size:13px;white-space:pre;">wjx init</code></pre>
 <p style="margin:0 0 8px;line-height:1.7;">按提示输入：</p><ul style="margin:0 0 8px;padding-left:24px;"><li style="margin:2px 0;"><strong>API Key</strong>（必填）：微信扫码登录 <a href="https://www.wjx.cn/weixinlogin.aspx?redirecturl=%2Fnewwjx%2Fmanage%2Fuserinfo.aspx%3FshowApiKey%3D1" style="color:#1890ff;text-decoration:none;" target="_blank" rel="noopener">API Key 获取页</a> 获取</li><li style="margin:2px 0;"><strong>Base URL</strong>（可选）：默认 <code style="font-family:SFMono-Regular,Consolas,Menlo,monospace;font-size:13px;background:#f6f8fa;padding:2px 6px;border-radius:3px;">https://www.wjx.cn</code></li><li style="margin:2px 0;"><strong>Corp ID</strong>（可选）：企业通讯录 ID</li></ul><p style="margin:0 0 8px;line-height:1.7;">配置保存到 <code style="font-family:SFMono-Regular,Consolas,Menlo,monospace;font-size:13px;background:#f6f8fa;padding:2px 6px;border-radius:3px;">~/.wjxrc</code>。最后会询问是否安装 Claude Code 技能包。</p><h3 style="font-size:17px;color:#333;margin:14px 0 6px;">方式 2：参数模式（适合 AI Agent 和 CI）</h3>
@@ -151,7 +151,7 @@ wjx init --api-key 你的APIKey --base-url https://your.domain.com --corp-id org
 ✓ Config file: ~/.wjxrc
 ✓ API Key: sk-****...****
 ✓ API connectivity: OK (12 surveys found)
-✓ SDK version: wjx-api-sdk@0.3.0</code></pre>
+✓ SDK version: wjx-api-sdk@0.3.1</code></pre>
 <hr style="border:none;border-top:1px solid #e8e8e8;margin:14px 0;"><h2 style="font-size:20px;color:#222;margin:18px 0 8px;padding-bottom:4px;border-bottom:1px solid #f0f0f0;">第一个问卷</h2><h3 style="font-size:17px;color:#333;margin:14px 0 6px;">用 DSL 文本创建</h3>
 <pre style="background:#f6f8fa;border:1px solid #e8e8e8;border-radius:6px;padding:12px;overflow-x:auto;margin:0 0 10px;font-family:SFMono-Regular,Consolas,Menlo,monospace;font-size:13px;line-height:1.5;white-space:pre;"><code style="background:none;padding:0;font-size:13px;white-space:pre;">wjx survey create-by-text --text "
 客户满意度调查
