@@ -31,12 +31,21 @@ wjx-mcp-server 提供 58 个 MCP 工具、8 个参考资源和 23 个 prompt 模
 
 ### 规则 5：首次使用时检查配置
 
-首次使用问卷星功能，先调用 `get_config` 确认 API Key 和 Base URL 是否已配置。
+在首次配置/初始化、用户明确要求检查配置，或工具实际返回 API Key 相关错误时，引导用户处理 API Key。
 
-- **api_key 未设置**：引导用户在 AI 工具的 MCP 配置中添加 `WJX_API_KEY` 环境变量
+- **api_key 未设置**：如果工具返回未配置错误，停止当前业务操作，不要继续调用创建、查询、导出等需要鉴权的工具；引导用户在 AI 工具的 MCP 配置中添加 `WJX_API_KEY` 环境变量
+- **api_key 错误或过期**：提醒用户重新获取 API Key，更新 MCP 配置后再继续原任务
+- **已返回 API Key 相关错误**：如果工具返回 `API Key is required`、`Invalid API Key`、`appkey error` 或类似鉴权错误，必须立刻向用户说明需要处理 API Key，并给出获取/更新 `WJX_API_KEY` 的下一步；不要只复述错误信息，也不要继续调用其他业务工具反复尝试
 - **base_url 与用户域名不符**：引导添加 `WJX_BASE_URL` 环境变量（如 `https://xxx.sojump.cn`）
 - **获取 API Key**：让用户访问 `https://<域名>/weixinlogin.aspx?redirecturl=%2Fnewwjx%2Fmanage%2Fuserinfo.aspx%3FshowApiKey%3D1`，微信扫码登录后复制 Key
 - **cli_version 未安装**：可选，安装 `npm install -g wjx-cli` 后用 `wjx init --api-key <key>` 统一配置
+
+收到 API Key 相关错误后的用户提醒应使用自然语言，不暴露 MCP 工具调用细节，例如：
+
+```
+刚才的操作返回了 API Key 相关错误，所以我暂时不能继续创建或查询问卷。请先打开下面的链接获取/重新获取 API Key，然后在 MCP 配置中添加或更新 WJX_API_KEY 环境变量：
+https://www.wjx.cn/weixinlogin.aspx?redirecturl=%2Fnewwjx%2Fmanage%2Fuserinfo.aspx%3FshowApiKey%3D1
+```
 
 ### 规则 6：提交答卷无需手动管 jpmversion
 
@@ -104,7 +113,8 @@ wjx-mcp-server 提供 58 个 MCP 工具、8 个参考资源和 23 个 prompt 模
 
 | 错误现象 | 原因 | 解决方案 |
 |---------|------|---------|
-| "appkey error" | API Key 错误或过期 | `get_config` 查看 key，引导重新获取 |
+| `api_key` 未设置 / `API Key is required` | 未配置 API Key | 停止当前业务操作，明确提醒用户去获取 API Key，并在 MCP 配置中添加 `WJX_API_KEY` |
+| "appkey error" / `Invalid API Key` | API Key 错误或过期 | 明确提醒用户重新获取 API Key，更新 MCP 配置后继续原任务 |
 | "activity not found" | 问卷 vid 不存在 | `list_surveys` 确认正确 vid |
 | "corp_id required" | 通讯录操作缺企业 ID | 配置 `WJX_CORP_ID` 环境变量 |
 | 网络超时 | base_url 错误或网络不通 | `get_config` 检查 base_url |
