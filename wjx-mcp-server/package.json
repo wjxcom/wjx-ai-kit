@@ -38,7 +38,7 @@
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.27.1",
-    "wjx-api-sdk": "^0.3.1",
+    "wjx-api-sdk": "*",
     "zod": "^4.3.6"
   },
   "devDependencies": {
