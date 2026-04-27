@@ -47,9 +47,16 @@ wjx-mcp-server 提供 58 个 MCP 工具、8 个参考资源和 23 个 prompt 模
 https://www.wjx.cn/weixinlogin.aspx?redirecturl=%2Fnewwjx%2Fmanage%2Fuserinfo.aspx%3FshowApiKey%3D1
 ```
 
-### 规则 6：提交答卷无需手动管 jpmversion
+### 规则 6：提交答卷的几个易错点
 
-`submit_response` 内部会自动 `get_survey` 取最新 `version` 并注入 `jpmversion`，**不要**手动算或省略。仅当外部已自行管理版本时才显式传入 `jpmversion` 参数。问卷被发布/编辑后服务端 `version` 自增，不带最新版本号会被拒绝并报"问卷已被修改请刷新"。
+- **jpmversion 无需手动管**：`submit_response` 内部会自动 `get_survey` 取最新 `version` 并注入。**不要**手动算或省略。仅当外部已自行管理版本时才显式传入 `jpmversion` 参数。问卷被发布/编辑后服务端 `version` 自增，不带最新版本号会被拒绝并报"问卷已被修改请刷新"。
+- **submitdata 题号用 `get_survey` 返回的原始 `q_index`**：服务端严格按此校验——"问卷基础信息"元数据占 `q_index=1`，真实题目从 2 开始。AI 自己按"第 N 题"顺序数（`1$..., 2$...`）极易与服务端 q_index 错位，被拒"5〒答案不符合要求"。**正确流程**：先 `get_survey({ vid, get_questions: true })` 拿 `questions[].q_index`，再按每题 q_index 拼 submitdata。选项序号仍是 1-based（从 1 数到 N）。
+- **矩阵题用行号!列号，行用 `,` 分隔**（每题 3 条可复制示例）：
+  - 矩阵单选（q_subtype=702）3 行：`3$1!1,2!3,3!2` — 第 3 题第 1 行选第 1 列、第 2 行选第 3 列、第 3 行选第 2 列
+  - 矩阵多选（q_subtype=703）3 行：`4$1!1|2,2!3,3!1|4` — 同一行多个列用 `|` 拼
+  - 矩阵量表（q_subtype=701）3 行：`5$1!5,2!4,3!3` — 行号!分值
+  - 矩阵题的"行数"来自 `get_survey` 返回的 `item_rows.length`；`items` 数组是**列头**（列选项），不是行。
+- **考试题分值/答案无法通过 submit API 设置**：创建考试问卷后需要去网页端配置。`submit_response` 仅用于答题端提交。
 
 ## 快速路由
 
@@ -108,6 +115,28 @@ https://www.wjx.cn/weixinlogin.aspx?redirecturl=%2Fnewwjx%2Fmanage%2Fuserinfo.as
 4. calculate_nps / calculate_csat — 分析指标
 5. detect_anomalies({ responses: [...] }) — 数据质量检查
 ```
+
+### 提交答卷（代填/导入）
+
+submitdata 题号必须与 `get_survey` 返回的原始 `q_index` 对齐——**先拉结构再拼数据**，不要凭"第几题"硬数：
+
+```
+1. get_survey({ vid, get_questions: true, get_items: true })
+   → 拿到 questions[]，每题含 q_index / q_type / q_subtype / items / item_rows
+2. 按每题 q_type 拼 placeholder（举例）：
+   - q_type=3（单选/量表/下拉）   →  `${q.q_index}$1`
+   - q_type=4（多选）              →  `${q.q_index}$1|2`
+   - q_type=4 + q_subtype=402（排序）→ `${q.q_index}$2|3|1`（按名次列出选项序号）
+   - q_type=5（填空）              →  `${q.q_index}$答案文本`
+   - q_type=6（多项填空）          →  `${q.q_index}$空1|空2|空3`
+   - q_type=7（矩阵）：行用 item_rows.length 决定，逐行 `行号!列号`，行间用 `,` 拼
+   - q_type=10（滑动条）           →  `${q.q_index}$5`
+3. 用 `}` 拼接所有题，得到完整 submitdata
+4. submit_response({ vid, inputcosttime: 30, submitdata, ... })
+   — 内部会自动注入最新 jpmversion
+```
+
+> 跳过 `q_type === 1`（分页栏）和 `q_type === 2`（段落说明），它们不接受答案。
 
 ## 常见错误与处理
 
