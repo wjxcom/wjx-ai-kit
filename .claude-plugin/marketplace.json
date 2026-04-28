@@ -6,7 +6,7 @@
   },
   "metadata": {
     "description": "问卷星 (Wenjuanxing) 官方 AI Skills — 在 Claude Code 里直接操作问卷创建、答卷提交、数据分析、通讯录管理",
-    "version": "0.3.1"
+    "version": "0.3.2"
   },
   "plugins": [
     {
@@ -15,7 +15,7 @@
       "source": "./",
       "strict": false,
       "skills": ["./wjx-skills/wjx-cli-use"],
-      "version": "0.3.1",
+      "version": "0.3.2",
       "author": {
         "name": "wjxagents",
         "url": "https://github.com/wjxcom"

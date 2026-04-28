@@ -43,7 +43,7 @@ npm install -g wjx-cli
 
 ```bash
 wjx --version
-# wjx-cli/0.3.1
+# wjx-cli/0.3.2
 ```
 
 需要 Node.js >= 20。如果版本不够，运行 `wjx doctor` 会提示。

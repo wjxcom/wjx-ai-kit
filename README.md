@@ -28,7 +28,7 @@ wjx-ai-kit/
 
 | 包                                   | 版本     | 角色 | 说明                                                                                |
 | ----------------------------------- | ------ | --- | --------------------------------------------------------------------------------- |
-| [`wjx-cli`](wjx-cli/)               | 0.3.1 | **主推** | 命令行工具。67 子命令，支持 stdin pipe、JSON/表格输出。任意能跑 shell 的 AI 客户端都可用 |
+| [`wjx-cli`](wjx-cli/)               | 0.3.2 | **主推** | 命令行工具。67 子命令，支持 stdin pipe、JSON/表格输出。任意能跑 shell 的 AI 客户端都可用 |
 | [`wjx-api-sdk`](wjx-api-sdk/)       | 0.3.1 | 基础 | 零依赖 TypeScript SDK。8 模块、48+ 函数，可在任意 Node.js 项目中使用                                 |
 | [`wjx-mcp-server`](wjx-mcp-server/) | 0.3.1（npm 冻结） | 可选 · GitHub 安装 | [MCP](https://modelcontextprotocol.io/) Server。仅适用于原生支持 MCP 协议的客户端（Claude Code/Desktop、Cursor、Cline 等）。功能与 CLI 等价；如不确定优先选 CLI。**已退出 npm 主发版节奏**，新版需从 GitHub 源码安装 |
 
