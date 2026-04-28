@@ -30,7 +30,7 @@ wjx-ai-kit/
 | ----------------------------------- | ------ | --- | --------------------------------------------------------------------------------- |
 | [`wjx-cli`](wjx-cli/)               | 0.3.1 | **主推** | 命令行工具。67 子命令，支持 stdin pipe、JSON/表格输出。任意能跑 shell 的 AI 客户端都可用 |
 | [`wjx-api-sdk`](wjx-api-sdk/)       | 0.3.1 | 基础 | 零依赖 TypeScript SDK。8 模块、48+ 函数，可在任意 Node.js 项目中使用                                 |
-| [`wjx-mcp-server`](wjx-mcp-server/) | 0.3.1 | 可选 | [MCP](https://modelcontextprotocol.io/) Server。仅适用于原生支持 MCP 协议的客户端（Claude Code/Desktop、Cursor、Cline 等）。功能与 CLI 等价；如不确定优先选 CLI |
+| [`wjx-mcp-server`](wjx-mcp-server/) | 0.3.1（npm 冻结） | 可选 · GitHub 安装 | [MCP](https://modelcontextprotocol.io/) Server。仅适用于原生支持 MCP 协议的客户端（Claude Code/Desktop、Cursor、Cline 等）。功能与 CLI 等价；如不确定优先选 CLI。**已退出 npm 主发版节奏**，新版需从 GitHub 源码安装 |
 
 ---
 
@@ -156,21 +156,31 @@ const result = await createSurvey({
 
 详见 [wjx-api-sdk/README.md](wjx-api-sdk/README.md)。
 
-### 使用方式三：MCP Server（可选）
+### 使用方式三：MCP Server（可选 · 从 GitHub 源码安装）
 
 仅适用于原生支持 MCP 协议的客户端（Claude Code/Desktop、Cursor、Cline 等）。功能与 CLI 等价；如果你的客户端能跑 shell，**优先选 CLI**——升级、维护、跨平台都更省心。
 
-```bash
-# 配置环境变量
-echo "WJX_API_KEY=your_api_key" > wjx-mcp-server/.env
+> ⚠️ **wjx-mcp-server 已退出 npm 主发版节奏**。npm 上的 `wjx-mcp-server@0.3.1` 不会再推送新版本。需要最新功能/修复请按下面步骤从 GitHub 源码安装。
 
-# 构建并启动
+```bash
+# 1. 从 GitHub 克隆并构建
+git clone https://github.com/wjxcom/wjx-ai-kit.git
+cd wjx-ai-kit
+npm install
 npm run build --workspace=wjx-api-sdk
 npm run build --workspace=wjx-mcp-server
+
+# 2. 配置环境变量
+echo "WJX_API_KEY=your_api_key" > wjx-mcp-server/.env
+
+# 3. 启动（stdio 模式）
 npm start --workspace=wjx-mcp-server
+
+# 后续更新：拉新代码并重新 build，然后完全重启你的 AI 客户端
+git pull && npm run build --workspace=wjx-mcp-server
 ```
 
-详见 [wjx-mcp-server/README.md](wjx-mcp-server/README.md) 了解集成配置，或查看上方 **AI 工具配置指南** 找到你使用的工具。
+完整的 AI 客户端 MCP 配置（Claude Desktop / Cursor / Cline 等）见 [wjx-mcp-server/README.md](wjx-mcp-server/README.md)，或查看上方 **AI 工具配置指南**。
 
 ---
 

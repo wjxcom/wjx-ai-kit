@@ -10,6 +10,21 @@
 
 ---
 
+> ## ⚠️ 维护状态：仅推荐从 GitHub 源码安装
+>
+> **wjx-ai-kit 主推 [`wjx-cli`](../wjx-cli/) — 任何能跑 shell 的 AI 工具都能用，升级简单，覆盖 67 个子命令。**
+>
+> `wjx-mcp-server` 仍可用，但**不再纳入官方 npm 发版节奏**：
+> - npm 上的 `wjx-mcp-server@0.3.1` 不会再推送新版本，旧用户仍可正常使用
+> - 想要最新功能 / bug 修复 → **请从 GitHub 源码安装**（见下方[快速开始](#快速开始)）
+> - MCP 仅适用于原生支持 MCP 协议的客户端（Claude Code/Desktop、Cursor、Cline 等）
+>
+> **如果你的 AI 客户端能跑 shell，强烈建议改用 [wjx-cli](../wjx-cli/)**——更省心，所有 AI 工具通用。
+>
+> 详细决策树见根目录 [README](../README.md#项目结构)。
+
+---
+
 ## 功能特性
 
 ### 7 大模块 · 58 个 Tools
@@ -136,9 +151,37 @@ MCP_TRANSPORT=http PORT=3000 MCP_AUTH_TOKEN=my-secret node dist/index.js
 
 ## 集成配置
 
-### 方式一：npx 直接使用（推荐）
+### 方式一：从 GitHub 源码运行（推荐 — 拿到最新功能）
 
-无需下载源码，直接通过 npx 使用：
+先按上方"[快速开始](#快速开始)"完成 `git clone + npm install + npm run build`，然后在 AI 工具的 MCP 配置文件中指向本地 `dist/index.js`：
+
+```json
+{
+  "mcpServers": {
+    "wjx": {
+      "command": "node",
+      "args": ["/absolute/path/to/wjx-ai-kit/wjx-mcp-server/dist/index.js"],
+      "env": {
+        "WJX_API_KEY": "your_api_key"
+      }
+    }
+  }
+}
+```
+
+> 把 `args` 里的路径换成你本地 `wjx-mcp-server/dist/index.js` 的绝对路径。
+> 想要更新时，到 wjx-ai-kit 目录跑 `git pull && npm run build --workspace=wjx-mcp-server` 后**完全重启** AI 客户端即可。
+
+各 AI 客户端 MCP 配置文件位置：
+
+- **Claude Desktop**: `~/Library/Application Support/Claude/claude_desktop_config.json`（macOS）或 `%APPDATA%\Claude\claude_desktop_config.json`（Windows）
+- **Claude Code**: `claude mcp add wjx --env WJX_API_KEY=your_api_key -- node /abs/path/to/wjx-mcp-server/dist/index.js`
+- **Cursor**: `.cursor/mcp.json`
+- **其他工具**: 详见 [AI 工具配置指南](../wjx-docs/00-overview.md#ai-工具配置指南)
+
+### 方式二：使用 npm 已发布版本（不保证最新）
+
+如果你只需要 v0.3.1 的功能，可以继续用 npm 上的快照版：
 
 ```json
 {
@@ -154,30 +197,7 @@ MCP_TRANSPORT=http PORT=3000 MCP_AUTH_TOKEN=my-secret node dist/index.js
 }
 ```
 
-将此 JSON 配置添加到你的 AI 工具的 MCP 配置文件中：
-
-- **Claude Desktop**: `~/Library/Application Support/Claude/claude_desktop_config.json`（macOS）或 `%APPDATA%\Claude\claude_desktop_config.json`（Windows）
-- **Claude Code**: `claude mcp add wjx --env WJX_API_KEY=your_api_key -- npx -y wjx-mcp-server@latest`
-- **Cursor**: `.cursor/mcp.json`
-- **其他工具**: 详见 [AI 工具配置指南](../wjx-docs/00-overview.md#ai-工具配置指南)
-
-### 方式二：从源码运行
-
-```json
-{
-  "mcpServers": {
-    "wjx": {
-      "command": "node",
-      "args": ["./wjx-mcp-server/dist/index.js"],
-      "env": {
-        "WJX_API_KEY": "your_api_key"
-      }
-    }
-  }
-}
-```
-
-> 将 `args` 中的路径替换为你本地 `dist/index.js` 的实际路径。
+> ⚠️ npm 上的 `wjx-mcp-server` 不会再随主仓库一起推新版。如果遇到 bug 或想要后续新增的功能/修复，请改用方式一从 GitHub 源码运行。
 
 ---
 
