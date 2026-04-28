@@ -1,0 +1,70 @@
+{
+  "name": "wjx-ai-kit",
+  "owner": {
+    "name": "问卷星 (Wenjuanxing)",
+    "email": "support@wjx.cn"
+  },
+  "metadata": {
+    "description": "问卷星 (Wenjuanxing) 官方 AI Skills — 在 Claude Code 里直接操作问卷创建、答卷提交、数据分析、通讯录管理",
+    "version": "0.3.1"
+  },
+  "plugins": [
+    {
+      "name": "wjx-cli-use",
+      "description": "（推荐）通过 wjx-cli 命令行操作问卷星。覆盖 67 子命令、15 模块：创建问卷、查询和提交答卷、NPS/CSAT 分析、通讯录与子账号管理。任意 AI 客户端均可用（不需要 MCP 协议）。",
+      "source": "./",
+      "strict": false,
+      "skills": ["./wjx-skills/wjx-cli-use"],
+      "version": "0.3.1",
+      "author": {
+        "name": "wjxagents",
+        "url": "https://github.com/wjxcom"
+      },
+      "homepage": "https://github.com/wjxcom/wjx-ai-kit",
+      "repository": "https://github.com/wjxcom/wjx-ai-kit",
+      "license": "MIT",
+      "category": "productivity",
+      "keywords": [
+        "wjx",
+        "wenjuanxing",
+        "survey",
+        "questionnaire",
+        "cli",
+        "nps",
+        "csat",
+        "form",
+        "vote",
+        "exam",
+        "问卷星",
+        "调查",
+        "投票",
+        "考试"
+      ]
+    },
+    {
+      "name": "wjx-mcp-use",
+      "description": "（次要）通过 wjx-mcp-server 的 58 个 MCP 工具操作问卷星，仅适用于原生支持 MCP 协议的客户端（Claude Code / Claude Desktop / Cursor / Cline 等）。功能与 wjx-cli-use 等价；如不确定用哪个，优先选 wjx-cli-use。",
+      "source": "./",
+      "strict": false,
+      "skills": ["./wjx-skills/wjx-mcp-use"],
+      "version": "0.3.1",
+      "author": {
+        "name": "wjxagents",
+        "url": "https://github.com/wjxcom"
+      },
+      "homepage": "https://github.com/wjxcom/wjx-ai-kit",
+      "repository": "https://github.com/wjxcom/wjx-ai-kit",
+      "license": "MIT",
+      "category": "productivity",
+      "keywords": [
+        "wjx",
+        "wenjuanxing",
+        "survey",
+        "questionnaire",
+        "mcp",
+        "问卷星",
+        "调查"
+      ]
+    }
+  ]
+}

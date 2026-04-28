@@ -6,9 +6,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 wjx-ai-kit is a monorepo (npm workspaces) wrapping the Wenjuanxing (问卷星) OpenAPI. Three packages provide the same API surface through different interfaces:
 
-- **wjx-api-sdk** — Zero-dependency TypeScript SDK (48+ functions, foundation layer)
-- **wjx-mcp-server** — MCP Server (58 tools, 8 resources, 22 prompts) for AI clients
-- **wjx-cli** — Commander.js CLI (67 subcommands) designed for AI Agent consumption
+- **wjx-cli** — Commander.js CLI (67 subcommands) designed for AI Agent consumption. **Main product / primary entry point**, recommended for nearly all use cases.
+- **wjx-api-sdk** — Zero-dependency TypeScript SDK (48+ functions, foundation layer). Used by wjx-cli and any Node.js project.
+- **wjx-mcp-server** — MCP Server (58 tools, 8 resources, 22 prompts) for AI clients. **Secondary / maintenance-mode**: only useful for clients with native MCP protocol support (Claude Code/Desktop, Cursor, Cline). Functionality matches wjx-cli; if in doubt, prefer wjx-cli.
+
+When in doubt about which package to feature in docs / examples / new functionality, **CLI first**. Only add MCP-specific behavior when the user explicitly requests MCP support.
 
 ## Build & Test Commands
 
@@ -18,15 +20,15 @@ Build order matters: **wjx-api-sdk must be built first** (both other packages de
 # Install all workspace dependencies
 npm install
 
-# Build (from monorepo root)
+# Build (from monorepo root) — CLI is the main product
 npm run build --workspace=wjx-api-sdk
-npm run build --workspace=wjx-mcp-server
 npm run build --workspace=wjx-cli
+npm run build --workspace=wjx-mcp-server   # secondary, build only when working on MCP
 
 # Test (from monorepo root)
-npm test --workspace=wjx-api-sdk        # ~623 tests
-npm test --workspace=wjx-mcp-server     # ~280 tests
-npm test --workspace=wjx-cli            # ~133 tests
+npm test --workspace=wjx-api-sdk        # ~697 tests
+npm test --workspace=wjx-cli            # ~163 tests
+npm test --workspace=wjx-mcp-server     # ~288 tests (secondary)
 
 # Run a single test file (must build first)
 cd wjx-api-sdk && npm run build && node --test __tests__/survey.test.mjs

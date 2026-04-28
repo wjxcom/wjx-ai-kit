@@ -1,6 +1,6 @@
 # wjx-ai-kit：用 AI 重新定义问卷调研
 
-> 问卷星官方开源 · TypeScript SDK + MCP Server + CLI 三合一工具包
+> 问卷星官方开源 · CLI（主推） + SDK + MCP Server（可选）三合一工具包
 
 ---
 
@@ -41,6 +41,17 @@
 - ✅ **升级简单**：`npm update -g wjx-cli` 立刻生效，不用重启任何客户端
 - ✅ **一次装好处处用**：一个 `wjx init` 配完，所有会话共享
 - ✅ **67 子命令 = 全部 API 能力**：问卷、答卷、通讯录、子账号、SSO、分析
+
+### Claude Code 用户：一键安装 Skill（最快捷径）
+
+如果你在用 Claude Code，直接装我们发布到官方 Plugin Marketplace 的 Skill：
+
+```
+/plugin marketplace add wjxcom/wjx-ai-kit
+/plugin install wjx-cli-use@wjx-ai-kit
+```
+
+之后跟 Claude 说"帮我做一份满意度问卷"、"分析下这组 NPS 评分"，它会自动调用 `wjx-cli` 完成。需要时 `/plugin marketplace update` 拉最新版规则。如果客户端原生支持 MCP，也可以再装 `/plugin install wjx-mcp-use@wjx-ai-kit`（次要选项）。
 
 ### 想让 AI "直接调工具"而不是"跑命令"？额外配 MCP
 
