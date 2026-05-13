@@ -1,0 +1,25 @@
+{
+  "name": "wjx-survey-ppt",
+  "version": "0.1.0",
+  "description": "问卷星 AI Skill — 把问卷答卷数据自动生成为可演示的 PPT 报告，支持 4 套视觉主题",
+  "homepage": "https://www.wjx.cn",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/wjxcom/wjx-ai-kit.git",
+    "directory": "wjx-skills/wjx-survey-ppt"
+  },
+  "license": "MIT",
+  "keywords": [
+    "wenjuanxing",
+    "wjx",
+    "survey",
+    "questionnaire",
+    "report",
+    "pptx",
+    "powerpoint",
+    "ai-skill"
+  ],
+  "peerDependencies": {
+    "wjx-cli": ">=0.3.0"
+  }
+}

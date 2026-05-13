@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720" width="1280" height="720">
+  <defs>
+    
+  </defs>
+
+  <rect width="1280" height="720" fill="#F7F9FC"/>
+
+  <rect x="0" y="0" width="1280" height="80" fill="#0F2847"/>
+  <rect x="80" y="34" width="48" height="3" fill="#F5A623"/>
+  <text x="80" y="62" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="18" font-weight="500" fill="#8FB4E0" letter-spacing="3">
+    MATRIX HEATMAP
+  </text>
+  <text x="1200" y="62" text-anchor="end" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="14" fill="#8FB4E0">
+    07 / 10
+  </text>
+
+  <text x="80" y="170" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="34" font-weight="700" fill="#0F2847">
+    {{TITLE}}
+  </text>
+  <text x="80" y="210" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="18" fill="#5A7090">
+    各维度得分热力分布
+  </text>
+
+  <line x1="80" y1="250" x2="1200" y2="250" stroke="#0F2847" stroke-opacity="0.12" stroke-width="1"/>
+
+  <g transform="translate(80, 290)">
+    <g transform="translate(300, 0)">
+      {{#COLUMNS}}
+      <text x="{{X_CENTER}}" y="20" text-anchor="middle" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="11" fill="#5A7090" letter-spacing="0">{{LABEL}}</text>
+      {{/COLUMNS}}
+    </g>
+
+    {{#ROWS}}
+    <g transform="translate(0, {{Y_OFFSET}})">
+      <text x="0" y="42" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="16" font-weight="500" fill="#0F2847">{{LABEL}}</text>
+      <g transform="translate(300, 30)">
+        {{#VALUES}}
+        <rect x="{{X_OFFSET}}" y="0" width="{{CELL_W}}" height="40" rx="3" fill="{{COLOR}}" opacity="{{OPACITY}}"/>
+        <text x="{{TEXT_X}}" y="26" text-anchor="middle" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="14" font-weight="600" fill="{{TEXT_COLOR}}">{{PERCENT}}%</text>
+        {{/VALUES}}
+      </g>
+    </g>
+    {{/ROWS}}
+  </g>
+
+  <text x="80" y="690" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="13" fill="#8A9BB5" letter-spacing="1">
+    问卷星 · AI 智能分析报告
+  </text>
+
+{{?AI_SUMMARY}}
+  <g transform="translate(80, 615)">
+    <line x1="0" y1="0" x2="1120" y2="0" stroke="#999999" stroke-opacity="0.20"/>
+    <text x="0" y="22" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="11" font-weight="600" letter-spacing="3" fill="#999999">小计</text>
+    <text x="60" y="22" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="13" fill="#444444">{{AI_SUMMARY}}</text>
+  </g>
+{{/AI_SUMMARY}}
+
+</svg>

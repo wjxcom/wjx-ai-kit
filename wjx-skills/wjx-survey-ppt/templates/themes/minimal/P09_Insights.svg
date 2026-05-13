@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720" width="1280" height="720">
+  <defs>
+    
+    </defs>
+
+  <rect width="1280" height="720" fill="#FFFFFF"/>
+  <ellipse cx="1100" cy="120" rx="320" ry="200" fill="#FFFFFF"/>
+
+  <g stroke="#FFFFFF" stroke-opacity="0.04" stroke-width="1">
+    <line x1="0" y1="180" x2="1280" y2="180"/>
+    <line x1="0" y1="540" x2="1280" y2="540"/>
+    <line x1="640" y1="0" x2="640" y2="720"/>
+  </g>
+
+  <rect x="80" y="60" width="48" height="3" fill="#1A1A1A"/>
+  <text x="80" y="92" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="18" font-weight="500" fill="#9A9A9A" letter-spacing="3">
+    KEY INSIGHTS
+  </text>
+  <text x="1200" y="92" text-anchor="end" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="14" fill="#9A9A9A">
+    09 / 10
+  </text>
+
+  <text x="80" y="180" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="48" font-weight="700" fill="#FFFFFF">
+    {{TITLE}}
+  </text>
+  <text x="80" y="220" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="20" fill="#D0D0D0" opacity="0.85">
+    AI 综合本次数据得出的策略建议
+  </text>
+
+  {{#INSIGHTS}}
+  <g transform="translate(80, {{Y_OFFSET}})">
+    <rect width="1120" height="100" rx="6" fill="#FFFFFF" stroke="#FFFFFF" stroke-opacity="0.12"/>
+    <text x="40" y="60" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="42" font-weight="800" fill="#1A1A1A" opacity="0.95">
+      0{{INDEX}}
+    </text>
+    <text x="120" y="40" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="13" font-weight="500" fill="#9A9A9A" letter-spacing="2">
+      INSIGHT
+    </text>
+    <text x="120" y="76" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="20" font-weight="500" fill="#FFFFFF">
+      {{TEXT}}
+    </text>
+  </g>
+  {{/INSIGHTS}}
+
+  <text x="80" y="690" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="13" fill="#6A6A6A" letter-spacing="1">
+    问卷星 · AI 智能分析报告
+  </text>
+</svg>

@@ -1,0 +1,27 @@
+# 运行/预览产物（不入仓）
+out-*/
+_pdf_preview/
+survey-ppt-workdir/
+
+# Python 缓存
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+
+# 临时数据快照（用户实测产物）
+*.pptx
+*.tmp.*
+test1.pdf
+test2.pdf
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+
+# 构建产物（PPT 渲染中间件不入仓）
+*.zip
