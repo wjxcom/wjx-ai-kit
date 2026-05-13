@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720" width="1280" height="720">
+  <defs>
+    
+  </defs>
+
+  <rect width="1280" height="720" fill="#F7F9FC"/>
+
+  <rect x="0" y="0" width="1280" height="80" fill="#0F2847"/>
+  <rect x="80" y="34" width="48" height="3" fill="{{NPS_PASSIVE_COLOR}}"/>
+  <text x="80" y="62" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="18" font-weight="500" fill="#8FB4E0" letter-spacing="3">
+    NPS CROSS-TAB
+  </text>
+  <text x="1200" y="62" text-anchor="end" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="14" fill="#8FB4E0">
+    11 / 12
+  </text>
+
+  <text x="80" y="155" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="32" font-weight="700" fill="#0F2847">
+    {{TITLE}}
+  </text>
+  <text x="80" y="190" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="16" fill="#5A7090">
+    {{SUBTITLE}}
+  </text>
+
+  <line x1="80" y1="220" x2="1200" y2="220" stroke="#0F2847" stroke-opacity="0.12" stroke-width="1"/>
+
+  <!-- Y 轴：0% / 50% / 100% 三档刻度 + 网格线 -->
+  <g font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="11" fill="#8A9BB5">
+    <line x1="{{CHART_X_START}}" y1="{{CHART_Y_TOP}}" x2="{{CHART_X_END}}" y2="{{CHART_Y_TOP}}" stroke="#0F2847" stroke-opacity="0.06"/>
+    <text x="{{CHART_X_START}}" y="{{CHART_Y_TOP}}" text-anchor="end" dx="-6" dy="4">100%</text>
+    <line x1="{{CHART_X_START}}" y1="435" x2="{{CHART_X_END}}" y2="435" stroke="#0F2847" stroke-opacity="0.06"/>
+    <text x="{{CHART_X_START}}" y="435" text-anchor="end" dx="-6" dy="4">50%</text>
+    <line x1="{{CHART_X_START}}" y1="{{CHART_Y_BOTTOM}}" x2="{{CHART_X_END}}" y2="{{CHART_Y_BOTTOM}}" stroke="#0F2847" stroke-opacity="0.20"/>
+    <text x="{{CHART_X_START}}" y="{{CHART_Y_BOTTOM}}" text-anchor="end" dx="-6" dy="4">0%</text>
+  </g>
+
+  <!-- 堆叠柱体 -->
+  {{#BARS}}
+  <g>
+    <!-- 贬损者（底层）红 -->
+    <rect x="{{X}}" y="{{DET_Y}}" width="{{BAR_W}}" height="{{DET_H}}" fill="{{NPS_DETRACTOR_COLOR}}" rx="0"/>
+    <!-- 中立者（中层）橙 -->
+    <rect x="{{X}}" y="{{PAS_Y}}" width="{{BAR_W}}" height="{{PAS_H}}" fill="{{NPS_PASSIVE_COLOR}}" rx="0"/>
+    <!-- 推荐者（顶层）绿 -->
+    <rect x="{{X}}" y="{{PROM_Y}}" width="{{BAR_W}}" height="{{PROM_H}}" fill="{{NPS_PROMOTER_COLOR}}" rx="0"/>
+
+    <!-- 三段内部百分比标签（仅在段够高时显示） -->
+    <text x="{{LABEL_X}}" y="{{DET_LABEL_Y}}" text-anchor="middle" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="13" font-weight="600" fill="#FFFFFF">{{DET_LABEL}}</text>
+    <text x="{{LABEL_X}}" y="{{PAS_LABEL_Y}}" text-anchor="middle" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="13" font-weight="600" fill="#FFFFFF">{{PAS_LABEL}}</text>
+    <text x="{{LABEL_X}}" y="{{PROM_LABEL_Y}}" text-anchor="middle" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="13" font-weight="600" fill="#FFFFFF">{{PROM_LABEL}}</text>
+
+    <!-- NPS 数值标签贴在柱顶上方（背景色框） -->
+    <rect x="{{X}}" y="{{NPS_Y}}" width="{{BAR_W}}" height="22" fill="#FFFFFF" stroke="#0F2847" stroke-opacity="0.18" rx="3" transform="translate(0,-22)"/>
+    <text x="{{NPS_X}}" y="{{NPS_Y}}" text-anchor="middle" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="14" font-weight="700" fill="#0F2847">NPS {{NPS_SCORE}}</text>
+
+    <!-- 选项 label + 样本量 n -->
+    <text x="{{LABEL_X}}" y="{{LABEL_Y}}" text-anchor="middle" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="14" font-weight="500" fill="#0F2847">{{LABEL}}</text>
+    <text x="{{N_X}}" y="{{N_Y}}" text-anchor="middle" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="11" fill="#8A9BB5">{{N_TEXT}}</text>
+  </g>
+  {{/BARS}}
+
+  <!-- 图例（底部） -->
+  <g transform="translate(640, 660)" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="13" fill="#5A7090">
+    <g transform="translate(-180, 0)">
+      <rect x="0" y="-10" width="14" height="14" fill="{{NPS_PROMOTER_COLOR}}"/>
+      <text x="20" y="2">推荐者 9-10 分</text>
+    </g>
+    <g transform="translate(-30, 0)">
+      <rect x="0" y="-10" width="14" height="14" fill="{{NPS_PASSIVE_COLOR}}"/>
+      <text x="20" y="2">中立者 7-8 分</text>
+    </g>
+    <g transform="translate(120, 0)">
+      <rect x="0" y="-10" width="14" height="14" fill="{{NPS_DETRACTOR_COLOR}}"/>
+      <text x="20" y="2">贬损者 0-6 分</text>
+    </g>
+  </g>
+
+  <text x="80" y="700" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="11" fill="#8A9BB5">
+    各选项独立计算 NPS = 推荐者比例 - 贬损者比例
+  </text>
+
+{{?AI_SUMMARY}}
+  <g transform="translate(80, 615)">
+    <line x1="0" y1="0" x2="1120" y2="0" stroke="#999999" stroke-opacity="0.20"/>
+    <text x="0" y="22" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="11" font-weight="600" letter-spacing="3" fill="#999999">小计</text>
+    <text x="60" y="22" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="13" fill="#444444">{{AI_SUMMARY}}</text>
+  </g>
+{{/AI_SUMMARY}}
+
+</svg>

@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720" width="1280" height="720">
+  <defs>
+    
+    </defs>
+
+  <rect width="1280" height="720" fill="#0F1419"/>
+
+  <rect x="0" y="0" width="1280" height="80" fill="#0F1419"/>
+  <rect x="80" y="34" width="48" height="3" fill="#06B6D4"/>
+  <text x="80" y="62" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="18" font-weight="500" fill="#6B7A95" letter-spacing="3">
+    OPEN ANSWERS
+  </text>
+  <text x="1200" y="62" text-anchor="end" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="14" fill="#6B7A95">
+    08 / 10
+  </text>
+
+  <text x="80" y="170" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="44" font-weight="700" fill="#E8ECF1">
+    {{TITLE}}
+  </text>
+  <text x="80" y="210" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="20" fill="#8896A8">
+    用户原声 · 来自开放式问题的真实反馈
+  </text>
+
+  <line x1="80" y1="250" x2="1200" y2="250" stroke="#E8ECF1" stroke-opacity="0.12" stroke-width="1"/>
+
+  {{#ANSWERS}}
+  <g transform="translate(80, {{Y_OFFSET}})">
+    <rect width="1120" height="70" rx="6" fill="#0F1419" stroke="#2A3142"/>
+    <rect width="6" height="70" fill="#06B6D4"/>
+    <text x="32" y="32" font-family="Georgia, serif" font-size="44" fill="#06B6D4" opacity="0.4">"</text>
+    <text x="74" y="46" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="18" fill="#E8ECF1">{{TEXT}}</text>
+  </g>
+  {{/ANSWERS}}
+
+  <text x="80" y="690" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="13" fill="#6B7A95" letter-spacing="1">
+    展示前 5 条用户反馈，完整数据可在问卷星后台导出
+  </text>
+</svg>

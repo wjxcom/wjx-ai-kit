@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720" width="1280" height="720">
+  <defs>
+    
+    </defs>
+
+  <rect width="1280" height="720" fill="#FAF6EE"/>
+
+  <rect x="0" y="0" width="1280" height="80" fill="#5A0F1B"/>
+  <rect x="80" y="34" width="48" height="3" fill="#C9A227"/>
+  <text x="80" y="62" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="18" font-weight="500" fill="#C9A878" letter-spacing="3">
+    SAMPLE OVERVIEW
+  </text>
+  <text x="1200" y="62" text-anchor="end" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="14" fill="#C9A878">
+    03 / 10
+  </text>
+
+  <text x="80" y="170" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="44" font-weight="700" fill="#5A0F1B">
+    {{TITLE}}
+  </text>
+  <text x="80" y="210" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="20" fill="#7A5C3F">
+    数据回收情况一览
+  </text>
+
+  <line x1="80" y1="250" x2="1200" y2="250" stroke="#5A0F1B" stroke-opacity="0.12" stroke-width="1"/>
+
+  <g transform="translate(80, 300)">
+    <rect width="340" height="220" rx="8" fill="#FAF6EE" stroke="#E5D5BA"/>
+    <circle cx="50" cy="50" r="18" fill="#C9A227" fill-opacity="0.12"/>
+    <circle cx="50" cy="50" r="6" fill="#C9A227"/>
+    <text x="90" y="58" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="16" fill="#7A5C3F" letter-spacing="1">回收总量</text>
+    <text x="50" y="140" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="64" font-weight="800" fill="#5A0F1B">{{TOTAL}}</text>
+    <text x="50" y="185" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="18" fill="#A88D5E">份答卷</text>
+  </g>
+
+  <g transform="translate(470, 300)">
+    <rect width="340" height="220" rx="8" fill="#FAF6EE" stroke="#E5D5BA"/>
+    <circle cx="50" cy="50" r="18" fill="#8B1A2C" fill-opacity="0.14"/>
+    <circle cx="50" cy="50" r="6" fill="#8B1A2C"/>
+    <text x="90" y="58" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="16" fill="#7A5C3F" letter-spacing="1">完成率</text>
+    <text x="50" y="140" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="64" font-weight="800" fill="#5A0F1B">{{COMPLETION_RATE}}<tspan font-size="36" fill="#8B1A2C">%</tspan></text>
+    <text x="50" y="185" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="18" fill="#A88D5E">{{COMPLETED}} / {{TOTAL}}</text>
+  </g>
+
+  <g transform="translate(860, 300)">
+    <rect width="340" height="220" rx="8" fill="#FAF6EE" stroke="#E5D5BA"/>
+    <circle cx="50" cy="50" r="18" fill="#6FB8A1" fill-opacity="0.16"/>
+    <circle cx="50" cy="50" r="6" fill="#6FB8A1"/>
+    <text x="90" y="58" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="16" fill="#7A5C3F" letter-spacing="1">平均答题时长</text>
+    <text x="50" y="140" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="64" font-weight="800" fill="#5A0F1B">{{AVG_TIME}}</text>
+    <text x="50" y="185" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="18" fill="#A88D5E">秒 / 人</text>
+  </g>
+
+  <text x="80" y="600" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="14" fill="#A88D5E" letter-spacing="1">
+    数据说明：完成率=有效完成答卷数 / 进入问卷总人数；平均时长仅统计完成答卷的耗时。
+  </text>
+
+  <text x="80" y="690" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="13" fill="#A88D5E" letter-spacing="1">
+    问卷星 · AI 智能分析报告
+  </text>
+</svg>
