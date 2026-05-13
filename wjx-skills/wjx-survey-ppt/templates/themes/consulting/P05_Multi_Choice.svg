@@ -29,7 +29,7 @@
     <g transform="translate(0, {{Y_OFFSET}})">
       <text x="0" y="22" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="16" font-weight="500" fill="#1F1F1F">{{LABEL}}</text>
       <text x="1120" y="22" text-anchor="end" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="16" font-weight="700" fill="#1F1F1F">{{PERCENT}}%</text>
-      <rect x="0" y="32" width="1120" height="14" rx="7" fill="#DDE4EF"/>
+      <rect x="0" y="32" width="1120" height="14" rx="7" fill="#ECECEC"/>
       <rect x="0" y="32" width="{{BAR_WIDTH}}" height="14" rx="7" fill="{{BAR_COLOR}}"/>
       <text x="0" y="64" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="13" fill="#888888">{{COUNT}} 人选择</text>
     </g>

@@ -44,8 +44,8 @@
 
   <g transform="translate(860, 300)">
     <rect width="340" height="220" rx="8" fill="#F5EFE6" stroke="#E0D5C0"/>
-    <circle cx="50" cy="50" r="18" fill="#6FB8A1" fill-opacity="0.16"/>
-    <circle cx="50" cy="50" r="6" fill="#6FB8A1"/>
+    <circle cx="50" cy="50" r="18" fill="#5C7A3D" fill-opacity="0.16"/>
+    <circle cx="50" cy="50" r="6" fill="#5C7A3D"/>
     <text x="90" y="58" font-family="Source Han Serif SC, Noto Serif CJK SC, SimSun, serif" font-size="16" fill="#6B5A4A" letter-spacing="1">平均答题时长</text>
     <text x="50" y="140" font-family="Source Han Serif SC, Noto Serif CJK SC, SimSun, serif" font-size="64" font-weight="800" fill="#2A1810">{{AVG_TIME}}</text>
     <text x="50" y="185" font-family="Source Han Serif SC, Noto Serif CJK SC, SimSun, serif" font-size="18" fill="#9C8A78">秒 / 人</text>

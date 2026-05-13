@@ -24,7 +24,7 @@
   <text x="80" y="180" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="48" font-weight="700" fill="#FFFFFF">
     {{TITLE}}
   </text>
-  <text x="80" y="220" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="20" fill="#C9D6EA" opacity="0.85">
+  <text x="80" y="220" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="20" fill="#C9A878" opacity="0.85">
     AI 综合本次数据得出的策略建议
   </text>
 
@@ -43,7 +43,7 @@
   </g>
   {{/INSIGHTS}}
 
-  <text x="80" y="690" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="13" fill="#6A86A8" letter-spacing="1">
+  <text x="80" y="690" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="13" fill="#A88D5E" letter-spacing="1">
     问卷星 · AI 智能分析报告
   </text>
 </svg>

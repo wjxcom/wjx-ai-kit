@@ -37,7 +37,7 @@
     {{TITLE}}
   </text>
 
-  <text x="80" y="400" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="28" font-weight="400" fill="#C9D6EA" opacity="0.9">
+  <text x="80" y="400" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="28" font-weight="400" fill="#C9A878" opacity="0.9">
     基于 {{TOTAL}} 份有效答卷的数据分析
   </text>
 
@@ -54,10 +54,10 @@
     <text x="780" y="590" font-size="28" font-weight="500">{{DATE}}</text>
   </g>
 
-  <text x="80" y="680" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="14" fill="#6A86A8" letter-spacing="1">
+  <text x="80" y="680" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="14" fill="#A88D5E" letter-spacing="1">
     问卷星 · AI 智能分析
   </text>
-  <text x="1200" y="680" text-anchor="end" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="14" fill="#6A86A8">
+  <text x="1200" y="680" text-anchor="end" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="14" fill="#A88D5E">
     01
   </text>
 </svg>

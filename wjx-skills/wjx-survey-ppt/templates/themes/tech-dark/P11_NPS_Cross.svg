@@ -50,7 +50,7 @@
     <text x="{{LABEL_X}}" y="{{PROM_LABEL_Y}}" text-anchor="middle" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="13" font-weight="600" fill="#1A2030">{{PROM_LABEL}}</text>
 
     <!-- NPS 数值标签贴在柱顶上方（背景色框） -->
-    <rect x="{{X}}" y="{{NPS_Y}}" width="{{BAR_W}}" height="22" fill="#1A2030" stroke="#E8ECF1" stroke-opacity="0.18" rx="3" transform="translate(0,-22)"/>
+    <rect x="{{X}}" y="{{NPS_Y}}" width="{{BAR_W}}" height="22" fill="#1A2030" stroke="#06B6D4" stroke-opacity="0.6" stroke-width="1.5" rx="3" transform="translate(0,-22)"/>
     <text x="{{NPS_X}}" y="{{NPS_Y}}" text-anchor="middle" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="14" font-weight="700" fill="#E8ECF1">NPS {{NPS_SCORE}}</text>
 
     <!-- 选项 label + 样本量 n -->

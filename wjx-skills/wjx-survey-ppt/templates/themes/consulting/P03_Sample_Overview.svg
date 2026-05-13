@@ -44,8 +44,8 @@
 
   <g transform="translate(860, 300)">
     <rect width="340" height="220" rx="8" fill="#FAFAFA" stroke="#E0E0E0"/>
-    <circle cx="50" cy="50" r="18" fill="#6FB8A1" fill-opacity="0.16"/>
-    <circle cx="50" cy="50" r="6" fill="#6FB8A1"/>
+    <circle cx="50" cy="50" r="18" fill="#4A6B5A" fill-opacity="0.16"/>
+    <circle cx="50" cy="50" r="6" fill="#4A6B5A"/>
     <text x="90" y="58" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="16" fill="#6B6B6B" letter-spacing="1">平均答题时长</text>
     <text x="50" y="140" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="64" font-weight="800" fill="#1F1F1F">{{AVG_TIME}}</text>
     <text x="50" y="185" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="18" fill="#888888">秒 / 人</text>

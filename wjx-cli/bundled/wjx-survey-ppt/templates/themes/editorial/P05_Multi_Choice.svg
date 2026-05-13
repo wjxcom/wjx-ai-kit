@@ -29,7 +29,7 @@
     <g transform="translate(0, {{Y_OFFSET}})">
       <text x="0" y="22" font-family="Source Han Serif SC, Noto Serif CJK SC, SimSun, serif" font-size="16" font-weight="500" fill="#2A1810">{{LABEL}}</text>
       <text x="1120" y="22" text-anchor="end" font-family="Source Han Serif SC, Noto Serif CJK SC, SimSun, serif" font-size="16" font-weight="700" fill="#2A1810">{{PERCENT}}%</text>
-      <rect x="0" y="32" width="1120" height="14" rx="7" fill="#DDE4EF"/>
+      <rect x="0" y="32" width="1120" height="14" rx="7" fill="#E5DCC8"/>
       <rect x="0" y="32" width="{{BAR_WIDTH}}" height="14" rx="7" fill="{{BAR_COLOR}}"/>
       <text x="0" y="64" font-family="Source Han Serif SC, Noto Serif CJK SC, SimSun, serif" font-size="13" fill="#9C8A78">{{COUNT}} 人选择</text>
     </g>
