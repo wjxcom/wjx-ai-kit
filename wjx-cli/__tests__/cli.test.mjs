@@ -19,12 +19,13 @@ function run(args, env = {}) {
 }
 
 /** Run and capture both stdout, stderr, and exit code. */
-function runFull(args, { env = {}, input } = {}) {
+function runFull(args, { env = {}, input, cwd, timeout = 10_000 } = {}) {
   return new Promise((resolve) => {
     const child = execFile("node", [CLI, ...args], {
       env: { ...process.env, ...env },
+      cwd,
       encoding: "utf8",
-      timeout: 10_000,
+      timeout,
     }, (error, stdout, stderr) => {
       resolve({
         exitCode: error ? error.code ?? 1 : 0,
@@ -1222,6 +1223,11 @@ describe("init", () => {
     assert.match(out, /--no-install-skill/);
   });
 
+  it("init --help shows --install-ppt-skill option", () => {
+    const out = run(["init", "--help"]);
+    assert.match(out, /--install-ppt-skill/);
+  });
+
   it("init --api-key saves config (non-interactive)", async () => {
     const tmpDir = resolve(__dirname, "..", "__tmp_init_test__");
     const configPath = resolve(tmpDir, ".wjxrc");
@@ -1235,6 +1241,29 @@ describe("init", () => {
       assert.match(stderr, /已保存/);
       const saved = JSON.parse(readFileSync(configPath, "utf8"));
       assert.strictEqual(saved.apiKey, "test_key_123");
+    } finally {
+      rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
+
+  it("init --install-ppt-skill takes the ppt branch (without pip dep on test machine)", async () => {
+    // 隔离 cwd 防止把 skills/wjx-survey-ppt/ 写到仓库根
+    const tmpDir = resolve(__dirname, "..", "__tmp_init_ppt_test__");
+    const configPath = resolve(tmpDir, ".wjxrc");
+    rmSync(tmpDir, { recursive: true, force: true });
+    mkdirSync(tmpDir, { recursive: true });
+    try {
+      const { exitCode, stderr } = await runFull(
+        ["--api-key", "test_key_xyz", "init", "--no-install-skill", "--install-ppt-skill"],
+        {
+          env: { ...NO_CONFIG, WJX_CONFIG_PATH: configPath },
+          cwd: tmpDir,
+          timeout: 30_000, // pip 探测可能慢
+        },
+      );
+      assert.strictEqual(exitCode, 0);
+      // 走到 ppt 分支的标记：stderr 出现 wjx-survey-ppt 相关字样
+      assert.match(stderr, /wjx-survey-ppt/);
     } finally {
       rmSync(tmpDir, { recursive: true, force: true });
     }

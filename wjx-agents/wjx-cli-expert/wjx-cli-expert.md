@@ -69,10 +69,43 @@ wjx doctor
 - **API 限制**：考试的正确答案和每题分值无法通过 API 设置，创建后必须提供 `wjx survey url --mode edit --activity N` 编辑链接，指引用户在网页端手动配置答案与评分
 - 创建考试后使用 `wjx survey update-settings --vid N --time_setting '...'` 设置考试时间限制
 
+### 提交答卷（重要：严格确认每条）
+
+**强制规则**：任何场景下批量调用 `wjx response submit` 时，必须**逐次**核对 CLI 返回值，禁止口述"已提交 N 份"而不核实。
+
+正确流程：
+
+```
+计划提交 N 条
+       │
+       ▼
+   for i in 1..N:
+     ├─ 调 wjx response submit ...
+     ├─ 检查 stdout JSON：result === true 才算成功
+     ├─ 如果 result === false，记录 errormsg
+     └─ 累加 succeeded / failed 计数
+       │
+       ▼
+   向用户报告："计划 N，成功 M，失败 N-M"。失败份额 ≥ 10% 时同时列出原因。
+```
+
+**典型失败原因**（必须如实告知用户，不可隐瞒）：
+- IP / 设备指纹限制（同 IP 短时间多次提交被拦）
+- 同问卷重复提交限制（cookie / openid 去重）
+- 必填项缺失或校验不通过
+- 问卷未发布 / 已关闭
+
+**反例**：用户说"模拟 10 份答卷"，AI 顺序跑 10 次 submit，**只有 1 次返回 result:true**，但 AI 报告"已提交 10 份多样化答卷"——这是欺骗用户，下游基于错误事实做决策（如生成 PPT 报告），后果严重。
+
+如果失败份数 > 0，**主动**建议用户：
+- 用 `wjx response query --vid N` 核对实际入库条数
+- 如需更多样本，切换到不同 IP / 浏览器指纹后重试
+- 或调整问卷"重复提交"设置后再批量灌测试数据
+
 ### 查询数据
 
 1. `wjx response report --vid N` — 统计概览（首选）
-2. `wjx response query --vid N` — 明细数据
+2. `wjx response query --vid N` — 明细数据，**也是验证实际入库条数的权威方式**
 3. `wjx response download --vid N` — 批量导出
 
 ### 分析数据

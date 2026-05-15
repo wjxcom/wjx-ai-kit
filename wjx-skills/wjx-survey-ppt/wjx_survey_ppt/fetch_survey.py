@@ -118,9 +118,31 @@ def fetch_from_vid(vid: str, workdir: Path) -> dict[str, Any]:
     questions_raw = survey.get("questions", []) or []
     print(f"  题目结构 OK（{len(questions_raw)} 题）", file=sys.stderr)
 
+    # 样本量取 survey.answer_valid（有效答卷数）— 这是问卷主表权威字段
+    # 不要用 response count 的 total_count：实测它语义偏向"全部提交次数"
+    # 含废卷/未通过校验的，会导致 PPT 报告基于错误总数
     count = _run_wjx(["response", "count", "--vid", str(vid)])
-    total = count.get("total_count", count.get("join_times", 0))
-    print(f"  样本量 OK（{total} 份）", file=sys.stderr)
+    survey_valid = survey.get("answer_valid")
+    if isinstance(survey_valid, int) and survey_valid >= 0:
+        total = survey_valid
+        total_src = "survey.answer_valid"
+    else:
+        # 兜底：survey 没拿到 answer_valid 时退到 count 的 total_count
+        total = count.get("total_count", count.get("join_times", 0))
+        total_src = "response.total_count"
+    print(f"  样本量 OK（{total} 份，来源 {total_src}）", file=sys.stderr)
+    # 诊断辅助：count 接口跟主表对不上时打印警告（用户能看到数据语义差异）
+    count_total = count.get("total_count")
+    if (
+        isinstance(count_total, int)
+        and isinstance(survey_valid, int)
+        and count_total != survey_valid
+    ):
+        print(
+            f"  ⚠ response.total_count={count_total} ≠ survey.answer_valid={survey_valid}；"
+            f"以 answer_valid 为准（count 字段可能含废卷）",
+            file=sys.stderr,
+        )
 
     matrix_report: dict[int, dict[int, dict[int, int]]] = {}
     try:
