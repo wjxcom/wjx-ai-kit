@@ -121,7 +121,7 @@ data → outline → preview → final
 | **data** | `python -m wjx_survey_ppt --vid X --workdir Y --stage data` | 拉数据落 `Y/data.json`；之后立即询问用户"开始生成大纲？" |
 | **outline** | `python -m wjx_survey_ppt --workdir Y --stage outline --theme T` | 生成 `Y/outline.json` 后，**Agent 读 data.json 回填 ai_findings / ai_insights / 各 ai_summary**；让用户检查页面清单、可改 include/order/title/theme |
 | **preview** | `python -m wjx_survey_ppt --workdir Y --stage preview` | 把封面 + Top1 图表的 SVG 样章落到 `Y/preview/`；让用户在浏览器/AI 里看主题风格是否合适，不合适回头改 outline.json 的 theme 字段 |
-| **final** | `python -m wjx_survey_ppt --workdir Y --stage final` | 一次性出全本 PPT（自动应用 outline 中的 include 过滤 + 顺序重排 + AI 解读注入）|
+| **final** | `python -m wjx_survey_ppt --workdir Y --stage final` | 出全本 PPT 前会按 `data.json` 里的 vid 重新从 wjx-cli 刷新问卷/答卷/默认报告数据；若刷新后数据变化且 outline 的 AI 解读基于旧数据，会停止生成并要求基于最新 data.json 更新解读 |
 
 ### 一步法（探索/快速预览场景）
 
@@ -173,12 +173,13 @@ skill 内置 **8 套**视觉主题，通过 `--theme <name>` 切换，默认 `bu
 
 用户只给问卷 ID。skill 自动：
 
-1. `wjx survey get --vid X --json` → 拿题目结构
-2. `wjx response count --vid X --json` → 拿样本量
+1. `wjx survey get --vid X --json` → 拿题目结构与 `answer_valid`；**PPT 样本量以 `answer_valid` 为权威有效答卷数**
+2. `wjx response count --vid X --json` → 仅作诊断对照；`total_count/join_times` 不得直接当 PPT 样本量
 3. `wjx response report --vid X --json` → 拿默认聚合数据（单选/多选/量表/矩阵的分布）
-4. `wjx response 360-report --vid X --json` → 拿详细数据（开放题原文、答题时长）
-5. 如检测到 0~10 量表题 → `wjx analytics nps --json` 算 NPS
-6. 如检测到 1~5/1~7 量表题 → `wjx analytics csat --json` 算 CSAT
+4. 若默认报告分布总数与 `answer_valid` 不一致 → 自动回退 `wjx response query` 分页明细聚合，避免把失败/废卷计入 PPT
+5. `wjx response 360-report --vid X --json` → 拿详细数据（开放题原文、答题时长）
+6. 如检测到 0~10 量表题 → `wjx analytics nps --json` 算 NPS
+7. 如检测到 1~5/1~7 量表题 → `wjx analytics csat --json` 算 CSAT
 
 所有结果合并成统一 `data.json`，喂给 Layer 2。
 
@@ -207,7 +208,7 @@ skill 内置 **8 套**视觉主题，通过 `--theme <name>` 切换，默认 `bu
 python -m wjx_survey_ppt --vid X --workdir Y --stage data
 ```
 
-内部依次调 wjx-cli 子命令（survey get / response count / response report / 360-report / analytics nps|csat / response query 分页），归一化为 `Y/data.json`。
+内部依次调 wjx-cli 子命令（survey get / response count 诊断 / response report / 必要时 response query 分页回退 / 360-report / analytics nps|csat），归一化为 `Y/data.json`。样本量以 `survey.answer_valid` 为准；`response count` 只用于发现口径差异。
 
 完整 schema 见 `references/data-schema.md`，关键字段：
 ```json
@@ -295,6 +296,8 @@ python -m wjx_survey_ppt --workdir Y --stage final
 ```
 
 产出 `Y/output.pptx`。skill 自动应用 outline.json：
+- 生成前按 `data.json.survey.vid` 重新拉取最新数据并覆盖 `data.json`，确保 PPT 使用最新问卷结构、有效答卷数、默认报告和明细聚合
+- 若最新数据与生成 outline 时的数据不一致，且 outline 已有 AI 解读，默认停止生成；Agent 必须重新读取最新 `data.json` 并更新 `outline.json` 后再出 PPT
 - 按 outline 的 `pages` 顺序排页
 - 跳过 `include: false` 的页
 - 各页文字用 outline 里的 `title` / `ai_findings` / `ai_insights` / `ai_summary`

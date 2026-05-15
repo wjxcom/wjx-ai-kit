@@ -10,6 +10,8 @@
 
 from __future__ import annotations
 
+import hashlib
+import json
 import re
 from pathlib import Path
 from typing import Any
@@ -17,6 +19,24 @@ from typing import Any
 
 _THEMES_ROOT = Path(__file__).resolve().parent.parent / "templates" / "themes"
 _DEFAULT_THEME = "business"
+
+
+def data_signature(data: dict[str, Any]) -> str:
+    """Return a stable fingerprint for the facts that drive the PPT."""
+    payload = {
+        "survey": data.get("survey") or {},
+        "response": data.get("response") or {},
+        "questions": data.get("questions") or [],
+        "analytics": data.get("analytics") or {},
+        "nps_cross_tab": data.get("nps_cross_tab") or {},
+    }
+    encoded = json.dumps(
+        payload,
+        ensure_ascii=False,
+        sort_keys=True,
+        separators=(",", ":"),
+    ).encode("utf-8")
+    return hashlib.sha256(encoded).hexdigest()
 
 
 def list_themes() -> list[str]:
@@ -107,6 +127,7 @@ def build_outline(data: dict[str, Any], theme: str = _DEFAULT_THEME) -> dict[str
 
     return {
         "theme": theme,
+        "_data_signature": data_signature(data),
         "_help": "可编辑：theme（换主题）、include=false（跳页）、调整数组顺序（改顺序）、ai_findings/ai_insights/ai_summary（写自然语言解读）",
         "_themes_available": list_themes(),
         "pages": pages,

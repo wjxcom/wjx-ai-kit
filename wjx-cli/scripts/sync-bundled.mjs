@@ -62,6 +62,7 @@ const SYNC_DIRS = [
       "_pdf_preview",
       "survey-ppt-workdir",
       "scripts",
+      "tests",
       "examples",      // PDF 演示文件，运行时不需要，bundled 不带
       ".gitignore",
       ".DS_Store",

@@ -62,6 +62,31 @@ https://www.wjx.cn/weixinlogin.aspx?redirecturl=%2Fnewwjx%2Fmanage%2Fuserinfo.as
 - **提交答卷必须带版本号**：问卷被发布/编辑后 `version` 自增，提交时不带最新 `jpmversion` 会被服务端拒绝并报"问卷已被修改请刷新"。`wjx response submit` 默认会自动获取最新版本注入，请**不要**加 `--no-auto-version`，也不需要手动算版本号。
 - **submitdata 题号一律用 `submit-template` 返回的 q_index**：问卷星服务端严格按 `getSurvey` 返回的原始 `q_index` 校验提交的题号（"问卷基础信息"元数据占 q_index=1，真实题目从 2 开始编号）。**手算很容易搞错**——直接跑 `wjx response submit-template --vid <问卷ID>`，每题的 `placeholder` 就是正确格式，改成真实答案即可。选项序号仍然是 1-based（从 1 数到 N）。
 - **避开 shell `$` 转义陷阱**：submitdata 含 `$` 分隔符，PowerShell 双引号会把 `$1/$3` 当变量吞掉。**首选** `--submitdata-file <path>`（从文件读，彻底绕开 shell）；其次用 PowerShell 单引号 `--submitdata '1$1}2$3'`。CLI 会在提交前做 `$` sanity check：一个 `$` 都没有时立刻报 INPUT_ERROR。
+
+### 规则 7：批量 submit 必须逐次确认成功/失败（强制）
+
+**反例**：用户说"模拟 10 份答卷"，AI 顺序跑 10 次 `wjx response submit`，**只有 1 次返回 `result:true`**，但 AI 仍然报告"已提交 10 份"——这是欺骗用户，下游基于错误事实做决策（如生成 PPT 报告），导致总数与实际入库数不一致，**问题非常致命**。
+
+**正确做法**：
+
+```
+计划提交 N 条
+  ├─ for i in 1..N:
+  │   ├─ wjx response submit ...  → 拿 stdout JSON
+  │   ├─ 检查 result === true 才算成功
+  │   ├─ result === false 时记 errormsg（IP 限制/重复提交/校验失败/问卷未发布）
+  │   └─ 累加 succeeded / failed
+  └─ 报告："计划 N，成功 M，失败 N-M"。
+     失败 ≥ 10% 时主动列出 errormsg 分布 + 建议（换 IP / 调"重复提交"设置）。
+```
+
+**绝不口述未核实的数字**。如果不确定，跑 `wjx response query --vid <vid>` 核对实际入库明细；生成 PPT 报告时，样本量仍以 `survey.answer_valid` 作为有效答卷数权威口径。
+
+**常见拦截原因**（要如实告诉用户）：
+- 同 IP / 同设备短时间多次提交被风控
+- 问卷"重复提交"设置开启
+- 必填项缺失或校验不通过
+- 问卷未发布 / 已暂停 / 已关闭
 - **矩阵题可复制示例**：行号!列号，多行用 `,`，多列用 `|`：
   - 矩阵单选 3×4：`6$1!1,2!3,3!2`
   - 矩阵多选 3 行：`7$1!1|2,2!3,3!1|4`

@@ -133,11 +133,12 @@ def fetch_from_vid(vid: str, workdir: Path) -> dict[str, Any]:
     print(f"  样本量 OK（{total} 份，来源 {total_src}）", file=sys.stderr)
     # 诊断辅助：count 接口跟主表对不上时打印警告（用户能看到数据语义差异）
     count_total = count.get("total_count")
-    if (
+    count_mismatch = (
         isinstance(count_total, int)
         and isinstance(survey_valid, int)
         and count_total != survey_valid
-    ):
+    )
+    if count_mismatch:
         print(
             f"  ⚠ response.total_count={count_total} ≠ survey.answer_valid={survey_valid}；"
             f"以 answer_valid 为准（count 字段可能含废卷）",
@@ -149,6 +150,19 @@ def fetch_from_vid(vid: str, workdir: Path) -> dict[str, Any]:
         report = _run_wjx(["response", "report", "--vid", str(vid)])
         answer_report = report.get("answer_report", {}) or {}
         print(f"  默认报告 OK（{len(answer_report)} 题聚合）", file=sys.stderr)
+        mismatch = (
+            f"response.total_count={count_total}, effective={survey_valid}"
+            if count_mismatch
+            else _find_report_total_mismatch(answer_report, questions_raw, int(total))
+        )
+        if mismatch:
+            print(
+                f"  ⚠ 默认报告口径与有效答卷数不一致：{mismatch}；"
+                "回退到 response query 明细聚合",
+                file=sys.stderr,
+            )
+            answer_report, matrix_report = _aggregate_from_query(vid, int(total), questions_raw)
+            print(f"  明细聚合 OK（{len(answer_report)} 题 + 矩阵 {len(matrix_report)} 题）", file=sys.stderr)
     except RuntimeError as exc:
         # API 限制：答卷数 × 题数 > 2000 时回退到分页聚合
         if "超过可分析范围" in str(exc) or "分析范围" in str(exc):
@@ -457,6 +471,47 @@ def _normalize_questions(
             }
         )
     return out
+
+
+def _find_report_total_mismatch(
+    answer_report: dict[str, Any],
+    questions_raw: list[dict[str, Any]],
+    expected_total: int,
+) -> str | None:
+    """Return a short mismatch message when report counts disagree with valid answers.
+
+    For single choice and scale questions each valid response contributes exactly one
+    item count, so the sum must match survey.answer_valid. Multiple choice can exceed
+    the answer count and matrix reports are handled by query aggregation elsewhere.
+    """
+    if expected_total <= 0:
+        return None
+
+    report_by_qindex: dict[int, dict[str, Any]] = {}
+    for rep in answer_report.values():
+        if isinstance(rep, dict) and rep.get("q_index") is not None:
+            report_by_qindex[int(rep["q_index"])] = rep
+
+    for q in questions_raw:
+        q_index = int(q.get("q_index") or 0)
+        q_type = int(q.get("q_type") or 0)
+        if not q_index or q_type in (1, 2, 4, 7):
+            continue
+        qtype, _scale_type = _classify_question(q)
+        if qtype not in ("single", "scale"):
+            continue
+        rep = report_by_qindex.get(q_index)
+        if not rep:
+            continue
+        item_count = rep.get("item_count") or {}
+        count_total = sum(
+            int(v or 0)
+            for v in item_count.values()
+            if isinstance(v, (int, float)) or str(v).isdigit()
+        )
+        if count_total != expected_total:
+            return f"q{q_index} report={count_total}, effective={expected_total}"
+    return None
 
 
 def _build_matrix_distribution(

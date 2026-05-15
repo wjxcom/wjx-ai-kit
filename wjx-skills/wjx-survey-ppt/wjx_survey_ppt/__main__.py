@@ -38,7 +38,7 @@ from pathlib import Path
 
 from .check import run_check
 from .fetch_survey import fetch_from_vid
-from .build_project import build_svg_project, build_outline, apply_outline, list_themes
+from .build_project import build_svg_project, build_outline, apply_outline, data_signature, list_themes
 from .render_ppt import render_pptx
 
 
@@ -176,11 +176,31 @@ def main() -> int:
             print(f"错误：缺 {data_path}", file=sys.stderr)
             return 2
         data = json.loads(data_path.read_text(encoding="utf-8"))
+        stale_signature = data_signature(data)
+        refreshed = False
+        vid = (data.get("survey") or {}).get("vid")
+        if vid and not args.data_file:
+            data = fetch_from_vid(str(vid), workdir)
+            _write_json(data_path, data)
+            refreshed = True
+            n_q = len(data.get("questions", []))
+            n_resp = data.get("response", {}).get("total", 0)
+            print(f"[stage=final] 已刷新最新数据（{n_q} 题 / {n_resp} 答卷）")
         outline = None
         theme = args.theme
         if outline_path.exists():
             outline = json.loads(outline_path.read_text(encoding="utf-8"))
             theme = outline.get("theme", args.theme)
+            if (
+                refreshed
+                and _outline_is_stale_after_refresh(outline, stale_signature, data_signature(data))
+                and not args.skip_ai_check
+            ):
+                print("错误：最终生成前已刷新到最新数据，但 outline.json 的 AI 解读基于旧数据。", file=sys.stderr)
+                print(f"  · 最新 data.json 已覆盖到 {data_path}", file=sys.stderr)
+                print(f"  · 请基于最新 data.json 重新生成/更新 outline.json 后再运行 final", file=sys.stderr)
+                print(f"  · 若已人工确认旧解读仍适用，可加 --skip-ai-check 强制生成", file=sys.stderr)
+                return 4
             # === Invariant：Stage final 必须有 AI 解读注入 ===
             if not args.skip_ai_check:
                 report = _ai_completeness_report(outline)
@@ -275,6 +295,29 @@ def _ai_completeness_report(outline: dict) -> dict:
         "missing_total": missing_total,
         "total_chart_pages": len(pages_with_summary) + len(pages_missing_summary),
     }
+
+
+def _outline_is_stale_after_refresh(
+    outline: dict,
+    stale_data_signature: str,
+    fresh_data_signature: str,
+) -> bool:
+    outline_signature = outline.get("_data_signature")
+    if outline_signature:
+        return outline_signature != fresh_data_signature
+    return stale_data_signature != fresh_data_signature and _outline_contains_ai_text(outline)
+
+
+def _outline_contains_ai_text(outline: dict) -> bool:
+    for p in outline.get("pages", []):
+        values = [
+            *(p.get("ai_findings") or []),
+            *(p.get("ai_insights") or []),
+            p.get("ai_summary") or "",
+        ]
+        if any(str(v).strip() for v in values):
+            return True
+    return False
 
 
 def _inspect_outline(outline_path: Path) -> int:
