@@ -95,6 +95,19 @@ function runPipInstall(pythonCmd: string, silent: boolean): boolean {
 }
 
 /**
+ * jieba 是 P08 词云分词的可选依赖；缺失时回退到 N-gram，质量降级但不阻塞。
+ * 装失败仅 stderr 警告，不改 overall status。
+ */
+function ensureJieba(pythonCmd: string, silent: boolean): boolean {
+  const probe = spawnSync(pythonCmd, ["-c", "import jieba"], { encoding: "utf-8" });
+  if (probe.status === 0) return true;
+  const result = spawnSync(pythonCmd, ["-m", "pip", "install", "jieba"], {
+    stdio: silent ? "ignore" : "inherit",
+  });
+  return result.status === 0;
+}
+
+/**
  * Install wjx-survey-ppt skill files and the ppt-master-survey PyPI package.
  *
  * - Skill files: copied to <targetDir>/skills/wjx-survey-ppt/
@@ -166,6 +179,15 @@ export function installPptSkill(
       } else {
         pipMessage = `pip 安装失败，请手动运行：${pythonCmd} -m pip install ppt-master-survey`;
         if (!silent) stderr.write(`${pipMessage}\n`);
+      }
+    }
+    if (pipInstalled && pythonCmd) {
+      if (!silent) stderr.write(`安装 jieba（中文分词，用于 P08 词云）...\n`);
+      const jiebaOk = ensureJieba(pythonCmd, silent);
+      if (!silent) {
+        stderr.write(jiebaOk
+          ? `jieba 已就绪\n`
+          : `jieba 安装失败（词云将回退到 N-gram，质量降级；不影响 PPT 主流程）\n`);
       }
     }
   }

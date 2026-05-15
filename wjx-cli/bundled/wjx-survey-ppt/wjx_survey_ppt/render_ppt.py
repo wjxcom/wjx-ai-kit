@@ -15,17 +15,20 @@ from pathlib import Path
 def render_pptx(project_dir: Path, output: Path) -> None:
     """跑 ppt-master-svg2pptx，结果落到 output 路径。
 
-    默认走 legacy 模式（每页 SVG 整张嵌入为图片），最大化"显示完整"兼容性 —
-    plotly 出的复杂 SVG（CSS 内联样式、heatmap 渐变、Indicator 仪表盘）在 native
-    模式（DrawingML 形状）下经常丢内容。代价：文件大约 3 倍、形状不可编辑。
+    默认走 native 模式（DrawingML 形状，文字保留为原生 a:t 元素）—
+    PowerPoint 用系统字体渲染中文，无豆腐字问题。文件小 3-4 倍、形状可编辑。
 
-    需要可编辑形状的用户设环境变量 ``WJX_PPT_NATIVE=1`` 切回 native。
+    历史包袱：plotly 出图时代曾因 CSS 内联样式被渲染成黑屏退到 legacy（图片嵌入）；
+    现在模板全是干净手搓 SVG + 删了 plotly，native 模式不再丢内容。
+
+    需要图片嵌入模式（用于排版极复杂的 SVG）设环境变量 ``WJX_PPT_LEGACY=1``。
+    注意 legacy 模式下中文会显示为方块（字体加载缺陷）。
     """
     import os
     output.parent.mkdir(parents=True, exist_ok=True)
 
     cmd = _resolve_renderer_cmd()
-    mode = "native" if os.environ.get("WJX_PPT_NATIVE") == "1" else "legacy"
+    mode = "legacy" if os.environ.get("WJX_PPT_LEGACY") == "1" else "native"
     args = [
         *cmd,
         str(project_dir),

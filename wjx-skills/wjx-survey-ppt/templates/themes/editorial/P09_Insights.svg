@@ -14,36 +14,36 @@
   </g>
 
   <rect x="80" y="60" width="48" height="3" fill="#B7410E"/>
-  <text x="80" y="92" font-family="Source Han Serif SC, Noto Serif CJK SC, SimSun, serif" font-size="18" font-weight="500" fill="#A89880" letter-spacing="3">
+  <text x="80" y="92" font-family="Source Han Serif SC, Noto Serif CJK SC, SimSun, serif" font-size="18" font-weight="500" fill="#A08870" letter-spacing="3">
     KEY INSIGHTS
   </text>
-  <text x="1200" y="92" text-anchor="end" font-family="Source Han Serif SC, Noto Serif CJK SC, SimSun, serif" font-size="14" fill="#A89880">
+  <text x="1200" y="92" text-anchor="end" font-family="Source Han Serif SC, Noto Serif CJK SC, SimSun, serif" font-size="14" fill="#A08870">
     09 / 10
   </text>
 
-  <text x="80" y="180" font-family="Source Han Serif SC, Noto Serif CJK SC, SimSun, serif" font-size="48" font-weight="700" fill="#FFFFFF">
+  <text x="80" y="180" font-family="Source Han Serif SC, Noto Serif CJK SC, SimSun, serif" font-size="48" font-weight="700" fill="#2A1810">
     {{TITLE}}
   </text>
-  <text x="80" y="220" font-family="Source Han Serif SC, Noto Serif CJK SC, SimSun, serif" font-size="20" fill="#A89880" opacity="0.85">
+  <text x="80" y="220" font-family="Source Han Serif SC, Noto Serif CJK SC, SimSun, serif" font-size="20" fill="#6B5A4A">
     AI 综合本次数据得出的策略建议
   </text>
 
   {{#INSIGHTS}}
   <g transform="translate(80, {{Y_OFFSET}})">
-    <rect width="1120" height="100" rx="6" fill="#F5EFE6" stroke="#FFFFFF" stroke-opacity="0.12"/>
+    <rect width="1120" height="100" rx="6" fill="#FFFFFF" stroke="#2A1810" stroke-opacity="0.12"/>
     <text x="40" y="60" font-family="Source Han Serif SC, Noto Serif CJK SC, SimSun, serif" font-size="42" font-weight="800" fill="#B7410E" opacity="0.95">
       0{{INDEX}}
     </text>
-    <text x="120" y="40" font-family="Source Han Serif SC, Noto Serif CJK SC, SimSun, serif" font-size="13" font-weight="500" fill="#A89880" letter-spacing="2">
+    <text x="120" y="40" font-family="Source Han Serif SC, Noto Serif CJK SC, SimSun, serif" font-size="13" font-weight="500" fill="#6B5A4A" letter-spacing="2">
       INSIGHT
     </text>
-    <text x="120" y="76" font-family="Source Han Serif SC, Noto Serif CJK SC, SimSun, serif" font-size="20" font-weight="500" fill="#FFFFFF">
+    <text x="120" y="76" font-family="Source Han Serif SC, Noto Serif CJK SC, SimSun, serif" font-size="20" font-weight="500" fill="#2A1810">
       {{TEXT}}
     </text>
   </g>
   {{/INSIGHTS}}
 
-  <text x="80" y="690" font-family="Source Han Serif SC, Noto Serif CJK SC, SimSun, serif" font-size="13" fill="#A89880" letter-spacing="1">
+  <text x="80" y="690" font-family="Source Han Serif SC, Noto Serif CJK SC, SimSun, serif" font-size="13" fill="#6B5A4A" letter-spacing="1">
     问卷星 · AI 智能分析报告
   </text>
 </svg>

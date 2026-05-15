@@ -5,6 +5,7 @@ import { listSurveys } from "wjx-api-sdk";
 import { loadConfig, saveConfig, CONFIG_PATH } from "../lib/config.js";
 import { maskApiKey } from "../lib/mask.js";
 import { installSkill } from "../lib/install-skill.js";
+import { installPptSkill } from "../lib/install-ppt-skill.js";
 import type { WjxConfig } from "../lib/config.js";
 
 const DEFAULT_BASE_URL = "https://www.wjx.cn";
@@ -43,14 +44,16 @@ function saveAndReport(apiKey: string, baseUrl: string, corpId: string | undefin
 /**
  * Non-interactive init: wjx init --api-key <key> [--base-url <url>] [--corp-id <id>]
  *
- * 参数模式视为脚本/AI Agent 自动化场景。`opts.installSkill` 默认 true，
- * 调用方可通过 `--no-install-skill` 显式关闭。不再尝试基于环境变量"猜测" AI Agent。
+ * 参数模式视为脚本/AI Agent 自动化场景。`opts.installSkill` 默认 true（核心 cli-use），
+ * `opts.installPptSkill` 默认 false（PPT 报告 skill，会触发 ~30MB pip 安装，opt-in）。
+ * 调用方可通过 `--no-install-skill` 关闭核心安装、`--install-ppt-skill` 显式启用 PPT。
  */
 async function initWithArgs(opts: {
   apiKey: string;
   baseUrl?: string;
   corpId?: string;
   installSkill: boolean;
+  installPptSkill?: boolean;
 }): Promise<void> {
   const apiKey = opts.apiKey;
   const baseUrl = opts.baseUrl || DEFAULT_BASE_URL;
@@ -72,13 +75,21 @@ async function initWithArgs(opts: {
       stderr.write(`技能安装失败: ${result.message}\n`);
     }
   }
+  if (opts.installPptSkill) {
+    const result = installPptSkill(process.cwd(), { force: true });
+    if (result.status === "error") {
+      stderr.write(`wjx-survey-ppt 技能安装失败: ${result.message}\n`);
+    }
+  }
 }
 
 /**
  * Interactive init wizard.
  *
- * 普通用户（人工敲命令）走这条路径，结束后**不再弹技能安装 y/n**，
- * 改为打印一行明确提示。AI Agent 应改用参数模式 `wjx init --api-key <key>` 自动安装。
+ * 普通用户（人工敲命令）走这条路径。结束后会问两个 y/n：
+ *   1. 是否装 wjx-cli-use + wjx-cli-expert 子 Agent（默认 Y，核心使用面）
+ *   2. 是否装 wjx-survey-ppt 技能（默认 N，opt-in，会触发 ~30MB pip 安装）
+ * AI Agent 自动化走 `wjx init --api-key <key> [--install-ppt-skill]` 参数模式。
  */
 async function initInteractive(): Promise<void> {
   const config = loadConfig();
@@ -125,8 +136,34 @@ async function initInteractive(): Promise<void> {
     stderr.write("\n");
     saveAndReport(apiKey, baseUrl, corpId);
     stderr.write("提示: 也可以直接编辑该文件修改配置（如 WJX_CORP_ID 通讯录）。\n");
-    stderr.write("\n如需在 AI Agent (Claude Code / Cursor / Windsurf 等) 中使用，运行:\n");
-    stderr.write("  wjx skill install\n");
+
+    // ── 询问 1：cli-use 技能 + wjx-cli-expert 子 Agent（默认 Y，核心使用面） ──
+    stderr.write("\n");
+    const ans1 = (await rl.question(
+      "安装 wjx-cli-use 技能 + wjx-cli-expert 子 Agent？\n" +
+        "  装到 ./skills/wjx-cli-use/ + ./.claude/agents/wjx-cli-expert.md\n" +
+        "  AI Agent 用它来自动操作问卷星 [Y/n]: ",
+    )).trim().toLowerCase();
+    if (ans1 !== "n" && ans1 !== "no") {
+      const r = installSkill(process.cwd(), { force: true });
+      if (r.status === "error") stderr.write(`安装失败: ${r.message}\n`);
+    } else {
+      stderr.write("已跳过。后续可运行：wjx skill install\n");
+    }
+
+    // ── 询问 2：wjx-survey-ppt 技能（默认 N，opt-in） ──
+    stderr.write("\n");
+    const ans2 = (await rl.question(
+      "安装 wjx-survey-ppt 技能（问卷答卷 → PPT 报告）？\n" +
+        "  会同时 pip 安装 ppt-master-survey + jieba（约 30MB）\n" +
+        "  适合需要把问卷数据自动出 PPT 报告的场景 [y/N]: ",
+    )).trim().toLowerCase();
+    if (ans2 === "y" || ans2 === "yes") {
+      const r = installPptSkill(process.cwd(), { force: true });
+      if (r.status === "error") stderr.write(`安装失败: ${r.message}\n`);
+    } else {
+      stderr.write("已跳过。后续可运行：wjx skill install-ppt\n");
+    }
   } finally {
     rl.close();
   }
@@ -138,11 +175,13 @@ export function registerInitCommands(program: Command): void {
     .description("初始化配置（交互式向导，或 --api-key 参数模式跳过交互）")
     .option("--base-url <url>", "Base URL")
     .option("--corp-id <id>", "Corp ID")
-    .option("--no-install-skill", "跳过技能安装（仅参数模式生效；交互模式不会自动装）")
+    .option("--no-install-skill", "跳过 wjx-cli-use 技能安装（仅参数模式生效）")
+    .option("--install-ppt-skill", "同时安装 wjx-survey-ppt 技能（仅参数模式生效；触发 ~30MB pip 装包）")
     .action(async (opts: {
       baseUrl?: string;
       corpId?: string;
       installSkill: boolean;
+      installPptSkill?: boolean;
     }, cmd: Command) => {
       // --api-key is a global option on the root program; read from parent
       const apiKey = cmd.parent?.opts().apiKey as string | undefined;

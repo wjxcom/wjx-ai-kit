@@ -92,19 +92,19 @@ _PALETTES: dict[str, PaletteSpec] = {
     ),
     # === 2026-05 新增 4 款（v2 重做：每套主色 + 单一强调 + 协调的三数据色）===
     "consulting": PaletteSpec(
-        # BCG 风：黑灰主调 + 暖砖红单一强调；数据三色采用同冷暖梯度
+        # 现代 McKinsey/Bain 风：深海军蓝主调 + 清亮强调；规避砖红+墨绿造成的复古感
         name="consulting",
         bg="#FAFAFA",
         surface="#FFFFFF",
-        text_primary="#1F1F1F",
-        text_secondary="#6B6B6B",
-        accent="#C04A3C",          # 暖砖红（代替原刺眼 #E55B4F）
-        nps_promoter="#4A6B5A",    # 墨绿（不抢戏）
-        nps_passive="#9B9B9B",     # 中灰
-        nps_detractor="#C04A3C",   # 砖红与 accent 同
-        bar_primary="#2F2F2F",     # 深炭主色
-        bar_top="#C04A3C",         # 强调色当 Top1
-        heatmap_color="#3D3D3D",   # 灰阶热力（深→浅靠 opacity 叠）
+        text_primary="#0F172A",        # slate-900（比纯黑沉稳但更现代）
+        text_secondary="#475569",      # slate-600
+        accent="#1E40AF",              # 深海军蓝（现代咨询品牌色）
+        nps_promoter="#0F766E",        # 翡翠青绿（去掉了泥土感）
+        nps_passive="#F59E0B",         # 暖琥珀（替代脏灰，提亮）
+        nps_detractor="#DC2626",       # 清亮红（去掉砖红做旧）
+        bar_primary="#1E40AF",         # 深海军蓝主色
+        bar_top="#0F172A",             # slate-900 顶部高亮
+        heatmap_color="#1E40AF",
     ),
     "tech-dark": PaletteSpec(
         # 深色 SaaS 风：去霓虹改柔色，文字用柔白避免刺眼

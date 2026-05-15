@@ -6,7 +6,7 @@
 
   <rect width="1280" height="720" fill="#FAFAFA"/>
 
-  <rect x="0" y="0" width="1280" height="80" fill="#1F1F1F"/>
+  <rect x="0" y="0" width="1280" height="80" fill="#0F172A"/>
   <rect x="80" y="34" width="48" height="3" fill="{{NPS_PASSIVE_COLOR}}"/>
   <text x="80" y="62" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="18" font-weight="500" fill="#A0A0A0" letter-spacing="3">
     NPS CROSS-TAB
@@ -15,22 +15,22 @@
     11 / 12
   </text>
 
-  <text x="80" y="155" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="32" font-weight="700" fill="#1F1F1F">
+  <text x="80" y="155" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="32" font-weight="700" fill="#0F172A">
     {{TITLE}}
   </text>
-  <text x="80" y="190" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="16" fill="#6B6B6B">
+  <text x="80" y="190" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="16" fill="#475569">
     {{SUBTITLE}}
   </text>
 
-  <line x1="80" y1="220" x2="1200" y2="220" stroke="#1F1F1F" stroke-opacity="0.12" stroke-width="1"/>
+  <line x1="80" y1="220" x2="1200" y2="220" stroke="#0F172A" stroke-opacity="0.12" stroke-width="1"/>
 
   <!-- Y 轴：0% / 50% / 100% 三档刻度 + 网格线 -->
   <g font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="11" fill="#888888">
-    <line x1="{{CHART_X_START}}" y1="{{CHART_Y_TOP}}" x2="{{CHART_X_END}}" y2="{{CHART_Y_TOP}}" stroke="#1F1F1F" stroke-opacity="0.06"/>
+    <line x1="{{CHART_X_START}}" y1="{{CHART_Y_TOP}}" x2="{{CHART_X_END}}" y2="{{CHART_Y_TOP}}" stroke="#0F172A" stroke-opacity="0.06"/>
     <text x="{{CHART_X_START}}" y="{{CHART_Y_TOP}}" text-anchor="end" dx="-6" dy="4">100%</text>
-    <line x1="{{CHART_X_START}}" y1="435" x2="{{CHART_X_END}}" y2="435" stroke="#1F1F1F" stroke-opacity="0.06"/>
+    <line x1="{{CHART_X_START}}" y1="435" x2="{{CHART_X_END}}" y2="435" stroke="#0F172A" stroke-opacity="0.06"/>
     <text x="{{CHART_X_START}}" y="435" text-anchor="end" dx="-6" dy="4">50%</text>
-    <line x1="{{CHART_X_START}}" y1="{{CHART_Y_BOTTOM}}" x2="{{CHART_X_END}}" y2="{{CHART_Y_BOTTOM}}" stroke="#1F1F1F" stroke-opacity="0.20"/>
+    <line x1="{{CHART_X_START}}" y1="{{CHART_Y_BOTTOM}}" x2="{{CHART_X_END}}" y2="{{CHART_Y_BOTTOM}}" stroke="#0F172A" stroke-opacity="0.20"/>
     <text x="{{CHART_X_START}}" y="{{CHART_Y_BOTTOM}}" text-anchor="end" dx="-6" dy="4">0%</text>
   </g>
 
@@ -50,17 +50,17 @@
     <text x="{{LABEL_X}}" y="{{PROM_LABEL_Y}}" text-anchor="middle" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="13" font-weight="600" fill="#FFFFFF">{{PROM_LABEL}}</text>
 
     <!-- NPS 数值标签贴在柱顶上方（背景色框） -->
-    <rect x="{{X}}" y="{{NPS_Y}}" width="{{BAR_W}}" height="22" fill="#FFFFFF" stroke="#1F1F1F" stroke-opacity="0.18" rx="3" transform="translate(0,-22)"/>
-    <text x="{{NPS_X}}" y="{{NPS_Y}}" text-anchor="middle" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="14" font-weight="700" fill="#1F1F1F">NPS {{NPS_SCORE}}</text>
+    <rect x="{{X}}" y="{{NPS_Y}}" width="{{BAR_W}}" height="22" fill="#FFFFFF" stroke="#0F172A" stroke-opacity="0.18" rx="3" transform="translate(0,-22)"/>
+    <text x="{{NPS_X}}" y="{{NPS_Y}}" text-anchor="middle" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="14" font-weight="700" fill="#0F172A">NPS {{NPS_SCORE}}</text>
 
     <!-- 选项 label + 样本量 n -->
-    <text x="{{LABEL_X}}" y="{{LABEL_Y}}" text-anchor="middle" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="14" font-weight="500" fill="#1F1F1F">{{LABEL}}</text>
+    <text x="{{LABEL_X}}" y="{{LABEL_Y}}" text-anchor="middle" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="14" font-weight="500" fill="#0F172A">{{LABEL}}</text>
     <text x="{{N_X}}" y="{{N_Y}}" text-anchor="middle" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="11" fill="#888888">{{N_TEXT}}</text>
   </g>
   {{/BARS}}
 
   <!-- 图例（底部） -->
-  <g transform="translate(640, 660)" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="13" fill="#6B6B6B">
+  <g transform="translate(640, 660)" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="13" fill="#475569">
     <g transform="translate(-180, 0)">
       <rect x="0" y="-10" width="14" height="14" fill="{{NPS_PROMOTER_COLOR}}"/>
       <text x="20" y="2">推荐者 9-10 分</text>

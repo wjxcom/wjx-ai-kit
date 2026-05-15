@@ -14,36 +14,36 @@
   </g>
 
   <rect x="80" y="60" width="48" height="3" fill="#F4A261"/>
-  <text x="80" y="92" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="18" font-weight="500" fill="#D8A48F" letter-spacing="3">
+  <text x="80" y="92" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="18" font-weight="500" fill="#A68B6F" letter-spacing="3">
     KEY INSIGHTS
   </text>
-  <text x="1200" y="92" text-anchor="end" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="14" fill="#D8A48F">
+  <text x="1200" y="92" text-anchor="end" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="14" fill="#A68B6F">
     09 / 10
   </text>
 
-  <text x="80" y="180" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="48" font-weight="700" fill="#FFFFFF">
+  <text x="80" y="180" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="48" font-weight="700" fill="#3D1F14">
     {{TITLE}}
   </text>
-  <text x="80" y="220" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="20" fill="#E8D4BB" opacity="0.85">
+  <text x="80" y="220" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="20" fill="#7A5440">
     AI 综合本次数据得出的策略建议
   </text>
 
   {{#INSIGHTS}}
   <g transform="translate(80, {{Y_OFFSET}})">
-    <rect width="1120" height="100" rx="6" fill="#FBF6F0" stroke="#FFFFFF" stroke-opacity="0.12"/>
+    <rect width="1120" height="100" rx="6" fill="#FFFFFF" stroke="#3D1F14" stroke-opacity="0.12"/>
     <text x="40" y="60" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="42" font-weight="800" fill="#F4A261" opacity="0.95">
       0{{INDEX}}
     </text>
-    <text x="120" y="40" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="13" font-weight="500" fill="#D8A48F" letter-spacing="2">
+    <text x="120" y="40" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="13" font-weight="500" fill="#7A5440" letter-spacing="2">
       INSIGHT
     </text>
-    <text x="120" y="76" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="20" font-weight="500" fill="#FFFFFF">
+    <text x="120" y="76" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="20" font-weight="500" fill="#3D1F14">
       {{TEXT}}
     </text>
   </g>
   {{/INSIGHTS}}
 
-  <text x="80" y="690" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="13" fill="#8B6849" letter-spacing="1">
+  <text x="80" y="690" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="13" fill="#7A5440" letter-spacing="1">
     问卷星 · AI 智能分析报告
   </text>
 </svg>

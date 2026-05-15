@@ -6,8 +6,8 @@
 
   <rect width="1280" height="720" fill="#FAFAFA"/>
 
-  <rect x="0" y="0" width="1280" height="80" fill="#1F1F1F"/>
-  <rect x="80" y="34" width="48" height="3" fill="#C04A3C"/>
+  <rect x="0" y="0" width="1280" height="80" fill="#0F172A"/>
+  <rect x="80" y="34" width="48" height="3" fill="#1E40AF"/>
   <text x="80" y="62" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="18" font-weight="500" fill="#A0A0A0" letter-spacing="3">
     SINGLE CHOICE ANALYSIS
   </text>
@@ -15,20 +15,20 @@
     04 / 10
   </text>
 
-  <text x="80" y="170" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="34" font-weight="700" fill="#1F1F1F">
+  <text x="80" y="170" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="34" font-weight="700" fill="#0F172A">
     {{TITLE}}
   </text>
-  <text x="80" y="210" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="18" fill="#6B6B6B">
+  <text x="80" y="210" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="18" fill="#475569">
     共 {{TOTAL}} 份有效样本
   </text>
 
-  <line x1="80" y1="250" x2="1200" y2="250" stroke="#1F1F1F" stroke-opacity="0.12" stroke-width="1"/>
+  <line x1="80" y1="250" x2="1200" y2="250" stroke="#0F172A" stroke-opacity="0.12" stroke-width="1"/>
 
   <g transform="translate(80, 270)">
     {{#ROWS}}
     <g transform="translate(0, {{Y_OFFSET}})">
-      <text x="0" y="22" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="16" font-weight="500" fill="#1F1F1F">{{LABEL}}</text>
-      <text x="1120" y="22" text-anchor="end" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="16" font-weight="700" fill="#1F1F1F">{{PERCENT}}%</text>
+      <text x="0" y="22" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="16" font-weight="500" fill="#0F172A">{{LABEL}}</text>
+      <text x="1120" y="22" text-anchor="end" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="16" font-weight="700" fill="#0F172A">{{PERCENT}}%</text>
       <rect x="0" y="32" width="1120" height="14" rx="7" fill="#ECECEC"/>
       <rect x="0" y="32" width="{{BAR_WIDTH}}" height="14" rx="7" fill="{{BAR_COLOR}}"/>
       <text x="0" y="64" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="13" fill="#888888">{{COUNT}} 人</text>

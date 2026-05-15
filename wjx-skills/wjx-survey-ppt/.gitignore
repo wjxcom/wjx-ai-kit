@@ -2,6 +2,7 @@
 out-*/
 _pdf_preview/
 survey-ppt-workdir/
+ws-*/
 
 # Python 缓存
 __pycache__/

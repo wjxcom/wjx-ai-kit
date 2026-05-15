@@ -1,39 +1,34 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720" width="1280" height="720">
   <defs>
-    
     </defs>
 
   <rect width="1280" height="720" fill="#FBF6F0"/>
 
   <rect x="0" y="0" width="1280" height="80" fill="#3D1F14"/>
   <rect x="80" y="34" width="48" height="3" fill="#F4A261"/>
-  <text x="80" y="62" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="18" font-weight="500" fill="#D8A48F" letter-spacing="3">
-    OPEN ANSWERS
+  <text x="80" y="62" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="18" font-weight="500" fill="#A68B6F" letter-spacing="3">
+    OPEN ANSWERS · WORD CLOUD
   </text>
-  <text x="1200" y="62" text-anchor="end" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="14" fill="#D8A48F">
+  <text x="1200" y="62" text-anchor="end" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="14" fill="#A68B6F">
     08 / 10
   </text>
 
-  <text x="80" y="170" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="44" font-weight="700" fill="#3D1F14">
+  <text x="80" y="170" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="40" font-weight="700" fill="#3D1F14">
     {{TITLE}}
   </text>
-  <text x="80" y="210" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="20" fill="#7A5440">
-    用户原声 · 来自开放式问题的真实反馈
+  <text x="80" y="208" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="18" fill="#7A5440">
+    基于 {{SAMPLE_N}} 条开放回答，提取 Top {{WORD_N}} 高频词，字号反映词频排名
   </text>
 
-  <line x1="80" y1="250" x2="1200" y2="250" stroke="#3D1F14" stroke-opacity="0.12" stroke-width="1"/>
+  <line x1="80" y1="240" x2="1200" y2="240" stroke="#3D1F14" stroke-opacity="0.12" stroke-width="1"/>
 
-  {{#ANSWERS}}
-  <g transform="translate(80, {{Y_OFFSET}})">
-    <rect width="1120" height="70" rx="6" fill="#FBF6F0" stroke="#E8D8C0"/>
-    <rect width="6" height="70" fill="#E76F51"/>
-    <text x="32" y="32" font-family="Georgia, serif" font-size="44" fill="#E76F51" opacity="0.4">"</text>
-    <text x="74" y="46" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="18" fill="#3D1F14">{{TEXT}}</text>
-  </g>
-  {{/ANSWERS}}
+  <!-- 词云本体（4 档分层） -->
+  {{#WORDS}}
+  <text x="{{X}}" y="{{Y}}" text-anchor="middle" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="{{SIZE}}" font-weight="600" fill="#3D1F14" fill-opacity="{{OPACITY}}">{{TEXT}}</text>
+  {{/WORDS}}
 
-  <text x="80" y="690" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="13" fill="#9C7A5F" letter-spacing="1">
-    展示前 5 条用户反馈，完整数据可在问卷星后台导出
+  <text x="80" y="690" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="13" fill="#7A5440" letter-spacing="1">
+    词云采用 jieba 分词（若已安装）或 N-gram 回退；停用词与单字已过滤
   </text>
 </svg>

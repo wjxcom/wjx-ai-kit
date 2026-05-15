@@ -302,7 +302,7 @@ def _single_choice_pages(data: dict[str, Any]) -> list[tuple[str, dict[str, Any]
     for i, q in enumerate(candidates[:_PAGE_CAP]):
         suffix = _SUFFIXES[i] if len(candidates) > 1 else ""
         page_name = f"P04_Single_Choice{('_' + suffix) if suffix else ''}"
-        ctx = _bar_chart_context(q)
+        ctx = _bar_chart_context(q, data)
         ctx["AI_SUMMARY"] = summaries.get(q.get("qid"), "")
         pages.append((page_name, ctx))
     return pages
@@ -525,7 +525,7 @@ def _multi_choice_pages(data: dict[str, Any]) -> list[tuple[str, dict[str, Any]]
     for i, q in enumerate(multis[:_PAGE_CAP]):
         suffix = _SUFFIXES[i] if len(multis) > 1 else ""
         page_name = f"P05_Multi_Choice{('_' + suffix) if suffix else ''}"
-        ctx = _bar_chart_context(q)
+        ctx = _bar_chart_context(q, data)
         ctx["AI_SUMMARY"] = summaries.get(q.get("qid"), "")
         pages.append((page_name, ctx))
     return pages
@@ -604,7 +604,7 @@ def _matrix_pages(data: dict[str, Any]) -> list[tuple[str, dict[str, Any]]]:
     summaries = data.get("ai_page_summaries") or {}
     pages: list[tuple[str, dict[str, Any]]] = []
     for i, q in enumerate(matrices[:_PAGE_CAP]):
-        ctx = _matrix_context_for_question(q)
+        ctx = _matrix_context_for_question(q, data)
         if not ctx:
             continue
         ctx["AI_SUMMARY"] = summaries.get(q.get("qid"), "")
@@ -614,8 +614,11 @@ def _matrix_pages(data: dict[str, Any]) -> list[tuple[str, dict[str, Any]]]:
     return pages
 
 
-def _matrix_context_for_question(q: dict[str, Any]) -> dict[str, Any] | None:
-    """单题矩阵 → P07 模板 context（含动态列头 COLUMNS）。"""
+def _matrix_context_for_question(q: dict[str, Any], data: dict[str, Any] | None = None) -> dict[str, Any] | None:
+    """单题矩阵 → P07 模板 context（含动态列头 COLUMNS）。
+
+    cell 填色用主题的 heatmap_color（不再硬编码 business 蓝）。
+    """
     rows_in = q.get("distribution") or []
     options = q.get("options") or []  # 列名
     if not rows_in:
@@ -632,6 +635,14 @@ def _matrix_context_for_question(q: dict[str, Any]) -> dict[str, Any] | None:
     cell_w = max(48, min(140, (available_w - (n_cols - 1) * cell_gap) // n_cols))
     # 列数 > 5 时把列名再激进截断（48-100px 宽度只能容 4-6 个全角）
     label_max = 8 if cell_w >= 110 else (6 if cell_w >= 80 else 4)
+
+    # 从主题 palette 取 heatmap 色 + 浅色文字色（深底用白、浅底用主文色）
+    from . import charts
+    theme = (data or {}).get("_theme") or "business"
+    p = charts.get_palette(theme)
+    cell_color = p.heatmap_color
+    text_on_dark = "#FFFFFF"
+    text_on_light = p.text_primary
 
     columns = []
     for ci in range(n_cols):
@@ -656,8 +667,8 @@ def _matrix_context_for_question(q: dict[str, Any]) -> dict[str, Any] | None:
                     "TEXT_X": ci * (cell_w + cell_gap) + cell_w / 2,
                     "PERCENT": f"{pct:.0f}",
                     "OPACITY": f"{0.25 + min(pct, 100) / 100 * 0.7:.2f}",
-                    "COLOR": "#4A90D9",
-                    "TEXT_COLOR": "#FFFFFF" if pct > 35 else "#0F2847",
+                    "COLOR": cell_color,
+                    "TEXT_COLOR": text_on_dark if pct > 35 else text_on_light,
                 }
             )
         rows.append(
@@ -675,25 +686,146 @@ def _matrix_context_for_question(q: dict[str, Any]) -> dict[str, Any] | None:
     }
 
 
+_OPEN_STOPWORDS = {
+    "的", "了", "和", "是", "在", "我", "有", "也", "就", "都", "很", "不", "也是",
+    "还", "但", "但是", "可以", "可能", "会", "把", "被", "让", "给", "对", "向", "从",
+    "为", "以", "之", "等", "或", "而", "与", "及", "或者", "这", "那", "这个", "那个",
+    "这些", "那些", "什么", "怎么", "如何", "为什么", "因为", "所以", "如果", "虽然",
+    "然后", "比如", "例如", "目前", "现在", "已经", "正在", "一些", "一个", "一种",
+    "进行", "通过", "需要", "应该", "可以", "希望", "感觉", "觉得", "认为", "建议",
+    "提供", "做", "出", "去", "来", "上", "下", "里", "外", "中", "我们", "你们", "他们",
+    "自己", "大家", "时候", "方面", "问题", "情况", "之后", "之前", "时间", "可以的",
+    "the", "and", "is", "to", "a", "of", "in", "for", "on", "with", "at", "by",
+}
+
+
+def _segment_chinese(text: str) -> list[str]:
+    """简易中文分词：优先 jieba，回退到 2-3 字符 N-gram 扫描。
+
+    回退策略不如 jieba 精准，但够用：
+    - 提取 ASCII 词作为整体（英文/数字）
+    - 中文连续段切成滑动 bigram + trigram
+    """
+    try:
+        import jieba  # type: ignore
+        tokens = [t.strip() for t in jieba.cut(text) if t.strip()]
+        return tokens
+    except ImportError:
+        pass
+
+    tokens: list[str] = []
+    # ASCII 整词
+    for m in re.finditer(r"[A-Za-z][A-Za-z0-9_]+", text):
+        tokens.append(m.group(0).lower())
+    # 中文连续段
+    for seg in re.findall(r"[一-鿿]+", text):
+        n = len(seg)
+        if n <= 1:
+            continue
+        # bigram
+        for i in range(n - 1):
+            tokens.append(seg[i:i+2])
+        # trigram (更有信息量)
+        for i in range(n - 2):
+            tokens.append(seg[i:i+3])
+    return tokens
+
+
+def _extract_word_frequencies(texts: list[str], top_n: int = 30) -> list[tuple[str, int]]:
+    """合并所有文本，分词、过滤停用词，返回 [(word, count)] 降序前 N。"""
+    from collections import Counter
+
+    counter: Counter[str] = Counter()
+    for t in texts:
+        if not t:
+            continue
+        for tok in _segment_chinese(str(t)):
+            if len(tok) < 2:
+                continue
+            if tok in _OPEN_STOPWORDS:
+                continue
+            # 纯数字过滤
+            if tok.isdigit():
+                continue
+            counter[tok] += 1
+
+    # 去包含关系：如果 trigram 出现且其包含的 bigram 频次相同，优先 trigram
+    items = sorted(counter.items(), key=lambda x: (-x[1], x[0]))
+
+    # 过滤被更长词完全覆盖的 bigram
+    selected: list[tuple[str, int]] = []
+    chosen_set: set[str] = set()
+    for word, cnt in items:
+        # 若已存在更长且频次相同（或更高）的词包含本词，跳过
+        covered = False
+        for longer in chosen_set:
+            if len(longer) > len(word) and word in longer and counter.get(longer, 0) >= cnt:
+                covered = True
+                break
+        if covered:
+            continue
+        selected.append((word, cnt))
+        chosen_set.add(word)
+        if len(selected) >= top_n:
+            break
+
+    return selected
+
+
 def _open_question_context(data: dict[str, Any]) -> dict[str, Any] | None:
-    answers = []
+    """P08 词云：合并所有开放题回答，提取 Top30 高频词，按 4 档字号布局。"""
+    all_answers: list[str] = []
     for q in data.get("questions", []):
         if (q.get("type") or "").lower() == "text":
-            ans = q.get("open_answers") or []
-            if ans:
-                answers.extend(ans[:5])
-    if not answers:
+            all_answers.extend(q.get("open_answers") or [])
+    if not all_answers:
         return None
+
+    top = _extract_word_frequencies(all_answers, top_n=30)
+    if not top:
+        return None
+
+    # 4 档：Top3 巨大 / 4-9 大 / 10-19 中 / 20-30 小
+    # 各档独占一行/两行的栅格布局：
+    #   Tier 1: Y=320, 字号 56，3 列居中
+    #   Tier 2: Y=410, 字号 32，6 列居中
+    #   Tier 3: Y=490 + Y=545, 字号 22，每行 10 列
+    words_ctx: list[dict[str, Any]] = []
+    chart_x_start = 80
+    chart_w = 1120
+
+    def _place_row(items: list[tuple[str, int]], y: int, font_size: int, opacity: float):
+        n = len(items)
+        if n == 0:
+            return
+        slot_w = chart_w / n
+        for i, (w, c) in enumerate(items):
+            cx = chart_x_start + slot_w * (i + 0.5)
+            words_ctx.append({
+                "TEXT": w,
+                "X": f"{cx:.1f}",
+                "Y": str(y),
+                "SIZE": str(font_size),
+                "OPACITY": f"{opacity:.2f}",
+                "COUNT": str(c),
+            })
+
+    tier1 = top[:3]
+    tier2 = top[3:9]
+    tier3a = top[9:19]
+    tier3b = top[19:29]
+
+    _place_row(tier1, y=320, font_size=56, opacity=1.0)
+    _place_row(tier2, y=410, font_size=32, opacity=0.92)
+    _place_row(tier3a, y=485, font_size=22, opacity=0.78)
+    _place_row(tier3b, y=540, font_size=22, opacity=0.65)
+
+    sample_n = sum(1 for a in all_answers if a)
     return {
-        "TITLE": "开放题摘录",
-        "ANSWERS": [
-            {
-                "INDEX": i + 1,
-                "TEXT": _truncate(a, 90),
-                "Y_OFFSET": 290 + i * 80,
-            }
-            for i, a in enumerate(answers[:5])
-        ],
+        "TITLE": "用户原声 · 高频词云",
+        "WORDS": words_ctx,
+        "SAMPLE_N": str(sample_n),
+        "WORD_N": str(len(top)),
     }
 
 
@@ -1012,7 +1144,18 @@ def _appendix_context(data: dict[str, Any]) -> dict[str, Any]:
 # ---------- 通用辅助 ----------
 
 
-def _bar_chart_context(q: dict[str, Any]) -> dict[str, Any]:
+def _bar_chart_context(q: dict[str, Any], data: dict[str, Any] | None = None) -> dict[str, Any]:
+    """单选/多选条形图 → P04/P05 模板 context。
+
+    BAR_COLOR 从主题 palette 取：Top1 用 bar_top、其它用 bar_primary。
+    不再用 url(#barFillTop) 渐变（之前批量去渐变时被清掉，引起柱状条 fill 失败）。
+    """
+    from . import charts
+    theme = (data or {}).get("_theme") or "business"
+    p = charts.get_palette(theme)
+    bar_top_color = p.bar_top
+    bar_primary_color = p.bar_primary
+
     dist = q.get("distribution") or []
     options = q.get("options") or []
     total = sum((d.get("count", 0) for d in dist), 0) or 1
@@ -1038,7 +1181,7 @@ def _bar_chart_context(q: dict[str, Any]) -> dict[str, Any]:
                 "COUNT": count,
                 "PERCENT": f"{count / total * 100:.1f}",
                 "BAR_WIDTH": int(count / max_count * bar_max),
-                "BAR_COLOR": "url(#barFillTop)" if rank == 0 else "url(#barFill)",
+                "BAR_COLOR": bar_top_color if rank == 0 else bar_primary_color,
                 "Y_OFFSET": rank * 72,
             }
         )

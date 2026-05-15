@@ -116,6 +116,21 @@ verify_renderer() {
     return 1
 }
 
+# jieba 是 P08 词云分词的可选依赖；缺失会回退到 N-gram，质量降级但不阻塞主流程。
+install_jieba() {
+    print_info "安装 jieba（中文分词，用于 P08 词云）..."
+    if $PYTHON_CMD -c "import jieba" &>/dev/null; then
+        print_success "jieba 已安装"
+        return 0
+    fi
+    if $PYTHON_CMD -m pip install jieba; then
+        print_success "jieba 安装成功"
+        return 0
+    fi
+    print_warning "jieba 安装失败，词云将回退到 N-gram 分词（质量降级，不影响 PPT 生成）"
+    return 0
+}
+
 show_help() {
     cat << EOF
 wjx-survey-ppt skill 环境安装脚本
@@ -207,6 +222,7 @@ main() {
     check_pip || exit 1
     install_renderer || exit 1
     verify_renderer || exit 1
+    install_jieba          # best-effort，失败不阻塞
     check_wjx_cli || true   # 不强制阻塞
 
     echo ""

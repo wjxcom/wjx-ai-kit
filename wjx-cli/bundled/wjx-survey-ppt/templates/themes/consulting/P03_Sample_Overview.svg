@@ -6,8 +6,8 @@
 
   <rect width="1280" height="720" fill="#FAFAFA"/>
 
-  <rect x="0" y="0" width="1280" height="80" fill="#1F1F1F"/>
-  <rect x="80" y="34" width="48" height="3" fill="#C04A3C"/>
+  <rect x="0" y="0" width="1280" height="80" fill="#0F172A"/>
+  <rect x="80" y="34" width="48" height="3" fill="#1E40AF"/>
   <text x="80" y="62" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="18" font-weight="500" fill="#A0A0A0" letter-spacing="3">
     SAMPLE OVERVIEW
   </text>
@@ -15,39 +15,39 @@
     03 / 10
   </text>
 
-  <text x="80" y="170" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="44" font-weight="700" fill="#1F1F1F">
+  <text x="80" y="170" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="44" font-weight="700" fill="#0F172A">
     {{TITLE}}
   </text>
-  <text x="80" y="210" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="20" fill="#6B6B6B">
+  <text x="80" y="210" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="20" fill="#475569">
     数据回收情况一览
   </text>
 
-  <line x1="80" y1="250" x2="1200" y2="250" stroke="#1F1F1F" stroke-opacity="0.12" stroke-width="1"/>
+  <line x1="80" y1="250" x2="1200" y2="250" stroke="#0F172A" stroke-opacity="0.12" stroke-width="1"/>
 
   <g transform="translate(80, 300)">
     <rect width="340" height="220" rx="8" fill="#FAFAFA" stroke="#E0E0E0"/>
-    <circle cx="50" cy="50" r="18" fill="#C04A3C" fill-opacity="0.12"/>
-    <circle cx="50" cy="50" r="6" fill="#C04A3C"/>
-    <text x="90" y="58" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="16" fill="#6B6B6B" letter-spacing="1">回收总量</text>
-    <text x="50" y="140" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="64" font-weight="800" fill="#1F1F1F">{{TOTAL}}</text>
+    <circle cx="50" cy="50" r="18" fill="#1E40AF" fill-opacity="0.12"/>
+    <circle cx="50" cy="50" r="6" fill="#1E40AF"/>
+    <text x="90" y="58" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="16" fill="#475569" letter-spacing="1">回收总量</text>
+    <text x="50" y="140" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="64" font-weight="800" fill="#0F172A">{{TOTAL}}</text>
     <text x="50" y="185" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="18" fill="#888888">份答卷</text>
   </g>
 
   <g transform="translate(470, 300)">
     <rect width="340" height="220" rx="8" fill="#FAFAFA" stroke="#E0E0E0"/>
-    <circle cx="50" cy="50" r="18" fill="#2F2F2F" fill-opacity="0.14"/>
-    <circle cx="50" cy="50" r="6" fill="#2F2F2F"/>
-    <text x="90" y="58" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="16" fill="#6B6B6B" letter-spacing="1">完成率</text>
-    <text x="50" y="140" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="64" font-weight="800" fill="#1F1F1F">{{COMPLETION_RATE}}<tspan font-size="36" fill="#2F2F2F">%</tspan></text>
+    <circle cx="50" cy="50" r="18" fill="#1E40AF" fill-opacity="0.14"/>
+    <circle cx="50" cy="50" r="6" fill="#1E40AF"/>
+    <text x="90" y="58" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="16" fill="#475569" letter-spacing="1">完成率</text>
+    <text x="50" y="140" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="64" font-weight="800" fill="#0F172A">{{COMPLETION_RATE}}<tspan font-size="36" fill="#1E40AF">%</tspan></text>
     <text x="50" y="185" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="18" fill="#888888">{{COMPLETED}} / {{TOTAL}}</text>
   </g>
 
   <g transform="translate(860, 300)">
     <rect width="340" height="220" rx="8" fill="#FAFAFA" stroke="#E0E0E0"/>
-    <circle cx="50" cy="50" r="18" fill="#4A6B5A" fill-opacity="0.16"/>
-    <circle cx="50" cy="50" r="6" fill="#4A6B5A"/>
-    <text x="90" y="58" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="16" fill="#6B6B6B" letter-spacing="1">平均答题时长</text>
-    <text x="50" y="140" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="64" font-weight="800" fill="#1F1F1F">{{AVG_TIME}}</text>
+    <circle cx="50" cy="50" r="18" fill="#0F766E" fill-opacity="0.16"/>
+    <circle cx="50" cy="50" r="6" fill="#0F766E"/>
+    <text x="90" y="58" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="16" fill="#475569" letter-spacing="1">平均答题时长</text>
+    <text x="50" y="140" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="64" font-weight="800" fill="#0F172A">{{AVG_TIME}}</text>
     <text x="50" y="185" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="18" fill="#888888">秒 / 人</text>
   </g>
 
