@@ -40,12 +40,16 @@ function copyDirSync(src, dest) {
  * @param options   - force: overwrite existing; silent: no stderr output
  */
 export function installSkill(targetDir, options = {}) {
-    const { force = false, silent = false } = options;
+    const { force = false, silent = false, rootSource } = options;
     const version = getVersion();
     const bundledDir = getBundledDir();
     if (!existsSync(bundledDir)) {
         const msg = "找不到 bundled 目录，安装可能不完整";
         return { status: "error", version, files: [], message: msg };
+    }
+    if (!silent) {
+        const suffix = rootSource ? ` (from: ${rootSource})` : "";
+        stderr.write(`Install root: ${targetDir}${suffix}\n`);
     }
     const agentSrc = join(bundledDir, "wjx-cli-expert.md");
     const skillSrc = join(bundledDir, "wjx-cli-use");
@@ -81,7 +85,7 @@ export function installSkill(targetDir, options = {}) {
  * Update existing skill files. Returns error if not installed yet.
  */
 export function updateSkill(targetDir, options = {}) {
-    const { silent = false } = options;
+    const { silent = false, rootSource } = options;
     const version = getVersion();
     const agentDest = join(targetDir, ".claude", "agents", "wjx-cli-expert.md");
     const skillDest = join(targetDir, "skills", "wjx-cli-use", "SKILL.md");
@@ -91,6 +95,6 @@ export function updateSkill(targetDir, options = {}) {
             stderr.write(`${msg}\n`);
         return { status: "error", version, files: [], message: msg };
     }
-    return installSkill(targetDir, { force: true, silent });
+    return installSkill(targetDir, { force: true, silent, rootSource });
 }
 //# sourceMappingURL=install-skill.js.map

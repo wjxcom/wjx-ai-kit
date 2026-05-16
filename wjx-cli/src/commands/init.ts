@@ -6,6 +6,7 @@ import { loadConfig, saveConfig, CONFIG_PATH } from "../lib/config.js";
 import { maskApiKey } from "../lib/mask.js";
 import { installSkill } from "../lib/install-skill.js";
 import { installPptSkill } from "../lib/install-ppt-skill.js";
+import { resolveInstallRoot } from "../lib/install-root.js";
 import type { WjxConfig } from "../lib/config.js";
 
 const DEFAULT_BASE_URL = "https://www.wjx.cn";
@@ -54,6 +55,7 @@ async function initWithArgs(opts: {
   corpId?: string;
   installSkill: boolean;
   installPptSkill?: boolean;
+  targetDir?: string;
 }): Promise<void> {
   const apiKey = opts.apiKey;
   const baseUrl = opts.baseUrl || DEFAULT_BASE_URL;
@@ -70,13 +72,15 @@ async function initWithArgs(opts: {
   saveAndReport(apiKey, baseUrl, corpId);
 
   if (opts.installSkill) {
-    const result = installSkill(process.cwd(), { force: true });
+    const { root, source } = resolveInstallRoot({ targetDir: opts.targetDir });
+    const result = installSkill(root, { force: true, rootSource: source });
     if (result.status === "error") {
       stderr.write(`技能安装失败: ${result.message}\n`);
     }
   }
   if (opts.installPptSkill) {
-    const result = installPptSkill(process.cwd(), { force: true });
+    const { root, source } = resolveInstallRoot({ targetDir: opts.targetDir });
+    const result = installPptSkill(root, { force: true, rootSource: source });
     if (result.status === "error") {
       stderr.write(`wjx-survey-ppt 技能安装失败: ${result.message}\n`);
     }
@@ -91,7 +95,7 @@ async function initWithArgs(opts: {
  *   2. 是否装 wjx-survey-ppt 技能（默认 N，opt-in，会触发 ~30MB pip 安装）
  * AI Agent 自动化走 `wjx init --api-key <key> [--install-ppt-skill]` 参数模式。
  */
-async function initInteractive(): Promise<void> {
+async function initInteractive(opts: { targetDir?: string } = {}): Promise<void> {
   const config = loadConfig();
   const currentApiKey = process.env.WJX_API_KEY || config?.apiKey || "";
   const currentBaseUrl = process.env.WJX_BASE_URL || config?.baseUrl || "";
@@ -145,7 +149,8 @@ async function initInteractive(): Promise<void> {
         "  AI Agent 用它来自动操作问卷星 [Y/n]: ",
     )).trim().toLowerCase();
     if (ans1 !== "n" && ans1 !== "no") {
-      const r = installSkill(process.cwd(), { force: true });
+      const { root, source } = resolveInstallRoot({ targetDir: opts.targetDir });
+      const r = installSkill(root, { force: true, rootSource: source });
       if (r.status === "error") stderr.write(`安装失败: ${r.message}\n`);
     } else {
       stderr.write("已跳过。后续可运行：wjx skill install\n");
@@ -159,7 +164,8 @@ async function initInteractive(): Promise<void> {
         "  适合需要把问卷数据自动出 PPT 报告的场景 [y/N]: ",
     )).trim().toLowerCase();
     if (ans2 === "y" || ans2 === "yes") {
-      const r = installPptSkill(process.cwd(), { force: true });
+      const { root, source } = resolveInstallRoot({ targetDir: opts.targetDir });
+      const r = installPptSkill(root, { force: true, rootSource: source });
       if (r.status === "error") stderr.write(`安装失败: ${r.message}\n`);
     } else {
       stderr.write("已跳过。后续可运行：wjx skill install-ppt\n");
@@ -177,11 +183,16 @@ export function registerInitCommands(program: Command): void {
     .option("--corp-id <id>", "Corp ID")
     .option("--no-install-skill", "跳过 wjx-cli-use 技能安装（仅参数模式生效）")
     .option("--install-ppt-skill", "同时安装 wjx-survey-ppt 技能（仅参数模式生效；触发 ~30MB pip 装包）")
+    .option(
+      "--target-dir <path>",
+      "技能安装根目录（不传时按 WJX_INSTALL_ROOT → 已知客户端环境变量 → cwd 解析）",
+    )
     .action(async (opts: {
       baseUrl?: string;
       corpId?: string;
       installSkill: boolean;
       installPptSkill?: boolean;
+      targetDir?: string;
     }, cmd: Command) => {
       // --api-key is a global option on the root program; read from parent
       const apiKey = cmd.parent?.opts().apiKey as string | undefined;
@@ -207,6 +218,6 @@ export function registerInitCommands(program: Command): void {
       }
 
       // 交互模式
-      await initInteractive();
+      await initInteractive({ targetDir: opts.targetDir });
     });
 }

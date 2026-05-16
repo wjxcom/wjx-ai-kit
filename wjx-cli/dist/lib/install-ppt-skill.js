@@ -95,7 +95,7 @@ function ensureJieba(pythonCmd, silent) {
  * Either step's failure does not abort the other; the result reports both.
  */
 export function installPptSkill(targetDir, options = {}) {
-    const { force = false, silent = false, skipPip = false } = options;
+    const { force = false, silent = false, skipPip = false, rootSource } = options;
     const skillSrc = getBundledSkillDir();
     const version = getSkillVersion(skillSrc);
     if (!existsSync(skillSrc)) {
@@ -106,6 +106,10 @@ export function installPptSkill(targetDir, options = {}) {
             pipInstalled: false,
             message: "找不到 bundled/wjx-survey-ppt 目录，wjx-cli 安装可能不完整",
         };
+    }
+    if (!silent) {
+        const suffix = rootSource ? ` (from: ${rootSource})` : "";
+        stderr.write(`Install root: ${targetDir}${suffix}\n`);
     }
     // ---------- Step 1: copy skill files ----------
     const skillDest = join(targetDir, "skills", "wjx-survey-ppt");
@@ -216,6 +220,7 @@ export function updatePptSkill(targetDir, options = {}) {
         force: true,
         silent: options.silent,
         skipPip: options.skipPip,
+        rootSource: options.rootSource,
     });
 }
 //# sourceMappingURL=install-ppt-skill.js.map

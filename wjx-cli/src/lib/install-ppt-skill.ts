@@ -3,6 +3,7 @@ import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { stderr } from "node:process";
 import { spawnSync } from "node:child_process";
+import type { InstallRootSource } from "./install-root.js";
 
 export interface InstallPptSkillOptions {
   /** Overwrite existing skill files. */
@@ -11,6 +12,8 @@ export interface InstallPptSkillOptions {
   silent?: boolean;
   /** Skip the pip install step (skill files only). */
   skipPip?: boolean;
+  /** 由 resolveInstallRoot 计算出的来源标签，用于打印 "Install root: X (from: Y)" */
+  rootSource?: InstallRootSource;
 }
 
 export interface InstallPptSkillResult {
@@ -119,7 +122,7 @@ export function installPptSkill(
   targetDir: string,
   options: InstallPptSkillOptions = {},
 ): InstallPptSkillResult {
-  const { force = false, silent = false, skipPip = false } = options;
+  const { force = false, silent = false, skipPip = false, rootSource } = options;
   const skillSrc = getBundledSkillDir();
   const version = getSkillVersion(skillSrc);
 
@@ -131,6 +134,11 @@ export function installPptSkill(
       pipInstalled: false,
       message: "找不到 bundled/wjx-survey-ppt 目录，wjx-cli 安装可能不完整",
     };
+  }
+
+  if (!silent) {
+    const suffix = rootSource ? ` (from: ${rootSource})` : "";
+    stderr.write(`Install root: ${targetDir}${suffix}\n`);
   }
 
   // ---------- Step 1: copy skill files ----------
@@ -242,5 +250,6 @@ export function updatePptSkill(
     force: true,
     silent: options.silent,
     skipPip: options.skipPip,
+    rootSource: options.rootSource,
   });
 }

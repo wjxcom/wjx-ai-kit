@@ -3,10 +3,13 @@ import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { stderr } from "node:process";
 import { createRequire } from "node:module";
+import type { InstallRootSource } from "./install-root.js";
 
 export interface InstallSkillOptions {
   force?: boolean;
   silent?: boolean;
+  /** 由 resolveInstallRoot 计算出的来源标签，用于打印 "Install root: X (from: Y)" */
+  rootSource?: InstallRootSource;
 }
 
 export interface InstallSkillResult {
@@ -59,13 +62,18 @@ export function installSkill(
   targetDir: string,
   options: InstallSkillOptions = {},
 ): InstallSkillResult {
-  const { force = false, silent = false } = options;
+  const { force = false, silent = false, rootSource } = options;
   const version = getVersion();
   const bundledDir = getBundledDir();
 
   if (!existsSync(bundledDir)) {
     const msg = "找不到 bundled 目录，安装可能不完整";
     return { status: "error", version, files: [], message: msg };
+  }
+
+  if (!silent) {
+    const suffix = rootSource ? ` (from: ${rootSource})` : "";
+    stderr.write(`Install root: ${targetDir}${suffix}\n`);
   }
 
   const agentSrc = join(bundledDir, "wjx-cli-expert.md");
@@ -113,7 +121,7 @@ export function updateSkill(
   targetDir: string,
   options: Omit<InstallSkillOptions, "force"> = {},
 ): InstallSkillResult {
-  const { silent = false } = options;
+  const { silent = false, rootSource } = options;
   const version = getVersion();
   const agentDest = join(targetDir, ".claude", "agents", "wjx-cli-expert.md");
   const skillDest = join(targetDir, "skills", "wjx-cli-use", "SKILL.md");
@@ -124,5 +132,5 @@ export function updateSkill(
     return { status: "error", version, files: [], message: msg };
   }
 
-  return installSkill(targetDir, { force: true, silent });
+  return installSkill(targetDir, { force: true, silent, rootSource });
 }
