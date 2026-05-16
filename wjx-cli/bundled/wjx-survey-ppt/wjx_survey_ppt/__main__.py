@@ -194,12 +194,11 @@ def main() -> int:
             if (
                 refreshed
                 and _outline_is_stale_after_refresh(outline, stale_signature, data_signature(data))
-                and not args.skip_ai_check
             ):
                 print("错误：最终生成前已刷新到最新数据，但 outline.json 的 AI 解读基于旧数据。", file=sys.stderr)
                 print(f"  · 最新 data.json 已覆盖到 {data_path}", file=sys.stderr)
                 print(f"  · 请基于最新 data.json 重新生成/更新 outline.json 后再运行 final", file=sys.stderr)
-                print(f"  · 若已人工确认旧解读仍适用，可加 --skip-ai-check 强制生成", file=sys.stderr)
+                print(f"  · --skip-ai-check 只跳过完整度检查，不能跳过数据新鲜度保护", file=sys.stderr)
                 return 4
             # === Invariant：Stage final 必须有 AI 解读注入 ===
             if not args.skip_ai_check:

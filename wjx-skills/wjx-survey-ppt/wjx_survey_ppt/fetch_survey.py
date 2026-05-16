@@ -560,7 +560,7 @@ def _aggregate_from_query(
         d = _run_wjx(
             [
                 "response", "query", "--vid", str(vid),
-                "--page_index", str(page), "--page_size", str(page_size),
+                "--valid", "--page_index", str(page), "--page_size", str(page_size),
             ]
         )
         answers = d.get("answers", {}) or {}

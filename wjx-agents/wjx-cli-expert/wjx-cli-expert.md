@@ -105,7 +105,7 @@ wjx doctor
 ### 查询数据
 
 1. `wjx response report --vid N` — 统计概览（首选）
-2. `wjx response query --vid N` — 明细数据，**也是验证实际入库条数的权威方式**
+2. `wjx response query --vid N` — 明细数据，用于核对实际入库记录；PPT 样本量仍以 `survey.answer_valid` 为有效答卷口径
 3. `wjx response download --vid N` — 批量导出
 
 ### 分析数据

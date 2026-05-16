@@ -72,7 +72,20 @@ class FetchSurveyAccuracyTests(unittest.TestCase):
         self.assertEqual(data["response"]["total"], 1)
         dist = data["questions"][0]["distribution"]
         self.assertEqual(sum(item["count"] for item in dist), 1)
-        self.assertIn(["response", "query", "--vid", "123", "--page_index", "1", "--page_size", "100"], calls)
+        self.assertIn(
+            [
+                "response",
+                "query",
+                "--vid",
+                "123",
+                "--valid",
+                "--page_index",
+                "1",
+                "--page_size",
+                "100",
+            ],
+            calls,
+        )
 
 
 class FinalStageFreshnessTests(unittest.TestCase):
@@ -199,6 +212,67 @@ class FinalStageFreshnessTests(unittest.TestCase):
             build_mock.assert_not_called()
             saved = json.loads((workdir / "data.json").read_text(encoding="utf-8"))
             self.assertEqual(saved["response"]["total"], 1)
+
+    def test_final_stage_stale_outline_block_ignores_skip_ai_check(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            workdir = Path(tmp)
+            stale_data = {
+                "survey": {"vid": "123", "title": "Old"},
+                "response": {"total": 10, "completed": 10, "avg_time": None},
+                "questions": [],
+                "analytics": {},
+                "nps_cross_tab": {},
+            }
+            fresh_data = {
+                "survey": {"vid": "123", "title": "Fresh"},
+                "response": {"total": 1, "completed": 1, "avg_time": None},
+                "questions": [],
+                "analytics": {},
+                "nps_cross_tab": {},
+            }
+            (workdir / "data.json").write_text(
+                json.dumps(stale_data, ensure_ascii=False),
+                encoding="utf-8",
+            )
+            (workdir / "outline.json").write_text(
+                json.dumps(
+                    {
+                        "theme": "business",
+                        "_data_signature": data_signature(stale_data),
+                        "pages": [
+                            {
+                                "name": "P02_Executive_Summary",
+                                "type": "exec_summary",
+                                "include": True,
+                                "ai_findings": ["old facts"],
+                            }
+                        ],
+                    },
+                    ensure_ascii=False,
+                ),
+                encoding="utf-8",
+            )
+
+            argv = [
+                "wjx_survey_ppt",
+                "--workdir",
+                str(workdir),
+                "--stage",
+                "final",
+                "--plan-only",
+                "--skip-ai-check",
+            ]
+            with redirect_stdout(io.StringIO()), patch.object(
+                sys, "argv", argv
+            ), patch.object(
+                cli, "fetch_from_vid", return_value=fresh_data
+            ), patch.object(
+                cli, "build_svg_project"
+            ) as build_mock:
+                exit_code = cli.main()
+
+            self.assertEqual(exit_code, 4)
+            build_mock.assert_not_called()
 
     def test_final_stage_blocks_legacy_ai_outline_without_signature_when_data_changes(self):
         with tempfile.TemporaryDirectory() as tmp:

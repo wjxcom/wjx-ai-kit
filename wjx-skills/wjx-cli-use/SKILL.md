@@ -80,7 +80,7 @@ https://www.wjx.cn/weixinlogin.aspx?redirecturl=%2Fnewwjx%2Fmanage%2Fuserinfo.as
      失败 ≥ 10% 时主动列出 errormsg 分布 + 建议（换 IP / 调"重复提交"设置）。
 ```
 
-**绝不口述未核实的数字**。如果不确定，跑 `wjx response query --vid <vid>` 验证实际入库条数。`response query` 返回的 `total_count` 才是权威数字。
+**绝不口述未核实的数字**。如果不确定，跑 `wjx response query --vid <vid>` 核对实际入库明细；生成 PPT 报告时，样本量仍以 `survey.answer_valid` 作为有效答卷数权威口径。
 
 **常见拦截原因**（要如实告诉用户）：
 - 同 IP / 同设备短时间多次提交被风控
