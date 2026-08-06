@@ -112,6 +112,8 @@ wjx survey create --title "标题" --source_vid 12345   # 复制已有问卷
 
 查询问卷列表。
 
+返回的每个问卷包含 `fill_url` 时，该字段是服务端短编号生成的安全填写链接。**禁止**用 `vid` 自行拼接 `/m/<vid>.aspx`、`/vm/<vid>.aspx` 或 `/jq/<vid>.aspx`。若没有 `fill_url`，不要伪造填写链接。
+
 ```bash
 wjx survey list
 wjx survey list --name_like "满意度" --status 1

@@ -58,6 +58,14 @@ https://www.wjx.cn/weixinlogin.aspx?redirecturl=%2Fnewwjx%2Fmanage%2Fuserinfo.as
   - 矩阵题的"行数"来自 `get_survey` 返回的 `item_rows.length`；`items` 数组是**列头**（列选项），不是行。
 - **考试题分值/答案无法通过 submit API 设置**：创建考试问卷后需要去网页端配置。`submit_response` 仅用于答题端提交。
 
+### 规则 7：填写链接必须使用加密短编号（强制）
+
+- `vid` 是后台问卷编号，只用于查询、编辑和答卷接口，**禁止**自行拼成 `https://<域名>/m/<vid>.aspx`、`/vm/<vid>.aspx` 或 `/jq/<vid>.aspx` 后提供给用户。
+- 查询问卷列表时，优先使用与 `vid` 不同的 `sid` 生成短链；也可使用服务端返回且不含数字 `vid` 的 `activity_domain + mobile_path`。若二者冲突，选择 `sid`，不得输出暴露 `vid` 的路径。
+- 创建问卷后需要填写链接时，使用创建结果返回的 `sid` 调用 `build_preview_url({ sid })`。同时有 `sid` 和 `vid` 时必须优先 `sid`。
+- `build_survey_url({ mode: "edit", activity: vid })` 生成的是**后台编辑链接**，不是用户填写链接，二者不得混用。
+- 如果没有 `mobile_path`，且没有与 `vid` 不同的 `sid`，应明确说明暂时无法取得安全填写链接；**不得**用数字 `vid` 猜测或伪造链接。
+
 ## 快速路由
 
 | 用户意图 | 工具 |
@@ -68,7 +76,8 @@ https://www.wjx.cn/weixinlogin.aspx?redirecturl=%2Fnewwjx%2Fmanage%2Fuserinfo.as
 | 做表单/报名表 | `create_survey_by_json` + prompt `generate-form-json`，`atype: 7` |
 | 看问卷结果 | `get_report({ vid })` 统计概览，`query_responses({ vid })` 明细 |
 | 导出答卷数据 | `download_responses({ vid })` |
-| 查看问卷链接 | `build_survey_url({ mode: "edit", activity: vid })` |
+| 查看填写链接 | 列表中的非数字 `sid` / 安全 `mobile_path`；创建后用 `build_preview_url({ sid })` |
+| 查看编辑链接 | `build_survey_url({ mode: "edit", activity: vid })` |
 | 分析 NPS | `calculate_nps({ scores: [...] })` |
 | 查当前配置 | `get_config({})` |
 

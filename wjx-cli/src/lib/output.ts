@@ -3,6 +3,53 @@ export interface OutputOpts {
   table?: boolean;
 }
 
+/** Add respondent-facing URLs without ever exposing a numeric vid as the path. */
+export function enrichSurveyListOutput(data: unknown): unknown {
+  if (!data || typeof data !== "object") return data;
+
+  const response = data as Record<string, unknown>;
+  const payload = response.data;
+  if (!payload || typeof payload !== "object" || Array.isArray(payload)) return data;
+
+  const payloadRecord = payload as Record<string, unknown>;
+  const key = ["activitys", "activities"].find((candidate) => {
+    const value = payloadRecord[candidate];
+    return value && typeof value === "object" && !Array.isArray(value);
+  });
+  if (!key) return data;
+
+  const activities = payloadRecord[key] as Record<string, unknown>;
+  const enriched = Object.fromEntries(Object.entries(activities).map(([id, value]) => {
+    if (!value || typeof value !== "object" || Array.isArray(value)) return [id, value];
+    const item = value as Record<string, unknown>;
+    const domain = typeof item.activity_domain === "string"
+      ? item.activity_domain.replace(/\/$/, "")
+      : "";
+    const mobilePath = typeof item.mobile_path === "string" ? item.mobile_path.trim() : "";
+    const sid = typeof item.sid === "string" ? item.sid.trim() : "";
+    const vid = item.vid === undefined ? "" : String(item.vid);
+
+    let fillUrl: string | undefined;
+    if (domain && sid && sid !== vid) {
+      fillUrl = `${domain}/vm/${encodeURIComponent(sid)}.aspx`;
+    } else if (domain && mobilePath && (!vid || !mobilePath.includes(`/${vid}.`))) {
+      fillUrl = mobilePath.startsWith("http://") || mobilePath.startsWith("https://")
+        ? mobilePath
+        : `${domain}/${mobilePath.replace(/^\/+/, "")}`;
+    }
+
+    return [id, fillUrl ? { ...item, fill_url: fillUrl } : { ...item }];
+  }));
+
+  return {
+    ...response,
+    data: {
+      ...payloadRecord,
+      [key]: enriched,
+    },
+  };
+}
+
 export function formatOutput(data: unknown, opts: OutputOpts): void {
   if (opts.table) {
     printTable(data);
@@ -47,7 +94,7 @@ function printTable(data: unknown): void {
         if (arr.length > 0 && typeof arr[0] === "object") {
           const simplified = arr.map((item) => {
             const r = item as Record<string, unknown>;
-            return { vid: r.vid, title: r.title, status: r.status, answers: r.answer_valid, created: r.create_date, creator: r.creater };
+            return { vid: r.vid, title: r.title, status: r.status, answers: r.answer_valid, created: r.create_date, creator: r.creater, fill_url: r.fill_url };
           });
           console.table(simplified);
           return;

@@ -210,13 +210,15 @@
 | `editmode` | number | 否 | 编辑模式 |
 | `runprotect` | number | 否 | 运行保护标志 |
 
-### build_preview_url — 问卷预览链接
+### build_preview_url — 问卷预览/填写链接
 
 | 参数 | 类型 | 必填 | 说明 |
 |------|------|------|------|
-| `vid` | number | 是 | 问卷编号 |
+| `sid` | string | 二选一，优先 | 问卷加密短编号（创建/列表接口返回） |
+| `vid` | number | 二选一 | 问卷编号；仅在确实没有 sid 时使用 |
+| `source` | string | 否 | 来源追踪标识 |
 
-返回问卷的预览 URL，可在浏览器中查看问卷效果。
+返回问卷的预览/填写 URL。面向答卷人展示时必须优先传 `sid`；禁止自行用数字 `vid` 拼接 `/m/<vid>.aspx`、`/vm/<vid>.aspx` 或 `/jq/<vid>.aspx`。
 
 ---
 

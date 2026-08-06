@@ -92,6 +92,13 @@ https://www.wjx.cn/weixinlogin.aspx?redirecturl=%2Fnewwjx%2Fmanage%2Fuserinfo.as
   - 矩阵多选 3 行：`7$1!1|2,2!3,3!1|4`
   - 矩阵量表 3 行：`8$1!5,2!4,3!3`
 
+### 规则 8：填写链接必须使用加密短编号（强制）
+
+- `vid` 是后台问卷编号，**禁止**自行拼成 `https://<域名>/m/<vid>.aspx`、`/vm/<vid>.aspx` 或 `/jq/<vid>.aspx` 后提供给用户。
+- `wjx survey list` 返回的 `fill_url` 是填写链接的唯一首选；CLI 优先使用与 `vid` 不同的 `sid`，并拒绝暴露数字 `vid` 的路径。
+- `wjx survey url --mode edit --activity <vid>` 生成的是**后台编辑链接**，不是填写链接。
+- 如果列表结果没有 `fill_url`，应说明暂时无法取得安全填写链接，**不得**用数字 `vid` 猜测或伪造。
+
 ## 快速路由
 
 | 用户意图 | 命令 |
@@ -104,7 +111,8 @@ https://www.wjx.cn/weixinlogin.aspx?redirecturl=%2Fnewwjx%2Fmanage%2Fuserinfo.as
 | 导出答卷数据 | `wjx response download --vid <vid>` |
 | 分析 NPS | `wjx analytics nps --scores "[9,10,7,3]"` |
 | 导入联系人 | `wjx contacts add --users '[...]'`（需 `WJX_CORP_ID`） |
-| 查看问卷链接 | `wjx survey url --mode edit --activity <vid>` |
+| 查看填写链接 | `wjx survey list` 返回的 `fill_url` |
+| 查看编辑链接 | `wjx survey url --mode edit --activity <vid>` |
 
 ## 安装与配置
 
