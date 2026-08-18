@@ -75,7 +75,7 @@ wjx survey list --name_like "满意度" --status 1
 | `--atype <n>` | 类型筛选：1=调查, 2=测评, 3=投票, 6=考试, 7=表单 |
 | `--name_like <s>` | 名称模糊搜索（最多 10 字符） |
 
-**--stdin 可用的额外参数**: `sort`(0-5 排序), `creater`(子账号筛选), `folder`(文件夹), `is_xingbiao`(星标), `query_all`(全部问卷), `verify_status`(审核状态), `time_type`(0=创建/1=开始/2=结束), `begin_time`/`end_time`(毫秒时间戳)
+**--stdin 可用的额外参数**: `sort`(0-5 排序), `creater`(子账号筛选), `folder`(文件夹), `is_xingbiao`(星标), `query_all`(全部问卷), `verify_status`(审核状态), `time_type`(0=不按时间查询（默认）/1=按问卷开始时间/2=按问卷创建时间), `begin_time`/`end_time`(毫秒时间戳)
 
 ## wjx survey get
 
