@@ -106,6 +106,14 @@ https://www.wjx.cn/weixinlogin.aspx?redirecturl=%2Fnewwjx%2Fmanage%2Fuserinfo.as
 - `--query_all` 只表示查询范围包含子账号问卷，**不会**自动获取全部分页。
 - 如果响应缺少 `total_count`，不要口述未核实的总数；逐页查询到空页后计算实际数量，或明确说明当前无法确认总数。详细响应结构见 [references/survey-commands.md](references/survey-commands.md)。
 
+### 规则 10：答卷查询必须报告总数并按需取全（强制）
+
+- 调用 `wjx response query` 时保留默认 JSON 输出，读取 `data.valid`、`data.page_index`、`data.page_size`、`data.total_count` 和 `data.answers`；`answers` 只包含当前页。
+- 用户只要求“查看答卷”时可以先展示一页，但必须同时说明当前查询匹配的答卷总数、当前页和本页数量，例如：「共 N 份答卷，当前展示第 X/Y 页的 M 份。」不得把单页结果表述为全部答卷。
+- 用户要求全部答卷，或任务需要完整明细进行聚合、核对、分析时，使用不超过 50 的 `page_size`，保持 `valid`、时间、条件、去重和排序参数不变，逐页查询并核对累计数量等于 `total_count`。
+- 将 `response query` 返回的 `total_count` 作为当前筛选条件下的结果总数。`wjx response count` 只接受 `vid`，不得用它覆盖带时间、条件、答卷 ID、自定义参数或去重条件的查询总数；不要用 `join_times` 代替分页所需的 `total_count`。
+- 如果响应缺少 `total_count`，不要口述未核实的总数；逐页查询到空页后计算实际数量，或明确说明当前无法确认总数。生成报告时的有效样本量仍按规则 7 使用 `survey.answer_valid`。详细响应结构见 [references/response-commands.md](references/response-commands.md)。
+
 ## 快速路由
 
 | 用户意图 | 命令 |
