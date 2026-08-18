@@ -1,6 +1,6 @@
 ---
 name: wjx-cli-use
-description: "Guide for using wjx-cli (Wenjuanxing CLI) to create surveys, query responses, and analyze data. Use when the user mentions: 问卷, 调查, 收集, 表单, 投票, 考试, 测评, 满意度, NPS, 问卷星, wjx, survey, questionnaire — or wants to create surveys, view responses, export data, analyze NPS/CSAT, manage contacts/departments/sub-accounts. Covers all 67 subcommands across 15 modules."
+description: "Guide for using wjx-cli (Wenjuanxing CLI) to create surveys, query responses, and analyze data. Use when the user mentions: 问卷, 调查, 收集, 表单, 投票, 考试, 测评, 满意度, NPS, 问卷星, wjx, survey, questionnaire, or wants to create surveys, view responses, export data, analyze NPS/CSAT, or manage contacts, departments, and sub-accounts."
 ---
 
 # wjx-cli 使用指南
@@ -13,12 +13,11 @@ wjx-cli 是问卷星 OpenAPI 的命令行工具。命令格式：`wjx <模块> <
 
 ### 规则 0：创建问卷只用 `create-by-json`（强制）
 
-**禁止使用 `wjx survey create-by-text`**——除非用户用"DSL"、"文本格式"等字眼明确要求。原因：
-- DSL 文本格式覆盖题型不全（70+ 题型 vs DSL 27 种）
-- DSL 容易被 shell 转义破坏（PowerShell 的 `$1/$2` 会被识别为变量丢失）
-- `create-by-text` 已弃用，CLI 入口会打印弃用警告
+创建任何新问卷都只使用 `wjx survey create-by-json --file <path>.jsonl`。不要使用已弃用的 `create-by-text`，也不要使用兼容命令 `create --questions`。
 
-正确做法：把题目写成 JSONL（每行一个 JSON 对象，首行 `qtype:"问卷基础信息"` 元数据），调用 `wjx survey create-by-json --file <path>.jsonl`。所有题型、投票、考试、表单都走这一条路径。
+先运行 `wjx survey jsonl-template --type <问卷类型> --raw` 获取当前 CLI 可接受的骨架，再编辑 JSONL。每个非空行必须是一个完整 JSON 对象；首行必须是 `{"qtype":"问卷基础信息","title":"...","atype":1}`，后续题目使用中文字符串字段 `qtype` 以及 `title`、`select`、`rowtitle` 等字段。
+
+不要把旧接口的 `_meta`、`q_type`、`q_subtype`、`q_title`、`items` 结构传给 `create-by-json`；CLI 会将其判为输入错误。
 
 ### 规则 1：一个需求 = 一个问卷
 
@@ -26,11 +25,11 @@ wjx-cli 是问卷星 OpenAPI 的命令行工具。命令格式：`wjx <模块> <
 
 ### 规则 2：问卷类型 ≠ 题目类型
 
-"投票/考试/调查"是**问卷类型**（`--type` 参数）。JSONL 创建投票时使用 `qtype:"投票单选"` / `qtype:"投票多选"`，并显式传 `--type 3`；只有旧 DSL 文本格式才使用普通 `[单选题]` / `[多选题]`，不存在 `[投票单选题]` 标签。
+"投票/考试/调查"是**问卷类型**（`--type` 参数）。JSONL 创建投票时使用 `qtype:"投票单选"` / `qtype:"投票多选"`，并显式传 `--type 3`；考试使用 `qtype:"考试单选"`、`qtype:"考试多选"` 等考试题型，并显式传 `--type 6`。
 
 ### 规则 3：不支持的题型要明确告知
 
-签名题（用 `[绘图题]` 替代）、地区题（用 `[多级下拉题]` 或网页端添加）、NPS 专用题（用 `[量表题]` + `0~10`）不在 DSL 支持范围内。告知用户替代方案，继续创建其他题目，**不要**反复尝试或拆分多个问卷。
+只使用 [references/question-types.md](references/question-types.md) 列出的 JSONL `qtype`，不要自行发明题型名。地区题使用 `qtype:"多级下拉"` 并提供 `leveldata`，NPS 使用 `qtype:"NPS量表"` 或 `qtype:"量表题"` 加 `0` 到 `10` 的 `select`。若当前 JSONL 格式确实无法表达用户要求，明确说明限制和替代方案，继续创建其余题目，**不要**反复尝试或拆分多个问卷。
 
 ### 规则 4：面向用户说自然语言，不说 CLI 命令
 
@@ -183,7 +182,7 @@ wjx doctor
 
 | 模块 | 命令 | 说明 |
 |------|------|------|
-| `survey` | list, get, create, create-by-text, create-by-json, delete, status, settings, update-settings, upload, export-text, url | 问卷增删改查与配置 |
+| `survey` | list, get, create-by-json, jsonl-template, delete, status, settings, update-settings, upload, export-text, url | 问卷增删改查与配置 |
 | `response` | query, realtime, download, submit, modify, clear, report, count | 答卷数据操作 |
 | `contacts` | query, add, delete | 联系人管理（需 WJX_CORP_ID） |
 | `department` | list, add, modify, delete | 部门管理 |
@@ -201,18 +200,24 @@ wjx doctor
 > **重要**：必须执行 `wjx survey create-by-json` 命令来创建问卷。只生成 JSONL 文本而不执行命令，问卷不会被创建到问卷星平台上。
 
 ```bash
+wjx survey jsonl-template --type 1 --raw > survey.jsonl
+# 编辑 survey.jsonl 后执行
 wjx survey create-by-json --file survey.jsonl
-# 或直接传字符串
-wjx survey create-by-json --jsonl "$(cat survey.jsonl)"
 ```
 
-JSONL 每行一道题（首行可放 `{"_meta":{"title":"...","description":"..."}}`），字段命名见 [references/question-types.md](references/question-types.md) 的 q_type/q_subtype 映射表，覆盖 70+ 题型（含矩阵/比重/滑块/文件上传/排序）。题目 `title` 只写正文，不写题目类型；表格组合标准写法为 `rowtitle + types + selects`，投票题标准写法为 `qtype:"投票单选"` / `qtype:"投票多选"` + `select`。
+JSONL 每个非空行放一个 JSON 对象，且首行必须是问卷基础信息。例如：
+
+```jsonl
+{"qtype":"问卷基础信息","title":"客户满意度调查","introduction":"感谢您的参与","atype":1}
+{"qtype":"单选","title":"您对本次服务是否满意？","select":["满意","一般","不满意"]}
+{"qtype":"简答题","title":"您还有什么建议？"}
+```
+
+字段命名和可用中文 `qtype` 见 [references/question-types.md](references/question-types.md)。题目 `title` 只写正文；普通选择题使用 `select`，矩阵题使用 `rowtitle + select`，表格组合使用 `rowtitle + types + selects`。投票题使用 `qtype:"投票单选"` / `qtype:"投票多选"` + `select`。
 
 问卷类型：`--type 1` 调查（默认），`3` 投票，`6` 考试，`7` 表单。
 
-**考试问卷注意**：正确答案和每题分值**无法**通过 API 设置。创建后应提供编辑链接 `wjx survey url --mode edit --activity <vid>`，指引用户在网页端配置。
-
-> **已弃用命令**：`wjx survey create-by-text`（DSL 文本）和 `wjx survey create --questions`（老 JSON 数组）仅为兼容保留，新项目一律使用 `create-by-json`。DSL 语法仍可见 [references/dsl-syntax.md](references/dsl-syntax.md) 供历史代码参考。
+**考试问卷注意**：先运行 `wjx survey jsonl-template --type 6 --raw`，按模板使用 `考试单选`、`考试多选`、`考试判断` 等 `qtype`；用 `correctselect` 和 `quizscore` 设置正确答案与分值。需要模板未覆盖的高级考试设置时，再提供编辑链接并指引用户在网页端补充。
 
 ### 答卷与分析
 
@@ -231,15 +236,14 @@ JSONL 每行一道题（首行可放 `{"_meta":{"title":"...","description":"...
 | `vid is required` | 未指定问卷 ID | 先 `wjx survey list` 获取 vid |
 | `Corp ID is required` | 通讯录操作需企业 ID | `wjx init` 配置 `WJX_CORP_ID` |
 | `Network Error` / 超时 | 网络不通或 base_url 错误 | `wjx doctor` 检查，`--dry-run` 预览 |
-| 创建问卷题目丢失 | DSL 格式错误 | 检查题号 + [题型标签]，选项各占一行 |
+| `qtype` 不识别 / 字段名错误 | 混用了旧接口字段或题型名称无效 | 重新运行 `wjx survey jsonl-template --type <n> --raw`，改用中文 `qtype` 和 `title`/`select` 等 JSONL 字段 |
 
 ## 参考文件（按需读取）
 
-- [DSL 语法](references/dsl-syntax.md) — 旧 `create-by-text` 的 DSL 格式（已弃用，仅供历史代码参考）
-- [问卷命令](references/survey-commands.md) — survey 模块全部子命令参数、JSON 创建格式、设置
+- [问卷命令](references/survey-commands.md) — survey 模块常用子命令参数、JSONL 创建格式、设置
 - [答卷命令](references/response-commands.md) — 查询筛选、submitdata 格式、下载选项
 - [通讯录命令](references/contacts-commands.md) — 联系人、部门、管理员、标签、子账号、SSO
 - [分析命令](references/analytics-commands.md) — NPS/CSAT/CES 公式、异常检测、数据解码
-- [题型编码](references/question-types.md) — 完整 q_type/q_subtype 映射表
+- [JSONL 题型](references/question-types.md) — `create-by-json` 的字段格式、中文 `qtype` 与示例
 - [计算公式](references/formula-helper.md) — 问卷星计算公式与Excel函数功能指南，帮助AI在问卷中正确编写计算公式。涵盖题目引用、数组写法、赋值判断逻辑、各题型的推送数据格式、函数参考（日期时间/数学计算/文本合并/条件判断/逻辑/查找统计）及实战案例。
 - [安装 Node.js](references/install-nodejs.md) — 各平台 Node.js 安装方式
