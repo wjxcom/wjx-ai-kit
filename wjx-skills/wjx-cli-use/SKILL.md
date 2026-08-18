@@ -98,6 +98,14 @@ https://www.wjx.cn/weixinlogin.aspx?redirecturl=%2Fnewwjx%2Fmanage%2Fuserinfo.as
 - `wjx survey url --mode edit --activity <vid>` 生成的是**后台编辑链接**，不是填写链接。
 - 如果列表结果没有 `fill_url`，应说明暂时无法取得安全填写链接，**不得**用数字 `vid` 猜测或伪造。
 
+### 规则 9：问卷列表必须报告总数和分页范围（强制）
+
+- 调用 `wjx survey list` 时保留默认 JSON 输出，读取 `data.page_index`、`data.page_size`、`data.total_count` 和 `data.activitys`。**不要使用 `--table`**，表格输出会隐藏总数和分页元数据。
+- 用户只要求“查看问卷列表”时可以先展示一页，但必须同时说明匹配问卷总数、当前页和本页数量，例如：「共 N 份问卷，当前展示第 X/Y 页的 M 份。」不得把单页结果表述为全部问卷。
+- 用户要求“全部问卷”或任务需要完整集合时，保持筛选和排序条件不变，根据 `total_count` 逐页查询，直到实际收集数量与总数一致；未取完前不得声称已列出全部。
+- `--query_all` 只表示查询范围包含子账号问卷，**不会**自动获取全部分页。
+- 如果响应缺少 `total_count`，不要口述未核实的总数；逐页查询到空页后计算实际数量，或明确说明当前无法确认总数。详细响应结构见 [references/survey-commands.md](references/survey-commands.md)。
+
 ## 快速路由
 
 | 用户意图 | 命令 |

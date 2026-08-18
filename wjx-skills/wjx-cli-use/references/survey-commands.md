@@ -69,13 +69,41 @@ wjx survey list --name_like "满意度" --status 1
 
 | Flag | 说明 |
 |------|------|
-| `--page <n>` | 页码 |
-| `--page_size <n>` | 每页数量 |
+| `--page <n>` | 页码（默认 1） |
+| `--page_size <n>` | 每页数量（默认 10） |
 | `--status <n>` | 状态筛选：0=未发布, 1=已发布, 2=已暂停, 3=已删除, 5=被审核 |
 | `--atype <n>` | 类型筛选：1=调查, 2=测评, 3=投票, 6=考试, 7=表单 |
 | `--name_like <s>` | 名称模糊搜索（最多 10 字符） |
 
-**--stdin 可用的额外参数**: `sort`(0-5 排序), `creater`(子账号筛选), `folder`(文件夹), `is_xingbiao`(星标), `query_all`(全部问卷), `verify_status`(审核状态), `time_type`(0=不按时间查询（默认）/1=按问卷开始时间/2=按问卷创建时间), `begin_time`/`end_time`(毫秒时间戳)
+**--stdin 可用的额外参数**: `sort`(0-5 排序), `creater`(子账号筛选), `folder`(文件夹), `is_xingbiao`(星标), `query_all`(包含子账号问卷，仍然分页), `verify_status`(审核状态), `time_type`(0=不按时间查询（默认）/1=按问卷开始时间/2=按问卷创建时间), `begin_time`/`end_time`(毫秒时间戳)
+
+### 分页响应与 AI 处理规则
+
+成功响应的分页结构如下，`activitys` 是以问卷编号为键的对象：
+
+```json
+{
+  "result": true,
+  "data": {
+    "page_index": 1,
+    "page_size": 10,
+    "total_count": 23,
+    "sort": 1,
+    "activitys": {
+      "12345": {
+        "vid": 12345,
+        "title": "示例问卷"
+      }
+    }
+  }
+}
+```
+
+- 将 `total_count` 作为当前筛选条件下的问卷总数，将 `Object.keys(activitys).length` 作为本页实际数量。
+- 普通列表请求可以只展示当前页，但必须报告总数和页码：总页数为 `Math.ceil(total_count / page_size)`。
+- 用户要求全部结果时，保持所有筛选和排序参数不变，查询第 1 页到总页数，并核对累计数量等于 `total_count`。
+- 不要把 `--query_all` 当作自动翻页开关；它只扩大账号查询范围。
+- 不要为问卷列表使用 `--table`，该模式只展示问卷行，不显示 `total_count`、`page_index` 或 `page_size`。
 
 ## wjx survey get
 
