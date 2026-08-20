@@ -7,24 +7,24 @@
 
 ## wjx survey create-by-json
 
-用 JSONL 格式创建问卷（**唯一推荐方式**，覆盖 70+ 题型）。每行一道题，首行可选放元数据 `{"_meta":{...}}`。
+用 JSONL 格式创建问卷（**唯一使用的创建方式**，覆盖 70+ 题型）。每个非空行是一个完整 JSON 对象，首行必须是 `qtype` 为 `问卷基础信息` 的元数据。
 
 ```bash
+wjx survey jsonl-template --type 1 --raw > survey.jsonl
+# 编辑 survey.jsonl 后创建
 wjx survey create-by-json --file survey.jsonl
 wjx survey create-by-json --file survey.jsonl --type 6 --publish
-wjx survey create-by-json --jsonl '{"_meta":{"title":"标题"}}
-{"q_index":1,"q_type":3,"q_subtype":3,"q_title":"性别","is_requir":true,"items":[{"q_index":1,"item_index":1,"item_title":"男"},{"q_index":1,"item_index":2,"item_title":"女"}]}'
 wjx survey create-by-json --file survey.jsonl --dry-run    # 预览解析结果
-cat survey.jsonl | wjx survey create-by-json --stdin
 ```
 
 | Flag | 必填 | 说明 |
 |------|------|------|
-| `--jsonl <s>` | 三选一 | JSONL 字符串内容 |
-| `--file <path>` | 三选一 | 从文件读取 JSONL |
-| `--stdin` | 三选一 | 从 stdin 读取 |
+| `--file <path>` | 推荐 | 从文件读取原始 JSONL，最不易受 shell 转义影响 |
+| `--jsonl <s>` | 与 `--file` 二选一 | 直接传入 JSONL 字符串 |
+| `--stdin` | 与上述来源二选一 | 全局选项；从 stdin 读取一个包含 `jsonl` 字段的 JSON 参数对象 |
 | `--title <s>` | 否 | 覆盖 JSONL 中的问卷标题 |
-| `--type <n>` | 否 | 1=调查, 2=测评, 3=投票, 6=考试, 7=表单（默认 1） |
+| `--type <n>` | 否 | 1=调查, 2=测评, 3=投票, 6=考试, 7=表单, 10=量表, 11=民主测评（默认 1） |
+| `--optional_titles <json>` | 否 | 允许设为选填的题目标题 JSON 数组 |
 | `--publish` | 否 | 创建后立即发布 |
 | `--creater <s>` | 否 | 创建者子账号 |
 | `--dry-run` | 否 | 预览解析结果，不实际创建 |
@@ -32,81 +32,29 @@ cat survey.jsonl | wjx survey create-by-json --stdin
 ### JSONL 格式
 
 ```jsonl
-{"_meta":{"title":"标题","description":"描述"}}
-{"q_index":1,"q_type":3,"q_subtype":3,"q_title":"单选题","is_requir":true,"items":[{"q_index":1,"item_index":1,"item_title":"A"},{"q_index":1,"item_index":2,"item_title":"B"}]}
-{"q_index":2,"q_type":7,"q_subtype":702,"q_title":"矩阵单选","is_requir":true,"items":[{"q_index":2,"item_index":1,"item_title":"行1"}],"exts":[{"q_index":2,"ext_index":1,"ext_title":"列1"},{"q_index":2,"ext_index":2,"ext_title":"列2"}]}
+{"qtype":"问卷基础信息","title":"服务满意度调查","introduction":"感谢您的参与","atype":1}
+{"qtype":"单选","title":"您对本次服务是否满意？","select":["满意","一般","不满意"]}
+{"qtype":"矩阵单选","title":"请评价以下方面","rowtitle":["响应速度","服务态度"],"select":["差","一般","好"]}
 ```
 
-**何时用**：所有问卷创建一律首选本命令。覆盖 70+ 题型，包括矩阵（单选/多选/填空/量表）、比重、滑块、文件上传、排序、单选/多选/填空等全部场景。
+关键规则：
 
-完整 q_type/q_subtype 编码见 [question-types.md](question-types.md)。
+- 第一行使用 `qtype:"问卷基础信息"`；不要使用 `_meta`。
+- 题型使用中文字符串 `qtype`；不要传 `q_type`、`q_subtype`、`q_title`、`items` 等旧接口结构。
+- 普通选择题的选项写入 `select`，矩阵题的行和列分别写入 `rowtitle`、`select`。
+- 默认题目必答。仅当题目标题同时列入 `--optional_titles` 时，才写 `"requir":false`。
+- 先运行 `wjx survey jsonl-template --type <n> --raw`，从当前 CLI 模板开始生成调查、投票、考试、表单或量表。
 
-## wjx survey create-by-text（已弃用）
+完整字段、中文题型名和示例见 [question-types.md](question-types.md)。
 
-> **已弃用**：DSL 文本创建问卷。新项目请改用 `create-by-json`（覆盖更全、结构更清晰）。本命令仅为兼容保留。
+### 通过 stdin 传参
+
+`--stdin` 读取的是一个 JSON 参数对象，**不是**原始 JSONL 文本。优先使用 `--file`。必须使用 stdin 时，将完整 JSONL 编码为对象的 `jsonl` 字符串：
 
 ```bash
-wjx survey create-by-text --text "标题\n\n1. 题目[单选题]\n选项A\n选项B"
-wjx survey create-by-text --file survey.txt
-cat survey.txt | wjx survey create-by-text --stdin
-wjx survey create-by-text --text "..." --dry-run   # 预览解析结果
+printf '%s\n' '{"jsonl":"{\"qtype\":\"问卷基础信息\",\"title\":\"客户需求调查\",\"atype\":1}\n{\"qtype\":\"单选\",\"title\":\"请选择使用频率\",\"select\":[\"每天\",\"每周\"]}"}' \
+  | wjx survey create-by-json --stdin --dry-run
 ```
-
-| Flag | 必填 | 说明 |
-|------|------|------|
-| `--text <s>` | 三选一 | DSL 文本内容 |
-| `--file <path>` | 三选一 | 从文件读取 DSL |
-| `--stdin` | 三选一 | 从 stdin 读取 |
-| `--type <n>` | 否 | 问卷类型（默认 1=调查，考试用 6） |
-| `--publish` | 否 | 创建后发布 |
-| `--creater <s>` | 否 | 创建者子账号 |
-| `--dry-run` | 否 | 预览解析结果，不实际创建 |
-
-DSL 语法详见 [dsl-syntax.md](dsl-syntax.md)。
-
-## wjx survey create（向后兼容，不再推荐）
-
-老的 JSON 数组创建命令。新项目请用 `create-by-json`（JSONL 更灵活）或 `create-by-text`（DSL 更直观）。
-
-```bash
-wjx survey create --title "标题" --type 1 --description "描述" --questions '<JSON>'
-wjx survey create --title "标题" --source_vid 12345   # 复制已有问卷
-```
-
-| Flag | 必填 | 说明 |
-|------|------|------|
-| `--title <s>` | 是 | 问卷标题 |
-| `--type <n>` | 新建时是 | 1=调查, 2=测评, 3=投票, 6=考试, 7=表单 |
-| `--description <s>` | 新建时是 | 问卷描述 |
-| `--questions <json>` | 新建时是 | 题目 JSON 数组（格式见下方） |
-| `--source_vid <s>` | 复制时是 | 源问卷编号（跳过 type/description/questions） |
-| `--publish` | 否 | 创建后立即发布 |
-
-**--stdin 可用的额外参数**: `creater`(创建者子账号), `compress_img`(压缩图片), `is_string`(原始格式)
-
-### 题目 JSON 格式
-
-```json
-[{
-  "q_index": 1,
-  "q_type": 3,
-  "q_subtype": 3,
-  "q_title": "题目文本",
-  "is_requir": true,
-  "items": [
-    {"q_index": 1, "item_index": 1, "item_title": "选项A"},
-    {"q_index": 1, "item_index": 2, "item_title": "选项B"}
-  ]
-}]
-```
-
-**重要规则**：
-- `q_subtype` 每题必填
-- `q_title` 中不要包含题型标签（如[单选题]），题型由 q_type/q_subtype 决定
-- 考试问卷设 `--type 6`，题目使用相同的 q_type 编码
-- 多项填空（q_type=6）的 q_title 必须包含 `{_}` 占位符
-
-完整 q_type/q_subtype 编码见 [question-types.md](question-types.md)。
 
 ## wjx survey list
 
@@ -121,13 +69,41 @@ wjx survey list --name_like "满意度" --status 1
 
 | Flag | 说明 |
 |------|------|
-| `--page <n>` | 页码 |
-| `--page_size <n>` | 每页数量 |
+| `--page <n>` | 页码（默认 1） |
+| `--page_size <n>` | 每页数量（默认 10） |
 | `--status <n>` | 状态筛选：0=未发布, 1=已发布, 2=已暂停, 3=已删除, 5=被审核 |
 | `--atype <n>` | 类型筛选：1=调查, 2=测评, 3=投票, 6=考试, 7=表单 |
 | `--name_like <s>` | 名称模糊搜索（最多 10 字符） |
 
-**--stdin 可用的额外参数**: `sort`(0-5 排序), `creater`(子账号筛选), `folder`(文件夹), `is_xingbiao`(星标), `query_all`(全部问卷), `verify_status`(审核状态), `time_type`(0=创建/1=开始/2=结束), `begin_time`/`end_time`(毫秒时间戳)
+**--stdin 可用的额外参数**: `sort`(0-5 排序), `creater`(子账号筛选), `folder`(文件夹), `is_xingbiao`(星标), `query_all`(包含子账号问卷，仍然分页), `verify_status`(审核状态), `time_type`(0=不按时间查询（默认）/1=按问卷开始时间/2=按问卷创建时间), `begin_time`/`end_time`(毫秒时间戳)
+
+### 分页响应与 AI 处理规则
+
+成功响应的分页结构如下，`activitys` 是以问卷编号为键的对象：
+
+```json
+{
+  "result": true,
+  "data": {
+    "page_index": 1,
+    "page_size": 10,
+    "total_count": 23,
+    "sort": 1,
+    "activitys": {
+      "12345": {
+        "vid": 12345,
+        "title": "示例问卷"
+      }
+    }
+  }
+}
+```
+
+- 将 `total_count` 作为当前筛选条件下的问卷总数，将 `Object.keys(activitys).length` 作为本页实际数量。
+- 普通列表请求可以只展示当前页，但必须报告总数和页码：总页数为 `Math.ceil(total_count / page_size)`。
+- 用户要求全部结果时，保持所有筛选和排序参数不变，查询第 1 页到总页数，并核对累计数量等于 `total_count`。
+- 不要把 `--query_all` 当作自动翻页开关；它只扩大账号查询范围。
+- 不要为问卷列表使用 `--table`，该模式只展示问卷行，不显示 `total_count`、`page_index` 或 `page_size`。
 
 ## wjx survey get
 

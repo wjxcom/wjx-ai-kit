@@ -66,7 +66,9 @@ wjx analytics csat --scores "[6,7,5,7,3,6,7]" --scale "7-point"
 | `--scores <json>` | 是 | 评分 JSON 数组 |
 | `--scale <s>` | 否 | 量表类型：`"5-point"`（默认）或 `"7-point"` |
 
-**CSAT = 满意人数 / 总人数 × 100%**
+**CLI 返回的 `csat` = 满意人数 / 总人数**（范围 0-1，是比例值而非百分数；展示为百分比时再乘以 100%）
+
+例如，`--scores '[4,5,3,2]'` 返回 `"csat": 0.5`，表示满意度为 50%。
 
 | 量表 | 满意阈值 |
 |------|---------|
@@ -105,7 +107,7 @@ wjx analytics anomalies --responses '[{"submitdata":"1$1}2$1","inputcosttime":5}
 对比两组指标数据。
 
 ```bash
-wjx analytics compare --set_a '{"nps":45,"csat":78}' --set_b '{"nps":52,"csat":85}'
+wjx analytics compare --set_a '{"nps":45,"csat":0.78}' --set_b '{"nps":52,"csat":0.85}'
 ```
 
 | Flag | 必填 | 说明 |

@@ -345,7 +345,8 @@ main() {
     echo ""
     echo "  或命令行直接用："
     echo "  wjx survey list                    # 查看问卷列表"
-    echo "  wjx survey create-by-text --text . # 用文本创建问卷"
+    echo "  wjx survey jsonl-template --raw    # 生成 JSONL 问卷模板"
+    echo "  wjx survey create-by-json --file survey.jsonl # 用 JSONL 创建问卷"
     echo "  wjx response report --vid 12345    # 查看问卷报告"
     echo ""
 }
