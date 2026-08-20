@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { createSurvey, createSurveyByText, createSurveyByJson, getSurvey, listSurveys, updateSurveyStatus, getSurveySettings, updateSurveySettings, deleteSurvey, getQuestionTags, getTagDetails, clearRecycleBin, uploadFile, buildSurveyUrl, surveyToText, textToSurvey, parsedQuestionsToWire, MAX_JSONL_SIZE, } from "wjx-api-sdk";
-import { formatOutput } from "../lib/output.js";
+import { enrichSurveyListOutput, formatOutput } from "../lib/output.js";
 import { CliError, handleError } from "../lib/errors.js";
 import { getCredentials } from "../lib/auth.js";
 import { executeCommand, strictInt, requireField, getMerged, createCapturingFetch, printDryRunPreview, ensureJsonString, ensureStringArray } from "../lib/command-helpers.js";
@@ -40,7 +40,7 @@ export function registerSurveyCommands(program) {
             time_type: m.time_type,
             begin_time: m.begin_time,
             end_time: m.end_time,
-        }));
+        }), { transformResult: enrichSurveyListOutput });
     });
     // --- get ---
     survey

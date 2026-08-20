@@ -1,3 +1,81 @@
+function getHttpOrigin(value) {
+    try {
+        const url = new URL(value);
+        return url.protocol === "http:" || url.protocol === "https:" ? url.origin : undefined;
+    }
+    catch {
+        return undefined;
+    }
+}
+function pathExposesVid(pathname, vid) {
+    if (!vid)
+        return false;
+    return pathname.split("/").some((segment) => {
+        let decoded = segment;
+        try {
+            decoded = decodeURIComponent(segment);
+        }
+        catch {
+            // Keep the raw segment when percent encoding is malformed.
+        }
+        return decoded === vid || decoded.startsWith(`${vid}.`);
+    });
+}
+/** Add respondent-facing URLs without ever exposing a numeric vid as the path. */
+export function enrichSurveyListOutput(data) {
+    if (!data || typeof data !== "object")
+        return data;
+    const response = data;
+    const payload = response.data;
+    if (!payload || typeof payload !== "object" || Array.isArray(payload))
+        return data;
+    const payloadRecord = payload;
+    const key = ["activitys", "activities"].find((candidate) => {
+        const value = payloadRecord[candidate];
+        return value && typeof value === "object" && !Array.isArray(value);
+    });
+    if (!key)
+        return data;
+    const activities = payloadRecord[key];
+    const enriched = Object.fromEntries(Object.entries(activities).map(([id, value]) => {
+        if (!value || typeof value !== "object" || Array.isArray(value))
+            return [id, value];
+        const item = value;
+        const origin = typeof item.activity_domain === "string"
+            ? getHttpOrigin(item.activity_domain)
+            : undefined;
+        const mobilePath = typeof item.mobile_path === "string" ? item.mobile_path.trim() : "";
+        const sid = typeof item.sid === "string" ? item.sid.trim() : "";
+        const vid = item.vid === undefined ? "" : String(item.vid).trim();
+        const safeItem = { ...item };
+        delete safeItem.fill_url;
+        let fillUrl;
+        if (origin && sid) {
+            const sidPath = `/vm/${encodeURIComponent(sid)}.aspx`;
+            if (!pathExposesVid(sidPath, vid))
+                fillUrl = new URL(sidPath, origin).href;
+        }
+        if (!fillUrl && origin && mobilePath) {
+            try {
+                const candidate = new URL(mobilePath, `${origin}/`);
+                if (candidate.origin === origin && !pathExposesVid(candidate.pathname, vid)) {
+                    fillUrl = candidate.href;
+                }
+            }
+            catch {
+                // Invalid server paths are omitted from the output.
+            }
+        }
+        return [id, fillUrl ? { ...safeItem, fill_url: fillUrl } : safeItem];
+    }));
+    return {
+        ...response,
+        data: {
+            ...payloadRecord,
+            [key]: enriched,
+        },
+    };
+}
 export function formatOutput(data, opts) {
     if (opts.table) {
         printTable(data);
@@ -39,7 +117,7 @@ function printTable(data) {
                 if (arr.length > 0 && typeof arr[0] === "object") {
                     const simplified = arr.map((item) => {
                         const r = item;
-                        return { vid: r.vid, title: r.title, status: r.status, answers: r.answer_valid, created: r.create_date, creator: r.creater };
+                        return { vid: r.vid, title: r.title, status: r.status, answers: r.answer_valid, created: r.create_date, creator: r.creater, fill_url: r.fill_url };
                     });
                     console.table(simplified);
                     return;

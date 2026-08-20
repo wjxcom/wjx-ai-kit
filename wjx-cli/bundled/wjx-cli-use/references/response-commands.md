@@ -31,6 +31,36 @@ wjx response query --vid 12345 --page_size 50 --sort 1 --begin_time 170000000000
 
 **--stdin 额外参数**: `valid`(是否有效答卷，默认 true)
 
+### 分页响应与 AI 处理规则
+
+成功响应的分页结构如下，`answers` 是当前页答卷对象：
+
+```json
+{
+  "result": true,
+  "data": {
+    "vid": 12345,
+    "valid": true,
+    "page_index": 1,
+    "page_size": 10,
+    "join_times": 23,
+    "total_count": 20,
+    "answers": {
+      "1": {
+        "index": 1,
+        "jid": 10001
+      }
+    }
+  }
+}
+```
+
+- 将 `total_count` 作为当前查询条件下的答卷总数，将 `Object.keys(answers).length` 作为本页实际数量；不要用 `join_times` 计算分页。
+- 普通查询可以只展示当前页，但必须报告总数和页码：总页数为 `Math.ceil(total_count / page_size)`。
+- 用户要求全部结果或任务需要完整明细时，使用不超过 50 的 `page_size`，保持 `valid`、时间、条件、答卷 ID、自定义参数、去重和排序参数不变，查询第 1 页到总页数，并核对累计数量等于 `total_count`。
+- `response count` 只接受 `vid`，适合无额外筛选时快速查看计数。带任何筛选或去重条件时，以当前 `response query` 的 `total_count` 为准，不要用 `response count` 覆盖它。
+- 使用默认 JSON 输出解析分页和答卷；不要依赖 `--table` 进行完整性判断。
+
 ### submitdata 编码格式
 
 答卷数据使用编码格式 `题号$答案}题号$答案`：
@@ -241,7 +271,7 @@ wjx response count --vid 12345
 |------|------|------|
 | `--vid <n>` | 是 | 问卷编号 |
 
-输出格式：`{ "result": true, "data": { "vid": N, "total_count": N, "join_times": N } }`
+输出格式：`{ "result": true, "data": { "total_count": N, "join_times": N } }`。该命令不接受时间、条件或去重筛选；筛选查询的总数以 `response query` 返回值为准。
 
 ## 其他 Response 命令
 

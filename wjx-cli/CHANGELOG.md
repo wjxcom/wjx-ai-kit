@@ -4,6 +4,22 @@
 
 格式基于 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [0.3.5] - 2026-08-19
+
+### Added
+
+- `survey list` 为问卷结果补充安全的 `fill_url`：优先使用与 `vid` 不同的服务端短编号 `sid`，其次使用不暴露数字 `vid` 的服务端移动路径。
+- 随包分发的 `wjx-cli-use` Skill 新增计算公式参考，并同步最新的问卷、答卷、分析与题型指南。
+
+### Changed
+
+- `wjx-cli-use` 强化问卷列表和答卷查询的分页、总数核对及安全填写链接规则。
+
+### Fixed
+
+- 丢弃 API 输入中未经验证的 `fill_url`，仅输出由安全 `sid` 或 `mobile_path` 推导出的填写链接，防止数字 `vid` 路径泄露。
+- 重新生成 CLI 的 `dist` 与 `bundled` 发布产物，并在 npm 发布钩子中强制先同步 bundled Skill，防止真源与发布包漂移。
+
 ## [0.2.6] - 2026-04-24
 
 ### Added

@@ -40,6 +40,17 @@ function runFull(args, { env = {}, input, cwd, timeout = 10_000 } = {}) {
   });
 }
 
+async function withTempCwd(name, callback) {
+  const cwd = resolve(__dirname, `__tmp_${name}__`);
+  rmSync(cwd, { recursive: true, force: true });
+  mkdirSync(cwd, { recursive: true });
+  try {
+    return await callback(cwd);
+  } finally {
+    rmSync(cwd, { recursive: true, force: true });
+  }
+}
+
 // ═══════════════════════════════════════
 // Existing tests (regression)
 // ═══════════════════════════════════════
@@ -1934,32 +1945,38 @@ describe("skill", () => {
   });
 
   it("skill install --silent outputs valid JSON", async () => {
-    const result = await runFull(["skill", "install", "--force", "--silent"]);
-    const parsed = JSON.parse(result.stdout.trim());
-    assert.ok(["installed", "updated"].includes(parsed.status));
-    assert.match(parsed.version, /\d+\.\d+\.\d+/);
-    assert.ok(parsed.files.length > 0);
-    assert.match(parsed.message, /已(安装|更新)/);
+    await withTempCwd("skill_install", async (cwd) => {
+      const result = await runFull(["skill", "install", "--force", "--silent"], { cwd });
+      const parsed = JSON.parse(result.stdout.trim());
+      assert.ok(["installed", "updated"].includes(parsed.status));
+      assert.match(parsed.version, /\d+\.\d+\.\d+/);
+      assert.ok(parsed.files.length > 0);
+      assert.match(parsed.message, /已(安装|更新)/);
+    });
   });
 
   it("skill install --silent duplicate returns skipped", async () => {
-    // Ensure installed first
-    await runFull(["skill", "install", "--force", "--silent"]);
-    // Try without --force
-    const result = await runFull(["skill", "install", "--silent"]);
-    const parsed = JSON.parse(result.stdout.trim());
-    assert.equal(parsed.status, "skipped");
-    assert.match(parsed.message, /已安装/);
+    await withTempCwd("skill_install_duplicate", async (cwd) => {
+      // Ensure installed first
+      await runFull(["skill", "install", "--force", "--silent"], { cwd });
+      // Try without --force
+      const result = await runFull(["skill", "install", "--silent"], { cwd });
+      const parsed = JSON.parse(result.stdout.trim());
+      assert.equal(parsed.status, "skipped");
+      assert.match(parsed.message, /已安装/);
+    });
   });
 
   it("skill update --silent outputs valid JSON", async () => {
-    // Ensure installed first
-    await runFull(["skill", "install", "--force", "--silent"]);
-    const result = await runFull(["skill", "update", "--silent"]);
-    const parsed = JSON.parse(result.stdout.trim());
-    assert.equal(parsed.status, "updated");
-    assert.match(parsed.version, /\d+\.\d+\.\d+/);
-    assert.ok(parsed.files.length > 0);
+    await withTempCwd("skill_update", async (cwd) => {
+      // Ensure installed first
+      await runFull(["skill", "install", "--force", "--silent"], { cwd });
+      const result = await runFull(["skill", "update", "--silent"], { cwd });
+      const parsed = JSON.parse(result.stdout.trim());
+      assert.equal(parsed.status, "updated");
+      assert.match(parsed.version, /\d+\.\d+\.\d+/);
+      assert.ok(parsed.files.length > 0);
+    });
   });
 
   it("skill install --help shows --force and --silent options", () => {

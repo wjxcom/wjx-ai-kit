@@ -3,6 +3,28 @@ export interface OutputOpts {
   table?: boolean;
 }
 
+function getHttpOrigin(value: string): string | undefined {
+  try {
+    const url = new URL(value);
+    return url.protocol === "http:" || url.protocol === "https:" ? url.origin : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+function pathExposesVid(pathname: string, vid: string): boolean {
+  if (!vid) return false;
+  return pathname.split("/").some((segment) => {
+    let decoded = segment;
+    try {
+      decoded = decodeURIComponent(segment);
+    } catch {
+      // Keep the raw segment when percent encoding is malformed.
+    }
+    return decoded === vid || decoded.startsWith(`${vid}.`);
+  });
+}
+
 /** Add respondent-facing URLs without ever exposing a numeric vid as the path. */
 export function enrichSurveyListOutput(data: unknown): unknown {
   if (!data || typeof data !== "object") return data;
@@ -22,23 +44,32 @@ export function enrichSurveyListOutput(data: unknown): unknown {
   const enriched = Object.fromEntries(Object.entries(activities).map(([id, value]) => {
     if (!value || typeof value !== "object" || Array.isArray(value)) return [id, value];
     const item = value as Record<string, unknown>;
-    const domain = typeof item.activity_domain === "string"
-      ? item.activity_domain.replace(/\/$/, "")
-      : "";
+    const origin = typeof item.activity_domain === "string"
+      ? getHttpOrigin(item.activity_domain)
+      : undefined;
     const mobilePath = typeof item.mobile_path === "string" ? item.mobile_path.trim() : "";
     const sid = typeof item.sid === "string" ? item.sid.trim() : "";
-    const vid = item.vid === undefined ? "" : String(item.vid);
+    const vid = item.vid === undefined ? "" : String(item.vid).trim();
+    const safeItem = { ...item };
+    delete safeItem.fill_url;
 
     let fillUrl: string | undefined;
-    if (domain && sid && sid !== vid) {
-      fillUrl = `${domain}/vm/${encodeURIComponent(sid)}.aspx`;
-    } else if (domain && mobilePath && (!vid || !mobilePath.includes(`/${vid}.`))) {
-      fillUrl = mobilePath.startsWith("http://") || mobilePath.startsWith("https://")
-        ? mobilePath
-        : `${domain}/${mobilePath.replace(/^\/+/, "")}`;
+    if (origin && sid) {
+      const sidPath = `/vm/${encodeURIComponent(sid)}.aspx`;
+      if (!pathExposesVid(sidPath, vid)) fillUrl = new URL(sidPath, origin).href;
+    }
+    if (!fillUrl && origin && mobilePath) {
+      try {
+        const candidate = new URL(mobilePath, `${origin}/`);
+        if (candidate.origin === origin && !pathExposesVid(candidate.pathname, vid)) {
+          fillUrl = candidate.href;
+        }
+      } catch {
+        // Invalid server paths are omitted from the output.
+      }
     }
 
-    return [id, fillUrl ? { ...item, fill_url: fillUrl } : { ...item }];
+    return [id, fillUrl ? { ...safeItem, fill_url: fillUrl } : safeItem];
   }));
 
   return {
