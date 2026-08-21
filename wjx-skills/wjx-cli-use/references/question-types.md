@@ -36,13 +36,13 @@ wjx survey create-by-json --file survey.jsonl
 | `introduction` | 首行问卷说明 |
 | `endpageinformation` | 首行提交完成页说明 |
 | `language` | 首行语言，默认 `zh` |
-| `select` | 普通选择题的选项；矩阵题的列选项 |
+| `select` | 普通选择题的选项；矩阵题的列选项；NPS 量表的必填分值序列 |
 | `rowtitle` | 矩阵题的行标题；比重题或表格题的项目/字段 |
 | `requir` | 是否必答，默认 `true`；设为 `false` 时还需把同一题目标题传入 `--optional_titles` |
 | `randomchoice` | 是否随机排列选项 |
 | `lowlimit` / `uplimit` | 多选、排序等题型的最少/最多选择数 |
-| `minvalue` / `maxvalue` | 滑动条、矩阵滑动条、表格数值等题型的数值范围 |
-| `minvaluetext` / `maxvaluetext` | 量表或滑动条两端文案 |
+| `minvalue` / `maxvalue` | 滑动条、矩阵滑动条、表格数值等题型的数值范围；**不能**代替 NPS 的 `select` |
+| `minvaluetext` / `maxvaluetext` | 量表或滑动条两端显示文案；只描述端点，不定义 NPS 的分值范围 |
 | `total` | 比重题总值，默认 100 |
 | `correctselect` | 考试题正确答案数组 |
 | `quizscore` | 考试题分值字符串 |
@@ -66,6 +66,16 @@ wjx survey create-by-json --file survey.jsonl
 | 考试 | `考试单选`, `考试判断`, `考试多选`, `考试单项填空`, `考试多项填空`, `考试简答`, `考试文件`, `考试绘图`, `考试代码` |
 
 使用上表中的精确中文字符串。不要写数字 `qtype`，也不要使用 `radio`、`checkbox`、`rating` 等英文题型名。
+
+## NPS 量表（唯一规范写法）
+
+NPS 题必须使用 `qtype:"NPS量表"`，并提供完整且严格有序的 11 个字符串选项。`select` 定义答卷人实际能选择的分值，**不能省略，也不能用 `minvalue`/`maxvalue` 替代**。下面是唯一规范 JSONL 示例；需要自定义题干或端点文案时，只改对应文字，不改 `select` 序列：
+
+```jsonl
+{"qtype":"NPS量表","title":"您向朋友或同事推荐本餐厅的可能性有多大？","select":["0","1","2","3","4","5","6","7","8","9","10"],"minvaluetext":"完全不可能","maxvaluetext":"极其可能"}
+```
+
+四个字段的职责如下：`qtype` 选择量表题型；`select` 定义 0 到 10 的可选分值；`minvaluetext` 和 `maxvaluetext` 只定义两端文案。端点文案不会自动生成选项，也不会把没有 `select` 的题变成 NPS 量表。
 
 ## 其他受支持 qtype
 
