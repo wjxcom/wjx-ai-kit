@@ -56,11 +56,39 @@ printf '%s\n' '{"jsonl":"{\"qtype\":\"问卷基础信息\",\"title\":\"客户需
   | wjx survey create-by-json --stdin --dry-run
 ```
 
+### 创建响应中的填写地址字段
+
+`create-by-json` 成功后先保留并结构化解析完整 JSON 响应。当前 CLI 只格式化服务端原始字段，不会自动从这些字段派生 `fill_url`；不要把字段不存在误判成没有填写地址，也不要因此用 `vid` 猜路径。常见字段含义如下（字段可能位于响应的 `data` 或问卷记录对象中）：
+
+| 字段 | 含义 | 用途 |
+|------|------|------|
+| `vid` | 后台问卷编号 | 定位问卷、后续 API 操作；不能直接放入填写路径 |
+| `sid` | 服务端生成的填写短编号 | 校验公开填写地址中的标识 |
+| `activity_domain` | 服务端返回的填写域名 | 作为 URL 的 base，不要擅自替换为其他域名 |
+| `pc_path` | 服务端返回的电脑端填写路径 | 有效时优先用于桌面端填写地址 |
+| `mobile_path` | 服务端返回的移动端填写路径 | 没有 `pc_path` 时可使用 |
+| `fill_url` | API/CLI 已归一化的填写地址（可能不存在） | 存在且通过校验时可直接使用 |
+
+当响应没有可用的 `fill_url` 时，只用同一条记录返回的域名和路径组合地址；等价于：
+
+```js
+const fillUrl = new URL(record.pc_path || record.mobile_path, record.activity_domain).toString();
+```
+
+组合前必须确认 `activity_domain` 是 API 返回的合法 `http(s)` 域名，`path` 是 API 返回且以允许的填写路由（例如 `/m/`、`/vm/` 或 `/jq/`）开头，并核对路径中的公开标识是短 `sid`。路径不能是把数字 `vid` 插入这些路由得出的猜测值；字段缺失或校验失败时，报告“服务端未提供可验证的填写路径”。不要从 `survey get` 或 `survey url --help` 探索填写地址。
+
+获取刚创建问卷的推荐流程：
+
+1. 保存 `create-by-json` 的完整 JSON 成功响应，不要用 `head` 截断或用文本搜索提取字段。
+2. 在创建响应中先查找已归一化的 `fill_url`；没有时，用同一记录的 `activity_domain` 与 `pc_path`/`mobile_path` 按上面的规则组合并校验。
+3. 如果创建响应没有可验证路径，取其中的 `vid`/`sid`，保持筛选和排序条件不变，按 `survey list` 的 `page_index`、`page_size`、`total_count` 逐页查找相同 `vid` 的记录，再从该记录读取短路径。
+4. 列表中也没有服务端路径时，明确报告暂时无法取得填写链接；不要改用编辑地址、创建地址或数字 `vid` 路径。
+
 ## wjx survey list
 
 查询问卷列表。
 
-返回的每个问卷包含 `fill_url` 时，该字段是服务端短编号生成的安全填写链接。**禁止**用 `vid` 自行拼接 `/m/<vid>.aspx`、`/vm/<vid>.aspx` 或 `/jq/<vid>.aspx`。若没有 `fill_url`，不要伪造填写链接。
+列表返回的 `activitys` 记录通常包含 `vid`、`sid`、`activity_domain`、`pc_path`、`mobile_path` 等原始字段，实际版本可能没有 `fill_url`。填写地址优先使用 API/CLI 已提供并通过校验的 `fill_url`；否则按上一节用同一记录的 `activity_domain` 与 `pc_path`（或 `mobile_path`）组合。**禁止**用数字 `vid` 自行拼接 `/m/<vid>.aspx`、`/vm/<vid>.aspx` 或 `/jq/<vid>.aspx`。
 
 ```bash
 wjx survey list
@@ -92,18 +120,25 @@ wjx survey list --name_like "满意度" --status 1
     "activitys": {
       "12345": {
         "vid": 12345,
-        "title": "示例问卷"
+        "title": "示例问卷",
+        "sid": "AbC123x",
+        "activity_domain": "https://www.wjx.cn",
+        "pc_path": "/vm/AbC123x.aspx",
+        "mobile_path": "/m/AbC123x.aspx"
       }
     }
   }
 }
 ```
 
+上例中的路径表示服务端原样返回的字段，仅用于说明响应结构；不得把 `AbC123x` 替换成数字 `vid`，也不得脱离 API 响应套用路径模板。
+
 - 将 `total_count` 作为当前筛选条件下的问卷总数，将 `Object.keys(activitys).length` 作为本页实际数量。
 - 普通列表请求可以只展示当前页，但必须报告总数和页码：总页数为 `Math.ceil(total_count / page_size)`。
 - 用户要求全部结果时，保持所有筛选和排序参数不变，查询第 1 页到总页数，并核对累计数量等于 `total_count`。
 - 不要把 `--query_all` 当作自动翻页开关；它只扩大账号查询范围。
-- 不要为问卷列表使用 `--table`，该模式只展示问卷行，不显示 `total_count`、`page_index` 或 `page_size`。
+- 不要为问卷列表使用 `--table`，该模式只展示部分问卷行，可能隐藏 `sid`、域名、填写路径以及 `total_count`、`page_index`、`page_size`，不能用于机器解析或链接查找。
+- 使用 JSON 解析器读取完整响应，不要用 `head` 截断 JSON 或用 `grep` 搜索字段。为刚创建的问卷找链接时，先用创建响应里的 `vid`/`sid`；仅在创建响应没有可验证路径时按页定位目标记录。
 
 ## wjx survey get
 
@@ -120,6 +155,8 @@ echo '{"vid":12345,"format":"dsl"}' | wjx survey get --stdin
 | `--vid <n>` | 是 | 问卷编号 |
 
 **--stdin 可用的额外参数**: `format`("json"/"dsl"/"both"), `get_questions`(获取题目), `get_items`(获取选项), `get_exts`(获取问答选项), `get_setting`(获取题目设置), `get_page_cut`(获取分页信息), `get_tags`(获取标签), `showtitle`(返回标题)
+
+`survey get` 用于读取问卷内容、设置或题目详情，不是获取填写地址的必经步骤。填写地址应先使用创建响应或列表记录中的 `fill_url`/`activity_domain`/`pc_path`/`mobile_path`。
 
 ## wjx survey export-text
 
@@ -217,7 +254,7 @@ wjx survey delete --vid 12345 --username admin --completely   # 彻底删除，�
 
 ## wjx survey url
 
-生成问卷创建/编辑链接（无需 API 签名）。
+只生成问卷的创建或后台编辑链接（无需 API 签名），**不会生成答卷人填写链接**。填写链接必须来自 API 返回的短 `sid` 和填写路径，不能用本命令探查或推导。
 
 ```bash
 wjx survey url --mode create --name "新问卷"
@@ -229,6 +266,14 @@ wjx survey url --mode edit --activity 12345
 | `--mode <s>` | 否 | "create"（默认）或 "edit" |
 | `--name <s>` | 否 | 问卷名称（create 模式） |
 | `--activity <n>` | edit 模式是 | 问卷编号（edit 模式） |
+
+三类地址的用途：
+
+| 地址类型 | 来源 | 面向对象 |
+|------|------|------|
+| 填写地址 | 创建/列表响应的 `fill_url`，或 `activity_domain` + `pc_path`/`mobile_path` | 答卷人 |
+| 编辑地址 | `wjx survey url --mode edit --activity <vid>` | 问卷管理员 |
+| 创建地址 | `wjx survey url --mode create --name <name>` | 创建问卷的管理页面 |
 
 ## 其他 Survey 命令
 
