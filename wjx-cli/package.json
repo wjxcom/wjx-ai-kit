@@ -16,7 +16,10 @@
   "scripts": {
     "build": "npx tsc -p tsconfig.json",
     "test": "npm run build && node --test __tests__/*.test.mjs",
-    "perf:startup": "node scripts/benchmark-startup.mjs",
+    "perf:startup": "node scripts/benchmark-startup.mjs --enforce",
+    "manifest:export": "node scripts/export-manifest.mjs",
+    "manifest:check": "node scripts/export-manifest.mjs --check",
+    "architecture:check": "node scripts/check-architecture-contract.mjs",
     "clean": "rm -rf dist",
     "sync-bundled": "node scripts/sync-bundled.mjs",
     "prepublishOnly": "npm run sync-bundled && npm run build"

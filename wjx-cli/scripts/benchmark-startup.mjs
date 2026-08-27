@@ -12,7 +12,7 @@ const BASELINE_SCHEMA_VERSION = 1;
 export const MAX_TOTAL_SAMPLES = 1000;
 
 function usageError(message) {
-  throw new Error(`${message}\nUsage: node scripts/benchmark-startup.mjs [--samples N] [--discard N] [--report] [--write-baseline] [--write-default]`);
+  throw new Error(`${message}\nUsage: node scripts/benchmark-startup.mjs [--samples N] [--discard N] [--report] [--enforce] [--write-baseline] [--write-default]`);
 }
 
 export function parseArgs(argv) {
@@ -22,6 +22,7 @@ export function parseArgs(argv) {
     report: false,
     writeBaseline: false,
     writeDefault: false,
+    enforce: false,
   };
 
   for (let index = 0; index < argv.length; index += 1) {
@@ -38,6 +39,7 @@ export function parseArgs(argv) {
       options.writeDefault = true;
       continue;
     }
+    if (arg === "--enforce") { options.enforce = true; continue; }
     if (arg === "--samples" || arg === "--discard") {
       const value = argv[index + 1];
       index += 1;
@@ -221,6 +223,14 @@ export function main(argv = process.argv.slice(2)) {
   const options = parseArgs(argv);
   const report = runBenchmark(options);
   writeBaseline(report, options);
+  if (options.enforce && !options.report) {
+    const baseline = readBaseline();
+    const selected = baseline.baselines[currentKey()] ?? baseline.baselines.default;
+    if (!selected) throw new Error(`No startup baseline for ${currentKey()}; add an approved baseline before enforcing`);
+    if (report.deltaP95Ms > selected.deltaP95Ms * 1.2) {
+      throw new Error(`Startup regression: deltaP95Ms=${report.deltaP95Ms} exceeds budget=${rounded(selected.deltaP95Ms * 1.2)}`);
+    }
+  }
   if (options.report || options.writeBaseline || options.writeDefault) {
     process.stdout.write(`${JSON.stringify(report)}\n`);
   }

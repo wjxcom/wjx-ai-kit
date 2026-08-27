@@ -1,0 +1,160 @@
+{
+  "schemaVersion": 1,
+  "commands": [
+    {
+      "id": "response.query",
+      "command": "response.query",
+      "service": "default",
+      "action": "1001002",
+      "input": {
+        "type": "object",
+        "properties": {}
+      },
+      "risk": "read",
+      "identities": [
+        "user",
+        "bot"
+      ],
+      "metadata": {
+        "path": "response.query",
+        "risk": "read",
+        "identities": [
+          "user",
+          "bot"
+        ],
+        "targetFields": [
+          "vid",
+          "jid"
+        ]
+      }
+    },
+    {
+      "id": "response.submit",
+      "command": "response.submit",
+      "service": "default",
+      "action": "1001001",
+      "input": {
+        "type": "object",
+        "properties": {}
+      },
+      "risk": "write",
+      "identities": [
+        "user",
+        "bot"
+      ],
+      "metadata": {
+        "path": "response.submit",
+        "risk": "write",
+        "identities": [
+          "user",
+          "bot"
+        ],
+        "targetFields": [
+          "vid"
+        ]
+      }
+    },
+    {
+      "id": "survey.create",
+      "command": "survey.create",
+      "service": "default",
+      "action": "1000101",
+      "input": {
+        "type": "object",
+        "properties": {}
+      },
+      "risk": "write",
+      "identities": [
+        "user",
+        "bot"
+      ],
+      "metadata": {
+        "path": "survey.create",
+        "risk": "write",
+        "identities": [
+          "user",
+          "bot"
+        ],
+        "targetFields": [
+          "title"
+        ]
+      }
+    },
+    {
+      "id": "survey.delete",
+      "command": "survey.delete",
+      "service": "default",
+      "action": "1000301",
+      "input": {
+        "type": "object",
+        "properties": {}
+      },
+      "risk": "high-risk-write",
+      "identities": [
+        "user",
+        "bot"
+      ],
+      "metadata": {
+        "path": "survey.delete",
+        "risk": "high-risk-write",
+        "identities": [
+          "user"
+        ],
+        "targetFields": [
+          "vid",
+          "username"
+        ]
+      }
+    },
+    {
+      "id": "survey.get",
+      "command": "survey.get",
+      "service": "default",
+      "action": "1000001",
+      "input": {
+        "type": "object",
+        "properties": {}
+      },
+      "risk": "read",
+      "identities": [
+        "user",
+        "bot"
+      ],
+      "metadata": {
+        "path": "survey.get",
+        "risk": "read",
+        "identities": [
+          "user",
+          "bot"
+        ],
+        "targetFields": [
+          "vid"
+        ]
+      }
+    },
+    {
+      "id": "survey.list",
+      "command": "survey.list",
+      "service": "default",
+      "action": "1000002",
+      "input": {
+        "type": "object",
+        "properties": {}
+      },
+      "risk": "read",
+      "identities": [
+        "user",
+        "bot"
+      ],
+      "metadata": {
+        "path": "survey.list",
+        "risk": "read",
+        "identities": [
+          "user",
+          "bot"
+        ],
+        "targetFields": []
+      }
+    }
+  ]
+}
