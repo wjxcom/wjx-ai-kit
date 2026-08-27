@@ -74,6 +74,13 @@ export function getCommandMetadata(path: string): CommandMetadata {
   };
 }
 
+export function listHighRiskCommands(): string[] {
+  return Object.values(COMMAND_METADATA)
+    .filter((entry) => entry.risk === "high-risk-write")
+    .map((entry) => entry.path)
+    .sort();
+}
+
 export function getCommandPath(command: Command): string {
   const names: string[] = [];
   let current: Command | undefined = command;
