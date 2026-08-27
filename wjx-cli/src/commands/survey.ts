@@ -445,7 +445,7 @@ export function registerSurveyCommands(program: Command): void {
         if (merged.raw || globalOpts.table) {
           console.log(text);
         } else {
-          console.log(JSON.stringify({ vid: merged.vid, text }, null, 2));
+          formatOutput({ vid: merged.vid, text }, globalOpts);
         }
       } catch (e) {
         handleError(e);
@@ -468,7 +468,7 @@ export function registerSurveyCommands(program: Command): void {
           process.stdout.write(jsonl);
           if (!jsonl.endsWith("\n")) process.stdout.write("\n");
         } else {
-          console.log(JSON.stringify({ atype, template: jsonl }, null, 2));
+          formatOutput({ atype, template: jsonl }, globalOpts);
         }
       } catch (e) {
         handleError(e);
