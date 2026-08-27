@@ -38,14 +38,17 @@ describe("prompts content correctness", () => {
       assert.ok(text.includes("员工满意度"));
     });
 
-    it("includes question type references", async () => {
+    it("uses WJX XML DSL as the default creation workflow", async () => {
       const result = await client.getPrompt({
         name: "design-survey",
         arguments: { topic: "产品反馈" },
       });
       const text = result.messages[0].content.text;
-      assert.ok(text.includes("JSONL"));
-      assert.ok(text.includes("create_survey_by_json"));
+      assert.ok(text.includes("wjx-dsl 1"));
+      assert.ok(text.includes("create_survey_by_wjx_dsl"));
+      assert.ok(text.includes("query_wjx_dsl"));
+      assert.ok(text.includes("update_wjx_dsl"));
+      assert.ok(!text.includes("create_survey_by_text"));
     });
 
     it("includes optional target_audience when provided", async () => {
@@ -108,38 +111,27 @@ describe("prompts content correctness", () => {
       assert.ok(text.includes("recommend"));
     });
 
-    it("includes the JSONL creation tool reference", async () => {
+    it("includes the WJX XML DSL create workflow", async () => {
       const result = await client.getPrompt({
         name: "create-nps-survey",
         arguments: { product_name: "TestProduct" },
       });
       const text = result.messages[0].content.text;
-      assert.ok(text.includes("create_survey_by_json"));
+      assert.ok(text.includes("wjx-dsl 1"));
+      assert.ok(text.includes("create_survey_by_wjx_dsl"));
+      assert.ok(text.includes("query_wjx_dsl"));
+      assert.ok(text.includes("update_wjx_dsl"));
     });
 
-    it("includes the canonical qtype reference", async () => {
+    it("uses Topic and ItemValue instead of legacy q_type JSON", async () => {
       const result = await client.getPrompt({
         name: "create-nps-survey",
         arguments: { product_name: "Test" },
       });
       const text = result.messages[0].content.text;
-      assert.ok(text.includes('qtype="NPS量表"'));
-    });
-  });
-
-  // ── Legacy user-system workflow ──────────────────────────────────
-  describe("user-system-workflow", () => {
-    it("warns that the workflow is legacy and does not suggest creating atype=8", async () => {
-      const result = await client.getPrompt({
-        name: "user-system-workflow",
-        arguments: { scenario: "员工考核" },
-      });
-      const text = result.messages[0].content.text;
-      assert.ok(text.includes("已过时"));
-      assert.ok(text.includes("不能通过 API 新建 atype=8"));
-      assert.ok(text.includes("sso_user_system_url"));
-      assert.ok(!text.includes("创建用户体系问卷"));
-      assert.ok(!text.includes("build_sso_user_system_url"));
+      assert.ok(text.includes("Topic"));
+      assert.ok(text.includes("ItemValue"));
+      assert.ok(!text.includes("q_subtype"));
     });
   });
 

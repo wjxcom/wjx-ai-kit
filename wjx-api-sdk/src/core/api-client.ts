@@ -60,16 +60,20 @@ function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-async function _callApi<T = unknown>(
+async function _callApi<T = unknown, TFailureData = unknown>(
   baseUrl: string,
   params: Record<string, unknown>,
   opts: RequestOptions = {},
-): Promise<WjxApiResponse<T>> {
+): Promise<WjxApiResponse<T, TFailureData>> {
   const credentials = opts.credentials ?? getWjxCredentials();
   const fetchImpl = opts.fetchImpl ?? fetch;
   const timeoutMs = opts.timeoutMs ?? DEFAULT_TIMEOUT_MS;
   const maxRetries = opts.maxRetries ?? DEFAULT_MAX_RETRIES;
   const logger = opts.logger;
+
+  if (opts.ifMatch !== undefined && /[\r\n]/.test(opts.ifMatch)) {
+    throw new TypeError("ifMatch must not contain CR or LF characters");
+  }
 
   const traceId = generateTraceId();
   const action = String(params.action ?? "unknown");
@@ -100,6 +104,9 @@ async function _callApi<T = unknown>(
         if (credentials.clientIp) {
           headers["X-Forwarded-For"] = credentials.clientIp;
         }
+        if (opts.ifMatch !== undefined) {
+          headers["If-Match"] = opts.ifMatch;
+        }
 
         response = await fetchImpl(url, {
           method: "POST",
@@ -123,9 +130,9 @@ async function _callApi<T = unknown>(
         );
       }
 
-      let result: WjxApiResponse<T>;
+      let result: WjxApiResponse<T, TFailureData>;
       try {
-        result = (await response.json()) as WjxApiResponse<T>;
+        result = (await response.json()) as WjxApiResponse<T, TFailureData>;
       } catch (parseError) {
         throw new Error(
           `WJX API returned unparseable response for action=${action} traceid=${traceId}: ${
@@ -166,32 +173,32 @@ async function _callApi<T = unknown>(
   throw lastError ?? new Error("Exhausted retries");
 }
 
-export async function callWjxApi<T = unknown>(
+export async function callWjxApi<T = unknown, TFailureData = unknown>(
   params: Record<string, unknown>,
   opts: RequestOptions = {},
-): Promise<WjxApiResponse<T>> {
-  return _callApi<T>(getWjxApiUrl(), params, opts);
+): Promise<WjxApiResponse<T, TFailureData>> {
+  return _callApi<T, TFailureData>(getWjxApiUrl(), params, opts);
 }
 
-export async function callWjxUserSystemApi<T = unknown>(
+export async function callWjxUserSystemApi<T = unknown, TFailureData = unknown>(
   params: Record<string, unknown>,
   opts: RequestOptions = {},
-): Promise<WjxApiResponse<T>> {
-  return _callApi<T>(getWjxUserSystemApiUrl(), params, opts);
+): Promise<WjxApiResponse<T, TFailureData>> {
+  return _callApi<T, TFailureData>(getWjxUserSystemApiUrl(), params, opts);
 }
 
-export async function callWjxSubuserApi<T = unknown>(
+export async function callWjxSubuserApi<T = unknown, TFailureData = unknown>(
   params: Record<string, unknown>,
   opts: RequestOptions = {},
-): Promise<WjxApiResponse<T>> {
-  return _callApi<T>(getWjxSubuserApiUrl(), params, opts);
+): Promise<WjxApiResponse<T, TFailureData>> {
+  return _callApi<T, TFailureData>(getWjxSubuserApiUrl(), params, opts);
 }
 
-export async function callWjxContactsApi<T = unknown>(
+export async function callWjxContactsApi<T = unknown, TFailureData = unknown>(
   params: Record<string, unknown>,
   opts: RequestOptions = {},
-): Promise<WjxApiResponse<T>> {
-  return _callApi<T>(getWjxContactsApiUrl(), params, opts);
+): Promise<WjxApiResponse<T, TFailureData>> {
+  return _callApi<T, TFailureData>(getWjxContactsApiUrl(), params, opts);
 }
 
 export function getCorpId(env: NodeJS.ProcessEnv = process.env): string | undefined {

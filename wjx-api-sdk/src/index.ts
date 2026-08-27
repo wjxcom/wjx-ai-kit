@@ -36,6 +36,26 @@ export {
   assignDefined,
 } from "./core/api-client.js";
 
+// WJX XML DSL module
+export {
+  queryWjxDsl,
+  createSurveyByWjxDsl,
+  updateWjxDsl,
+} from "./modules/dsl/client.js";
+export type {
+  WjxDslStatus,
+  WjxDslDiagnostic,
+  WjxDslLimits,
+  WjxDslOperationData,
+  WjxDslFailureData,
+  QueryWjxDslInput,
+  QueryWjxDslResult,
+  CreateWjxDslSurveyInput,
+  CreateWjxDslSurveyResult,
+  UpdateWjxDslInput,
+  UpdateWjxDslResult,
+} from "./modules/dsl/types.js";
+
 // Survey module
 export {
   createSurvey,

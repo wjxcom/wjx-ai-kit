@@ -9,22 +9,28 @@ const EXIT_CODES: Record<ErrorCode, number> = {
 export class CliError extends Error {
   readonly code: ErrorCode;
   readonly exitCode: number;
+  readonly details?: Record<string, unknown>;
 
-  constructor(code: ErrorCode, message: string) {
+  constructor(code: ErrorCode, message: string, details?: Record<string, unknown>) {
     super(message);
     this.name = "CliError";
     this.code = code;
     this.exitCode = EXIT_CODES[code];
+    this.details = details;
   }
 }
 
 /**
  * Write structured JSON error to stderr and exit.
  */
-export function stderrJson(code: ErrorCode, message: string): never {
+export function stderrJson(
+  code: ErrorCode,
+  message: string,
+  details?: Record<string, unknown>,
+): never {
   const exitCode = EXIT_CODES[code];
   process.stderr.write(
-    JSON.stringify({ error: true, message, code, exitCode }) + "\n",
+    JSON.stringify({ ...details, error: true, message, code, exitCode }) + "\n",
   );
   process.exit(exitCode);
 }
@@ -66,5 +72,5 @@ function classifyError(err: unknown): CliError {
  */
 export function handleError(err: unknown): never {
   const cliErr = classifyError(err);
-  stderrJson(cliErr.code, cliErr.message);
+  stderrJson(cliErr.code, cliErr.message, cliErr.details);
 }

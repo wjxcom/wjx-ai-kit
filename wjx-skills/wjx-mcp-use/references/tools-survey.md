@@ -1,5 +1,23 @@
 # 问卷管理工具详解（13 tools）
 
+## WJX XML DSL 工具（默认创建/安全修改）
+
+普通 AI 新建问卷使用以下链路，不自动改用兼容工具：
+
+`create_survey_by_wjx_dsl -> query_wjx_dsl`
+
+已有问卷修改链路为：
+
+`query_wjx_dsl -> update_wjx_dsl(if_match?) -> query_wjx_dsl`
+
+| 工具 | 必填参数 | 说明 |
+|------|----------|------|
+| `query_wjx_dsl` | `vid` | 复用传统问卷查询并返回完整 WJX XML DSL |
+| `create_survey_by_wjx_dsl` | `dsl` | 校验并创建 WJX XML DSL v1 草稿；不提供 DSL 专用幂等键 |
+| `update_wjx_dsl` | `vid`, `dsl`, `if_match`（可选） | 校验并提交完整 DSL 修改；If-Match 只是弱前置校验，不是原子 CAS |
+
+DSL 创建/修改不自动重试。超时、断网、in-progress 或结果未知时，先用 `query_wjx_dsl` 和传统问卷查询对账，不能 fallback 到 JSONL 或旧文本 DSL，也不要生成第二份问卷。详见 [wjx-xml-dsl-v1.md](wjx-xml-dsl-v1.md)。
+
 ## create_survey — 创建问卷
 
 从零创建或复制已有问卷。
@@ -16,17 +34,17 @@
 | `compress_img` | boolean | 否 | 是否压缩图片 |
 | `is_string` | boolean | 否 | 是否使用原始 activity string 格式 |
 
-## create_survey_by_json — 用 JSONL 创建问卷（推荐）
+## create_survey_by_json — 用 JSON 创建问卷（显式兼容）
 
-**首选方式**：支持 70+ 题型。`jsonl` 是 MCP 工具的唯一题目输入；不要传 `questions` 数组或旧的 `q_type/q_subtype` 创建结构。配合 prompt 模板（generate-survey-json、generate-exam-json、generate-form-json）使用效果最佳。
+**首选方式**：支持 70+ 题型，覆盖全部 q_type/q_subtype 编码。配合 prompt 模板（generate-survey-json、generate-exam-json、generate-form-json）使用效果最佳。
 
 | 参数 | 类型 | 必填 | 说明 |
 |------|------|------|------|
-| `jsonl` | string | 是 | JSONL 字符串；首行为 `qtype:"问卷基础信息"`，后续每行一个题目对象 |
-| `title` | string | 否 | 覆盖 JSONL 首行中的问卷标题 |
+| `title` | string | 是 | 问卷标题 |
+| `questions` | array | 是 | 题目 JSON 数组（格式同 create_survey 的 questions 参数） |
 | `atype` | number | 否 | 问卷类型：1=调查(默认), 2=测评, 3=投票, 6=考试, 7=表单 |
+| `desc` | string | 否 | 问卷描述 |
 | `publish` | boolean | 否 | 是否立即发布（默认 false） |
-| `optional_titles` | string[] | 否 | 允许设为选填的题目标题；其余题目默认必答 |
 | `creater` | string | 否 | 创建者子账号用户名 |
 
 ### 常见题型 qtype 片段
@@ -44,9 +62,9 @@
 - **禁止使用 `rowtitle` 数组定义子项** — `rowtitle` 是矩阵题/比重题/Kano/PSM 的字段，多项填空不支持，服务端会忽略并只生成 1 个空位。
 - 考试多项填空（`qtype="考试多项填空"`）和考试完形填空同理，都依赖 `{_}` 占位符。
 
-## create_survey_by_text — 用 DSL 文本创建问卷（已弃用）
+## create_survey_by_text — 用旧行文本 DSL 创建问卷（显式兼容）
 
-> **已弃用**：新项目请改用 `create_survey_by_json`（支持 70+ 题型，覆盖更全）。本工具仅为兼容保留，不再推荐使用。
+> 普通新建默认使用 WJX XML DSL；本工具仅在用户明确要求旧文本格式时使用。语法见 `dsl-and-types.md`。
 
 | 参数 | 类型 | 必填 | 说明 |
 |------|------|------|------|
@@ -84,7 +102,7 @@
 | `is_xingbiao` | boolean | 否 | 只获取星标问卷 |
 | `query_all` | boolean | 否 | 获取企业所有问卷 |
 | `verify_status` | number | 否 | 审核状态筛选 |
-| `time_type` | number | 否 | 时间查询类型：0=不按时间查询（默认），1=按问卷开始时间，2=按问卷创建时间 |
+| `time_type` | number | 否 | 时间查询类型（0-2） |
 | `begin_time` | number | 否 | 起始时间（毫秒时间戳） |
 | `end_time` | number | 否 | 结束时间（毫秒时间戳） |
 

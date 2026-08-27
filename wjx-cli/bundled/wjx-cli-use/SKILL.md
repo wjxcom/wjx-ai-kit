@@ -1,6 +1,6 @@
 ---
 name: wjx-cli-use
-description: "Guide for using wjx-cli (Wenjuanxing CLI) to create surveys, query responses, and analyze data. Use when the user mentions: 问卷, 调查, 收集, 表单, 投票, 考试, 测评, 满意度, NPS, 问卷星, wjx, survey, questionnaire, or wants to create surveys, view responses, export data, analyze NPS/CSAT, or manage contacts, departments, and sub-accounts."
+description: "Guide for using wjx-cli (Wenjuanxing CLI) to create surveys, query responses, and analyze data. Use when the user mentions: 问卷, 调查, 收集, 表单, 投票, 考试, 测评, 满意度, NPS, 问卷星, wjx, survey, questionnaire — or wants to create surveys, view responses, export data, analyze NPS/CSAT, manage contacts/departments/sub-accounts. Covers all 67 subcommands across 15 modules."
 ---
 
 # wjx-cli 使用指南
@@ -11,37 +11,25 @@ wjx-cli 是问卷星 OpenAPI 的命令行工具。命令格式：`wjx <模块> <
 
 ## AI Agent 行为准则（必读）
 
-### 规则 0：创建问卷只用 `create-by-json`（强制）
+### 规则 0：普通新建默认使用 WJX XML DSL（强制）
 
-创建任何新问卷都只使用 `wjx survey create-by-json --file <path>.jsonl`。不要使用已弃用的 `create-by-text`，也不要使用兼容命令 `create --questions`。
+普通 AI 新建问卷必须生成版本化 `wjx-dsl 1`，严格执行 `generate -> create`：先调用 `wjx dsl create --file <path>`，通过后调用 `wjx dsl query --vid <vid>` fresh-read 核验。语法和安全边界见 [references/wjx-xml-dsl-v1.md](references/wjx-xml-dsl-v1.md)。
 
-先运行 `wjx survey jsonl-template --type <问卷类型> --raw` 获取当前 CLI 可接受的骨架，再编辑 JSONL。每个非空行必须是一个完整 JSON 对象；首行必须是 `{"qtype":"问卷基础信息","title":"...","atype":1}`，后续题目使用中文字符串字段 `qtype` 以及 `title`、`select`、`rowtitle` 等字段。
+显式兼容路径：用户明确要求 JSONL 时才调用 `wjx survey create-by-json`；明确要求旧文本 DSL 时才调用 `wjx survey create-by-text`；旧 JSON 数组仅按明确要求使用。不要把三种格式混在一次请求中。
 
-不要把旧接口的 `_meta`、`q_type`、`q_subtype`、`q_title`、`items` 结构传给 `create-by-json`；CLI 会将其判为输入错误。
+DSL 的 `create`、`update` 不自动重试。超时、断网或结果未知时，使用返回的传统 `vid` 重新 query 对账，禁止自动 fallback 到另一种创建格式或生成第二份问卷。仅服务端明确返回 `FeatureDisabled`/`Unsupported` 且确认无副作用时，才提示用户显式选择兼容路径。
 
 ### 规则 1：一个需求 = 一个问卷
 
-无论用户要求多少种题型，**必须在一次 `create-by-json` 调用中包含所有题目**。一个问卷可包含任意数量、任意类型的题目。
+无论用户要求多少种题型，**必须在一次 DSL 创建调用中包含所有题目**。一个问卷可包含任意数量、任意类型的题目。
 
 ### 规则 2：问卷类型 ≠ 题目类型
 
-"投票/考试/调查"是**问卷类型**（`--type` 参数）。JSONL 创建投票时使用 `qtype:"投票单选"` / `qtype:"投票多选"`，并显式传 `--type 3`；考试使用 `qtype:"考试单选"`、`qtype:"考试多选"` 等考试题型，并显式传 `--type 6`。
+"投票/考试/调查"是**问卷类型**（`--type` 参数）。JSONL 创建投票时使用 `qtype:"投票单选"` / `qtype:"投票多选"`，并显式传 `--type 3`；只有旧 DSL 文本格式才使用普通 `[单选题]` / `[多选题]`，不存在 `[投票单选题]` 标签。
 
 ### 规则 3：不支持的题型要明确告知
 
-只使用 [references/question-types.md](references/question-types.md) 列出的 JSONL `qtype`，不要自行发明题型名。地区题使用 `qtype:"多级下拉"` 并提供 `leveldata`。若当前 JSONL 格式确实无法表达用户要求，明确说明限制和替代方案，继续创建其余题目，**不要**反复尝试或拆分多个问卷。
-
-### 规则 3.1：用户体系只允许兼容维护
-
-`user-system` 命令和 `sso user-system-url` 仍可发现，但已标记为 Deprecated，仅用于已有用户体系的历史维护。`atype=8` 不能通过创建命令新建；新项目不要主动使用用户体系工作流，只有用户明确提供已有 `sysid` 并要求维护时才执行，并先说明兼容风险。
-
-**NPS 量表必须遵守以下强约束**：`select` 必填，且必须严格是从 `"0"` 到 `"10"` 的 11 个字符串，不能省略、缩短、改成数字或用其他字段代替。以下是唯一规范 JSONL 示例，生成 NPS 题时按此结构改写题干和端点文案：
-
-```jsonl
-{"qtype":"NPS量表","title":"您向朋友或同事推荐本餐厅的可能性有多大？","select":["0","1","2","3","4","5","6","7","8","9","10"],"minvaluetext":"完全不可能","maxvaluetext":"极其可能"}
-```
-
-字段职责必须分开理解：`qtype` 选择 NPS 量表题型；`select` 定义实际可选分值；`minvaluetext`/`maxvaluetext` 只定义两端显示文案，不定义分值范围。`minvalue`/`maxvalue` 是滑动条等其他题型的范围字段，**不能**替代 NPS 的 `select`。
+签名题（用 `[绘图题]` 替代）、地区题（用 `[多级下拉题]` 或网页端添加）、NPS 专用题（用 `[量表题]` + `0~10`）不在 DSL 支持范围内。告知用户替代方案，继续创建其他题目，**不要**反复尝试或拆分多个问卷。
 
 ### 规则 4：面向用户说自然语言，不说 CLI 命令
 
@@ -103,46 +91,26 @@ https://www.wjx.cn/weixinlogin.aspx?redirecturl=%2Fnewwjx%2Fmanage%2Fuserinfo.as
   - 矩阵多选 3 行：`7$1!1|2,2!3,3!1|4`
   - 矩阵量表 3 行：`8$1!5,2!4,3!3`
 
-### 规则 8：填写链接必须来自 API 返回的短路径（强制）
+### 规则 8：填写链接必须使用加密短编号（强制）
 
-- `vid` 是后台问卷编号，**禁止**自行拼成 `https://<域名>/m/<vid>.aspx`、`/vm/<vid>.aspx` 或 `/jq/<vid>.aspx` 后提供给用户。数字 `vid` 不能被当作公开填写地址的标识。
-- 填写地址只允许使用 API 返回并通过校验的域名和路径：优先使用响应中已经提供且可验证的 `fill_url`；当前 CLI 不会自动从原始字段派生 `fill_url`，通常只返回 `sid`、`activity_domain`、`pc_path`、`mobile_path`，此时用 `new URL(pc_path || mobile_path, activity_domain)`（或等价的结构化 URL API）组合，原样保留服务端路径，并核对路径中的标识是短 `sid`。
-- 组合前必须确认域名、路径都来自同一条 API 记录，路径以允许的填写路由（例如 `/m/`、`/vm/` 或 `/jq/`）开头，且不是由 `vid` 推导出的猜测路径。字段缺失、域名/路径校验失败时，明确报告“服务端未提供可验证的填写路径”，不要静默猜测或替换成默认域名。
-- 三类地址不能混用：填写地址面向答卷人并使用服务端短 `sid`/路径；`wjx survey url --mode edit --activity <vid>` 生成后台编辑地址；`wjx survey url --mode create` 生成建卷页面地址。后两者都不是填写地址。
-- 创建成功后先从创建响应中解析填写地址及 `vid`/`sid`；只有创建响应没有可验证路径时，才按 `vid` 到 `survey list` 的分页记录中查找 `activity_domain` 与 `pc_path`/`mobile_path`。获取填写地址不需要先调用 `survey get`，也不需要探查 `survey url --help`。
-- 找不到服务端路径时才报告暂时无法取得链接；不能因为没有名为 `fill_url` 的字段就断言所有链接都不可用，也不能输出未经 API 返回和校验的链接。
-
-### 规则 9：问卷列表必须报告总数和分页范围（强制）
-
-- 调用 `wjx survey list` 时保留默认 JSON 输出，读取 `data.page_index`、`data.page_size`、`data.total_count` 和 `data.activitys`。**不要使用 `--table`**，表格输出会隐藏总数和分页元数据。
-- 必须用 JSON 解析器读取响应对象；不要用 `head` 截断 JSON，也不要用 `grep` 搜索字段。为刚创建的问卷找链接时，优先按创建响应中的 `vid`/`sid` 定位；列表 fallback 才按页读取目标记录。
-- 用户只要求“查看问卷列表”时可以先展示一页，但必须同时说明匹配问卷总数、当前页和本页数量，例如：「共 N 份问卷，当前展示第 X/Y 页的 M 份。」不得把单页结果表述为全部问卷。
-- 用户要求“全部问卷”或任务需要完整集合时，保持筛选和排序条件不变，根据 `total_count` 逐页查询，直到实际收集数量与总数一致；未取完前不得声称已列出全部。
-- `--query_all` 只表示查询范围包含子账号问卷，**不会**自动获取全部分页。
-- `--table` 只展示部分问卷行，可能隐藏填写路径、链接以及 `total_count`、`page_index`、`page_size` 等元数据，不可用于机器解析或链接查找。
-- 如果响应缺少 `total_count`，不要口述未核实的总数；逐页查询到空页后计算实际数量，或明确说明当前无法确认总数。详细响应结构见 [references/survey-commands.md](references/survey-commands.md)。
-
-### 规则 10：答卷查询必须报告总数并按需取全（强制）
-
-- 调用 `wjx response query` 时保留默认 JSON 输出，读取 `data.valid`、`data.page_index`、`data.page_size`、`data.total_count` 和 `data.answers`；`answers` 只包含当前页。
-- 用户只要求“查看答卷”时可以先展示一页，但必须同时说明当前查询匹配的答卷总数、当前页和本页数量，例如：「共 N 份答卷，当前展示第 X/Y 页的 M 份。」不得把单页结果表述为全部答卷。
-- 用户要求全部答卷，或任务需要完整明细进行聚合、核对、分析时，使用不超过 50 的 `page_size`，保持 `valid`、时间、条件、去重和排序参数不变，逐页查询并核对累计数量等于 `total_count`。
-- 将 `response query` 返回的 `total_count` 作为当前筛选条件下的结果总数。`wjx response count` 只接受 `vid`，不得用它覆盖带时间、条件、答卷 ID、自定义参数或去重条件的查询总数；不要用 `join_times` 代替分页所需的 `total_count`。
-- 如果响应缺少 `total_count`，不要口述未核实的总数；逐页查询到空页后计算实际数量，或明确说明当前无法确认总数。生成报告时的有效样本量仍按规则 7 使用 `survey.answer_valid`。详细响应结构见 [references/response-commands.md](references/response-commands.md)。
+- `vid` 是后台问卷编号，**禁止**自行拼成 `https://<域名>/m/<vid>.aspx`、`/vm/<vid>.aspx` 或 `/jq/<vid>.aspx` 后提供给用户。
+- `wjx survey list` 返回的 `fill_url` 是填写链接的唯一首选；CLI 优先使用与 `vid` 不同的 `sid`，并拒绝暴露数字 `vid` 的路径。
+- `wjx survey url --mode edit --activity <vid>` 生成的是**后台编辑链接**，不是填写链接。
+- 如果列表结果没有 `fill_url`，应说明暂时无法取得安全填写链接，**不得**用数字 `vid` 猜测或伪造。
 
 ## 快速路由
 
 | 用户意图 | 命令 |
 |---------|------|
-| 做调查/问卷 | `wjx survey create-by-json --file survey.jsonl` |
-| 做考试/测验 | `wjx survey create-by-json --file exam.jsonl --type 6` |
-| 做投票 | `wjx survey create-by-json --file vote.jsonl --type 3` |
-| 做表单/报名表 | `wjx survey create-by-json --file form.jsonl --type 7` |
+| 做调查/问卷 | `wjx dsl create/query/update`（默认 WJX XML DSL） |
+| 做考试/测验 | `wjx dsl create/query/update`（默认；JSONL 仅显式选择） |
+| 做投票 | `wjx dsl create/query/update`（默认） |
+| 做表单/报名表 | `wjx dsl create/query/update`（默认；JSONL 仅显式选择） |
 | 看问卷结果 | 先 `wjx survey list` 找 vid，再 `wjx response report --vid <vid>` |
 | 导出答卷数据 | `wjx response download --vid <vid>` |
 | 分析 NPS | `wjx analytics nps --scores "[9,10,7,3]"` |
 | 导入联系人 | `wjx contacts add --users '[...]'`（需 `WJX_CORP_ID`） |
-| 查看填写链接 | 优先使用创建响应中规范化的 `fill_url` 或经校验的 `activity_domain` + `pc_path`/`mobile_path`；路径缺失时按 `vid` 分页解析 `wjx survey list` |
+| 查看填写链接 | `wjx survey list` 返回的 `fill_url` |
 | 查看编辑链接 | `wjx survey url --mode edit --activity <vid>` |
 
 ## 安装与配置
@@ -214,44 +182,46 @@ wjx doctor
 
 | 模块 | 命令 | 说明 |
 |------|------|------|
-| `survey` | list, get, create-by-json, jsonl-template, delete, status, settings, update-settings, upload, export-text, url | 问卷增删改查与配置 |
+| `survey` | list, get, create, create-by-text, create-by-json, delete, status, settings, update-settings, upload, export-text, url | 问卷增删改查与配置 |
 | `response` | query, realtime, download, submit, modify, clear, report, count | 答卷数据操作 |
 | `contacts` | query, add, delete | 联系人管理（需 WJX_CORP_ID） |
 | `department` | list, add, modify, delete | 部门管理 |
 | `admin` | add, delete, restore | 管理员管理 |
 | `tag` | list, add, modify, delete | 标签管理 |
 | `account` | list, add, modify, delete, restore | 子账号管理 |
-| `sso` | subaccount-url, user-system-url（兼容/已过时）, partner-url | SSO 链接生成 |
+| `sso` | subaccount-url, user-system-url, partner-url | SSO 链接生成 |
 | `analytics` | decode, nps, csat, anomalies, compare, decode-push | 本地分析（无需 API Key） |
+| `dsl` | query, create, update | WJX XML DSL v1 新建与安全修改 |
 | `init` / `doctor` / `whoami` | — | 配置 / 诊断 / 验证 |
 
 ## 核心工作流
 
-### 创建问卷（统一使用 JSONL 格式）
+### 创建问卷（默认 WJX XML DSL）
 
-> **重要**：必须执行 `wjx survey create-by-json` 命令来创建问卷。只生成 JSONL 文本而不执行命令，问卷不会被创建到问卷星平台上。
+> **重要**：普通 AI 新建必须先生成完整 WJX XML DSL，再执行 `wjx dsl create`；只生成文本而不调用工具不会创建问卷。创建结果中的传统 `vid` 用于后续 query/update。
 
 ```bash
-wjx survey jsonl-template --type 1 --raw > survey.jsonl
-# 编辑 survey.jsonl 后执行
-wjx survey create-by-json --file survey.jsonl
+wjx dsl create --file survey.wjx
+wjx dsl create --file survey.wjx
+wjx dsl query --vid <vid>
 ```
 
-JSONL 每个非空行放一个 JSON 对象，且首行必须是问卷基础信息。例如：
+语法、题型基础 Type、保留规则和兼容路径见 [references/wjx-xml-dsl-v1.md](references/wjx-xml-dsl-v1.md)。创建默认是草稿，链接直接使用服务端响应。
 
-```jsonl
-{"qtype":"问卷基础信息","title":"客户满意度调查","introduction":"感谢您的参与","atype":1}
-{"qtype":"单选","title":"您对本次服务是否满意？","select":["满意","一般","不满意"]}
-{"qtype":"简答题","title":"您还有什么建议？"}
+### 修改问卷
+
+```bash
+wjx dsl query --vid <vid>
+wjx dsl update --vid <vid> --file candidate.wjx --if-match <etag>
+wjx dsl update --vid <vid> --file candidate.wjx --if-match <etag>
+wjx dsl query --vid <vid>
 ```
 
-字段命名和可用中文 `qtype` 见 [references/question-types.md](references/question-types.md)。题目 `title` 只写正文；普通选择题使用 `select`，矩阵题使用 `rowtitle + select`，表格组合使用 `rowtitle + types + selects`。投票题使用 `qtype:"投票单选"` / `qtype:"投票多选"` + `select`。
+更新前先用 `wjx dsl query --vid <vid>` 获取完整 DSL；写操作不自动重试或 fallback。`If-Match` 过期先重新 query。
 
-问卷类型：`--type 1` 调查（默认），`3` 投票，`6` 考试，`7` 表单。
+### 显式兼容格式
 
-创建成功后，先保存并结构化解析完整 JSON 响应。若响应带有可验证的 `fill_url`，直接将它作为填写地址；否则从同一响应记录的 `activity_domain` 与 `pc_path`（桌面端优先）或 `mobile_path` 组合地址，并确认使用的是短 `sid`。只有创建响应缺少这些路径时，才用响应中的 `vid` 到列表接口逐页查找对应记录。不要为此调用 `survey get`，也不要把 `survey url` 的编辑/创建地址当作填写地址。
-
-**考试问卷注意**：先运行 `wjx survey jsonl-template --type 6 --raw`，按模板使用 `考试单选`、`考试多选`、`考试判断` 等 `qtype`；用 `correctselect` 和 `quizscore` 设置正确答案与分值。需要模板未覆盖的高级考试设置时，再提供编辑链接并指引用户在网页端补充。
+用户明确要求 JSONL 时使用 `wjx survey create-by-json --file <path>.jsonl`；明确要求旧文本 DSL 时使用 `wjx survey create-by-text`。这些接口仍受支持，但不是普通新建默认路径。
 
 ### 答卷与分析
 
@@ -270,14 +240,16 @@ JSONL 每个非空行放一个 JSON 对象，且首行必须是问卷基础信�
 | `vid is required` | 未指定问卷 ID | 先 `wjx survey list` 获取 vid |
 | `Corp ID is required` | 通讯录操作需企业 ID | `wjx init` 配置 `WJX_CORP_ID` |
 | `Network Error` / 超时 | 网络不通或 base_url 错误 | `wjx doctor` 检查，`--dry-run` 预览 |
-| `qtype` 不识别 / 字段名错误 | 混用了旧接口字段或题型名称无效 | 重新运行 `wjx survey jsonl-template --type <n> --raw`，改用中文 `qtype` 和 `title`/`select` 等 JSONL 字段 |
+| DSL 更新失败 | WJX XML DSL 属性/节点不符合契约或版本冲突 | 读取 `wjx-xml-dsl-v1.md`，根据服务端错误修正；版本冲突先重新 query |
 
 ## 参考文件（按需读取）
 
-- [问卷命令](references/survey-commands.md) — survey 模块常用子命令参数、JSONL 创建格式、设置
+- [DSL 语法](references/dsl-syntax.md) — 旧 `create-by-text` 的 DSL 格式（已弃用，仅供历史代码参考）
+- [WJX XML DSL v1](references/wjx-xml-dsl-v1.md) — 普通新建和安全修改的默认协议
+- [问卷命令](references/survey-commands.md) — survey 模块全部子命令参数、JSON 创建格式、设置
 - [答卷命令](references/response-commands.md) — 查询筛选、submitdata 格式、下载选项
 - [通讯录命令](references/contacts-commands.md) — 联系人、部门、管理员、标签、子账号、SSO
 - [分析命令](references/analytics-commands.md) — NPS/CSAT/CES 公式、异常检测、数据解码
-- [JSONL 题型](references/question-types.md) — `create-by-json` 的字段格式、中文 `qtype` 与示例
+- [题型编码](references/question-types.md) — 完整 q_type/q_subtype 映射表
 - [计算公式](references/formula-helper.md) — 问卷星计算公式与Excel函数功能指南，帮助AI在问卷中正确编写计算公式。涵盖题目引用、数组写法、赋值判断逻辑、各题型的推送数据格式、函数参考（日期时间/数学计算/文本合并/条件判断/逻辑/查找统计）及实战案例。
 - [安装 Node.js](references/install-nodejs.md) — 各平台 Node.js 安装方式

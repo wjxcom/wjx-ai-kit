@@ -23,7 +23,7 @@ import {
 import { enrichSurveyListOutput, formatOutput } from "../lib/output.js";
 import { CliError, handleError } from "../lib/errors.js";
 import { getCredentials } from "../lib/auth.js";
-import { executeCommand, strictInt, requireField, getMerged, createCapturingFetch, printDryRunPreview, ensureJsonString, ensureStringArray } from "../lib/command-helpers.js";
+import { executeCommand, strictInt, requireField, getMerged, createCapturingFetch, printDryRunPreview, ensureJsonString, ensureStringArray, isRequestPreview } from "../lib/command-helpers.js";
 
 export function registerSurveyCommands(program: Command): void {
   const survey = program.command("survey").description("问卷管理");
@@ -149,7 +149,7 @@ export function registerSurveyCommands(program: Command): void {
           throw new CliError("INPUT_ERROR", "必须提供 --text 或 --file 参数");
         }
 
-        if (globalOpts.dryRun) {
+        if (isRequestPreview(globalOpts)) {
           const parsed = textToSurvey(dslText);
           const { questions: wireQuestions, skippedParagraphs } = parsedQuestionsToWire(parsed.questions);
           process.stderr.write(JSON.stringify({
@@ -232,7 +232,7 @@ export function registerSurveyCommands(program: Command): void {
         const globalOpts = program.opts();
         const creds = getCredentials(globalOpts);
 
-        if (globalOpts.dryRun) {
+        if (isRequestPreview(globalOpts)) {
           const { fetchImpl, getCapturedRequest } = createCapturingFetch();
           await createSurveyByJson({
             jsonl: jsonlText,
@@ -404,7 +404,7 @@ export function registerSurveyCommands(program: Command): void {
 
         const creds = getCredentials(program.opts());
 
-        if (program.opts().dryRun) {
+        if (isRequestPreview(program.opts())) {
           const { fetchImpl, getCapturedRequest } = createCapturingFetch();
           await getSurvey({ vid: merged.vid as number }, creds, fetchImpl);
           printDryRunPreview(getCapturedRequest());

@@ -17,6 +17,7 @@ import { registerCompletionCommands } from "./commands/completion.js";
 import { registerReferenceCommands } from "./commands/reference.js";
 import { registerSkillCommands } from "./commands/skill.js";
 import { registerUpdateCommands } from "./commands/update.js";
+import { registerDslCommands } from "./commands/dsl.js";
 import { readStdin } from "./lib/stdin.js";
 import { handleError } from "./lib/errors.js";
 import { applyConfigToEnv } from "./lib/config.js";
@@ -38,7 +39,8 @@ program
   .option("--json", "JSON 输出（默认）")
   .option("--table", "表格输出")
   .option("--stdin", "从 stdin 读取 JSON 参数")
-  .option("--dry-run", "预览 API 请求（不实际发送）");
+  .option("--dry-run", "预览 API 请求（不实际发送，兼容名称）")
+  .option("--request-preview", "预览 API 请求（不实际发送）");
 
 // Prevent Commander from calling process.exit on errors — we handle it ourselves
 program.exitOverride();
@@ -56,6 +58,7 @@ program.hook("preAction", async (thisCommand, actionCommand) => {
 });
 
 registerSurveyCommands(program);
+registerDslCommands(program);
 registerDiagnosticCommands(program);
 registerResponseCommands(program);
 registerContactsCommands(program);

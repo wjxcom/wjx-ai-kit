@@ -3,6 +3,7 @@ import { z } from "zod";
 import { registerAnalysisPrompts } from "./analysis.js";
 import { registerSurveyGenerationPrompts } from "./survey-generation.js";
 import { registerSurveyGenerationJsonPrompts } from "./survey-generation-json.js";
+import { WJX_XML_DSL_FORMAT_INSTRUCTIONS } from "./wjx-xml-dsl.js";
 
 export function registerPrompts(server: McpServer): void {
   server.prompt(
@@ -17,7 +18,7 @@ export function registerPrompts(server: McpServer): void {
       const resolvedSurveyType = survey_type ?? "调查";
       const isVoteSurvey = resolvedSurveyType.includes("投票");
       const voteNotice = isVoteSurvey
-        ? "\n\n投票题专用 qtype：「投票单选」/「投票多选」（作答页会显示每选项票数和百分比）。调用 create_survey_by_json 时请显式传 atype=3。"
+        ? "\n\n投票问卷请在完整 DSL 中使用后端已支持的投票属性；不要把 JSONL 的 qtype 写进 DSL。"
         : "";
       return {
         messages: [{
@@ -28,25 +29,12 @@ export function registerPrompts(server: McpServer): void {
 
 目标受众：${target_audience ?? "通用"}
 
-请按以下结构输出：
-1. 问卷标题和描述
-2. 题目列表（每题包含：题型、标题、选项/填空说明、是否必填）
-3. 建议的逻辑跳转规则
-4. 最终输出 JSONL 格式（供 create_survey_by_json 工具直接使用，推荐，支持 70+ 题型）
-
-JSONL 格式说明（每行一个 JSON 对象）：
-- 首行为问卷元数据：{"qtype":"问卷基础信息","title":"问卷标题","introduction":"问卷描述"}
-- 后续每行一个题目，如：{"qtype":"单选","title":"题目标题","select":["选项1","选项2"]}
-- title 只写题目正文，不要写题目序号或题目类型；题目类型只写在 qtype 字段
-- 常用 qtype：单选、多选、单项填空、多项填空、下拉框、量表题、评分单选、评分多选、排序、判断题、矩阵量表、矩阵单选、矩阵多选、矩阵填空、文件上传、比重题、滑动条
-- 表格题标准格式示例：{"qtype":"表格组合","title":"活动时间与场地偏好","rowtitle":["可参加时段","偏好场地类型","备注"],"types":["多选","下拉","文本"],"selects":[["工作日晚上","周末上午","周末下午","周末晚上"],["木地板","塑胶地","不限"],[]]}
-- 投票题标准格式示例：{"qtype":"投票单选","title":"你最喜欢哪个网站","select":["淘宝网","开心网","百度","腾讯","人人网"]}，调用 create_survey_by_json 时显式传 atype=3
-- 默认所有题目必答；单项填空、简答题、意见建议题、开放题默认也必须必答。只有用户明确指定某个题号/题目/字段为选填时，才给该题设 requir=false
-- 量表题可用 minvaluetext/maxvaluetext 标注两端文字
-- 多项填空必须在 title 中用 {_} 占位符表示每个子填空位，如 {"qtype":"多项填空","title":"电话 {_}，邮箱 {_}"}；**不要用 rowtitle 数组**（那是矩阵题字段，多项填空不支持，会导致只生成 1 个空位）
-- 更多 qtype 及字段请参考 generate-survey-json prompt
-
-如果问卷仅涉及简单题型（约 25 种），也可退而使用 DSL 文本格式 + create_survey_by_text 工具。${voteNotice}`,
+请按以下结构工作：
+1. 先设计标题、描述、题目、必填规则和逻辑。
+2. 将全部内容写成一个完整的 WJX XML DSL v1 文档，不要输出 JSONL、旧行文本 DSL 或 XML 裸片段。
+3. 严格执行 generate -> create_survey_by_wjx_dsl；创建结果为草稿。
+4. 若需要修改已有问卷，先 query_wjx_dsl(传统 vid)，再 update_wjx_dsl。
+${WJX_XML_DSL_FORMAT_INSTRUCTIONS}${voteNotice}`,
           },
         }],
       };
@@ -98,22 +86,23 @@ ${focus_areas ? `关注重点：${focus_areas}` : ""}
           content: {
             type: "text",
             text: isEn
-              ? `Please create a standard NPS survey for "${product_name}" using the create_survey_by_json tool.
+              ? `Create a standard NPS survey for "${product_name}" as a complete WJX XML DSL v1 document. Do not output JSONL, raw XML, or the legacy line DSL.
 
-The survey should include:
-1. NPS Question: "How likely are you to recommend ${product_name} to a friend or colleague?" (use qtype="NPS量表" with the 11 string options "0" through "10")
-2. Follow-up: "What is the primary reason for your score?" (qtype="单项填空")
-3. "What could we improve?" (qtype="单项填空", required by default)
+Include the NPS question "How likely are you to recommend ${product_name}?" with exactly 11 radio items whose ItemValue values are 0 through 10, followed by two required multi-line text questions for the reason and improvement suggestion. Use unique positive Topic values and Requir=true.
 
-Use survey type 1 (survey) and pass a JSONL string to create_survey_by_json. The first line must be the metadata object.`
-              : `请使用 create_survey_by_json 工具为「${product_name}」创建一份标准 NPS 问卷。
+Run the workflow generate -> create_survey_by_wjx_dsl (draft). For an existing questionnaire, query_wjx_dsl with the traditional vid and then update_wjx_dsl. If a write result is unknown, reconcile it and never silently fall back to another creation format.
 
-问卷应包含：
-1. NPS 核心题：「您有多大可能向朋友或同事推荐${product_name}？」（使用 qtype="NPS量表"，select 必须是字符串 "0" 到 "10" 共 11 项）
-2. 跟进题：「您给出这个评分的主要原因是什么？」（qtype="单项填空"）
-3. 「您觉得我们还可以在哪些方面改进？」（qtype="单项填空"，默认必答）
+${WJX_XML_DSL_FORMAT_INSTRUCTIONS}`
+              : `请为「${product_name}」生成一份完整的 WJX XML DSL v1 标准 NPS 问卷。不要输出 JSONL、裸 XML 或旧行文本 DSL。
 
-使用问卷类型 1（调查），将首行元数据和题目逐行组成 JSONL 字符串，传给 create_survey_by_json 的 jsonl 参数。`,
+问卷必须包含：
+1. NPS 核心题：0-10 共 11 个 question radio 选项，ItemValue 严格为 0 到 10；
+2. “您给出这个评分的主要原因是什么？”多行文本题；
+3. “您觉得我们还可以在哪些方面改进？”多行文本题。
+
+所有 Topic 唯一且为正整数，默认写 Requir=true。严格执行 generate -> create_survey_by_wjx_dsl（创建草稿）。修改已有问卷时使用 query_wjx_dsl（传统 vid）-> update_wjx_dsl。写结果未知时先对账，禁止静默切换其他创建格式。
+
+${WJX_XML_DSL_FORMAT_INSTRUCTIONS}`,
           },
         }],
       };
@@ -215,10 +204,10 @@ Use survey type 1 (survey) and pass a JSONL string to create_survey_by_json. The
     }),
   );
 
-  // ═══ Legacy User System Workflow ════════════════════════════════════
+  // ═══ User System Workflow ═══════════════════════════════════════════
   server.prompt(
     "user-system-workflow",
-    "用户体系兼容工作流指导（已过时）：维护已有系统的参与者、绑定和参与状态",
+    "用户体系完整工作流指导：创建用户体系问卷 → 添加参与者 → 绑定问卷 → 分发 → 查询参与状态",
     {
       scenario: z.string().optional().describe("使用场景（如：员工考核、培训评估、学生测评）"),
     },
@@ -227,26 +216,28 @@ Use survey type 1 (survey) and pass a JSONL string to create_survey_by_json. The
         role: "user",
         content: {
           type: "text",
-          text: `请指导我维护一个已有的用户体系。该能力已过时，不能通过 API 新建 atype=8 用户体系问卷；只有在我提供已有 usid/sysid 并明确要求兼容维护时才继续。${scenario ? `\n\n使用场景：${scenario}` : ""}
+          text: `请指导我完成一个完整的用户体系问卷工作流。${scenario ? `\n\n使用场景：${scenario}` : ""}
 
-## 用户体系兼容边界
+## 用户体系工作流概览
 
-用户体系工具仍注册在 MCP Server 中，用于历史系统的参与者、绑定关系和状态查询。创建接口不支持 atype=8；新项目请使用普通问卷、通讯录和标准分发能力。
+用户体系（atype=8）允许你为特定用户群发放问卷，追踪每个人的参与状态。
 
-### 步骤 1：确认已有系统
-
-先确认用户提供的 usid/sysid、管理员账号和目标问卷编号；不要尝试创建 atype=8。
+### 步骤 1：创建用户体系问卷
+使用 create_survey 工具创建问卷，atype 设为 8（用户体系）：
+- 设计好题目结构
+- 可选：发布问卷（publish=true）
 
 ### 步骤 2：添加参与者
 使用 add_participants 工具向用户体系添加用户：
-- usid: 用户体系 ID（已有系统）
+- username: 管理员用户名
+- sysid: 用户体系 ID（从问卷详情获取）
 - uids: 用户 ID 列表（JSON 数组字符串）
 - 可选：设置用户属性（姓名、部门等）
 
 ### 步骤 3：绑定问卷
 使用 bind_activity 工具将问卷绑定到参与者：
 - vid: 问卷编号
-- usid: 用户体系 ID
+- sysid: 用户体系 ID
 - uids: 要绑定的用户 ID 列表
 - 可选参数：
   - answer_times: 允许作答次数
@@ -254,9 +245,9 @@ Use survey type 1 (survey) and pass a JSONL string to create_survey_by_json. The
   - can_view_result: 是否允许查看结果
 
 ### 步骤 4：分发问卷
-使用 sso_user_system_url 生成每个用户的专属登录链接：
+使用 build_sso_user_system_url 生成每个用户的专属登录链接：
 - 每个用户通过 SSO 链接登录后自动关联身份
-- 链接由 sso_user_system_url 根据参数编码生成；当前实现不添加签名字段
+- 链接格式：基础 URL + 签名参数
 
 ### 步骤 5：查询参与状态
 - query_survey_binding: 查看绑定状态和参与情况
@@ -268,7 +259,7 @@ Use survey type 1 (survey) and pass a JSONL string to create_survey_by_json. The
 - modify_participants: 修改用户信息
 - delete_participants: 移除用户
 
-请先说明已有系统 ID 和要执行的兼容操作，我再帮你评估影响并逐步完成。`,
+请告诉我你的具体需求，我来帮你一步步完成。`,
         },
       }],
     }),

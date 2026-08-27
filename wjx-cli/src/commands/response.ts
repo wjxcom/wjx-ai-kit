@@ -15,7 +15,7 @@ import {
 } from "wjx-api-sdk";
 import type { WjxCredentials } from "wjx-api-sdk";
 import { CliError } from "../lib/errors.js";
-import { executeCommand, strictInt, requireField, ensureJsonString, getMerged, createCapturingFetch, printDryRunPreview } from "../lib/command-helpers.js";
+import { executeCommand, strictInt, requireField, ensureJsonString, getMerged, createCapturingFetch, printDryRunPreview, isRequestPreview } from "../lib/command-helpers.js";
 import { getCredentials } from "../lib/auth.js";
 import { handleError } from "../lib/errors.js";
 import { formatOutput } from "../lib/output.js";
@@ -333,7 +333,7 @@ export function registerResponseCommands(program: Command): void {
         const globalOpts = program.opts();
         const creds = getCredentials(globalOpts);
 
-        if (globalOpts.dryRun) {
+        if (isRequestPreview(globalOpts)) {
           const { fetchImpl, getCapturedRequest } = createCapturingFetch();
           await getSurvey({ vid: merged.vid as number, get_questions: true, get_items: true }, creds as WjxCredentials, fetchImpl);
           printDryRunPreview(getCapturedRequest());

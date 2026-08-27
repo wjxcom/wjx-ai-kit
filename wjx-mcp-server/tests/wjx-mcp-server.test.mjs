@@ -56,7 +56,7 @@ test("createSurvey sends a JSON POST with Bearer auth to WJX", async () => {
   assert.equal("traceid" in parsedBody, false, "traceid should not be in POST body");
 });
 
-test("server exposes all 58 tools, 8 resources, and 22 prompts over stdio", async () => {
+test("server exposes all 61 tools, 9 resources, and 22 prompts over stdio", async () => {
   const transport = new StdioClientTransport({
     command: "node",
     args: [serverEntry],
@@ -98,6 +98,7 @@ test("server exposes all 58 tools, 8 resources, and 22 prompts over stdio", asyn
       "create_survey",
       "create_survey_by_json",
       "create_survey_by_text",
+      "create_survey_by_wjx_dsl",
       "decode_responses",
       "delete_admin",
       "delete_contacts",
@@ -130,6 +131,7 @@ test("server exposes all 58 tools, 8 resources, and 22 prompts over stdio", asyn
       "query_sub_accounts",
       "query_survey_binding",
       "query_user_surveys",
+      "query_wjx_dsl",
       "restore_admin",
       "restore_sub_account",
       "sso_partner_url",
@@ -138,6 +140,7 @@ test("server exposes all 58 tools, 8 resources, and 22 prompts over stdio", asyn
       "submit_response",
       "update_survey_settings",
       "update_survey_status",
+      "update_wjx_dsl",
       "upload_file",
     ]);
 
@@ -185,6 +188,29 @@ test("server exposes all 58 tools, 8 resources, and 22 prompts over stdio", asyn
       "vid",
     ]);
 
+    const dslToolContracts = {
+      create_survey_by_wjx_dsl: {
+        required: ["dsl"],
+        annotations: [false, false, false],
+      },
+      query_wjx_dsl: {
+        required: ["vid"],
+        annotations: [true, false, true],
+      },
+      update_wjx_dsl: {
+        required: ["dsl", "vid"],
+        annotations: [false, true, false],
+      },
+    };
+    for (const [name, expected] of Object.entries(dslToolContracts)) {
+      const tool = toolsResult.tools.find((item) => item.name === name);
+      assert.ok(tool, `${name} should be registered`);
+      assert.deepEqual(tool.inputSchema.required?.slice().sort(), expected.required);
+      assert.equal(tool.annotations.readOnlyHint, expected.annotations[0]);
+      assert.equal(tool.annotations.destructiveHint, expected.annotations[1]);
+      assert.equal(tool.annotations.idempotentHint, expected.annotations[2]);
+    }
+
     // ─── Resources ─────────────────────────────────────────────────
     const resourcesResult = await client.listResources();
     const resourceUris = resourcesResult.resources.map((r) => r.uri).sort();
@@ -197,6 +223,7 @@ test("server exposes all 58 tools, 8 resources, and 22 prompts over stdio", asyn
       "wjx://reference/survey-statuses",
       "wjx://reference/survey-types",
       "wjx://reference/user-roles",
+      "wjx://reference/wjx-xml-dsl",
     ]);
 
     // Verify a resource can be read
@@ -204,6 +231,14 @@ test("server exposes all 58 tools, 8 resources, and 22 prompts over stdio", asyn
     assert.ok(typesResource.contents.length > 0);
     const parsed = JSON.parse(typesResource.contents[0].text);
     assert.equal(parsed["1"], "调查");
+
+    const xmlDslResource = await client.readResource({ uri: "wjx://reference/wjx-xml-dsl" });
+    const xmlDslGuide = JSON.parse(xmlDslResource.contents[0].text);
+    assert.equal(xmlDslGuide.protocol, "wjx-dsl 1");
+    assert.match(xmlDslGuide.description, /query\/create\/update/);
+    assert.ok(xmlDslGuide.supportMatrix.baseTypes.includes("matrix"));
+    assert.deepEqual(xmlDslGuide.supportMatrix.matrixModes["203"], ["row(ItemVerify=文件上传)"]);
+    assert.ok(xmlDslGuide.supportMatrix.advancedAttributes.matrix.includes("ShowMobileScrollBar"));
 
     // ─── Prompts ───────────────────────────────────────────────────
     const promptsResult = await client.listPrompts();

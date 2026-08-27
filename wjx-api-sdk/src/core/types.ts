@@ -8,14 +8,16 @@ export interface WjxApiSuccess<T = unknown> {
   data: T;
 }
 
-export interface WjxApiFailure {
+export interface WjxApiFailure<TData = unknown> {
   result: false;
   errormsg: string;
   errorcode?: number;
-  data?: unknown;
+  data?: TData;
 }
 
-export type WjxApiResponse<T = unknown> = WjxApiSuccess<T> | WjxApiFailure;
+export type WjxApiResponse<T = unknown, TFailureData = unknown> =
+  | WjxApiSuccess<T>
+  | WjxApiFailure<TFailureData>;
 
 export type FetchLike = (
   input: string | URL | Request,
@@ -33,4 +35,6 @@ export interface RequestOptions {
   timeoutMs?: number;
   maxRetries?: number;
   logger?: Logger;
+  /** Dedicated optimistic-concurrency header; arbitrary headers are intentionally unsupported. */
+  ifMatch?: string;
 }

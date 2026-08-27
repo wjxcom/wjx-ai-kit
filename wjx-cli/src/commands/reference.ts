@@ -41,6 +41,48 @@ function buildDslLabelSection(): string {
 // ─── Inline reference data ───
 
 const TOPICS: Record<string, { title: string; content: string }> = {
+  "wjx-xml-dsl": {
+    title: "WJX XML DSL 参考",
+    content: `# WJX XML DSL
+
+WJX XML DSL 是 AI 新建和安全修改问卷的默认格式。它与旧的
+\`wjx survey create-by-text\` 文本 DSL 不同；旧格式仍可通过
+\`wjx reference dsl\` 查询。
+
+## 最小结构
+
+  wjx-dsl 1;
+  xml version = "1.0";
+  xml encoding = "utf-8";
+
+  questionnaire {
+    attr "Title" = "示例问卷";
+    question radio {
+      attr "Topic" = "1";
+      attr "Title" = "请选择";
+      item {
+        attr "ItemTitle" = "选项一";
+        attr "ItemValue" = "1";
+      };
+    };
+  };
+
+Canonical 语句包括 attr、text、cdata、comment、pi 和 node；常用问卷别名包括
+question、page、cut、item、row、rightrow、column。字符串中的反斜杠、双引号、
+换行、回车和制表符必须转义。输入必须是 UTF-8，最大 4 MiB。
+
+## 命令
+
+  wjx dsl query --vid <traditional-vid>
+  wjx dsl create --file survey.wjx
+  wjx dsl update --vid <vid> --file survey.wjx --if-match <etag>
+
+DSL 正文可由且只能由 \`--dsl\`、\`--file\` 或 \`--stdin\` JSON 的 \`dsl\`
+字段之一提供。\`query\` 和 \`update\` 均使用传统 \`vid\`；
+\`If-Match\` 仅作可选弱前置校验。全局 \`--request-preview\`（兼容别名
+\`--dry-run\`）只预览 HTTP 请求且不发送。`,
+  },
+
   "dsl": {
     title: "DSL 文本语法参考",
     content: `# DSL 文本语法
@@ -441,9 +483,10 @@ export function registerReferenceCommands(program: Command): void {
     .command("reference")
     .description("输出命令参考文档（DSL语法、题型映射、命令参数等）")
     .argument("[topic]", "主题：dsl, question-types, survey, response, analytics（默认列出所有主题）")
+    .addHelpText("after", "\n可用主题还包括：wjx-xml-dsl（WJX XML DSL，新建问卷默认格式）。\n")
     .action((topic?: string) => {
       if (!topic) {
-        console.log(TOPICS["topics"].content);
+        console.log(`${TOPICS["topics"].content}\n  wjx-xml-dsl      WJX XML DSL（AI 新建问卷默认格式）`);
         return;
       }
 

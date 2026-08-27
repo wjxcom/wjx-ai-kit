@@ -12,6 +12,7 @@ import {
 } from "./analysis-reference.js";
 import { PUSH_FORMAT_GUIDE } from "./push-reference.js";
 import { DSL_SYNTAX_GUIDE } from "./dsl-reference.js";
+import { WJX_XML_DSL_GUIDE } from "./wjx-xml-dsl-reference.js";
 
 function formatResource(data: Record<string, unknown>): string {
   return JSON.stringify(data, null, 2);
@@ -117,12 +118,25 @@ export function registerResources(server: McpServer): void {
   server.resource(
     "dsl-syntax",
     "wjx://reference/dsl-syntax",
-    { description: "问卷星 DSL 文本语法参考：题型标记、格式规范、与 TxtToActivityService 对齐", mimeType: "application/json" },
+    { description: "旧版问卷星行文本 DSL 参考：保留用于兼容，不是新的 WJX XML DSL", mimeType: "application/json" },
     async () => ({
       contents: [{
         uri: "wjx://reference/dsl-syntax",
         mimeType: "application/json",
         text: formatResource(DSL_SYNTAX_GUIDE),
+      }],
+    }),
+  );
+
+  server.resource(
+    "wjx-xml-dsl",
+    "wjx://reference/wjx-xml-dsl",
+    { description: "WJX XML DSL v1 语法、安全边界和 query/create/update 工作流", mimeType: "application/json" },
+    async () => ({
+      contents: [{
+        uri: "wjx://reference/wjx-xml-dsl",
+        mimeType: "application/json",
+        text: formatResource(WJX_XML_DSL_GUIDE),
       }],
     }),
   );

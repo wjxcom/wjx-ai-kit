@@ -1,5 +1,13 @@
 # DSL 语法与题型参考
 
+> 本文件说明 `create_survey_by_text` 旧行文本 DSL 以及 JSONL/JSON 题型映射，仅用于显式兼容路径。普通 AI 新建和安全修改默认使用 [WJX XML DSL v1](wjx-xml-dsl-v1.md) 与 `wjx://reference/wjx-xml-dsl`，两种 DSL 不兼容。
+
+WJX XML DSL 的生产基础 Type、全部矩阵 Mode 和高级属性边界以
+`wjx://reference/wjx-xml-dsl` 的 `supportMatrix` 为准。矩阵使用基础 Type
+`matrix`，通过 `Mode` 表达子型；不要把 `矩阵量表题`、`矩阵单选题` 等 JSONL
+子类型名称直接写成 DSL Type。未列入支持矩阵的扩展属性可在 query/update 中
+作为 raw XML 保留，但不保证旧编辑器转换链路会持久化。
+
 ## DSL 文本语法（create_survey_by_text 用）
 
 > 本页只服务于已弃用的 DSL 兼容入口。新问卷请使用 JSONL；用户体系（`atype=8`）同样不能通过创建接口新建。

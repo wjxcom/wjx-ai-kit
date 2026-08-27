@@ -1,50 +1,17 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
+import {
+  WJX_XML_DSL_DIMENSION_EXAMPLE,
+  WJX_XML_DSL_EXAM_NOTE,
+  WJX_XML_DSL_FORMAT_INSTRUCTIONS,
+  WJX_XML_DSL_NPS_EXAMPLE,
+} from "./wjx-xml-dsl.js";
 
 /**
- * Common DSL format instructions appended to all survey-generation prompts.
- * Ensures AI output is compatible with the textToSurvey parser.
+ * Default survey-generation prompts use the versioned WJX XML DSL. JSONL
+ * prompts live in survey-generation-json.ts and remain an explicit route.
  */
-const DSL_FORMAT_INSTRUCTIONS = `
-
-【输出格式要求 — 严格遵守】
-你生成的问卷内容必须符合以下 DSL 格式，以便系统自动解析创建问卷：
-
-1. 第一行为问卷标题（纯文本，不带编号）
-2. 第二行为问卷描述（可为空）
-3. 每道题格式：题号.题干[题型标签]，如 \`1. 您的性别？[单选题]\`
-4. 选项紧跟题目，每行一个，可带字母前缀（如 A 男）
-5. 题目之间用空行分隔
-6. 支持的题型标签：[单选题]、[多选题]、[填空题]、[量表题]、[矩阵单选题]、[矩阵量表题]、[矩阵多选题]、[排序题]、[判断题]、[段落说明]、[下拉框]、[滑动条]、[多项填空题]、[文件上传]、[比重题]
-7. 矩阵题格式：第一行为空格分隔的列头（如"很不满意 不满意 一般 满意 很满意"），后续每行为一个行标题
-8. 量表题格式：每个量表选项独立一行
-9. 默认所有题目必答。除非用户明确要求“选填/可选/非必答”，否则不要给题目加“（选填）”标记；简答题和建议题默认也必须是必答题
-
-示例：
-员工满意度调查
-
-1. 您的部门？[单选题]
-A 技术部
-B 市场部
-C 人力资源部
-D 财务部
-
-2. 您对公司以下方面的满意程度？[矩阵量表题]
-非常不满意 不满意 一般 满意 非常满意
-办公环境
-薪酬福利
-团队氛围
-
-3. 您对公司整体满意度如何？[量表题]
-非常不满意
-不满意
-一般
-满意
-非常满意
-
-4. 请问您还有其他建议？[填空题]
-
-【重要】生成完成后，请直接调用 create_survey_by_text 工具，将上述 DSL 文本作为 text 参数传入以创建问卷。`;
+const DSL_FORMAT_INSTRUCTIONS = WJX_XML_DSL_FORMAT_INSTRUCTIONS;
 
 // ─── Shared prompt fragments ────────────────────────────────────────
 
@@ -67,10 +34,11 @@ function defaultScaleInstruction(scaleText: string): string {
 /** 维度格式要求块（段落说明 + 量表题） */
 function dimensionFormatBlock(scaleOptions: string): string {
   return `【格式要求】
-- 每个维度用一道 [段落说明] 题作为维度标题
-- 该维度下的题目使用 [量表题] 标签
+- 每个维度用 page 或 cut 块作为维度标题
+- 该维度下的题目使用完整的 question 块；矩阵量表使用 Mode=101
 - 同一维度的题目放在一起
-- 量表选项为：${scaleOptions}`;
+- 量表选项为：${scaleOptions}
+- 具体块结构请遵守 wjx://reference/wjx-xml-dsl，不要退回旧文本标签`;
 }
 
 /** 考试题目质量要求 */
@@ -87,31 +55,10 @@ function examCountInstruction(s?: string, m?: string, t?: string, f?: string): s
 /** 考试题型说明 + 示例 */
 function examFormatInstructions(titleLine: string): string {
   return `【考试题型额外说明】
-- 单选题使用 [单选题] 标签，选项带字母前缀
-- 多选题使用 [多选题] 标签，选项带字母前缀
-- 判断题使用 [判断题] 标签，选项为"A 正确"和"B 错误"
-- 填空题使用 [填空题] 标签，无选项
-
-考试问卷示例：
-${titleLine}
-
-1. 以下哪个是中国的首都？[单选题]
-A 北京
-B 上海
-C 广州
-D 深圳
-
-2. 以下哪些是编程语言？[多选题]
-A Python
-B HTML
-C Java
-D CSS
-
-3. 地球是太阳系中最大的行星[判断题]
-A 正确
-B 错误
-
-4. 中国的四大发明是造纸术、印刷术、火药和____[填空题]`;
+- 单选题使用 question radio，多选题使用 question check，判断题用两个 item 表达，填空题使用 question question 或 gapfill
+- 每道题都必须有唯一 Topic；选项使用 item 的 ItemTitle/ItemValue，不要使用字母前缀文本
+- 考试标题：${titleLine}
+${WJX_XML_DSL_EXAM_NOTE}`;
 }
 
 // ─── 360/满意度/敬业度共用的维度示例 ────────────────────────────────
@@ -120,17 +67,7 @@ const AGREE_SCALE = "非常同意、同意、一般、不同意、非常不同�
 const SATISFY_SCALE = "非常满意、满意、一般、不满意、非常不满意";
 
 function agreeDimensionExample(title: string): string {
-  return `示例格式：
-${title}
-
-1. 企业管理[段落说明]
-
-2. 公司内部沟通渠道顺畅，我能够及时有效地传递我的想法[量表题]
-非常同意
-同意
-一般
-不同意
-非常不同意`;
+  return `示例主题：${title}\n${WJX_XML_DSL_DIMENSION_EXAMPLE}\n量表选项：${AGREE_SCALE}`;
 }
 
 // ─── Registration ───────────────────────────────────────────────────
@@ -184,23 +121,8 @@ ${questionCountInstruction(question_count, "15")}
 
 请根据行业经验合理分配题型顺序与数量，相同题型放在一起，填空题放在问卷尾部。
 
-【NPS 核心要求】问卷中必须包含一个专业净推荐值（NPS）问题，使用 [量表题] 标签，包含 0-10 共 11 个选项。
-
-NPS 题示例：
-X. 您愿意向同事推荐我们的服务吗？[量表题]
-非常不愿意
-0
-1
-2
-3
-4
-5
-6
-7
-8
-9
-10
-非常愿意${DSL_FORMAT_INSTRUCTIONS}`,
+【NPS 核心要求】问卷中必须包含一个 0-10 共 11 个选项的 NPS 问题。不要使用旧的 [量表题] 文本标签；使用 WJX XML DSL 的 question radio 和 ItemValue 表达：
+${WJX_XML_DSL_NPS_EXAMPLE}${DSL_FORMAT_INSTRUCTIONS}`,
         },
       }],
     }),
@@ -231,23 +153,7 @@ ${defaultScaleInstruction(AGREE_SCALE)}
 
 ${dimensionFormatBlock(AGREE_SCALE)}
 
-${agreeDimensionExample(`${evaluation_type} - ${topic}`)}
-
-3. 公司的决策过程透明且合理[量表题]
-非常同意
-同意
-一般
-不同意
-非常不同意
-
-4. 企业发展[段落说明]
-
-5. 与同行业公司相比，我们公司拥有更快的成长速度[量表题]
-非常同意
-同意
-一般
-不同意
-非常不同意${DSL_FORMAT_INSTRUCTIONS}`,
+${agreeDimensionExample(`${evaluation_type} - ${topic}`)}${DSL_FORMAT_INSTRUCTIONS}`,
         },
       }],
     }),
@@ -278,26 +184,7 @@ ${defaultScaleInstruction(SATISFY_SCALE)}
 
 ${dimensionFormatBlock(SATISFY_SCALE)}
 
-示例格式：
-${satisfaction_type} - ${topic}
-
-1. 薪酬[段落说明]
-
-2. 与在其他单位的同学、朋友相比，我对自己目前的薪酬水平感到满意[量表题]
-非常满意
-满意
-一般
-不满意
-非常不满意
-
-3. 服务人员[段落说明]
-
-4. 您对我们服务人员的专业水平是否满意？[量表题]
-非常满意
-满意
-一般
-不满意
-非常不满意${DSL_FORMAT_INSTRUCTIONS}`,
+${agreeDimensionExample(`${satisfaction_type} - ${topic}`)}${DSL_FORMAT_INSTRUCTIONS}`,
         },
       }],
     }),
@@ -327,16 +214,7 @@ ${defaultScaleInstruction(AGREE_SCALE)}
 
 ${dimensionFormatBlock(AGREE_SCALE)}
 
-${agreeDimensionExample(`员工敬业度调查 - ${topic}`)}
-
-3. 企业发展[段落说明]
-
-4. 与同行业公司相比，我们公司拥有更快的成长速度，更高的盈利能力[量表题]
-非常同意
-同意
-一般
-不同意
-非常不同意${DSL_FORMAT_INSTRUCTIONS}`,
+${agreeDimensionExample(`员工敬业度调查 - ${topic}`)}${DSL_FORMAT_INSTRUCTIONS}`,
         },
       }],
     }),
@@ -367,7 +245,7 @@ ${examCountInstruction(single_count, multi_count, truefalse_count, fillin_count)
 
 ${examFormatInstructions("期末考试")}
 
-【重要提示】本 Prompt 使用已弃用的 DSL 兼容路径；DSL 无法携带正确答案和每题分值。新项目请改用 generate-exam-json / create_survey_by_json，在 JSONL 中设置 correctselect、quizscore 和 answeranalysis。`,
+【重要提示】考试问卷的正确答案和每题分值无法通过 API 设置。创建考试后请使用 build_preview_url 或 build_survey_url(mode=edit) 提供链接，指引用户在网页端设置答案与评分。`,
         },
       }],
     }),
@@ -397,7 +275,7 @@ ${examCountInstruction(single_count, multi_count, truefalse_count, fillin_count)
 
 ${examFormatInstructions(`${knowledge_scope} - 考试`)}
 
-【重要提示】本 Prompt 使用已弃用的 DSL 兼容路径；DSL 无法携带正确答案和每题分值。新项目请改用 generate-exam-json / create_survey_by_json，在 JSONL 中设置 correctselect、quizscore 和 answeranalysis。`,
+【重要提示】考试问卷的正确答案和每题分值无法通过 API 设置。创建考试后请使用 build_preview_url 或 build_survey_url(mode=edit) 提供链接，指引用户在网页端设置答案与评分。`,
         },
       }],
     }),

@@ -6,6 +6,8 @@ import {
   QUESTION_TYPES,
   SURVEY_STATUSES,
   VERIFY_STATUSES,
+  DSL_SYNTAX_GUIDE,
+  WJX_XML_DSL_GUIDE,
 } from "../dist/resources.js";
 
 test("SURVEY_TYPES", async (t) => {
@@ -74,4 +76,18 @@ test("VERIFY_STATUSES", async (t) => {
     assert.equal(VERIFY_STATUSES[3], "未通过");
     assert.equal(VERIFY_STATUSES[4], "待实名");
   });
+});
+
+test("WJX_XML_DSL_GUIDE", () => {
+  assert.equal(WJX_XML_DSL_GUIDE.referenceVersion, "1.0.0");
+  assert.equal(WJX_XML_DSL_GUIDE.protocol, "wjx-dsl 1");
+  assert.match(WJX_XML_DSL_GUIDE.description, /query\/create\/update/);
+  assert.ok(WJX_XML_DSL_GUIDE.workflow.create.includes("create_survey_by_wjx_dsl"));
+  assert.ok(WJX_XML_DSL_GUIDE.workflow.query.some((step) => step.includes("query_wjx_dsl")));
+  assert.match(WJX_XML_DSL_GUIDE.example, /questionnaire \{/);
+});
+
+test("legacy DSL resource points to the WJX XML DSL replacement", () => {
+  assert.equal(DSL_SYNTAX_GUIDE.legacy, true);
+  assert.equal(DSL_SYNTAX_GUIDE.replacement_resource, "wjx://reference/wjx-xml-dsl");
 });

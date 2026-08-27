@@ -38,6 +38,11 @@ export async function main(): Promise<void> {
       {
         port,
         authToken: process.env.MCP_AUTH_TOKEN,
+        wjxApiKey: process.env.WJX_API_KEY,
+        trustedProxies: (process.env.MCP_TRUSTED_PROXIES ?? "")
+          .split(",")
+          .map((value) => value.trim())
+          .filter(Boolean),
         stateful: process.env.MCP_SESSION !== "stateless",
       },
       createServer,

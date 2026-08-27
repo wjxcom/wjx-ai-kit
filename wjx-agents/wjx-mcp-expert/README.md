@@ -1,4 +1,4 @@
-# wjx-mcp-expert
+﻿# wjx-mcp-expert
 
 问卷星 MCP 专家子 Agent —— 通过 wjx-mcp-server 完成问卷创建、数据回收、分析等全部操作。
 
@@ -14,9 +14,9 @@ Agent 不重复 Skill 中的工具参数内容，而是在需要时读取对应�
 
 启动后，它具备：
 
-- MCP 工具的完整知识（问卷、答卷、通讯录、分析等；数量以源码为准；用户体系工具仅兼容维护）
-- 8 个 MCP 资源的参考数据（题型编码、DSL 语法、分析公式等）
-- 22 个 Prompt 模板（NPS 分析、异常检测、问卷生成等；数量以源码为准）
+- 61 个 MCP 工具的完整知识（含 3 个 WJX XML DSL 工具）
+- 9 个 MCP 资源的参考数据（含版本化 WJX XML DSL v1）
+- 22 个 Prompt 模板（NPS 分析、异常检测、问卷生成等）
 - 内置的工作流程和安全原则
 
 ## 与 wjx-cli-expert 的区别
@@ -33,7 +33,7 @@ Agent 不重复 Skill 中的工具参数内容，而是在需要时读取对应�
 
 ```bash
 # Claude Code 命令行方式（推荐）
-claude mcp add wjx --env WJX_API_KEY=你的APIKey -- node /absolute/path/wjx-mcp-server/dist/index.js
+claude mcp add wjx --env WJX_API_KEY=你的APIKey -- npx -y wjx-mcp-server@latest
 ```
 
 或手动编辑 `.claude/mcp.json`：
@@ -42,8 +42,8 @@ claude mcp add wjx --env WJX_API_KEY=你的APIKey -- node /absolute/path/wjx-mcp
 {
   "mcpServers": {
     "wjx": {
-      "command": "node",
-      "args": ["/absolute/path/wjx-mcp-server/dist/index.js"],
+      "command": "npx",
+      "args": ["-y", "wjx-mcp-server@latest"],
       "env": {
         "WJX_API_KEY": "替换为你的 API Key"
       }
@@ -94,10 +94,7 @@ claude --agent wjx-mcp-expert "创建一份英语考试问卷，包含单选、�
 ## 典型场景
 
 **创建考试问卷：**
-子 Agent 用 `create_survey_by_json` 创建（覆盖 70+ 题型，含考试题）→ `get_survey` 验证 → `build_survey_url` 返回编辑链接
-
-**维护历史用户体系：**
-仅在用户提供已有 `usid`/`sysid` 且明确要求维护时使用用户体系工具。不能通过 API 新建 `atype=8` 用户体系问卷；新项目应改用普通问卷、通讯录和标准分发能力。
+子 Agent 生成完整 `wjx-dsl 1` → `create_survey_by_wjx_dsl` → `query_wjx_dsl` 核验。JSONL 和旧文本 DSL 只在用户明确指定时使用。
 
 **分析问卷数据：**
 `get_report` 概览 → `query_responses` 明细 → `calculate_nps` 计算 NPS → `detect_anomalies` 检测异常

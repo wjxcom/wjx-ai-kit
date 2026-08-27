@@ -1,4 +1,4 @@
-# wjx-cli-expert
+﻿# wjx-cli-expert
 
 问卷星 CLI 专家子 Agent —— 通过 `wjx` 命令行工具完成问卷创建、数据回收、分析等全部操作。
 
@@ -64,7 +64,7 @@ claude --agent wjx-cli-expert "创建一份英语考试问卷，包含单选、�
 ## 典型场景
 
 **创建考试问卷：**
-子 Agent 读取 `references/question-types.md` 学习 JSONL 的中文 `qtype` 和字段 → `wjx survey create-by-json --dry-run` 预览 → 创建 → 返回编辑链接
+子 Agent 读取 `references/wjx-xml-dsl-v1.md` → 生成完整 `wjx-dsl 1` → `wjx dsl create` → `wjx dsl create` → `wjx dsl query` 核验。JSONL 和旧文本 DSL 只在用户明确指定时使用。
 
 **分析问卷数据：**
 `response report` 概览 → `response query` 明细 → `analytics nps/csat` 计算 → `analytics anomalies` 检测异常

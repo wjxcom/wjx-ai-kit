@@ -1,6 +1,8 @@
 export const DSL_SYNTAX_GUIDE = {
-  title: "问卷星 DSL 语法参考",
-  description: "surveyToText() 输出格式与 TxtToActivityService.cs 输入格式对照",
+  title: "旧版问卷星行文本 DSL 语法参考",
+  description: "兼容 surveyToText() 与 TxtToActivityService.cs 的旧格式；新建 AI 问卷默认使用 WJX XML DSL",
+  legacy: true,
+  replacement_resource: "wjx://reference/wjx-xml-dsl",
   syntax: {
     structure: [
       "第一行：问卷标题",

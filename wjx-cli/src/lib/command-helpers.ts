@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { Command } from "commander";
 import type { WjxApiResponse, FetchLike } from "wjx-api-sdk";
 import { getCredentials } from "./auth.js";
@@ -44,6 +45,15 @@ export interface CapturedRequest {
   body: string;
 }
 
+interface RequestPreviewOptions {
+  /** Request JSON fields whose values must be replaced by byte count and SHA-256. */
+  redactBodyFields?: string[];
+}
+
+export function isRequestPreview(options: Record<string, unknown>): boolean {
+  return options.dryRun === true || options.requestPreview === true;
+}
+
 export function createCapturingFetch(): {
   fetchImpl: FetchLike;
   getCapturedRequest: () => CapturedRequest | null;
@@ -54,7 +64,14 @@ export function createCapturingFetch(): {
     const headers: Record<string, string> = {};
     if (init?.headers) {
       for (const [k, v] of Object.entries(init.headers as Record<string, string>)) {
-        headers[k] = k.toLowerCase() === "authorization" ? maskAuthHeader(String(v)) : String(v);
+        const normalizedName = k.toLowerCase();
+        if (normalizedName === "authorization") {
+          headers[k] = maskAuthHeader(String(v));
+        } else if (normalizedName === "if-match") {
+          headers[k] = "****";
+        } else {
+          headers[k] = String(v);
+        }
       }
     }
     captured = {
@@ -72,8 +89,52 @@ export function createCapturingFetch(): {
   return { fetchImpl, getCapturedRequest: () => captured };
 }
 
-export function printDryRunPreview(request: CapturedRequest | null): void {
-  process.stderr.write(JSON.stringify({ dry_run: true, request }, null, 2) + "\n");
+export function printDryRunPreview(
+  request: CapturedRequest | null,
+  options: RequestPreviewOptions = {},
+): void {
+  let previewRequest: (CapturedRequest & {
+    redacted_fields?: Record<string, { bytes: number; sha256: string }>;
+  }) | null = request;
+
+  if (request && options.redactBodyFields?.length) {
+    try {
+      const body = JSON.parse(request.body) as Record<string, unknown>;
+      const redactedFields: Record<string, { bytes: number; sha256: string }> = {};
+      for (const field of options.redactBodyFields) {
+        const value = body[field];
+        if (typeof value !== "string") continue;
+        const summary = {
+          bytes: Buffer.byteLength(value, "utf8"),
+          sha256: createHash("sha256").update(value, "utf8").digest("hex"),
+        };
+        redactedFields[field] = summary;
+        body[field] = { redacted: true, ...summary };
+      }
+      previewRequest = {
+        ...request,
+        body: JSON.stringify(body),
+        redacted_fields: Object.keys(redactedFields).length > 0
+          ? redactedFields
+          : undefined,
+      };
+    } catch {
+      const summary = {
+        bytes: Buffer.byteLength(request.body, "utf8"),
+        sha256: createHash("sha256").update(request.body, "utf8").digest("hex"),
+      };
+      previewRequest = {
+        ...request,
+        body: JSON.stringify({ redacted: true, ...summary }),
+      };
+    }
+  }
+
+  process.stderr.write(JSON.stringify({
+    dry_run: true,
+    request_preview: true,
+    request: previewRequest,
+  }, null, 2) + "\n");
 }
 
 /**
@@ -149,7 +210,7 @@ export async function executeCommand(
     const globalOpts = program.opts();
 
     if (opts.noAuth) {
-      if (globalOpts.dryRun) {
+      if (isRequestPreview(globalOpts)) {
         process.stderr.write(JSON.stringify({
           dry_run: true,
           note: "本地命令，不会发送 API 请求",
@@ -168,7 +229,7 @@ export async function executeCommand(
 
     const finalInput = opts.transformInput ? await opts.transformInput(input, creds) : input;
 
-    if (globalOpts.dryRun) {
+    if (isRequestPreview(globalOpts)) {
       const { fetchImpl, getCapturedRequest } = createCapturingFetch();
       await sdkFn(finalInput, creds, fetchImpl);
       printDryRunPreview(getCapturedRequest());
