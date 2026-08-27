@@ -47,7 +47,7 @@ Windows 上 cairosvg 装完直接可用（pycairo 自带 wheel）；macOS 需 `b
 ## 症状：`wjx survey get` 返回 `vid is required`
 
 **原因**：传给 skill 的 `--vid` 是空字符串或非法值。
-**验证**：直接跑 `wjx survey list --json` 确认 vid 在列表中。
+**验证**：直接跑 `wjx survey list --format json` 确认 `data` 中的 vid 在列表中。
 **解决**：让用户确认 vid 来源；如果是从浏览器 URL 复制，注意有时 URL 含 activity 而非 vid，两者不同。
 
 ---

@@ -111,7 +111,7 @@ wjx survey list --name_like "满意度" --status 1
 
 ```json
 {
-  "result": true,
+  "ok": true,
   "data": {
     "page_index": 1,
     "page_size": 10,

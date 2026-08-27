@@ -37,7 +37,7 @@ wjx response query --vid 12345 --page_size 50 --sort 1 --begin_time 170000000000
 
 ```json
 {
-  "result": true,
+  "ok": true,
   "data": {
     "vid": 12345,
     "valid": true,
@@ -271,7 +271,7 @@ wjx response count --vid 12345
 |------|------|------|
 | `--vid <n>` | 是 | 问卷编号 |
 
-输出格式：`{ "result": true, "data": { "total_count": N, "join_times": N } }`。该命令不接受时间、条件或去重筛选；筛选查询的总数以 `response query` 返回值为准。
+输出格式：`{ "ok": true, "data": { "total_count": N, "join_times": N } }`。该命令不接受时间、条件或去重筛选；筛选查询的总数以 `response query` 返回值为准。
 
 ## 其他 Response 命令
 

@@ -173,13 +173,13 @@ skill 内置 **8 套**视觉主题，通过 `--theme <name>` 切换，默认 `bu
 
 用户只给问卷 ID。skill 自动：
 
-1. `wjx survey get --vid X --json` → 拿题目结构与 `answer_valid`；**PPT 样本量以 `answer_valid` 为权威有效答卷数**
-2. `wjx response count --vid X --json` → 仅作诊断对照；`total_count/join_times` 不得直接当 PPT 样本量
-3. `wjx response report --vid X --json` → 拿默认聚合数据（单选/多选/量表/矩阵的分布）
+1. `wjx survey get --vid X --format json` → 读取 `data` 下的题目结构与 `answer_valid`；**PPT 样本量以 `answer_valid` 为权威有效答卷数**
+2. `wjx response count --vid X --format json` → 仅作诊断对照；`data.total_count/data.join_times` 不得直接当 PPT 样本量
+3. `wjx response report --vid X --format json` → 读取 `data` 下的默认聚合数据（单选/多选/量表/矩阵的分布）
 4. 若默认报告分布总数与 `answer_valid` 不一致 → 自动回退 `wjx response query` 分页明细聚合，避免把失败/废卷计入 PPT
-5. `wjx response 360-report --vid X --json` → 拿详细数据（开放题原文、答题时长）
-6. 如检测到 0~10 量表题 → `wjx analytics nps --json` 算 NPS
-7. 如检测到 1~5/1~7 量表题 → `wjx analytics csat --json` 算 CSAT
+5. `wjx response 360-report --vid X --format json` → 读取 `data` 下的详细数据（开放题原文、答题时长）
+6. 如检测到 0~10 量表题 → `wjx analytics nps --format json` 算 NPS
+7. 如检测到 1~5/1~7 量表题 → `wjx analytics csat --format json` 算 CSAT
 
 所有结果合并成统一 `data.json`，喂给 Layer 2。
 
