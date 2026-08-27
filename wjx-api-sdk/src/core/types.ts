@@ -32,5 +32,8 @@ export interface RequestOptions {
   fetchImpl?: FetchLike;
   timeoutMs?: number;
   maxRetries?: number;
+  /** Optional caller budget; defaults preserve the existing maxRetries behavior. */
+  retryBudget?: number;
+  traceId?: string;
   logger?: Logger;
 }

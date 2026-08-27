@@ -68,10 +68,10 @@ async function _callApi<T = unknown>(
   const credentials = opts.credentials ?? getWjxCredentials();
   const fetchImpl = opts.fetchImpl ?? fetch;
   const timeoutMs = opts.timeoutMs ?? DEFAULT_TIMEOUT_MS;
-  const maxRetries = opts.maxRetries ?? DEFAULT_MAX_RETRIES;
+  const maxRetries = opts.retryBudget ?? opts.maxRetries ?? DEFAULT_MAX_RETRIES;
   const logger = opts.logger;
 
-  const traceId = generateTraceId();
+  const traceId = opts.traceId ?? generateTraceId();
   const action = String(params.action ?? "unknown");
 
   const url = `${baseUrl}?traceid=${traceId}&action=${encodeURIComponent(action)}`;
