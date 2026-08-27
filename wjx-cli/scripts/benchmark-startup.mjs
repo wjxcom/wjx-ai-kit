@@ -1,5 +1,5 @@
 import { execFileSync } from "node:child_process";
-import { readFileSync, writeFileSync } from "node:fs";
+import { readFileSync, renameSync, unlinkSync, writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, resolve } from "node:path";
 import { performance } from "node:perf_hooks";
@@ -9,6 +9,7 @@ const PACKAGE_ROOT = resolve(__dirname, "..");
 const CLI = resolve(PACKAGE_ROOT, "dist", "index.js");
 const BASELINE = resolve(PACKAGE_ROOT, "perf", "startup-baseline.json");
 const BASELINE_SCHEMA_VERSION = 1;
+export const MAX_TOTAL_SAMPLES = 1000;
 
 function usageError(message) {
   throw new Error(`${message}\nUsage: node scripts/benchmark-startup.mjs [--samples N] [--discard N] [--report] [--write-baseline] [--write-default]`);
@@ -53,6 +54,9 @@ export function parseArgs(argv) {
 
   if (options.samples < 1) usageError("--samples must be at least 1");
   if (options.discard < 0) usageError("--discard must be non-negative");
+  if (options.samples > MAX_TOTAL_SAMPLES - options.discard) {
+    usageError(`--samples + --discard must be at most ${MAX_TOTAL_SAMPLES}`);
+  }
   return options;
 }
 
@@ -112,6 +116,9 @@ export function runBenchmark({ samples = 20, discard = 2 } = {}) {
   if (!Number.isSafeInteger(discard) || discard < 0) {
     throw new Error("discard must be a non-negative integer");
   }
+  if (samples > MAX_TOTAL_SAMPLES - discard) {
+    throw new Error(`samples + discard must be at most ${MAX_TOTAL_SAMPLES}`);
+  }
 
   const nodeSamples = [];
   const cliSamples = [];
@@ -151,9 +158,9 @@ export function runBenchmark({ samples = 20, discard = 2 } = {}) {
   };
 }
 
-function readBaseline() {
+export function readBaseline(baselinePath = BASELINE) {
   try {
-    const parsed = JSON.parse(readFileSync(BASELINE, "utf8"));
+    const parsed = JSON.parse(readFileSync(baselinePath, "utf8"));
     if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
       throw new Error("baseline must be a JSON object");
     }
@@ -162,18 +169,16 @@ function readBaseline() {
         throw new Error("baseline.baselines must be a JSON object");
       }
       return {
-        schemaVersion: parsed.schemaVersion ?? BASELINE_SCHEMA_VERSION,
-        samples: parsed.samples,
-        discard: parsed.discard,
+        ...parsed,
+        schemaVersion: BASELINE_SCHEMA_VERSION,
         baselines: { ...parsed.baselines },
       };
     }
 
     // Accept the initial empty file and pre-schema flat maps without losing entries.
     return {
+      ...parsed,
       schemaVersion: BASELINE_SCHEMA_VERSION,
-      samples: parsed.samples,
-      discard: parsed.discard,
       baselines: Object.fromEntries(
         Object.entries(parsed).filter(([key]) => !["schemaVersion", "samples", "discard"].includes(key)),
       ),
@@ -182,19 +187,34 @@ function readBaseline() {
     if (error?.code === "ENOENT") {
       return { schemaVersion: BASELINE_SCHEMA_VERSION, baselines: {} };
     }
-    throw new Error(`Unable to read ${BASELINE}: ${error.message}`);
+    throw new Error(`Unable to read ${baselinePath}: ${error.message}`);
   }
 }
 
-function writeBaseline(report, { writeBaseline, writeDefault }) {
+export function writeBaseline(
+  report,
+  { writeBaseline = false, writeDefault = false } = {},
+  baselinePath = BASELINE,
+) {
   if (!writeBaseline && !writeDefault) return;
-  const baseline = readBaseline();
+  const baseline = readBaseline(baselinePath);
   baseline.schemaVersion = BASELINE_SCHEMA_VERSION;
   baseline.samples = report.samples;
   baseline.discard = report.discard;
   if (writeBaseline) baseline.baselines[report.key] = report;
   if (writeDefault) baseline.baselines.default = report;
-  writeFileSync(BASELINE, `${JSON.stringify(baseline, null, 2)}\n`, "utf8");
+  const temporaryPath = `${baselinePath}.${process.pid}.${Date.now()}.${Math.random().toString(16).slice(2)}.tmp`;
+  try {
+    writeFileSync(temporaryPath, `${JSON.stringify(baseline, null, 2)}\n`, "utf8");
+    renameSync(temporaryPath, baselinePath);
+  } catch (error) {
+    try {
+      unlinkSync(temporaryPath);
+    } catch {
+      // Preserve the original write error when cleanup is not possible.
+    }
+    throw error;
+  }
 }
 
 export function main(argv = process.argv.slice(2)) {

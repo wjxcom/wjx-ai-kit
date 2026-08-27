@@ -1,14 +1,23 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
+import { access, mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises";
 import { readFileSync } from "node:fs";
-import { resolve } from "node:path";
+import { createServer } from "node:http";
+import { tmpdir } from "node:os";
+import { join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import {
   startFixture,
+  close as closeFixture,
   installFetchSentinel,
 } from "./fixtures/http-fixture.mjs";
+import {
+  parseArgs,
+  readBaseline,
+  writeBaseline,
+} from "../scripts/benchmark-startup.mjs";
 
 const PACKAGE_ROOT = fileURLToPath(new URL("..", import.meta.url));
 const BENCHMARK = resolve(PACKAGE_ROOT, "scripts", "benchmark-startup.mjs");
@@ -34,6 +43,42 @@ test("HTTP fixture records requests and can be closed", async () => {
   }
 });
 
+test("fixture subprocesses use the current Node executable and close idempotently", async () => {
+  const fixture = await startFixture();
+  const tempDir = fixture.tempDir;
+  try {
+    const result = await fixture.run(["--version"], { env: { PATH: "" } });
+    assert.equal(result.exitCode, 0);
+  } finally {
+    await fixture.close();
+    await fixture.close();
+  }
+  await assert.rejects(() => access(tempDir), /ENOENT/);
+});
+
+test("fixture start cleans up when temporary directory setup fails", async () => {
+  const missingRoot = join(tmpdir(), `wjx-cli-missing-root-${process.pid}-${Date.now()}`);
+  await assert.rejects(
+    () => startFixture({ tempRoot: missingRoot }),
+    /ENOENT|no such file/i,
+  );
+  await closeFixture();
+});
+
+test("fixture close removes temp files even when server close rejects", async () => {
+  const rejectingServerFactory = (handler) => {
+    const server = createServer(handler);
+    const closeServer = server.close.bind(server);
+    server.close = (callback) => closeServer(() => callback(new Error("fixture close failed")));
+    return server;
+  };
+  const fixture = await startFixture({ serverFactory: rejectingServerFactory });
+  const tempDir = fixture.tempDir;
+  await assert.rejects(() => fixture.close(), /fixture close failed/);
+  await assert.rejects(() => access(tempDir), /ENOENT/);
+  await assert.rejects(() => fixture.close(), /fixture close failed/);
+});
+
 test("fetch sentinel throws and restores the original implementation", async () => {
   const originalFetch = globalThis.fetch;
   const restoreFetch = installFetchSentinel();
@@ -49,6 +94,7 @@ test("fetch sentinel throws and restores the original implementation", async () 
 });
 
 test("startup benchmark reports paired node and CLI samples", () => {
+  const baselineBefore = readFileSync(resolve(PACKAGE_ROOT, "perf", "startup-baseline.json"), "utf8");
   const output = execFileSync("node", [
     BENCHMARK,
     "--samples",
@@ -69,6 +115,56 @@ test("startup benchmark reports paired node and CLI samples", () => {
   assert.equal(typeof report.platform, "string");
   assert.equal(typeof report.arch, "string");
   assert.ok(report.commit === "unknown" || /^[0-9a-f]+$/.test(report.commit));
+  const baselineAfter = readFileSync(resolve(PACKAGE_ROOT, "perf", "startup-baseline.json"), "utf8");
+  assert.equal(baselineAfter, baselineBefore, "--report must not modify the baseline file");
+});
+
+test("startup baseline writes preserve metadata and other runner entries", async () => {
+  const tempDir = await mkdtemp(join(tmpdir(), "wjx-cli-baseline-"));
+  const path = join(tempDir, "startup-baseline.json");
+  const original = {
+    schemaVersion: 1,
+    samples: 20,
+    discard: 2,
+    reviewedBy: "architecture",
+    baselines: {
+      "other-platform-node20": { deltaP95Ms: 12 },
+      default: { deltaP95Ms: 15 },
+    },
+  };
+  const report = {
+    key: "win32-x64-node24",
+    samples: 1,
+    discard: 0,
+    deltaP95Ms: 10,
+  };
+  try {
+    await writeFile(path, `${JSON.stringify(original)}\n`);
+    const beforeReport = await readFile(path, "utf8");
+    await writeBaseline(report, { writeBaseline: false, writeDefault: false }, path);
+    assert.equal(await readFile(path, "utf8"), beforeReport, "report-only write must not modify the file");
+
+    await writeBaseline(report, { writeBaseline: true, writeDefault: false }, path);
+    const updated = readBaseline(path);
+    assert.equal(updated.reviewedBy, "architecture");
+    assert.deepEqual(updated.baselines["other-platform-node20"], { deltaP95Ms: 12 });
+    assert.deepEqual(updated.baselines.default, { deltaP95Ms: 15 });
+    assert.deepEqual(updated.baselines[report.key], report);
+    assert.deepEqual(await readdir(tempDir), ["startup-baseline.json"]);
+  } finally {
+    await rm(tempDir, { recursive: true, force: true });
+  }
+});
+
+test("startup benchmark rejects excessive paired samples", () => {
+  assert.throws(
+    () => parseArgs(["--samples", "1000", "--discard", "1"]),
+    /at most|maximum|limit/i,
+  );
+  assert.throws(
+    () => parseArgs(["--samples", "9007199254740992"]),
+    /safe integer|too large/i,
+  );
 });
 
 test("startup baseline keeps runner entries under the versioned document", () => {

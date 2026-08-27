@@ -10,6 +10,13 @@ const CLI = resolve(__dirname, "..", "..", "dist", "index.js");
 
 let activeFixture;
 
+function closeServer(server) {
+  if (!server.listening) return Promise.resolve();
+  return new Promise((resolveClose, rejectClose) => {
+    server.close((error) => (error ? rejectClose(error) : resolveClose()));
+  });
+}
+
 /**
  * Start a localhost HTTP recorder and an isolated subprocess environment.
  * The returned object owns all resources and must be closed by the caller.
@@ -17,10 +24,12 @@ let activeFixture;
 export async function startFixture({
   response = { result: true, data: {} },
   timeout = 10_000,
+  tempRoot = tmpdir(),
+  serverFactory = createServer,
   env = {},
 } = {}) {
   const recorded = [];
-  const server = createServer(async (request, responseStream) => {
+  const server = serverFactory(async (request, responseStream) => {
     const chunks = [];
     for await (const chunk of request) chunks.push(chunk);
     const headers = {};
@@ -39,18 +48,24 @@ export async function startFixture({
     responseStream.end(JSON.stringify(response));
   });
 
-  await new Promise((resolveServer, rejectServer) => {
-    server.once("error", rejectServer);
-    server.listen(0, "127.0.0.1", resolveServer);
-  });
-
-  const address = server.address();
-  if (!address || typeof address === "string") {
-    await new Promise((resolveClose) => server.close(resolveClose));
-    throw new Error("HTTP fixture did not receive an ephemeral port");
+  let tempDir;
+  let address;
+  try {
+    await new Promise((resolveServer, rejectServer) => {
+      server.once("error", rejectServer);
+      server.listen(0, "127.0.0.1", resolveServer);
+    });
+    address = server.address();
+    if (!address || typeof address === "string") {
+      throw new Error("HTTP fixture did not receive an ephemeral port");
+    }
+    tempDir = await mkdtemp(join(tempRoot, "wjx-cli-contract-"));
+  } catch (error) {
+    await closeServer(server).catch(() => undefined);
+    if (tempDir) await rm(tempDir, { recursive: true, force: true }).catch(() => undefined);
+    throw error;
   }
 
-  const tempDir = await mkdtemp(join(tmpdir(), "wjx-cli-contract-"));
   const fixture = {
     baseUrl: `http://127.0.0.1:${address.port}`,
     url: `http://127.0.0.1:${address.port}`,
@@ -68,7 +83,7 @@ export async function startFixture({
     },
     run(args = [], { input, cwd, env: extraEnv = {}, timeout: runTimeout = timeout } = {}) {
       return new Promise((resolveRun) => {
-        const child = execFile("node", [CLI, ...args], {
+        const child = execFile(process.execPath, [CLI, ...args], {
           cwd,
           env: { ...fixture.env, ...extraEnv },
           encoding: "utf8",
@@ -86,13 +101,27 @@ export async function startFixture({
         }
       });
     },
-    async close() {
-      await new Promise((resolveClose, rejectClose) => {
-        server.close((error) => (error ? rejectClose(error) : resolveClose()));
-      });
-      await rm(tempDir, { recursive: true, force: true });
-      if (activeFixture === fixture) activeFixture = undefined;
-    },
+  };
+
+  let closePromise;
+  fixture.close = () => {
+    if (closePromise) return closePromise;
+    closePromise = (async () => {
+      let closeError;
+      try {
+        await closeServer(server);
+      } catch (error) {
+        closeError = error;
+      } finally {
+        try {
+          await rm(tempDir, { recursive: true, force: true });
+        } finally {
+          if (activeFixture === fixture) activeFixture = undefined;
+        }
+      }
+      if (closeError) throw closeError;
+    })();
+    return closePromise;
   };
 
   activeFixture = fixture;
