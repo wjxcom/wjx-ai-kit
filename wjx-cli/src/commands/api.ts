@@ -54,7 +54,10 @@ export function registerApiCommands(program: Command): void {
           outputStream: context.streams.stderr,
         });
         if (program.opts().dryRun) {
-          context.streams.stderr.write(`${JSON.stringify({ dry_run: true, request: buildRequestPlan({ service: found.service, action: found.action, body }) }, null, 2)}\n`);
+          formatOutput({
+            kind: "dry-run",
+            plans: [buildRequestPlan({ service: found.service, action: found.action, body })],
+          }, program.opts());
           return;
         }
         const credentials = getCredentials(program.opts());

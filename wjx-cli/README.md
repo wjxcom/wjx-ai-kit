@@ -23,7 +23,7 @@ wjx response download --vid 12345 --suffix 0
 wjx analytics nps --scores "[9,10,8,6,3]"
 ```
 
-JSON 是默认输出；`--table` 只用于人工查看；`--stdin` 接收 JSON 参数；`--dry-run` 预览请求。
+JSON 是默认输出；`--table` 只用于人工查看；`--stdin` 接收 JSON 参数；`--dry-run` 以 `ok/data` envelope 在 stdout 返回脱敏请求计划，不发送 API 请求。
 
 当前命令以 `wjx --help` 为准，完整说明见 [CLI 快速开始](../wjx-docs/start/cli.md) 和 [CLI 命令参考](../wjx-docs/reference/cli.md)。问卷创建新代码使用 JSONL；`create-by-text` 仅为 DSL 兼容入口。
 

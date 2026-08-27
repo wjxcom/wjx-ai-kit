@@ -219,9 +219,12 @@ test("dry-run performs zero network requests and never calls global fetch", asyn
   try {
     const result = await fixture.run(["survey", "list", "--dry-run"]);
     assert.equal(result.exitCode, 0);
-    assert.equal(result.stdout, "");
+    const envelope = JSON.parse(result.stdout);
+    assert.equal(envelope.ok, true);
+    assert.equal(envelope.data.kind, "dry-run");
+    assert.ok(Array.isArray(envelope.data.plans));
     assert.equal(fixture.requests().length, 0);
-    assert.equal(JSON.parse(result.stderr).dry_run, true);
+    assert.equal(result.stderr, "");
   } finally {
     await fixture.close();
   }

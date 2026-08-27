@@ -77,11 +77,14 @@ test("submit dry-run emits an unresolved version without fetching survey metadat
       "response", "submit", "--vid", "7", "--inputcosttime", "3", "--submitdata", "1$yes", "--dry-run",
     ]);
     assert.equal(result.exitCode, 0);
-    assert.equal(result.stdout, "");
+    const envelope = JSON.parse(result.stdout);
+    assert.equal(envelope.ok, true);
+    assert.equal(envelope.data.kind, "dry-run");
+    assert.equal(envelope.data.plans.length, 1);
     assert.equal(fixture.requests().length, 0);
     assert.equal(readFileSync(resolve(PACKAGE_ROOT, "dist/lib/runtime/dry-run.js"), "utf8").includes("fetch("), false);
-    assert.match(result.stderr, /dry_run/);
-    assert.match(result.stderr, /jpmversion/);
+    assert.equal(result.stderr, "");
+    assert.deepEqual(envelope.data.plans[0].unresolved, ["jpmversion"]);
   } finally {
     await fixture.close();
   }
@@ -92,9 +95,11 @@ test("runtime dry-run does not require credentials", async () => {
   try {
     const result = await fixture.run(["survey", "list", "--dry-run"]);
     assert.equal(result.exitCode, 0);
-    assert.equal(result.stdout, "");
+    const envelope = JSON.parse(result.stdout);
+    assert.equal(envelope.ok, true);
+    assert.equal(envelope.data.kind, "dry-run");
     assert.equal(fixture.requests().length, 0);
-    assert.match(result.stderr, /dry_run/);
+    assert.equal(result.stderr, "");
   } finally {
     await fixture.close();
   }
@@ -109,9 +114,11 @@ test("single-request create shortcuts share credential-free dry-run", async () =
     ].join("\n");
     const result = await fixture.run(["survey", "create-by-json", "--jsonl", jsonl, "--dry-run"]);
     assert.equal(result.exitCode, 0);
-    assert.equal(result.stdout, "");
+    const envelope = JSON.parse(result.stdout);
+    assert.equal(envelope.ok, true);
+    assert.equal(envelope.data.kind, "dry-run");
     assert.equal(fixture.requests().length, 0);
-    assert.match(result.stderr, /dry_run/);
+    assert.equal(result.stderr, "");
   } finally {
     await fixture.close();
   }
@@ -122,9 +129,11 @@ test("legacy dry-run does not require credentials", async () => {
   try {
     const result = await fixture.run(["survey", "get", "--vid", "7", "--dry-run"]);
     assert.equal(result.exitCode, 0);
-    assert.equal(result.stdout, "");
+    const envelope = JSON.parse(result.stdout);
+    assert.equal(envelope.ok, true);
+    assert.equal(envelope.data.kind, "dry-run");
     assert.equal(fixture.requests().length, 0);
-    assert.match(result.stderr, /dry_run/);
+    assert.equal(result.stderr, "");
   } finally {
     await fixture.close();
   }
@@ -178,7 +187,7 @@ test("dry-run renderer keeps plans separate from diagnostics", () => {
   const rendered = renderDryRun([
     buildRequestPlan({ action: "1000002", apiKey: "secret", body: { page_index: 1 } }),
   ]);
-  assert.equal(rendered.dry_run, true);
+  assert.equal(rendered.kind, "dry-run");
   assert.equal(rendered.plans.length, 1);
   assert.equal(rendered.plans[0].headers.Authorization, "Bearer ****");
 });

@@ -78,8 +78,11 @@ export function createCapturingFetch(): {
   return { fetchImpl, getCapturedRequest: () => captured };
 }
 
-export function printDryRunPreview(request: CapturedRequest | null): void {
-  process.stderr.write(JSON.stringify({ dry_run: true, request }, null, 2) + "\n");
+export function printDryRunPreview(request: CapturedRequest | null, opts: { format?: "json" | "pretty" | "table" | "ndjson" | "csv"; table?: boolean } = {}): void {
+  formatOutput({
+    kind: "dry-run",
+    plans: request ? [request] : [],
+  }, opts);
 }
 
 /**
@@ -156,11 +159,12 @@ export async function executeCommand(
 
     if (opts.noAuth) {
       if (globalOpts.dryRun) {
-        process.stderr.write(JSON.stringify({
-          dry_run: true,
+        formatOutput({
+          kind: "dry-run",
+          plans: [],
           note: "本地命令，不会发送 API 请求",
           input,
-        }, null, 2) + "\n");
+        }, globalOpts);
         return;
       }
       // Local commands (e.g. buildSurveyUrl) — call with input only
@@ -197,7 +201,7 @@ export async function executeCommand(
       // use a redacted placeholder so preview does not require credentials.
       const dryRunCreds = globalOpts.apiKey ? { apiKey: globalOpts.apiKey } : { apiKey: "dry-run" };
       await sdkFn(input, dryRunCreds, fetchImpl);
-      printDryRunPreview(getCapturedRequest());
+      printDryRunPreview(getCapturedRequest(), globalOpts);
       return;
     }
 

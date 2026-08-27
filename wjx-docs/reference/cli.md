@@ -29,4 +29,4 @@
 
 ## 输出与输入
 
-默认输出 JSON；`--table` 用于人工查看；`--stdin` 接收 JSON 参数；`--dry-run` 只打印请求预览，不发送 API 请求。命令失败时使用结构化错误码，脚本应检查退出码。
+默认输出 JSON；`--table` 用于人工查看；`--stdin` 接收 JSON 参数。`--dry-run` 不发送 API 请求，并在 stdout 返回统一 envelope：`{"ok":true,"data":{"kind":"dry-run","plans":[...]}}`；stderr 只保留诊断信息。命令失败时使用结构化错误码，脚本应检查退出码。

@@ -45,9 +45,7 @@ export async function executeRuntimeCommand(
 
     if (program.opts().dryRun) {
       const dryRun = renderDryRun(plans);
-      const request = plans.length === 1 ? { request: dryRun.plans[0] } : { plans: dryRun.plans };
-      // Preserve the existing CLI dry-run channel until the unified result protocol lands.
-      context.streams.stderr.write(JSON.stringify({ dry_run: true, ...request }, null, 2) + "\n");
+      formatOutput(dryRun, program.opts());
       return;
     }
 

@@ -46,6 +46,34 @@ function parseResultData(serialized) {
   return envelope.data;
 }
 
+function parseDryRunData(serialized) {
+  const envelope = JSON.parse(serialized);
+  assert.equal(envelope.ok, true, `expected dry-run ResultEnvelope, got: ${serialized}`);
+  assert.equal(envelope.data.kind, "dry-run");
+  assert.ok(Array.isArray(envelope.data.plans));
+  return envelope.data;
+}
+
+function parseDryRunPlan(result) {
+  assert.equal(result.stderr.trim(), "", `dry-run diagnostics should be empty: ${result.stderr}`);
+  const data = parseDryRunData(result.stdout);
+  assert.equal(data.plans.length, 1);
+  return data.plans[0];
+}
+
+function parseCreateByTextDryRun(result) {
+  const plan = parseDryRunPlan(result);
+  const body = JSON.parse(plan.body);
+  const wireQuestions = JSON.parse(body.questions);
+  return {
+    ...body,
+    parsed_title: body.title,
+    parsed_description: body.desc,
+    question_count: wireQuestions.length,
+    wire_questions: wireQuestions,
+  };
+}
+
 function parseProblem(serialized) {
   const envelope = JSON.parse(serialized);
   assert.equal(envelope.ok, false, `expected ProblemEnvelope, got: ${serialized}`);
@@ -269,8 +297,8 @@ describe("required field validation (post-merge)", () => {
       { env: { WJX_API_KEY: "fake-key-1234567890", ...NO_CONFIG } },
     );
     assert.equal(result.exitCode, 0);
-    const dry = JSON.parse(result.stderr.trim());
-    const sentBody = JSON.parse(dry.request.body);
+    const dry = parseDryRunPlan(result);
+    const sentBody = JSON.parse(dry.body);
     assert.equal(sentBody.state, 1);
     assert.equal(sentBody.vid, 123);
   });
@@ -553,10 +581,9 @@ describe("response subcommands", () => {
       { env: { WJX_API_KEY: "fake-key-1234567890", ...NO_CONFIG } },
     );
     assert.equal(result.exitCode, 0);
-    const preview = JSON.parse(result.stderr);
-    assert.equal(preview.dry_run, true);
-    assert.match(preview.request.url, /action=1000001/);
-    const body = JSON.parse(preview.request.body);
+    const preview = parseDryRunPlan(result);
+    assert.match(preview.url, /action=1000001/);
+    const body = JSON.parse(preview.body);
     assert.equal(body.vid, 123);
     assert.equal(body.get_questions, true);
     assert.equal(body.get_items, true);
@@ -1028,8 +1055,7 @@ describe("survey create-by-text", () => {
       { env: { WJX_API_KEY: "fake-key-1234567890", ...NO_CONFIG } },
     );
     assert.equal(result.exitCode, 0);
-    const preview = JSON.parse(result.stderr);
-    assert.equal(preview.dry_run, true);
+    const preview = parseCreateByTextDryRun(result);
     assert.equal(preview.parsed_title, "测试问卷");
     assert.equal(preview.question_count, 1);
     assert.ok(Array.isArray(preview.wire_questions));
@@ -1057,7 +1083,7 @@ describe("survey create-by-text", () => {
       { env: { WJX_API_KEY: "fake-key-1234567890", ...NO_CONFIG } },
     );
     assert.equal(result.exitCode, 0);
-    const preview = JSON.parse(result.stderr);
+    const preview = parseCreateByTextDryRun(result);
     assert.equal(preview.question_count, 3);
     assert.equal(preview.parsed_title, "英语考试");
   });
@@ -1109,11 +1135,10 @@ describe("survey create-by-json", () => {
       { env: { WJX_API_KEY: "fake-key-1234567890", ...NO_CONFIG } },
     );
     assert.equal(result.exitCode, 0);
-    const preview = JSON.parse(result.stderr);
-    assert.equal(preview.dry_run, true);
-    assert.equal(preview.request.method, "POST");
-    assert.match(preview.request.url, /action=1000106/);
-    const body = JSON.parse(preview.request.body);
+    const preview = parseDryRunPlan(result);
+    assert.equal(preview.method, "POST");
+    assert.match(preview.url, /action=1000106/);
+    const body = JSON.parse(preview.body);
     assert.equal(body.atype, 7, "顶层 atype 必须为 7");
     assert.equal(body.title, "活动报名表");
     const metaLine = JSON.parse(body.surveydatajson.split("\n")[0]);
@@ -1194,8 +1219,8 @@ describe("survey jsonl-template", () => {
       { env: { WJX_API_KEY: "fake-key-1234567890", ...NO_CONFIG } },
     );
     assert.equal(result.exitCode, 0, `dry-run 应成功，stderr=${result.stderr}`);
-    const preview = JSON.parse(result.stderr);
-    const body = JSON.parse(preview.request.body);
+    const preview = parseDryRunPlan(result);
+    const body = JSON.parse(preview.body);
     const examLine = body.surveydatajson
       .split("\n")
       .map((line) => JSON.parse(line))
@@ -1341,20 +1366,17 @@ describe("init", () => {
 // ═══════════════════════════════════════
 
 describe("--dry-run", () => {
-  it("survey list --dry-run outputs request preview to stderr", async () => {
+  it("survey list --dry-run outputs request preview as a result envelope", async () => {
     const result = await runFull(
       ["survey", "list", "--dry-run"],
       { env: { WJX_API_KEY: "test-key-1234567890", ...NO_CONFIG } },
     );
     assert.equal(result.exitCode, 0);
-    assert.equal(result.stdout, "");
-    const preview = JSON.parse(result.stderr);
-    assert.equal(preview.dry_run, true);
-    assert.ok(preview.request);
-    assert.equal(preview.request.method, "POST");
-    assert.match(preview.request.url, /action=/);
-    assert.match(preview.request.headers.Authorization, /\*\*\*\*/);
-    assert.ok(preview.request.body);
+    const preview = parseDryRunPlan(result);
+    assert.equal(preview.method, "POST");
+    assert.match(preview.url, /action=/);
+    assert.match(preview.headers.Authorization, /\*\*\*\*/);
+    assert.ok(preview.body);
   });
 
   it("noAuth command dry-run shows input only", async () => {
@@ -1362,10 +1384,10 @@ describe("--dry-run", () => {
       ["sso", "subaccount-url", "--subuser", "test", "--dry-run"],
     );
     assert.equal(result.exitCode, 0);
-    const preview = JSON.parse(result.stderr);
-    assert.equal(preview.dry_run, true);
-    assert.ok(preview.note);
+    const preview = parseDryRunData(result.stdout);
+    assert.equal(preview.note, "本地命令，不会发送 API 请求");
     assert.ok(preview.input);
+    assert.equal(result.stderr.trim(), "");
   });
 
   it("dry-run does not make actual API calls", async () => {
@@ -1374,8 +1396,8 @@ describe("--dry-run", () => {
       { env: { WJX_API_KEY: "fake", WJX_BASE_URL: "http://localhost:1", ...NO_CONFIG } },
     );
     assert.equal(result.exitCode, 0);
-    const preview = JSON.parse(result.stderr);
-    assert.equal(preview.dry_run, true);
+    const preview = parseDryRunPlan(result);
+    assert.ok(preview);
   });
 
   it("dry-run exit code is always 0", async () => {
@@ -1397,10 +1419,9 @@ describe("--dry-run", () => {
       { env: { WJX_API_KEY: "fake-key-1234567890", ...NO_CONFIG } },
     );
     assert.equal(result.exitCode, 0);
-    const preview = JSON.parse(result.stderr);
-    assert.equal(preview.dry_run, true);
-    assert.ok(preview.request);
-    assert.equal(preview.request.method, "POST");
+    const preview = parseDryRunPlan(result);
+    assert.ok(preview);
+    assert.equal(preview.method, "POST");
   });
 });
 
@@ -1495,13 +1516,13 @@ describe("create-by-text use cases", () => {
       { env: DRY_ENV },
     );
     assert.equal(result.exitCode, 0);
-    const p = JSON.parse(result.stderr);
+    const p = parseCreateByTextDryRun(result);
     assert.equal(p.parsed_title, "员工满意度调查");
     assert.equal(p.parsed_description, "请根据您的真实感受作答");
     assert.equal(p.question_count, 3);
 
-    // 段落说明被过滤（API 不支持 q_type=2），出现在 skipped_paragraphs
-    assert.deepEqual(p.skipped_paragraphs, ["薪酬福利"]);
+    // 段落说明被过滤（API 不支持 q_type=2），不会进入请求题目
+    assert.ok(!p.wire_questions.some((question) => question.q_type === 2));
 
     // 量表题 → q_type=3, q_subtype=302, 5 个选项
     assert.equal(p.wire_questions[0].q_type, 3);
@@ -1546,7 +1567,7 @@ describe("create-by-text use cases", () => {
       { env: DRY_ENV },
     );
     assert.equal(result.exitCode, 0);
-    const p = JSON.parse(result.stderr);
+    const p = parseCreateByTextDryRun(result);
     assert.equal(p.parsed_title, "期末考试");
     assert.equal(p.question_count, 4);
 
@@ -1600,7 +1621,7 @@ describe("create-by-text use cases", () => {
       { env: DRY_ENV },
     );
     assert.equal(result.exitCode, 0);
-    const p = JSON.parse(result.stderr);
+    const p = parseCreateByTextDryRun(result);
     assert.equal(p.question_count, 3);
 
     // 量表题 11 项
@@ -1641,7 +1662,7 @@ describe("create-by-text use cases", () => {
       { env: DRY_ENV },
     );
     assert.equal(result.exitCode, 0);
-    const p = JSON.parse(result.stderr);
+    const p = parseCreateByTextDryRun(result);
     assert.equal(p.question_count, 3);
 
     // 矩阵单选 → q_type=7, q_subtype=702, 3 行 4 列
@@ -1670,7 +1691,7 @@ describe("create-by-text use cases", () => {
       { env: DRY_ENV, input: dsl },
     );
     assert.equal(result.exitCode, 0);
-    const p = JSON.parse(result.stderr);
+    const p = parseCreateByTextDryRun(result);
     assert.equal(p.parsed_title, "调研问卷");
     assert.equal(p.question_count, 1);
     assert.equal(p.wire_questions[0].items.length, 4);
@@ -1690,7 +1711,7 @@ describe("create-by-text use cases", () => {
         { env: DRY_ENV },
       );
       assert.equal(result.exitCode, 0);
-      const p = JSON.parse(result.stderr);
+      const p = parseCreateByTextDryRun(result);
       assert.equal(p.parsed_title, "文件测试问卷");
       assert.equal(p.question_count, 1);
     } finally {
@@ -1706,7 +1727,7 @@ describe("create-by-text use cases", () => {
       { env: DRY_ENV, input: stdinJson },
     );
     assert.equal(result.exitCode, 0);
-    const p = JSON.parse(result.stderr);
+    const p = parseCreateByTextDryRun(result);
     assert.equal(p.parsed_title, "CLI标题");
     assert.equal(p.wire_questions[0].items.length, 3); // CLI 的 3 个选项
   });
@@ -1727,7 +1748,7 @@ describe("create-by-text use cases", () => {
       { env: DRY_ENV },
     );
     assert.equal(result.exitCode, 0);
-    const p = JSON.parse(result.stderr);
+    const p = parseCreateByTextDryRun(result);
     assert.equal(p.wire_questions[0].is_requir, true);
     assert.equal(p.wire_questions[1].is_requir, false);
   });
@@ -1757,7 +1778,7 @@ describe("create-by-text use cases", () => {
       { env: DRY_ENV },
     );
     assert.equal(result.exitCode, 0);
-    const p = JSON.parse(result.stderr);
+    const p = parseCreateByTextDryRun(result);
     assert.equal(p.question_count, 4);
     for (let i = 0; i < 4; i++) {
       assert.equal(p.wire_questions[i].q_index, i + 1);
@@ -1799,7 +1820,7 @@ describe("create-by-text use cases", () => {
       { env: DRY_ENV },
     );
     assert.equal(result.exitCode, 0);
-    const p = JSON.parse(result.stderr);
+    const p = parseCreateByTextDryRun(result);
     assert.equal(p.question_count, 3);
 
     // 下拉框 → q_type=3, q_subtype=301
@@ -1912,7 +1933,7 @@ describe("create-by-text use cases", () => {
       { env: DRY_ENV },
     );
     assert.equal(result.exitCode, 0);
-    const p = JSON.parse(result.stderr);
+    const p = parseCreateByTextDryRun(result);
     assert.equal(p.parsed_title, "水果消费习惯调研");
     assert.equal(p.parsed_description, "了解消费者的水果购买与食用习惯");
     assert.equal(p.question_count, 15);
@@ -1961,7 +1982,7 @@ describe("create-by-text use cases", () => {
         { env: DRY_ENV, input: stdinJson },
       );
       assert.equal(result.exitCode, 0);
-      const p = JSON.parse(result.stderr);
+      const p = parseCreateByTextDryRun(result);
       // --file 读取的文本存入 merged.file → 被 readFileSync 读取 → dslText = 文件内容
       // 但由于 --text 最优先，实际上 stdin 的 text 字段和 --file 都能设置
       // 这里 --file 提供文件路径，stdin 提供 text 字段，text 优先

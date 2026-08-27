@@ -351,14 +351,15 @@ export function registerResponseCommands(program: Command): void {
         const merged = getMerged(cmd);
         requireField(merged, "vid");
         const globalOpts = program.opts();
-        const creds = getCredentials(globalOpts);
 
         if (globalOpts.dryRun) {
           const { fetchImpl, getCapturedRequest } = createCapturingFetch();
-          await getSurvey({ vid: merged.vid as number, get_questions: true, get_items: true }, creds as WjxCredentials, fetchImpl);
-          printDryRunPreview(getCapturedRequest());
+          await getSurvey({ vid: merged.vid as number, get_questions: true, get_items: true }, { apiKey: "dry-run" }, fetchImpl);
+          printDryRunPreview(getCapturedRequest(), globalOpts);
           return;
         }
+
+        const creds = getCredentials(globalOpts);
 
         const survey = await getSurvey(
           { vid: merged.vid as number, get_questions: true, get_items: true },

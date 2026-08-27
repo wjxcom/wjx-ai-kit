@@ -13,8 +13,11 @@ function parseProblem(result) {
 }
 
 function parseDryRun(result) {
-  assert.notEqual(result.stderr.trim(), "", "expected dry-run preview");
-  return JSON.parse(result.stderr.trim());
+  assert.equal(result.stderr.trim(), "", "dry-run should not write diagnostics");
+  const envelope = JSON.parse(result.stdout.trim());
+  assert.equal(envelope.ok, true);
+  assert.equal(envelope.data.kind, "dry-run");
+  return envelope.data;
 }
 
 test("high-risk commands reject non-interactive execution without --yes before any request", async () => {
@@ -60,11 +63,9 @@ test("dry-run takes precedence over high-risk confirmation and remains network-f
     ]);
 
     assert.equal(result.exitCode, 0);
-    assert.equal(result.stdout, "");
     assert.equal(fixture.requests().length, 0);
     const preview = parseDryRun(result);
-    assert.equal(preview.dry_run, true);
-    assert.equal(preview.request.method, "POST");
+    assert.equal(preview.plans[0].method, "POST");
   } finally {
     await fixture.close();
   }

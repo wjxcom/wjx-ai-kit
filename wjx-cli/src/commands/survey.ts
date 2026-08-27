@@ -344,14 +344,14 @@ export function registerSurveyCommands(program: Command): void {
 
         requireField(merged, "vid");
 
-        const creds = getCredentials(program.opts());
-
         if (program.opts().dryRun) {
           const { fetchImpl, getCapturedRequest } = createCapturingFetch();
-          await getSurvey({ vid: merged.vid as number }, creds, fetchImpl);
-          printDryRunPreview(getCapturedRequest());
+          await getSurvey({ vid: merged.vid as number }, { apiKey: "dry-run" }, fetchImpl);
+          printDryRunPreview(getCapturedRequest(), program.opts());
           return;
         }
+
+        const creds = getCredentials(program.opts());
 
         const result = await getSurvey({ vid: merged.vid as number }, creds);
 
