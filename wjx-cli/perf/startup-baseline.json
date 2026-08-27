@@ -1,0 +1,71 @@
+{
+  "schemaVersion": 1,
+  "samples": 20,
+  "discard": 2,
+  "baselines": {
+    "win32-x64-node24": {
+      "key": "win32-x64-node24",
+      "samples": 20,
+      "discard": 2,
+      "nodeVersion": "v24.13.0",
+      "node": "v24.13.0",
+      "nodeMajor": 24,
+      "platform": "win32",
+      "arch": "x64",
+      "commit": "5c40166359a77ba6a31e8b33ba88916db0ea4da3",
+      "nodeP50Ms": 76.047,
+      "nodeP95Ms": 81.429,
+      "nodeMinMs": 72.958,
+      "nodeMaxMs": 89.496,
+      "cliP50Ms": 173.297,
+      "cliP95Ms": 188.64,
+      "cliMinMs": 169.156,
+      "cliMaxMs": 191.249,
+      "deltaP95Ms": 107.211,
+      "nodeStats": {
+        "p50Ms": 76.047,
+        "p95Ms": 81.429,
+        "minMs": 72.958,
+        "maxMs": 89.496
+      },
+      "cliStats": {
+        "p50Ms": 173.297,
+        "p95Ms": 188.64,
+        "minMs": 169.156,
+        "maxMs": 191.249
+      }
+    },
+    "default": {
+      "key": "win32-x64-node24",
+      "samples": 20,
+      "discard": 2,
+      "nodeVersion": "v24.13.0",
+      "node": "v24.13.0",
+      "nodeMajor": 24,
+      "platform": "win32",
+      "arch": "x64",
+      "commit": "5c40166359a77ba6a31e8b33ba88916db0ea4da3",
+      "nodeP50Ms": 76.047,
+      "nodeP95Ms": 81.429,
+      "nodeMinMs": 72.958,
+      "nodeMaxMs": 89.496,
+      "cliP50Ms": 173.297,
+      "cliP95Ms": 188.64,
+      "cliMinMs": 169.156,
+      "cliMaxMs": 191.249,
+      "deltaP95Ms": 107.211,
+      "nodeStats": {
+        "p50Ms": 76.047,
+        "p95Ms": 81.429,
+        "minMs": 72.958,
+        "maxMs": 89.496
+      },
+      "cliStats": {
+        "p50Ms": 173.297,
+        "p95Ms": 188.64,
+        "minMs": 169.156,
+        "maxMs": 191.249
+      }
+    }
+  }
+}
