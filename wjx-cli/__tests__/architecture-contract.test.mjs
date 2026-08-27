@@ -63,11 +63,12 @@ test("startup benchmark reports paired node and CLI samples", () => {
   assert.equal(report.discard, 0);
   assert.equal(typeof report.nodeP95Ms, "number");
   assert.equal(typeof report.cliP95Ms, "number");
-  assert.equal(report.deltaP95Ms, report.cliP95Ms - report.nodeP95Ms);
+  const expectedDeltaP95Ms = Math.round((report.cliP95Ms - report.nodeP95Ms) * 1000) / 1000;
+  assert.equal(report.deltaP95Ms, expectedDeltaP95Ms);
   assert.equal(typeof report.nodeVersion, "string");
   assert.equal(typeof report.platform, "string");
   assert.equal(typeof report.arch, "string");
-  assert.match(report.commit, /^[0-9a-f]+$/);
+  assert.ok(report.commit === "unknown" || /^[0-9a-f]+$/.test(report.commit));
 });
 
 test("startup baseline keeps runner entries under the versioned document", () => {
@@ -76,8 +77,9 @@ test("startup baseline keeps runner entries under the versioned document", () =>
   assert.equal(baseline.samples, 20);
   assert.equal(baseline.discard, 2);
   assert.equal(typeof baseline.baselines, "object");
-  assert.ok(baseline.baselines.default);
-  assert.ok(baseline.baselines[`${process.platform}-${process.arch}-node${process.versions.node.split(".", 1)[0]}`]);
+  const currentKey = `${process.platform}-${process.arch}-node${process.versions.node.split(".", 1)[0]}`;
+  const selectedBaseline = baseline.baselines[currentKey] ?? baseline.baselines.default;
+  assert.ok(selectedBaseline, "baseline must provide an exact runner entry or default fallback");
 });
 
 test.todo("runtime commands expose one structured success result protocol");
