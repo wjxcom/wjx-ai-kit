@@ -16,8 +16,6 @@ import {
   uploadFile,
   buildSurveyUrl,
   surveyToText,
-  textToSurvey,
-  parsedQuestionsToWire,
   MAX_JSONL_SIZE,
   Action,
 } from "wjx-api-sdk";
@@ -146,10 +144,7 @@ export function registerSurveyCommands(program: Command): void {
     .option("--publish", "创建后发布")
     .option("--creater <s>", "创建者子账号")
     .action(async (_opts, cmd) => {
-      try {
-        const merged = getMerged(cmd);
-        const globalOpts = program.opts();
-
+      await executeCommand(program, cmd, createSurveyByText, (merged) => {
         // Resolve DSL text: --text > --file > stdin.text
         let dslText: string | undefined;
         if (typeof merged.text === "string" && merged.text) {
@@ -161,51 +156,14 @@ export function registerSurveyCommands(program: Command): void {
             throw new CliError("INPUT_ERROR", `无法读取文件: ${merged.file}`);
           }
         }
-
-        if (!dslText) {
-          throw new CliError("INPUT_ERROR", "必须提供 --text 或 --file 参数");
-        }
-
-        if (globalOpts.dryRun) {
-          const parsed = textToSurvey(dslText);
-          const { questions: wireQuestions, skippedParagraphs } = parsedQuestionsToWire(parsed.questions);
-          process.stderr.write(JSON.stringify({
-            dry_run: true,
-            parsed_title: parsed.title,
-            parsed_description: parsed.description,
-            question_count: wireQuestions.length,
-            skipped_paragraphs: skippedParagraphs.length > 0
-              ? skippedParagraphs.map((q) => q.title)
-              : undefined,
-            wire_questions: wireQuestions,
-          }, null, 2) + "\n");
-          return;
-        }
-
-        const creds = getCredentials(globalOpts);
-
-        // 弃用警告：在所有输入校验和 dry-run 之后、真实请求之前打印
-        // 这样测试解析 stderr 失败/dry-run JSON 时不会被警告污染
-        process.stderr.write(
-          "[wjx] ⚠️ create-by-text 已弃用，建议改用 create-by-json：\n" +
-          "      wjx survey create-by-json --file <path>.jsonl\n" +
-          "      JSON 路径覆盖 70+ 题型，无 DSL 转义陷阱（PowerShell $ 变量、行内逗号等）。\n" +
-          "      除非你明确需要 DSL 兼容，否则请改用 create-by-json。\n",
-        );
-
-        const result = await createSurveyByText({
+        if (!dslText) throw new CliError("INPUT_ERROR", "必须提供 --text 或 --file 参数");
+        return {
           text: dslText,
           atype: merged.type as number | undefined,
           publish: merged.publish as boolean | undefined,
           creater: merged.creater as string | undefined,
-        }, creds);
-
-        ensureApiSuccess(result);
-
-        formatOutput(result, globalOpts);
-      } catch (e) {
-        handleError(e);
-      }
+        };
+      });
     });
 
   // --- create-by-json ---
@@ -220,9 +178,7 @@ export function registerSurveyCommands(program: Command): void {
     .option("--publish", "创建后发布")
     .option("--creater <s>", "创建者子账号")
     .action(async (_opts, cmd) => {
-      try {
-        const merged = getMerged(cmd);
-
+      await executeCommand(program, cmd, createSurveyByJson, (merged) => {
         // Resolve JSONL text: --jsonl > --file > stdin.jsonl
         let jsonlText: string | undefined;
         if (typeof merged.jsonl === "string" && merged.jsonl) {
@@ -239,43 +195,16 @@ export function registerSurveyCommands(program: Command): void {
             throw new CliError("INPUT_ERROR", `无法读取文件: ${merged.file}`);
           }
         }
-
-        if (!jsonlText) {
-          throw new CliError("INPUT_ERROR", "必须提供 --jsonl 或 --file 参数");
-        }
-
-        const globalOpts = program.opts();
-        const creds = getCredentials(globalOpts);
-
-        if (globalOpts.dryRun) {
-          const { fetchImpl, getCapturedRequest } = createCapturingFetch();
-          await createSurveyByJson({
-            jsonl: jsonlText,
-            title: merged.title as string | undefined,
-            atype: merged.type as number | undefined,
-            optionalTitles: ensureStringArray(merged.optional_titles, "optional_titles"),
-            publish: merged.publish as boolean | undefined,
-            creater: merged.creater as string | undefined,
-          }, creds, fetchImpl);
-          printDryRunPreview(getCapturedRequest());
-          return;
-        }
-
-        const result = await createSurveyByJson({
+        if (!jsonlText) throw new CliError("INPUT_ERROR", "必须提供 --jsonl 或 --file 参数");
+        return {
           jsonl: jsonlText,
           title: merged.title as string | undefined,
           atype: merged.type as number | undefined,
           optionalTitles: ensureStringArray(merged.optional_titles, "optional_titles"),
           publish: merged.publish as boolean | undefined,
           creater: merged.creater as string | undefined,
-        }, creds);
-
-        ensureApiSuccess(result);
-
-        formatOutput(result, globalOpts);
-      } catch (e) {
-        handleError(e);
-      }
+        };
+      });
     });
 
   // --- delete ---

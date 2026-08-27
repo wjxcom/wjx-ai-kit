@@ -13,7 +13,7 @@ import { getCommandMetadata } from "../lib/command-metadata.js";
 import { resolveProfile } from "../lib/profiles.js";
 
 function parseJson(value: unknown, field: string): Record<string, unknown> {
-  if (!value) return {};
+  if (value === undefined || value === null || value === "") return {};
   try {
     const parsed = typeof value === "string" ? JSON.parse(readInput(value)) : value;
     if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) throw new Error();

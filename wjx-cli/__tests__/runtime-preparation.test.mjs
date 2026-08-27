@@ -100,6 +100,23 @@ test("runtime dry-run does not require credentials", async () => {
   }
 });
 
+test("single-request create shortcuts share credential-free dry-run", async () => {
+  const fixture = await startFixture();
+  try {
+    const jsonl = [
+      JSON.stringify({ qtype: "问卷基础信息", title: "测试问卷" }),
+      JSON.stringify({ qtype: "单选", title: "性别", select: ["男", "女"] }),
+    ].join("\n");
+    const result = await fixture.run(["survey", "create-by-json", "--jsonl", jsonl, "--dry-run"]);
+    assert.equal(result.exitCode, 0);
+    assert.equal(result.stdout, "");
+    assert.equal(fixture.requests().length, 0);
+    assert.match(result.stderr, /dry_run/);
+  } finally {
+    await fixture.close();
+  }
+});
+
 test("legacy dry-run does not require credentials", async () => {
   const fixture = await startFixture();
   try {

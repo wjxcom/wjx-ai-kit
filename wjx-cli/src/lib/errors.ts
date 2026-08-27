@@ -1,5 +1,5 @@
-export type ErrorCode = "API_ERROR" | "INPUT_ERROR" | "AUTH_ERROR" | "CONFIRMATION_REQUIRED" | "POLICY_DENIED";
 import type { WjxApiResponse } from "wjx-api-sdk";
+export type ErrorCode = "API_ERROR" | "INPUT_ERROR" | "AUTH_ERROR" | "CONFIRMATION_REQUIRED" | "POLICY_DENIED";
 
 const EXIT_CODES: Record<ErrorCode, number> = {
   API_ERROR: 1,
