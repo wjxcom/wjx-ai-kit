@@ -17,6 +17,8 @@ import { registerCompletionCommands } from "./commands/completion.js";
 import { registerReferenceCommands } from "./commands/reference.js";
 import { registerSkillCommands } from "./commands/skill.js";
 import { registerUpdateCommands } from "./commands/update.js";
+import { registerApiCommands } from "./commands/api.js";
+import { registerSchemaCommands } from "./commands/schema.js";
 import { readStdin } from "./lib/stdin.js";
 import { handleError } from "./lib/errors.js";
 import { applyConfigToEnv } from "./lib/config.js";
@@ -78,6 +80,8 @@ registerCompletionCommands(program);
 registerReferenceCommands(program);
 registerSkillCommands(program);
 registerUpdateCommands(program);
+registerApiCommands(program);
+registerSchemaCommands(program);
 
 (async () => {
   try {
