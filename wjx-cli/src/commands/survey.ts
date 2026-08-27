@@ -19,11 +19,14 @@ import {
   textToSurvey,
   parsedQuestionsToWire,
   MAX_JSONL_SIZE,
+  Action,
 } from "wjx-api-sdk";
 import { enrichSurveyListOutput, formatOutput } from "../lib/output.js";
 import { CliError, handleError } from "../lib/errors.js";
 import { getCredentials } from "../lib/auth.js";
 import { executeCommand, strictInt, requireField, getMerged, createCapturingFetch, printDryRunPreview, ensureJsonString, ensureStringArray } from "../lib/command-helpers.js";
+import { executeRuntimeCommand } from "../lib/runtime/executor.js";
+import { buildRequestPlan } from "../lib/runtime/request-plan.js";
 
 export function registerSurveyCommands(program: Command): void {
   const survey = program.command("survey").description("问卷管理");
@@ -47,22 +50,37 @@ export function registerSurveyCommands(program: Command): void {
     .option("--begin_time <n>", "起始时间（毫秒时间戳）", strictInt)
     .option("--end_time <n>", "结束时间（毫秒时间戳）", strictInt)
     .action(async (_opts, cmd) => {
-      await executeCommand(program, cmd, listSurveys, (m) => ({
-        page_index: m.page,
-        page_size: m.page_size,
-        status: m.status,
-        atype: m.atype,
-        name_like: m.name_like,
-        sort: m.sort,
-        creater: m.creater,
-        folder: m.folder,
-        is_xingbiao: m.is_xingbiao,
-        query_all: m.query_all,
-        verify_status: m.verify_status,
-        time_type: m.time_type,
-        begin_time: m.begin_time,
-        end_time: m.end_time,
-      }), { transformResult: enrichSurveyListOutput });
+      await executeRuntimeCommand(program, cmd, {
+        normalize: ({ values }) => ({
+          page_index: values.page,
+          page_size: values.page_size,
+          status: values.status,
+          atype: values.atype,
+          name_like: values.name_like,
+          sort: values.sort,
+          creater: values.creater,
+          folder: values.folder,
+          is_xingbiao: values.is_xingbiao,
+          query_all: values.query_all,
+          verify_status: values.verify_status,
+          time_type: values.time_type,
+          begin_time: values.begin_time,
+          end_time: values.end_time,
+        }),
+        buildPlans: (input, credentials) => [buildRequestPlan({
+          service: "default",
+          action: Action.LIST_SURVEYS,
+          credentials,
+          body: {
+            action: Action.LIST_SURVEYS,
+            page_index: input.page_index ?? 1,
+            page_size: input.page_size ?? 10,
+            ...Object.fromEntries(Object.entries(input).filter(([, value]) => value !== undefined)),
+          },
+        })],
+        execute: (input, credentials) => listSurveys(input, credentials),
+        transformResult: enrichSurveyListOutput,
+      });
     });
 
   // --- get ---

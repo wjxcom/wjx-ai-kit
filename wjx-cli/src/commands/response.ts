@@ -12,6 +12,7 @@ import {
   clearResponses,
   getSurvey,
   normalizeSubmitdata,
+  Action,
 } from "wjx-api-sdk";
 import type { WjxCredentials } from "wjx-api-sdk";
 import { CliError } from "../lib/errors.js";
@@ -19,6 +20,8 @@ import { executeCommand, strictInt, requireField, ensureJsonString, getMerged, c
 import { getCredentials } from "../lib/auth.js";
 import { handleError } from "../lib/errors.js";
 import { formatOutput } from "../lib/output.js";
+import { executeRuntimeCommand } from "../lib/runtime/executor.js";
+import { buildRequestPlan } from "../lib/runtime/request-plan.js";
 
 /** 规范化 submitdata 中的题号、矩阵题和排序题答案格式 */
 export function registerResponseCommands(program: Command): void {
@@ -150,47 +153,58 @@ export function registerResponseCommands(program: Command): void {
     .option("--jpmversion <n>", "问卷版本号；不传时默认自动从 getSurvey 取", strictInt)
     .option("--no-auto-version", "关闭自动获取 jpmversion（适用于显式传入或不需要校验场景）")
     .action(async (_opts, cmd) => {
-      await executeCommand(program, cmd, submitResponse, (m) => {
-        requireField(m, "vid");
-        requireField(m, "inputcosttime");
+      await executeRuntimeCommand(program, cmd, {
+        normalize: ({ values }) => {
+          requireField(values, "vid");
+          requireField(values, "inputcosttime");
 
-        // 解析 submitdata：--submitdata-file 优先（commander 把 --submitdata-file 解析成 submitdataFile）
-        let submitdata = m.submitdata as string | undefined;
-        const fileOpt = (m as Record<string, unknown>).submitdataFile ?? (m as Record<string, unknown>)["submitdata-file"];
-        if (typeof fileOpt === "string" && fileOpt) {
-          try {
-            submitdata = readFileSync(fileOpt, "utf8").replace(/^﻿/, "").trimEnd();
-          } catch {
-            throw new CliError("INPUT_ERROR", `无法读取 --submitdata-file 指向的文件: ${fileOpt}`);
+          let submitdata = values.submitdata as string | undefined;
+          const fileOpt = values.submitdataFile ?? values["submitdata-file"];
+          if (typeof fileOpt === "string" && fileOpt) {
+            try {
+              submitdata = readFileSync(fileOpt, "utf8").replace(/^﻿/, "").trimEnd();
+            } catch {
+              throw new CliError("INPUT_ERROR", `无法读取 --submitdata-file 指向的文件: ${fileOpt}`);
+            }
           }
-        }
-        if (!submitdata) {
-          throw new CliError("INPUT_ERROR", "Missing required option: --submitdata 或 --submitdata-file");
-        }
-
-        // sanity check：submitdata 里一个 $ 都没有，大概率是 shell 吞掉了 $1/$2/$3。
-        // 提前拦截并给出可操作的修复建议，避免服务端返回"数据格式错误"这类晦涩错误。
-        if (!submitdata.includes("$")) {
-          throw new CliError(
-            "INPUT_ERROR",
-            `submitdata 中未检测到任何 "$" 分隔符。问卷星答卷协议使用 "题序$答案" 格式（如 "1$男|2$跑步|3$5"），缺失 $ 几乎必然是 shell 转义问题。` +
-            `修复建议：① Windows PowerShell 请用单引号 '...' 包裹；② 或改用 --submitdata-file <path>，从文件读取，彻底绕开 shell 转义；③ 运行 \`wjx response submit-template --vid <问卷ID>\` 获取可直接填充的模板。`,
-          );
-        }
-
-        return {
-          vid: m.vid,
-          inputcosttime: m.inputcosttime,
-          submitdata,
-          udsid: m.udsid,
-          sojumpparm: m.sojumpparm,
-          submittime: m.submittime,
-          jpmversion: m.jpmversion,
-          // commander 把 --no-auto-version 解析成 autoVersion=false
-          autoVersion: (m as Record<string, unknown>).autoVersion !== false,
-        };
-      }, {
-        transformInput: async (input, creds) => {
+          if (!submitdata) {
+            throw new CliError("INPUT_ERROR", "Missing required option: --submitdata 或 --submitdata-file");
+          }
+          if (!submitdata.includes("$")) {
+            throw new CliError(
+              "INPUT_ERROR",
+              `submitdata 中未检测到任何 "$" 分隔符。问卷星答卷协议使用 "题序$答案" 格式（如 "1$男|2$跑步|3$5"），缺失 $ 几乎必然是 shell 转义问题。` +
+              `修复建议：① Windows PowerShell 请用单引号 '...' 包裹；② 或改用 --submitdata-file <path>，从文件读取，彻底绕开 shell 转义；③ 运行 \`wjx response submit-template --vid <问卷ID>\` 获取可直接填充的模板。`,
+            );
+          }
+          return {
+            vid: values.vid,
+            inputcosttime: values.inputcosttime,
+            submitdata,
+            udsid: values.udsid,
+            sojumpparm: values.sojumpparm,
+            submittime: values.submittime,
+            jpmversion: values.jpmversion,
+            autoVersion: values.autoVersion !== false,
+          };
+        },
+        buildPlans: (input, credentials) => [buildRequestPlan({
+          service: "default",
+          action: Action.SUBMIT_RESPONSE,
+          credentials,
+          body: {
+            action: Action.SUBMIT_RESPONSE,
+            vid: input.vid,
+            inputcosttime: input.inputcosttime,
+            submitdata: input.submitdata,
+            udsid: input.udsid,
+            sojumpparm: input.sojumpparm,
+            submittime: input.submittime,
+            jpmversion: input.jpmversion,
+          },
+          unresolved: input.autoVersion && input.jpmversion === undefined ? ["jpmversion"] : undefined,
+        })],
+        prepareExecute: async (input, creds) => {
           const explicitVersion = input.jpmversion;
           const autoVersion = (input as Record<string, unknown>).autoVersion !== false;
           // 仅在未显式传 jpmversion 且未关闭自动注入时才请求 getSurvey
@@ -225,6 +239,11 @@ export function registerResponseCommands(program: Command): void {
             result.submitdata = normalizeSubmitdata(input.submitdata, questions);
           }
           return result;
+        },
+        execute: (input, credentials) => {
+          const finalInput = { ...input };
+          delete finalInput.autoVersion;
+          return submitResponse(finalInput as unknown as Parameters<typeof submitResponse>[0], credentials);
         },
       });
     });
