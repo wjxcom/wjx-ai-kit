@@ -7,6 +7,8 @@ import { mergeStdinWithOpts } from "./stdin.js";
 import { maskAuthHeader } from "./mask.js";
 import { getCommandMetadata, getCommandPath } from "./command-metadata.js";
 import { ensureConfirmation } from "./runtime/confirmation.js";
+import { createRuntimeContext, type RuntimeContext } from "./runtime/context.js";
+import { resolveProfile } from "./profiles.js";
 
 /**
  * Strict integer parser. Rejects garbage like "123abc".
@@ -37,6 +39,8 @@ interface ExecuteOpts {
   transformResult?: (result: WjxApiResponse<unknown>) => unknown;
   /** 在调用 SDK 之前异步转换 input（如获取问卷结构修正 submitdata） */
   transformInput?: (input: Record<string, unknown>, creds: unknown) => Promise<Record<string, unknown>>;
+  /** Optional runtime dependencies for tests and embedded callers. */
+  context?: RuntimeContext;
 }
 
 export interface CapturedRequest {
@@ -166,6 +170,10 @@ export async function executeCommand(
       return;
     }
 
+    const context = opts.context ?? createRuntimeContext({
+      profile: { ...resolveProfile({ profile: globalOpts.profile }) },
+    });
+
     await ensureConfirmation({
       command: getCommandPath(actionCommand),
       metadata: getCommandMetadata(getCommandPath(actionCommand)),
@@ -175,19 +183,26 @@ export async function executeCommand(
         nonInteractive: globalOpts.nonInteractive === true,
         dryRun: globalOpts.dryRun === true,
       },
+      policy: context.policy,
+      inputStream: context.streams.stdin,
+      outputStream: context.streams.stderr,
     });
 
-    const creds = getCredentials(globalOpts);
-
-    const finalInput = opts.transformInput ? await opts.transformInput(input, creds) : input;
-
     if (globalOpts.dryRun) {
+      // Dry-run is deliberately limited to the already-normalized input.  An
+      // async transform is an execution-time hook (and may perform a network
+      // prefetch), so invoking it here would violate the zero-network contract.
       const { fetchImpl, getCapturedRequest } = createCapturingFetch();
-      await sdkFn(finalInput, creds, fetchImpl);
+      // SDK request construction only needs an API key to populate headers;
+      // use a redacted placeholder so preview does not require credentials.
+      const dryRunCreds = globalOpts.apiKey ? { apiKey: globalOpts.apiKey } : { apiKey: "dry-run" };
+      await sdkFn(input, dryRunCreds, fetchImpl);
       printDryRunPreview(getCapturedRequest());
       return;
     }
 
+    const creds = getCredentials(globalOpts);
+    const finalInput = opts.transformInput ? await opts.transformInput(input, creds) : input;
     const result = await sdkFn(finalInput, creds);
 
     // P0 fix: detect SDK API failure response

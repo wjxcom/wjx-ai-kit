@@ -11,6 +11,8 @@ import {
 } from "../dist/lib/runtime/input.js";
 import { buildRequestPlan } from "../dist/lib/runtime/request-plan.js";
 import { renderDryRun } from "../dist/lib/runtime/dry-run.js";
+import { Command } from "commander";
+import { executeCommand } from "../dist/lib/command-helpers.js";
 
 const PACKAGE_ROOT = fileURLToPath(new URL("..", import.meta.url));
 const CLI = resolve(PACKAGE_ROOT, "dist", "index.js");
@@ -81,6 +83,57 @@ test("submit dry-run emits an unresolved version without fetching survey metadat
   } finally {
     await fixture.close();
   }
+});
+
+test("runtime dry-run does not require credentials", async () => {
+  const fixture = await startFixture();
+  try {
+    const result = await fixture.run(["survey", "list", "--dry-run"]);
+    assert.equal(result.exitCode, 0);
+    assert.equal(result.stdout, "");
+    assert.equal(fixture.requests().length, 0);
+    assert.match(result.stderr, /dry_run/);
+  } finally {
+    await fixture.close();
+  }
+});
+
+test("legacy dry-run does not require credentials", async () => {
+  const fixture = await startFixture();
+  try {
+    const result = await fixture.run(["survey", "get", "--vid", "7", "--dry-run"]);
+    assert.equal(result.exitCode, 0);
+    assert.equal(result.stdout, "");
+    assert.equal(fixture.requests().length, 0);
+    assert.match(result.stderr, /dry_run/);
+  } finally {
+    await fixture.close();
+  }
+});
+
+test("legacy executor skips execution-only input transforms during dry-run", async () => {
+  const program = new Command("wjx");
+  program.option("--dry-run").option("--api-key <apiKey>");
+  program.setOptionValue("dryRun", true);
+  program.setOptionValue("apiKey", "test-key");
+  const command = program.command("probe");
+  command.setOptionValue("value", "original");
+  let transformCalled = false;
+
+  await executeCommand(
+    program,
+    command,
+    async (input) => ({ result: true, data: input }),
+    (merged) => ({ value: merged.value }),
+    {
+      transformInput: async () => {
+        transformCalled = true;
+        throw new Error("network prefetch must not run in dry-run");
+      },
+    },
+  );
+
+  assert.equal(transformCalled, false);
 });
 
 test("dry-run renderer keeps plans separate from diagnostics", () => {

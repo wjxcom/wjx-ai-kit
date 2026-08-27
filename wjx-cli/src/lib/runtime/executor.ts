@@ -9,14 +9,18 @@ import { renderDryRun } from "./dry-run.js";
 import type { RequestPlan } from "./types.js";
 import { getCommandMetadata, getCommandPath } from "../command-metadata.js";
 import { ensureConfirmation } from "./confirmation.js";
+import { createRuntimeContext, type RuntimeContext } from "./context.js";
+import { resolveProfile } from "../profiles.js";
 
 interface RuntimeCommandSpec {
   normalize?: (context: { values: Record<string, unknown>; source: Record<string, string> }) => Record<string, unknown>;
   validate?: (input: Record<string, unknown>) => void;
-  buildPlans: (input: Record<string, unknown>, credentials: WjxCredentials) => RequestPlan[];
+  /** Pure request projection. It must not require credentials or a transport. */
+  buildPlans: (input: Record<string, unknown>) => RequestPlan[];
   prepareExecute?: (input: Record<string, unknown>, credentials: WjxCredentials) => Promise<Record<string, unknown>>;
   execute: (input: Record<string, unknown>, credentials: WjxCredentials) => Promise<WjxApiResponse<unknown>>;
   transformResult?: (result: WjxApiResponse<unknown>) => unknown;
+  context?: RuntimeContext;
 }
 
 /** Internal facade used by migrated commands; it has no public protocol of its own. */
@@ -34,17 +38,20 @@ export async function executeRuntimeCommand(
     spec.validate?.(input);
     const command = getCommandPath(actionCommand);
     const metadata = getCommandMetadata(command);
-    const credentials = getCredentials(program.opts());
-    const plans = spec.buildPlans(input, credentials);
+    const context = spec.context ?? createRuntimeContext({
+      profile: { ...resolveProfile({ profile: program.opts().profile }) },
+    });
+    const plans = spec.buildPlans(input);
 
     if (program.opts().dryRun) {
       const dryRun = renderDryRun(plans);
       const request = plans.length === 1 ? { request: dryRun.plans[0] } : { plans: dryRun.plans };
       // Preserve the existing CLI dry-run channel until the unified result protocol lands.
-      process.stderr.write(JSON.stringify({ dry_run: true, ...request }, null, 2) + "\n");
+      context.streams.stderr.write(JSON.stringify({ dry_run: true, ...request }, null, 2) + "\n");
       return;
     }
 
+    const credentials = getCredentials(program.opts());
     await ensureConfirmation({
       command,
       metadata,
@@ -54,6 +61,9 @@ export async function executeRuntimeCommand(
         nonInteractive: program.opts().nonInteractive === true,
         dryRun: false,
       },
+      policy: context.policy,
+      inputStream: context.streams.stdin,
+      outputStream: context.streams.stderr,
     });
 
     const finalInput = spec.prepareExecute

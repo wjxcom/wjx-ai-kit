@@ -188,10 +188,9 @@ export function registerResponseCommands(program: Command): void {
             autoVersion: values.autoVersion !== false,
           };
         },
-        buildPlans: (input, credentials) => [buildRequestPlan({
+        buildPlans: (input) => [buildRequestPlan({
           service: "default",
           action: Action.SUBMIT_RESPONSE,
-          credentials,
           body: {
             action: Action.SUBMIT_RESPONSE,
             vid: input.vid,

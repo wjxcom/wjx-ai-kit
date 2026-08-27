@@ -67,10 +67,9 @@ export function registerSurveyCommands(program: Command): void {
           begin_time: values.begin_time,
           end_time: values.end_time,
         }),
-        buildPlans: (input, credentials) => [buildRequestPlan({
+        buildPlans: (input) => [buildRequestPlan({
           service: "default",
           action: Action.LIST_SURVEYS,
-          credentials,
           body: {
             action: Action.LIST_SURVEYS,
             page_index: input.page_index ?? 1,
