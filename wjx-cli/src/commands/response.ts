@@ -342,7 +342,7 @@ export function registerResponseCommands(program: Command): void {
   // --- submit-template ---
   response
     .command("submit-template")
-    .description("根据问卷结构生成 submitdata 模板：列出每题 1-based placeholder，AI 改成真实答案后即可调 submit")
+    .description("根据问卷结构生成 submitdata 模板：列出每题 1-based placeholder，AI 改成真实答案后即可调 submit；默认输出 ResultEnvelope")
     .option("--vid <n>", "问卷ID", strictInt)
     .option("--raw", "直接输出 submitdata 字符串（不包裹 JSON），便于重定向到文件")
     .action(async (_opts, cmd) => {
