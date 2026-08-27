@@ -1,4 +1,4 @@
-import { readFileSync, writeFileSync } from "node:fs";
+import { chmodSync, readFileSync, renameSync, unlinkSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { homedir } from "node:os";
 
@@ -29,10 +29,15 @@ export function loadConfig(): WjxConfig | null {
 }
 
 export function saveConfig(config: WjxConfig): void {
-  writeFileSync(CONFIG_PATH, JSON.stringify(config, null, 2) + "\n", {
-    encoding: "utf8",
-    mode: 0o600,
-  });
+  const temporaryPath = `${CONFIG_PATH}.${process.pid}.${Date.now()}.tmp`;
+  try {
+    writeFileSync(temporaryPath, JSON.stringify(config, null, 2) + "\n", { encoding: "utf8", mode: 0o600 });
+    renameSync(temporaryPath, CONFIG_PATH);
+    chmodSync(CONFIG_PATH, 0o600);
+  } catch (error) {
+    try { unlinkSync(temporaryPath); } catch { /* preserve original error */ }
+    throw error;
+  }
 }
 
 /**

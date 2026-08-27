@@ -6,6 +6,8 @@ import { formatOutput } from "../lib/output.js";
 import { handleError } from "../lib/errors.js";
 import { loadConfig, CONFIG_PATH } from "../lib/config.js";
 import { maskApiKey } from "../lib/mask.js";
+import { resolveProfile } from "../lib/profiles.js";
+import { getCredentialProvider } from "../lib/credential-provider.js";
 
 const require = createRequire(import.meta.url);
 const sdkPkg = require("wjx-api-sdk/package.json") as { version: string };
@@ -46,7 +48,10 @@ export function registerDiagnosticCommands(program: Command): void {
     .description("环境诊断（ApiKey、网络、SDK 版本）")
     .action(async () => {
       try {
+        const profile = resolveProfile({ profile: program.opts().profile });
         const checks: Array<{ check: string; status: string; detail: string }> = [];
+
+        checks.push({ check: "profile", status: "ok", detail: profile.name });
 
         // 0. Config file
         const config = loadConfig();
@@ -66,7 +71,10 @@ export function registerDiagnosticCommands(program: Command): void {
         });
 
         // 2. WJX_API_KEY set?
-        const apiKey = program.opts().apiKey || process.env.WJX_API_KEY || config?.apiKey;
+        let apiKey = program.opts().apiKey || process.env.WJX_API_KEY || config?.apiKey;
+        if (!apiKey) {
+          try { apiKey = getCredentialProvider().get(profile, "user").apiKey; } catch { /* reported as fail below */ }
+        }
         checks.push({
           check: "WJX_API_KEY",
           status: apiKey ? "ok" : "fail",
@@ -74,7 +82,7 @@ export function registerDiagnosticCommands(program: Command): void {
         });
 
         // 3. WJX_CORP_ID
-        const corpId = process.env.WJX_CORP_ID || config?.corpId;
+        const corpId = process.env.WJX_CORP_ID || profile.corpId || config?.corpId;
         checks.push({
           check: "WJX_CORP_ID",
           status: corpId ? "ok" : "info",
@@ -82,7 +90,7 @@ export function registerDiagnosticCommands(program: Command): void {
         });
 
         // 4. WJX_BASE_URL
-        const baseUrl = process.env.WJX_BASE_URL || config?.baseUrl || "https://www.wjx.cn";
+        const baseUrl = process.env.WJX_BASE_URL || profile.baseUrl || config?.baseUrl || "https://www.wjx.cn";
         checks.push({
           check: "WJX_BASE_URL",
           status: "ok",
