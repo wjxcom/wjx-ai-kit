@@ -10,6 +10,12 @@
 
 ## 从旧 CLI 参数迁移
 
+### CLI 1.0 输出协议
+
+成功结果读取 `ok/data/meta`，失败结果读取 `ok/error`。不再读取顶层 `result`；`data` 内业务字段保持原语义。机器调用使用 `--format json`，分页或流式消费可使用 `ndjson`/`csv`。`--json`、`--table` 仍可运行但只在帮助中标记 deprecated，不会向 stderr 输出警告。
+
+高风险删除、清空和修改命令在非交互环境必须追加 `--yes`；`--dry-run` 始终优先且不会发出 HTTP 请求。
+
 | 旧写法 | 当前写法 |
 | --- | --- |
 | `--permanent` | `--completely` |

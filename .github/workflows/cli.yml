@@ -1,0 +1,26 @@
+name: CLI checks
+on:
+  push:
+  pull_request:
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm }
+      - run: npm ci
+      - run: npm --workspace=wjx-api-sdk run build
+      - run: npm --workspace=wjx-api-sdk test
+      - run: npm --workspace=wjx-mcp-server run build
+      - run: npm --workspace=wjx-mcp-server test
+      - run: npm --workspace=wjx-cli run build
+      - run: npm --workspace=wjx-cli run sync-bundled:check
+      - run: npm --workspace=wjx-cli run manifest:check
+      - run: npm --workspace=wjx-cli run architecture:check
+      - run: npm --workspace=wjx-cli run protocol:check
+      - run: npm --workspace=wjx-cli run perf:startup
+      - run: npm --workspace=wjx-cli run release:check
+      - run: npm --workspace=wjx-cli test
+      - run: npm run docs:build
+      - run: npm run docs:check

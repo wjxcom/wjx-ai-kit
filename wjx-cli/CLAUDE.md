@@ -53,7 +53,7 @@ const result = await listSurveys({ page_index: 1 }, creds);
 - 每个命令文件导出一个 `register*Commands(program: Command)` 函数
 - 错误统一通过 `handleError(e)` 处理，非零 exit code
 - JSON 输出默认，`--table` 可选
-- 不要过度抽象，每个命令的实现就是：解析参数 → 调 SDK → 输出结果
+- 命令实现遵循 `CommandSpec` 与 Runtime 生命周期：解析/归一化/校验必须无网络，确认与 dry-run 在执行前完成，实际 SDK 调用和统一输出由 Runtime 负责。
 
 ## 构建和测试
 

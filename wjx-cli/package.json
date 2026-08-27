@@ -1,6 +1,6 @@
 {
   "name": "wjx-cli",
-  "version": "0.3.5",
+  "version": "1.0.0",
   "description": "问卷星 (Wenjuanxing) CLI — AI Agent 原生命令行工具",
   "main": "dist/index.js",
   "bin": {
@@ -22,7 +22,10 @@
     "architecture:check": "node scripts/check-architecture-contract.mjs",
     "clean": "rm -rf dist",
     "sync-bundled": "node scripts/sync-bundled.mjs",
-    "prepublishOnly": "npm run sync-bundled && npm run build"
+    "sync-bundled:check": "node scripts/sync-bundled.mjs --check",
+    "protocol:check": "node scripts/check-protocol-contract.mjs",
+    "release:check": "npm run sync-bundled:check && npm run build && npm run manifest:check && npm run protocol:check && node scripts/check-release-artifacts.mjs",
+    "prepublishOnly": "npm run sync-bundled && npm run build && npm run manifest:check && node scripts/check-release-artifacts.mjs"
   },
   "keywords": [
     "wjx",

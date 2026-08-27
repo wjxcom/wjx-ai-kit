@@ -1,5 +1,14 @@
 # 更新日志
 
+## [1.0.0] - 2026-08-27
+
+### Breaking
+
+- CLI 结构化输出统一为 `{ ok, data, meta }` / `{ ok: false, error }`，旧的顶层 `result` 不再输出。
+- `--format json|pretty|table|ndjson|csv` 统一控制投影；`--json` 和 `--table` 仅为静默 deprecated 别名。
+- 高风险写操作在非交互环境必须显式使用 `--yes`。
+- `--dry-run` 保证零网络请求，无法本地解析的字段会列入 `unresolved`。
+
 本文件记录项目的所有重要变更。
 
 格式基于 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。

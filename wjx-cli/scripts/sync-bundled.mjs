@@ -27,7 +27,9 @@ import {
   statSync,
   rmSync,
   existsSync,
+  readFileSync,
 } from "node:fs";
+import { createHash } from "node:crypto";
 import { dirname, resolve } from "node:path";
 import { join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
@@ -125,6 +127,49 @@ function copyDirRecursive(src, dest, target) {
   return count;
 }
 
+function collectSourceSnapshot(src, target, prefix = "") {
+  const snapshot = new Map();
+  for (const entry of readdirSync(src, { withFileTypes: true })) {
+    if (shouldExclude(entry.name, target)) continue;
+    const relative = prefix ? `${prefix}/${entry.name}` : entry.name;
+    const sourcePath = join(src, entry.name);
+    if (entry.isDirectory()) {
+      for (const [path, hash] of collectSourceSnapshot(sourcePath, target, relative)) snapshot.set(path, hash);
+    } else if (entry.isFile()) {
+      snapshot.set(relative, createHash("sha256").update(readFileSync(sourcePath)).digest("hex"));
+    }
+  }
+  return snapshot;
+}
+
+function collectBundleSnapshot(dest, prefix = "") {
+  const snapshot = new Map();
+  if (!existsSync(dest)) return snapshot;
+  for (const entry of readdirSync(dest, { withFileTypes: true })) {
+    const relative = prefix ? `${prefix}/${entry.name}` : entry.name;
+    const targetPath = join(dest, entry.name);
+    if (entry.isDirectory()) for (const [path, hash] of collectBundleSnapshot(targetPath, relative)) snapshot.set(path, hash);
+    else if (entry.isFile()) snapshot.set(relative, createHash("sha256").update(readFileSync(targetPath)).digest("hex"));
+  }
+  return snapshot;
+}
+
+function compareSnapshots(source, bundle) {
+  const differences = [];
+  for (const path of new Set([...source.keys(), ...bundle.keys()])) {
+    if (source.get(path) !== bundle.get(path)) differences.push(path);
+  }
+  return differences.sort();
+}
+
+function checkDir(target) {
+  if (!existsSync(target.src) || !statSync(target.src).isDirectory()) throw new Error(`[sync-bundled] invalid source: ${target.src}`);
+  const srcCount = countSourceFiles(target.src, target);
+  if (srcCount < MIN_SOURCE_FILES) throw new Error(`[sync-bundled] ${target.name}: source only ${srcCount} files (< ${MIN_SOURCE_FILES})`);
+  const differences = compareSnapshots(collectSourceSnapshot(target.src, target), collectBundleSnapshot(target.dest));
+  if (differences.length) throw new Error(`[sync-bundled] ${target.name}: drift detected: ${differences.join(", ")}`);
+}
+
 function syncDir(target) {
   if (!existsSync(target.src)) {
     console.error(`[sync-bundled] source 不存在: ${target.src}`);
@@ -166,6 +211,14 @@ function syncFile(target) {
 
 function main() {
   console.log(`[sync-bundled] repo root: ${REPO_ROOT}`);
+  if (process.argv.includes("--check")) {
+    for (const target of SYNC_DIRS) checkDir(target);
+    for (const target of SYNC_FILES) {
+      if (!existsSync(target.dest) || createHash("sha256").update(readFileSync(target.src)).digest("hex") !== createHash("sha256").update(readFileSync(target.dest)).digest("hex")) throw new Error(`[sync-bundled] ${target.name}: drift detected`);
+    }
+    console.log(`[sync-bundled] check passed`);
+    return;
+  }
   for (const target of SYNC_DIRS) syncDir(target);
   for (const target of SYNC_FILES) syncFile(target);
   console.log(`[sync-bundled] 完成`);
@@ -178,4 +231,4 @@ if (invokedDirectly) {
   main();
 }
 
-export { syncDir, syncFile, countSourceFiles, shouldExclude, SYNC_DIRS, SYNC_FILES };
+export { syncDir, syncFile, countSourceFiles, shouldExclude, SYNC_DIRS, SYNC_FILES, collectSourceSnapshot, collectBundleSnapshot, compareSnapshots };
