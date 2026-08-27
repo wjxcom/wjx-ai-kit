@@ -40,6 +40,19 @@ function runFull(args, { env = {}, input, cwd, timeout = 10_000 } = {}) {
   });
 }
 
+function parseResultData(serialized) {
+  const envelope = JSON.parse(serialized);
+  assert.equal(envelope.ok, true, `expected ResultEnvelope, got: ${serialized}`);
+  return envelope.data;
+}
+
+function parseProblem(serialized) {
+  const envelope = JSON.parse(serialized);
+  assert.equal(envelope.ok, false, `expected ProblemEnvelope, got: ${serialized}`);
+  assert.ok(envelope.error && typeof envelope.error === "object");
+  return { ...envelope.error, exitCode: envelope.exitCode };
+}
+
 async function withTempCwd(name, callback) {
   const cwd = resolve(__dirname, `__tmp_${name}__`);
   rmSync(cwd, { recursive: true, force: true });
@@ -76,7 +89,7 @@ describe("wjx CLI", () => {
 
   it("survey url --mode create returns JSON with url", () => {
     const out = run(["survey", "url", "--mode", "create"]);
-    const parsed = JSON.parse(out);
+    const parsed = parseResultData(out);
     assert.ok(parsed.url);
     assert.match(parsed.url, /sojump|wjx/);
   });
@@ -107,8 +120,7 @@ describe("errors: exit code routing", () => {
       env: { WJX_API_KEY: "", PATH: process.env.PATH, ...NO_CONFIG },
     });
     assert.equal(result.exitCode, 1);
-    const err = JSON.parse(result.stderr.trim());
-    assert.equal(err.error, true);
+    const err = parseProblem(result.stderr);
     assert.equal(err.code, "AUTH_ERROR");
     assert.equal(err.exitCode, 1);
     assert.ok(err.message.includes("WJX_API_KEY"));
@@ -117,8 +129,7 @@ describe("errors: exit code routing", () => {
   it("INPUT_ERROR → exit 2 + stderr JSON (missing --vid)", async () => {
     const result = await runFull(["survey", "get"]);
     assert.equal(result.exitCode, 2);
-    const err = JSON.parse(result.stderr.trim());
-    assert.equal(err.error, true);
+    const err = parseProblem(result.stderr);
     assert.equal(err.code, "INPUT_ERROR");
     assert.equal(err.exitCode, 2);
     assert.ok(err.message.includes("vid"));
@@ -127,7 +138,7 @@ describe("errors: exit code routing", () => {
   it("INPUT_ERROR → exit 2 for invalid integer", async () => {
     const result = await runFull(["survey", "get", "--vid", "abc"]);
     assert.equal(result.exitCode, 2);
-    const err = JSON.parse(result.stderr.trim());
+    const err = parseProblem(result.stderr);
     assert.equal(err.code, "INPUT_ERROR");
     assert.ok(err.message.includes("abc"));
   });
@@ -135,7 +146,7 @@ describe("errors: exit code routing", () => {
   it("INPUT_ERROR → exit 2 for garbage like 123abc", async () => {
     const result = await runFull(["survey", "get", "--vid", "123abc"]);
     assert.equal(result.exitCode, 2);
-    const err = JSON.parse(result.stderr.trim());
+    const err = parseProblem(result.stderr);
     assert.equal(err.code, "INPUT_ERROR");
     assert.ok(err.message.includes("123abc"));
   });
@@ -147,11 +158,12 @@ describe("errors: exit code routing", () => {
     // stdout should be empty on error
     assert.equal(result.stdout.trim(), "");
     // stderr should be valid JSON
-    const parsed = JSON.parse(result.stderr.trim());
-    assert.equal(typeof parsed.error, "boolean");
-    assert.equal(typeof parsed.message, "string");
-    assert.equal(typeof parsed.code, "string");
-    assert.equal(typeof parsed.exitCode, "number");
+    const envelope = JSON.parse(result.stderr.trim());
+    assert.equal(envelope.ok, false);
+    assert.equal(typeof envelope.error, "object");
+    assert.equal(typeof envelope.error.message, "string");
+    assert.equal(typeof envelope.error.code, "string");
+    assert.equal(typeof envelope.exitCode, "number");
   });
 });
 
@@ -165,7 +177,7 @@ describe("--stdin support", () => {
       input: JSON.stringify({ mode: "create" }),
     });
     assert.equal(result.exitCode, 0);
-    const parsed = JSON.parse(result.stdout);
+    const parsed = parseResultData(result.stdout);
     assert.ok(parsed.url);
     assert.match(parsed.url, /sojump|wjx/);
   });
@@ -175,7 +187,7 @@ describe("--stdin support", () => {
       input: JSON.stringify({ mode: "create" }),
     });
     assert.equal(result.exitCode, 0);
-    const parsed = JSON.parse(result.stdout);
+    const parsed = parseResultData(result.stdout);
     // CLI passed --mode edit, should override stdin mode: create
     assert.ok(parsed.url);
     assert.match(parsed.url, /12345/);
@@ -186,7 +198,7 @@ describe("--stdin support", () => {
       input: "",
     });
     assert.equal(result.exitCode, 0);
-    const parsed = JSON.parse(result.stdout);
+    const parsed = parseResultData(result.stdout);
     assert.ok(parsed.url);
   });
 
@@ -195,7 +207,7 @@ describe("--stdin support", () => {
       input: "not-json",
     });
     assert.equal(result.exitCode, 2);
-    const err = JSON.parse(result.stderr.trim());
+    const err = parseProblem(result.stderr);
     assert.equal(err.code, "INPUT_ERROR");
     assert.ok(err.message.includes("parse"));
   });
@@ -205,7 +217,7 @@ describe("--stdin support", () => {
       input: "[1,2,3]",
     });
     assert.equal(result.exitCode, 2);
-    const err = JSON.parse(result.stderr.trim());
+    const err = parseProblem(result.stderr);
     assert.equal(err.code, "INPUT_ERROR");
     assert.ok(err.message.includes("object"));
   });
@@ -217,7 +229,7 @@ describe("--stdin support", () => {
       input: JSON.stringify({ mode: "edit", activity: 99999 }),
     });
     assert.equal(result.exitCode, 0);
-    const parsed = JSON.parse(result.stdout);
+    const parsed = parseResultData(result.stdout);
     // Should use stdin mode="edit" + activity=99999, not default mode="create"
     assert.match(parsed.url, /99999/);
   });
@@ -231,14 +243,14 @@ describe("required field validation (post-merge)", () => {
   it("survey get without --vid → INPUT_ERROR exit 2", async () => {
     const result = await runFull(["survey", "get"]);
     assert.equal(result.exitCode, 2);
-    const err = JSON.parse(result.stderr.trim());
+    const err = parseProblem(result.stderr);
     assert.equal(err.code, "INPUT_ERROR");
   });
 
   it("survey delete without --username → INPUT_ERROR exit 2", async () => {
     const result = await runFull(["survey", "delete", "--vid", "123"]);
     assert.equal(result.exitCode, 2);
-    const err = JSON.parse(result.stderr.trim());
+    const err = parseProblem(result.stderr);
     assert.equal(err.code, "INPUT_ERROR");
     assert.ok(err.message.includes("username"));
   });
@@ -246,7 +258,7 @@ describe("required field validation (post-merge)", () => {
   it("survey status without --state → INPUT_ERROR exit 2", async () => {
     const result = await runFull(["survey", "status", "--vid", "123"]);
     assert.equal(result.exitCode, 2);
-    const err = JSON.parse(result.stderr.trim());
+    const err = parseProblem(result.stderr);
     assert.equal(err.code, "INPUT_ERROR");
     assert.ok(err.message.includes("state"));
   });
@@ -266,7 +278,7 @@ describe("required field validation (post-merge)", () => {
   it("survey create without --title → INPUT_ERROR exit 2", async () => {
     const result = await runFull(["survey", "create"]);
     assert.equal(result.exitCode, 2);
-    const err = JSON.parse(result.stderr.trim());
+    const err = parseProblem(result.stderr);
     assert.equal(err.code, "INPUT_ERROR");
     assert.ok(err.message.includes("title"));
   });
@@ -304,21 +316,21 @@ describe("contract: error output schema", () => {
     const result = await runFull(["survey", "list"], {
       env: { WJX_API_KEY: "", PATH: process.env.PATH, ...NO_CONFIG },
     });
-    const err = JSON.parse(result.stderr.trim());
-    // Required fields
-    assert.equal(typeof err.error, "boolean");
-    assert.equal(err.error, true);
-    assert.equal(typeof err.message, "string");
-    assert.ok(err.message.length > 0);
-    assert.ok(["API_ERROR", "INPUT_ERROR", "AUTH_ERROR"].includes(err.code));
-    assert.ok([1, 2].includes(err.exitCode));
+    const envelope = JSON.parse(result.stderr.trim());
+    // Required Result/Problem envelope fields
+    assert.equal(envelope.ok, false);
+    assert.equal(typeof envelope.error, "object");
+    assert.equal(typeof envelope.error.message, "string");
+    assert.ok(envelope.error.message.length > 0);
+    assert.ok(["API_ERROR", "INPUT_ERROR", "AUTH_ERROR"].includes(envelope.error.code));
+    assert.ok([1, 2].includes(envelope.exitCode));
   });
 });
 
 describe("contract: success output", () => {
   it("survey url outputs valid JSON with url field", () => {
     const out = run(["survey", "url", "--mode", "create"]);
-    const parsed = JSON.parse(out);
+    const parsed = parseResultData(out);
     assert.equal(typeof parsed.url, "string");
     assert.ok(parsed.url.startsWith("http"));
   });
@@ -353,7 +365,7 @@ describe("whoami", () => {
       env: { WJX_API_KEY: "", PATH: process.env.PATH, ...NO_CONFIG },
     });
     assert.equal(result.exitCode, 1);
-    const err = JSON.parse(result.stderr.trim());
+    const err = parseProblem(result.stderr);
     assert.equal(err.code, "AUTH_ERROR");
   });
 
@@ -397,7 +409,7 @@ describe("response count", () => {
   it("response count without --vid → INPUT_ERROR exit 2", async () => {
     const result = await runFull(["response", "count"]);
     assert.equal(result.exitCode, 2);
-    const err = JSON.parse(result.stderr.trim());
+    const err = parseProblem(result.stderr);
     assert.equal(err.code, "INPUT_ERROR");
     assert.ok(err.message.includes("vid"));
   });
@@ -405,7 +417,7 @@ describe("response count", () => {
   it("response count --vid abc → INPUT_ERROR exit 2", async () => {
     const result = await runFull(["response", "count", "--vid", "abc"]);
     assert.equal(result.exitCode, 2);
-    const err = JSON.parse(result.stderr.trim());
+    const err = parseProblem(result.stderr);
     assert.equal(err.code, "INPUT_ERROR");
   });
 
@@ -423,7 +435,7 @@ describe("survey export-text", () => {
   it("export-text without --vid → INPUT_ERROR exit 2", async () => {
     const result = await runFull(["survey", "export-text"]);
     assert.equal(result.exitCode, 2);
-    const err = JSON.parse(result.stderr.trim());
+    const err = parseProblem(result.stderr);
     assert.equal(err.code, "INPUT_ERROR");
     assert.ok(err.message.includes("vid"));
   });
@@ -464,14 +476,14 @@ describe("response subcommands", () => {
   it("response query without --vid → INPUT_ERROR exit 2", async () => {
     const result = await runFull(["response", "query"]);
     assert.equal(result.exitCode, 2);
-    const err = JSON.parse(result.stderr.trim());
+    const err = parseProblem(result.stderr);
     assert.equal(err.code, "INPUT_ERROR");
   });
 
   it("response submit without required fields → INPUT_ERROR exit 2", async () => {
     const result = await runFull(["response", "submit", "--vid", "123"]);
     assert.equal(result.exitCode, 2);
-    const err = JSON.parse(result.stderr.trim());
+    const err = parseProblem(result.stderr);
     assert.equal(err.code, "INPUT_ERROR");
     assert.ok(err.message.includes("inputcosttime"));
   });
@@ -484,7 +496,7 @@ describe("response subcommands", () => {
   it("response clear without --username → INPUT_ERROR exit 2", async () => {
     const result = await runFull(["response", "clear", "--vid", "123"]);
     assert.equal(result.exitCode, 2);
-    const err = JSON.parse(result.stderr.trim());
+    const err = parseProblem(result.stderr);
     assert.ok(err.message.includes("username"));
   });
 
@@ -494,7 +506,7 @@ describe("response subcommands", () => {
       { env: { WJX_API_KEY: "fake-key-1234567890", ...NO_CONFIG } },
     );
     assert.equal(result.exitCode, 2);
-    const err = JSON.parse(result.stderr.trim());
+    const err = parseProblem(result.stderr);
     assert.equal(err.code, "INPUT_ERROR");
     assert.match(err.message, /\$|分隔符/);
     assert.match(err.message, /submitdata-file|submit-template/);
@@ -506,7 +518,7 @@ describe("response subcommands", () => {
       { env: { WJX_API_KEY: "fake-key-1234567890", ...NO_CONFIG } },
     );
     assert.equal(result.exitCode, 2);
-    const err = JSON.parse(result.stderr.trim());
+    const err = parseProblem(result.stderr);
     assert.equal(err.code, "INPUT_ERROR");
     assert.match(err.message, /submitdata-file|无法读取/);
   });
@@ -517,7 +529,7 @@ describe("response subcommands", () => {
       { env: { WJX_API_KEY: "fake-key-1234567890", ...NO_CONFIG } },
     );
     assert.equal(result.exitCode, 2);
-    const err = JSON.parse(result.stderr.trim());
+    const err = parseProblem(result.stderr);
     assert.equal(err.code, "INPUT_ERROR");
     assert.match(err.message, /submitdata/);
   });
@@ -530,7 +542,7 @@ describe("response subcommands", () => {
   it("response submit-template without --vid → INPUT_ERROR exit 2", async () => {
     const result = await runFull(["response", "submit-template"]);
     assert.equal(result.exitCode, 2);
-    const err = JSON.parse(result.stderr.trim());
+    const err = parseProblem(result.stderr);
     assert.equal(err.code, "INPUT_ERROR");
     assert.ok(err.message.includes("vid"));
   });
@@ -687,7 +699,7 @@ describe("contacts", () => {
   it("contacts query without --uid → INPUT_ERROR exit 2", async () => {
     const result = await runFull(["contacts", "query"]);
     assert.equal(result.exitCode, 2);
-    const err = JSON.parse(result.stderr.trim());
+    const err = parseProblem(result.stderr);
     assert.equal(err.code, "INPUT_ERROR");
     assert.ok(err.message.includes("uid"));
   });
@@ -695,14 +707,14 @@ describe("contacts", () => {
   it("contacts add without --users → INPUT_ERROR exit 2", async () => {
     const result = await runFull(["contacts", "add"]);
     assert.equal(result.exitCode, 2);
-    const err = JSON.parse(result.stderr.trim());
+    const err = parseProblem(result.stderr);
     assert.ok(err.message.includes("users"));
   });
 
   it("contacts delete without --uids → INPUT_ERROR exit 2", async () => {
     const result = await runFull(["contacts", "delete"]);
     assert.equal(result.exitCode, 2);
-    const err = JSON.parse(result.stderr.trim());
+    const err = parseProblem(result.stderr);
     assert.ok(err.message.includes("uids"));
   });
 });
@@ -722,14 +734,14 @@ describe("department", () => {
   it("department add without --depts → INPUT_ERROR exit 2", async () => {
     const result = await runFull(["department", "add"]);
     assert.equal(result.exitCode, 2);
-    const err = JSON.parse(result.stderr.trim());
+    const err = parseProblem(result.stderr);
     assert.ok(err.message.includes("depts"));
   });
 
   it("department delete without --type → INPUT_ERROR exit 2", async () => {
     const result = await runFull(["department", "delete", "--depts", "[]"]);
     assert.equal(result.exitCode, 2);
-    const err = JSON.parse(result.stderr.trim());
+    const err = parseProblem(result.stderr);
     assert.ok(err.message.includes("type"));
   });
 
@@ -738,7 +750,7 @@ describe("department", () => {
       env: { WJX_API_KEY: "", PATH: process.env.PATH, ...NO_CONFIG },
     });
     assert.equal(result.exitCode, 1);
-    const err = JSON.parse(result.stderr.trim());
+    const err = parseProblem(result.stderr);
     assert.equal(err.code, "AUTH_ERROR");
   });
 });
@@ -758,7 +770,7 @@ describe("admin", () => {
   it("admin add without --users → INPUT_ERROR exit 2", async () => {
     const result = await runFull(["admin", "add"]);
     assert.equal(result.exitCode, 2);
-    const err = JSON.parse(result.stderr.trim());
+    const err = parseProblem(result.stderr);
     assert.ok(err.message.includes("users"));
   });
 
@@ -783,21 +795,21 @@ describe("tag", () => {
   it("tag add without --child_names → INPUT_ERROR exit 2", async () => {
     const result = await runFull(["tag", "add"]);
     assert.equal(result.exitCode, 2);
-    const err = JSON.parse(result.stderr.trim());
+    const err = parseProblem(result.stderr);
     assert.ok(err.message.includes("child_names"));
   });
 
   it("tag modify without --tp_id → INPUT_ERROR exit 2", async () => {
     const result = await runFull(["tag", "modify"]);
     assert.equal(result.exitCode, 2);
-    const err = JSON.parse(result.stderr.trim());
+    const err = parseProblem(result.stderr);
     assert.ok(err.message.includes("tp_id"));
   });
 
   it("tag delete without --type → INPUT_ERROR exit 2", async () => {
     const result = await runFull(["tag", "delete", "--tags", "[]"]);
     assert.equal(result.exitCode, 2);
-    const err = JSON.parse(result.stderr.trim());
+    const err = parseProblem(result.stderr);
     assert.ok(err.message.includes("type"));
   });
 });
@@ -817,14 +829,14 @@ describe("user-system", () => {
   it("user-system add-participants without --users → INPUT_ERROR exit 2", async () => {
     const result = await runFull(["user-system", "add-participants"]);
     assert.equal(result.exitCode, 2);
-    const err = JSON.parse(result.stderr.trim());
+    const err = parseProblem(result.stderr);
     assert.ok(err.message.includes("users"));
   });
 
   it("user-system bind without --vid → INPUT_ERROR exit 2", async () => {
     const result = await runFull(["user-system", "bind", "--sysid", "1", "--uids", "a"]);
     assert.equal(result.exitCode, 2);
-    const err = JSON.parse(result.stderr.trim());
+    const err = parseProblem(result.stderr);
     assert.ok(err.message.includes("vid"));
   });
 });
@@ -844,14 +856,14 @@ describe("account", () => {
   it("account add without --subuser → INPUT_ERROR exit 2", async () => {
     const result = await runFull(["account", "add"]);
     assert.equal(result.exitCode, 2);
-    const err = JSON.parse(result.stderr.trim());
+    const err = parseProblem(result.stderr);
     assert.ok(err.message.includes("subuser"));
   });
 
   it("account delete without --subuser → INPUT_ERROR exit 2", async () => {
     const result = await runFull(["account", "delete"]);
     assert.equal(result.exitCode, 2);
-    const err = JSON.parse(result.stderr.trim());
+    const err = parseProblem(result.stderr);
     assert.ok(err.message.includes("subuser"));
   });
 
@@ -860,7 +872,7 @@ describe("account", () => {
       env: { WJX_API_KEY: "", PATH: process.env.PATH, ...NO_CONFIG },
     });
     assert.equal(result.exitCode, 1);
-    const err = JSON.parse(result.stderr.trim());
+    const err = parseProblem(result.stderr);
     assert.equal(err.code, "AUTH_ERROR");
   });
 });
@@ -886,7 +898,7 @@ describe("sso", () => {
   it("sso subaccount-url without --subuser → INPUT_ERROR exit 2", async () => {
     const result = await runFull(["sso", "subaccount-url"]);
     assert.equal(result.exitCode, 2);
-    const err = JSON.parse(result.stderr.trim());
+    const err = parseProblem(result.stderr);
     assert.ok(err.message.includes("subuser"));
   });
 
@@ -898,7 +910,7 @@ describe("sso", () => {
   it("sso user-system-url without required fields → INPUT_ERROR exit 2", async () => {
     const result = await runFull(["sso", "user-system-url", "--u", "admin"]);
     assert.equal(result.exitCode, 2);
-    const err = JSON.parse(result.stderr.trim());
+    const err = parseProblem(result.stderr);
     assert.ok(err.message.includes("system_id"));
   });
 });
@@ -917,21 +929,21 @@ describe("analytics", () => {
 
   it("analytics decode with --submitdata returns decoded answers", () => {
     const out = run(["analytics", "decode", "--submitdata", "1$2}2$hello"]);
-    const parsed = JSON.parse(out);
+    const parsed = parseResultData(out);
     assert.ok(Array.isArray(parsed.answers));
     assert.equal(parsed.count, 2);
   });
 
   it("analytics nps with --scores returns NPS result", () => {
     const out = run(["analytics", "nps", "--scores", "[9,10,7,3,8,10,9]"]);
-    const parsed = JSON.parse(out);
+    const parsed = parseResultData(out);
     assert.equal(typeof parsed.score, "number");
     assert.ok(parsed.total > 0);
   });
 
   it("analytics csat with --scores returns CSAT result", () => {
     const out = run(["analytics", "csat", "--scores", "[4,5,3,5,2]"]);
-    const parsed = JSON.parse(out);
+    const parsed = parseResultData(out);
     assert.equal(typeof parsed.csat, "number");
   });
 
@@ -943,7 +955,7 @@ describe("analytics", () => {
       { jid: 4, submitdata: "1$1}2$1}3$1", inputcosttime: 100, ip: "192.168.1.1" },
     ]);
     const out = run(["analytics", "anomalies", "--responses", responses]);
-    const parsed = JSON.parse(out);
+    const parsed = parseResultData(out);
     const flagged = parsed.flagged.find((item) => item.responseId === 3);
     assert.ok(flagged);
     assert.ok(flagged.reasons.includes("straight-lining"));
@@ -953,14 +965,14 @@ describe("analytics", () => {
   it("analytics decode without --submitdata → INPUT_ERROR exit 2", async () => {
     const result = await runFull(["analytics", "decode"]);
     assert.equal(result.exitCode, 2);
-    const err = JSON.parse(result.stderr.trim());
+    const err = parseProblem(result.stderr);
     assert.ok(err.message.includes("submitdata"));
   });
 
   it("analytics compare without --set_a → INPUT_ERROR exit 2", async () => {
     const result = await runFull(["analytics", "compare"]);
     assert.equal(result.exitCode, 2);
-    const err = JSON.parse(result.stderr.trim());
+    const err = parseProblem(result.stderr);
     assert.ok(err.message.includes("set_a"));
   });
 
@@ -970,7 +982,7 @@ describe("analytics", () => {
       "--set_a", '{"score":80,"time":120}',
       "--set_b", '{"score":90,"time":100}',
     ]);
-    const parsed = JSON.parse(out);
+    const parsed = parseResultData(out);
     assert.ok(Array.isArray(parsed.comparisons));
     assert.ok(parsed.comparisons.length > 0);
   });
@@ -978,7 +990,7 @@ describe("analytics", () => {
   it("analytics decode-push without --payload → INPUT_ERROR exit 2", async () => {
     const result = await runFull(["analytics", "decode-push"]);
     assert.equal(result.exitCode, 2);
-    const err = JSON.parse(result.stderr.trim());
+    const err = parseProblem(result.stderr);
     assert.ok(err.message.includes("payload"));
   });
 });
@@ -996,7 +1008,7 @@ describe("survey create-by-text", () => {
   it("create-by-text without --text or --file → INPUT_ERROR exit 2", async () => {
     const result = await runFull(["survey", "create-by-text"]);
     assert.equal(result.exitCode, 2);
-    const err = JSON.parse(result.stderr.trim());
+    const err = parseProblem(result.stderr);
     assert.equal(err.code, "INPUT_ERROR");
     assert.ok(err.message.includes("--text") || err.message.includes("--file"));
   });
@@ -1004,7 +1016,7 @@ describe("survey create-by-text", () => {
   it("create-by-text --file with nonexistent file → INPUT_ERROR exit 2", async () => {
     const result = await runFull(["survey", "create-by-text", "--file", "/tmp/__no_such_file_12345.txt"]);
     assert.equal(result.exitCode, 2);
-    const err = JSON.parse(result.stderr.trim());
+    const err = parseProblem(result.stderr);
     assert.equal(err.code, "INPUT_ERROR");
     assert.ok(err.message.includes("无法读取"));
   });
@@ -1057,7 +1069,7 @@ describe("survey create-by-text", () => {
       { env: { WJX_API_KEY: "", PATH: process.env.PATH, ...NO_CONFIG } },
     );
     assert.equal(result.exitCode, 1);
-    const err = JSON.parse(result.stderr.trim());
+    const err = parseProblem(result.stderr);
     assert.equal(err.code, "AUTH_ERROR");
   });
 });
@@ -1075,7 +1087,7 @@ describe("survey create-by-json", () => {
   it("create-by-json without --jsonl or --file → INPUT_ERROR exit 2", async () => {
     const result = await runFull(["survey", "create-by-json"]);
     assert.equal(result.exitCode, 2);
-    const err = JSON.parse(result.stderr.trim());
+    const err = parseProblem(result.stderr);
     assert.equal(err.code, "INPUT_ERROR");
     assert.ok(err.message.includes("--jsonl") || err.message.includes("--file"));
   });
@@ -1083,7 +1095,7 @@ describe("survey create-by-json", () => {
   it("create-by-json --file with nonexistent file → INPUT_ERROR exit 2", async () => {
     const result = await runFull(["survey", "create-by-json", "--file", "/tmp/__no_such_json_12345.jsonl"]);
     assert.equal(result.exitCode, 2);
-    const err = JSON.parse(result.stderr.trim());
+    const err = parseProblem(result.stderr);
     assert.equal(err.code, "INPUT_ERROR");
   });
 
@@ -1116,7 +1128,7 @@ describe("survey create-by-json", () => {
       { env: { WJX_API_KEY: "", PATH: process.env.PATH, ...NO_CONFIG } },
     );
     assert.equal(result.exitCode, 1);
-    const err = JSON.parse(result.stderr.trim());
+    const err = parseProblem(result.stderr);
     assert.equal(err.code, "AUTH_ERROR");
   });
 });
@@ -1128,7 +1140,7 @@ describe("survey create-by-json", () => {
 describe("survey jsonl-template", () => {
   it("默认 --type 1 输出调查骨架（JSON 包裹）", () => {
     const out = run(["survey", "jsonl-template"]);
-    const parsed = JSON.parse(out);
+    const parsed = parseResultData(out);
     assert.equal(parsed.atype, 1);
     assert.ok(typeof parsed.template === "string" && parsed.template.length > 0);
     const firstLine = parsed.template.trim().split("\n")[0];
@@ -1170,7 +1182,7 @@ describe("survey jsonl-template", () => {
   it("--type 99（无效值）→ INPUT_ERROR exit 2", async () => {
     const result = await runFull(["survey", "jsonl-template", "--type", "99"]);
     assert.equal(result.exitCode, 2);
-    const err = JSON.parse(result.stderr.trim());
+    const err = parseProblem(result.stderr);
     assert.equal(err.code, "INPUT_ERROR");
     assert.match(err.message, /--type|可选值/);
   });
@@ -1761,7 +1773,7 @@ describe("create-by-text use cases", () => {
     );
     // --publish 语法正确，但因没有 API key 而报 AUTH_ERROR
     assert.equal(result.exitCode, 1);
-    const err = JSON.parse(result.stderr.trim());
+    const err = parseProblem(result.stderr);
     assert.equal(err.code, "AUTH_ERROR");
   });
 
@@ -1931,7 +1943,7 @@ describe("create-by-text use cases", () => {
       { env: DRY_ENV },
     );
     assert.equal(result.exitCode, 2);
-    const err = JSON.parse(result.stderr.trim());
+    const err = parseProblem(result.stderr);
     assert.equal(err.code, "INPUT_ERROR");
   });
 
@@ -1981,7 +1993,7 @@ describe("skill", () => {
   it("skill install --silent outputs valid JSON", async () => {
     await withTempCwd("skill_install", async (cwd) => {
       const result = await runFull(["skill", "install", "--force", "--silent"], { cwd });
-      const parsed = JSON.parse(result.stdout.trim());
+      const parsed = parseResultData(result.stdout);
       assert.ok(["installed", "updated"].includes(parsed.status));
       assert.match(parsed.version, /\d+\.\d+\.\d+/);
       assert.ok(parsed.files.length > 0);
@@ -1995,7 +2007,7 @@ describe("skill", () => {
       await runFull(["skill", "install", "--force", "--silent"], { cwd });
       // Try without --force
       const result = await runFull(["skill", "install", "--silent"], { cwd });
-      const parsed = JSON.parse(result.stdout.trim());
+      const parsed = parseResultData(result.stdout);
       assert.equal(parsed.status, "skipped");
       assert.match(parsed.message, /已安装/);
     });
@@ -2006,7 +2018,7 @@ describe("skill", () => {
       // Ensure installed first
       await runFull(["skill", "install", "--force", "--silent"], { cwd });
       const result = await runFull(["skill", "update", "--silent"], { cwd });
-      const parsed = JSON.parse(result.stdout.trim());
+      const parsed = parseResultData(result.stdout);
       assert.equal(parsed.status, "updated");
       assert.match(parsed.version, /\d+\.\d+\.\d+/);
       assert.ok(parsed.files.length > 0);
