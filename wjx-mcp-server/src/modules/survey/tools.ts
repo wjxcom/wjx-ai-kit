@@ -302,7 +302,7 @@ export function registerSurveyTools(server: McpServer): void {
           .min(0)
           .max(2)
           .optional()
-          .describe("时间查询类型：0=创建时间, 1=开始时间, 2=结束时间"),
+          .describe("时间查询类型：0=不按时间查询（默认）, 1=按问卷开始时间, 2=按问卷创建时间"),
         begin_time: z
           .number()
           .optional()

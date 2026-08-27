@@ -38,7 +38,7 @@ JSONL 格式说明（每行一个 JSON 对象）：
 - 首行为问卷元数据：{"qtype":"问卷基础信息","title":"问卷标题","introduction":"问卷描述"}
 - 后续每行一个题目，如：{"qtype":"单选","title":"题目标题","select":["选项1","选项2"]}
 - title 只写题目正文，不要写题目序号或题目类型；题目类型只写在 qtype 字段
-- 常用 qtype：单选、多选、单项填空、多项填空、下拉框、量表题、评分单选、评分多选、排序题、判断题、矩阵量表题、矩阵单选题、矩阵多选题、矩阵填空题、文件上传、比重题、滑动条
+- 常用 qtype：单选、多选、单项填空、多项填空、下拉框、量表题、评分单选、评分多选、排序、判断题、矩阵量表、矩阵单选、矩阵多选、矩阵填空、文件上传、比重题、滑动条
 - 表格题标准格式示例：{"qtype":"表格组合","title":"活动时间与场地偏好","rowtitle":["可参加时段","偏好场地类型","备注"],"types":["多选","下拉","文本"],"selects":[["工作日晚上","周末上午","周末下午","周末晚上"],["木地板","塑胶地","不限"],[]]}
 - 投票题标准格式示例：{"qtype":"投票单选","title":"你最喜欢哪个网站","select":["淘宝网","开心网","百度","腾讯","人人网"]}，调用 create_survey_by_json 时显式传 atype=3
 - 默认所有题目必答；单项填空、简答题、意见建议题、开放题默认也必须必答。只有用户明确指定某个题号/题目/字段为选填时，才给该题设 requir=false
@@ -98,22 +98,22 @@ ${focus_areas ? `关注重点：${focus_areas}` : ""}
           content: {
             type: "text",
             text: isEn
-              ? `Please create a standard NPS survey for "${product_name}" using the create_survey tool.
+              ? `Please create a standard NPS survey for "${product_name}" using the create_survey_by_json tool.
 
 The survey should include:
-1. NPS Question: "How likely are you to recommend ${product_name} to a friend or colleague?" (Scale 0-10, use q_type=3, q_subtype=302 for 量表题, with 11 items indexed 0-10)
-2. Follow-up: "What is the primary reason for your score?" (Open text, q_type=5)
-3. "What could we improve?" (Open text, q_type=5, required by default)
+1. NPS Question: "How likely are you to recommend ${product_name} to a friend or colleague?" (use qtype="NPS量表" with the 11 string options "0" through "10")
+2. Follow-up: "What is the primary reason for your score?" (qtype="单项填空")
+3. "What could we improve?" (qtype="单项填空", required by default)
 
-Use survey type 1 (survey) and output the create_survey tool call with properly formatted questions JSON.`
-              : `请使用 create_survey 工具为「${product_name}」创建一份标准 NPS 问卷。
+Use survey type 1 (survey) and pass a JSONL string to create_survey_by_json. The first line must be the metadata object.`
+              : `请使用 create_survey_by_json 工具为「${product_name}」创建一份标准 NPS 问卷。
 
 问卷应包含：
-1. NPS 核心题：「您有多大可能向朋友或同事推荐${product_name}？」（0-10分量表，使用 q_type=3, q_subtype=302，items 数组包含 0-10 共 11 个选项）
-2. 跟进题：「您给出这个评分的主要原因是什么？」（填空题，q_type=5）
-3. 「您觉得我们还可以在哪些方面改进？」（填空题，q_type=5，默认必答）
+1. NPS 核心题：「您有多大可能向朋友或同事推荐${product_name}？」（使用 qtype="NPS量表"，select 必须是字符串 "0" 到 "10" 共 11 项）
+2. 跟进题：「您给出这个评分的主要原因是什么？」（qtype="单项填空"）
+3. 「您觉得我们还可以在哪些方面改进？」（qtype="单项填空"，默认必答）
 
-使用问卷类型 1（调查），输出 create_survey 工具调用，questions 参数为正确格式的 JSON。`,
+使用问卷类型 1（调查），将首行元数据和题目逐行组成 JSONL 字符串，传给 create_survey_by_json 的 jsonl 参数。`,
           },
         }],
       };
@@ -215,10 +215,10 @@ Use survey type 1 (survey) and output the create_survey tool call with properly 
     }),
   );
 
-  // ═══ User System Workflow ═══════════════════════════════════════════
+  // ═══ Legacy User System Workflow ════════════════════════════════════
   server.prompt(
     "user-system-workflow",
-    "用户体系完整工作流指导：创建用户体系问卷 → 添加参与者 → 绑定问卷 → 分发 → 查询参与状态",
+    "用户体系兼容工作流指导（已过时）：维护已有系统的参与者、绑定和参与状态",
     {
       scenario: z.string().optional().describe("使用场景（如：员工考核、培训评估、学生测评）"),
     },
@@ -227,28 +227,26 @@ Use survey type 1 (survey) and output the create_survey tool call with properly 
         role: "user",
         content: {
           type: "text",
-          text: `请指导我完成一个完整的用户体系问卷工作流。${scenario ? `\n\n使用场景：${scenario}` : ""}
+          text: `请指导我维护一个已有的用户体系。该能力已过时，不能通过 API 新建 atype=8 用户体系问卷；只有在我提供已有 usid/sysid 并明确要求兼容维护时才继续。${scenario ? `\n\n使用场景：${scenario}` : ""}
 
-## 用户体系工作流概览
+## 用户体系兼容边界
 
-用户体系（atype=8）允许你为特定用户群发放问卷，追踪每个人的参与状态。
+用户体系工具仍注册在 MCP Server 中，用于历史系统的参与者、绑定关系和状态查询。创建接口不支持 atype=8；新项目请使用普通问卷、通讯录和标准分发能力。
 
-### 步骤 1：创建用户体系问卷
-使用 create_survey 工具创建问卷，atype 设为 8（用户体系）：
-- 设计好题目结构
-- 可选：发布问卷（publish=true）
+### 步骤 1：确认已有系统
+
+先确认用户提供的 usid/sysid、管理员账号和目标问卷编号；不要尝试创建 atype=8。
 
 ### 步骤 2：添加参与者
 使用 add_participants 工具向用户体系添加用户：
-- username: 管理员用户名
-- sysid: 用户体系 ID（从问卷详情获取）
+- usid: 用户体系 ID（已有系统）
 - uids: 用户 ID 列表（JSON 数组字符串）
 - 可选：设置用户属性（姓名、部门等）
 
 ### 步骤 3：绑定问卷
 使用 bind_activity 工具将问卷绑定到参与者：
 - vid: 问卷编号
-- sysid: 用户体系 ID
+- usid: 用户体系 ID
 - uids: 要绑定的用户 ID 列表
 - 可选参数：
   - answer_times: 允许作答次数
@@ -256,9 +254,9 @@ Use survey type 1 (survey) and output the create_survey tool call with properly 
   - can_view_result: 是否允许查看结果
 
 ### 步骤 4：分发问卷
-使用 build_sso_user_system_url 生成每个用户的专属登录链接：
+使用 sso_user_system_url 生成每个用户的专属登录链接：
 - 每个用户通过 SSO 链接登录后自动关联身份
-- 链接格式：基础 URL + 签名参数
+- 链接由 sso_user_system_url 根据参数编码生成；当前实现不添加签名字段
 
 ### 步骤 5：查询参与状态
 - query_survey_binding: 查看绑定状态和参与情况
@@ -270,7 +268,7 @@ Use survey type 1 (survey) and output the create_survey tool call with properly 
 - modify_participants: 修改用户信息
 - delete_participants: 移除用户
 
-请告诉我你的具体需求，我来帮你一步步完成。`,
+请先说明已有系统 ID 和要执行的兼容操作，我再帮你评估影响并逐步完成。`,
         },
       }],
     }),

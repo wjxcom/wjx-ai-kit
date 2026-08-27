@@ -46,6 +46,7 @@ wjx survey create-by-json --file survey.jsonl
 | `total` | 比重题总值，默认 100 |
 | `correctselect` | 考试题正确答案数组 |
 | `quizscore` | 考试题分值字符串 |
+| `isquiz` | 考试题标记，使用 `"1"` |
 | `answeranalysis` | 考试题答案解析 |
 | `types` / `selects` | 表格组合各列的输入类型和对应选项 |
 | `leveldata` | 多级下拉的层级数据 |

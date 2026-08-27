@@ -51,6 +51,14 @@ _*.mjs
 .claude/plans/
 .claude/scheduled_tasks.lock
 
+# MCP client configuration (opt-in; may contain credentials)
+.claude/mcp.json
+.cursor/mcp.json
+.mcp.json
+
+# Local Codex overrides (machine-specific Skill paths)
+.codex/config.toml
+
 # wjx-cli 配置（含 API Key）
 **/.wjxrc
 *.zip

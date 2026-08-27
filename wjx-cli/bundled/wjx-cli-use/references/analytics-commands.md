@@ -87,20 +87,28 @@ wjx analytics csat --scores "[6,7,5,7,3,6,7]" --scale "7-point"
 检测异常答卷模式。
 
 ```bash
-wjx analytics anomalies --responses '[{"submitdata":"1$1}2$1","inputcosttime":5},{"submitdata":"1$2}2$3","inputcosttime":120}]'
+wjx analytics anomalies --responses '[{"jid":10001,"submitdata":"1$1}2$1}3$1","inputcosttime":120,"ip":"192.168.1.10"},{"jid":10002,"submitdata":"1$2}2$3}3$4","inputcosttime":120,"ip":"192.168.1.11"},{"jid":10003,"submitdata":"1$3}2$3}3$3","inputcosttime":10,"ip":"192.168.1.12"}]'
 ```
 
 | Flag | 必填 | 说明 |
 |------|------|------|
 | `--responses <json>` | 是 | 答卷数据 JSON 数组 |
 
-检测 6 种异常模式：
+当前实现检测 3 种异常模式：
 1. **直线作答** — 所有题目选同一个答案
 2. **速度异常** — 完成时间 < 中位数的 30%
-3. **IP 重复** — 同一 IP 多次提交
-4. **时间聚集** — 短时间内大量提交
-5. **答案雷同** — 多份答卷内容近乎相同
-6. **矩阵直线** — 矩阵题每行选同一值
+3. **IP+内容重复** — 同一 IP 提交完全相同的答卷内容
+
+`--responses` 中每个答卷对象支持以下字段：
+
+| 字段 | 说明 |
+|------|------|
+| `id` / `jid` | 答卷标识；两者都缺失时使用输入序号 |
+| `answers` | 已解码的答案数组 |
+| `submitdata` | 问卷星原始答卷字符串；未提供 `answers` 时由 CLI 自动解码 |
+| `duration_seconds` | 已规范化的答题耗时（秒） |
+| `inputcosttime` | 问卷星 API 的答题耗时（秒）；未提供 `duration_seconds` 时使用 |
+| `ip` | 客户端 IP；用于 IP+内容重复检测 |
 
 ## wjx analytics compare
 

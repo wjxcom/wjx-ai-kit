@@ -30,7 +30,7 @@
 
 ## 考试问卷限制
 
-考试问卷（atype=6）通过 `create_survey_by_text` 创建后：
+考试问卷（atype=6）通过已弃用的 `create_survey_by_text` 创建后：
 - 题目和选项会正常创建
-- **正确答案和每题分值无法通过 API 设置**
-- 创建后应提供编辑链接（`build_survey_url({ mode: "edit", activity: vid })`），指引用户在网页端配置答案与评分
+- DSL 不携带正确答案和每题分值；创建后应提供编辑链接（`build_survey_url({ mode: "edit", activity: vid })`）补充
+- 新项目使用 `create_survey_by_json`，在 JSONL 题目中设置 `correctselect`、`quizscore` 和 `answeranalysis`

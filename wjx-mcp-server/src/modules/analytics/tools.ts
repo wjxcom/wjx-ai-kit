@@ -107,12 +107,30 @@ export function registerAnalyticsTools(server: McpServer): void {
         responses: z
           .array(
             z.object({
-              id: z.union([z.string(), z.number()]).describe("答卷 ID"),
+              id: z
+                .union([z.string(), z.number()])
+                .optional()
+                .describe("答卷 ID；未提供时使用 jid 或数组序号"),
+              jid: z
+                .union([z.string(), z.number()])
+                .optional()
+                .describe("问卷星 API 返回的答卷 ID"),
               answers: z
-                .array(z.union([z.string(), z.number()]))
+                .array(z.unknown())
                 .optional()
                 .describe("答案数组"),
-              duration_seconds: z.number().optional().describe("答题时长（秒）"),
+              submitdata: z
+                .string()
+                .optional()
+                .describe("问卷星原始 submitdata；未提供 answers 时自动解码"),
+              duration_seconds: z
+                .union([z.number(), z.string()])
+                .optional()
+                .describe("规范化答题时长（秒）"),
+              inputcosttime: z
+                .union([z.number(), z.string()])
+                .optional()
+                .describe("问卷星 API 的答题时长（秒）；未提供 duration_seconds 时使用"),
               ip: z.string().optional().describe("IP 地址"),
             }).passthrough(),
           )

@@ -1,11 +1,11 @@
 ---
 name: wjx-mcp-use
-description: "Guide for using wjx-mcp-server MCP tools to interact with the Wenjuanxing (问卷星) platform. Use when the user mentions: 问卷, 调查, 收集, 表单, 投票, 考试, 测评, 满意度, NPS, 问卷星, wjx, survey, questionnaire — or wants to create surveys, query responses, analyze data, manage contacts, or generate SSO links via MCP protocol. Covers 58 tools, 8 resources, and 22 prompts."
+description: "Guide for using wjx-mcp-server MCP tools to interact with the Wenjuanxing (问卷星) platform. Use when the user mentions: 问卷, 调查, 收集, 表单, 投票, 考试, 测评, 满意度, NPS, 问卷星, wjx, survey, questionnaire — or wants to create surveys, query responses, analyze data, manage contacts, or generate SSO links via MCP protocol. Tool, resource, and prompt counts are discovered from source at build time."
 ---
 
 # wjx-mcp-server Usage Guide
 
-wjx-mcp-server 提供 58 个 MCP 工具、8 个参考资源和 23 个 prompt 模板，覆盖问卷星 OpenAPI 的全部能力。
+wjx-mcp-server 提供 MCP 工具、参考资源和 prompt 模板，覆盖问卷星 OpenAPI 的全部能力；具体数量以源码和构建脚本为准。
 
 ## AI Agent 行为准则（必读）
 
@@ -24,6 +24,10 @@ wjx-mcp-server 提供 58 个 MCP 工具、8 个参考资源和 23 个 prompt 模
 ### 规则 3：不支持的题型要明确告知
 
 签名题（用 `[绘图题]` 替代）、地区题（用 `[多级下拉题]` 或网页端添加）、NPS 专用题（用 `[量表题]` + `0~10`）不在 DSL 支持范围内。告知用户替代方案，继续创建其他题目，**不要**反复尝试或拆分多个问卷。
+
+### 规则 3.1：用户体系只允许兼容维护
+
+用户体系工具（`add_participants`、`modify_participants`、`delete_participants`、`bind_activity`、`query_survey_binding`、`query_user_surveys`）已在源码中标记为 Deprecated。`atype=8` 用户体系问卷不能通过 `create_survey` 或 `create_survey_by_json` 新建；不要主动设计或创建这类工作流。只有用户明确提供已有的 `sysid`/`usid` 并要求维护历史系统时，才使用这些工具，并先说明兼容风险。
 
 ### 规则 4：面向用户说自然语言，不说工具名
 
@@ -56,7 +60,7 @@ https://www.wjx.cn/weixinlogin.aspx?redirecturl=%2Fnewwjx%2Fmanage%2Fuserinfo.as
   - 矩阵多选（q_subtype=703）3 行：`4$1!1|2,2!3,3!1|4` — 同一行多个列用 `|` 拼
   - 矩阵量表（q_subtype=701）3 行：`5$1!5,2!4,3!3` — 行号!分值
   - 矩阵题的"行数"来自 `get_survey` 返回的 `item_rows.length`；`items` 数组是**列头**（列选项），不是行。
-- **考试题分值/答案无法通过 submit API 设置**：创建考试问卷后需要去网页端配置。`submit_response` 仅用于答题端提交。
+- **考试题分值/答案字段**：JSONL 创建路径支持 `correctselect`、`quizscore` 和 `answeranalysis`；旧 DSL 兼容路径不支持。`submit_response` 仅用于答题端提交，不能修改考试配置。
 
 ### 规则 7：填写链接必须使用加密短编号（强制）
 
@@ -81,7 +85,7 @@ https://www.wjx.cn/weixinlogin.aspx?redirecturl=%2Fnewwjx%2Fmanage%2Fuserinfo.as
 | 分析 NPS | `calculate_nps({ scores: [...] })` |
 | 查当前配置 | `get_config({})` |
 
-## 工具总览（58 tools）
+## 工具总览
 
 | 模块 | 工具数 | 说明 |
 |------|--------|------|
@@ -91,7 +95,7 @@ https://www.wjx.cn/weixinlogin.aspx?redirecturl=%2Fnewwjx%2Fmanage%2Fuserinfo.as
 | 子账号 | 5 | add/modify/delete/restore/query_sub_accounts |
 | SSO | 5 | sso_subaccount_url, sso_user_system_url, sso_partner_url, build_survey_url, build_preview_url |
 | 分析计算 | 5 | decode_responses, calculate_nps, calculate_csat, detect_anomalies, compare_metrics |
-| 用户体系 | 6 | add/modify/delete_participants, bind_activity, query_survey_binding, query_user_surveys |
+| 用户体系（兼容/已过时） | 6 | add/modify/delete_participants, bind_activity, query_survey_binding, query_user_surveys；仅维护已有系统 |
 | 诊断 | 1 | get_config — API Key（脱敏）、Base URL、CLI 版本、配置来源 |
 
 详细参数见 [references/tools-survey.md](references/tools-survey.md)、[references/tools-response.md](references/tools-response.md)、[references/tools-other.md](references/tools-other.md)。
@@ -104,16 +108,16 @@ https://www.wjx.cn/weixinlogin.aspx?redirecturl=%2Fnewwjx%2Fmanage%2Fuserinfo.as
 
 ```
 1. 使用 prompt 模板生成题目 JSON（如 generate-survey-json、generate-exam-json 等）
-2. create_survey_by_json({ questions: [...], title: "问卷标题", atype: 1 })
+2. create_survey_by_json({ jsonl: "{\"qtype\":\"问卷基础信息\",...}\\n{\"qtype\":\"单选\",...}", atype: 1 })
 3. get_survey({ vid: N }) — 验证内容
 4. build_survey_url({ mode: "edit", activity: N }) — 提供编辑链接
 ```
 
-> `create_survey_by_text`（DSL 文本方式）已弃用，仅为兼容保留，新代码不要使用。
+> `create_survey_by_text`（DSL 文本方式）已弃用，仅为兼容保留，新代码不要使用。`create_survey_by_json` 的 `jsonl` 参数必须是每行一个 JSON 对象的字符串，不是 JSON 数组。
 
-**考试问卷（atype=6）注意**：正确答案和每题分值**无法**通过 API 设置。创建后应提供编辑链接，指引用户在网页端配置答案与评分。
+**考试问卷（atype=6）注意**：JSONL 路径支持 `correctselect`、`quizscore` 和 `answeranalysis`；DSL 兼容路径不支持这些字段。创建后仍可提供编辑链接补充未覆盖的高级设置。
 
-题型字段映射详见 `wjx://reference/question-types` 资源，或 [references/dsl-and-types.md](references/dsl-and-types.md)。
+JSONL 题型字段详见 `wjx://reference/question-types` 资源；只有使用已弃用 DSL 兼容入口时才查阅 [references/dsl-and-types.md](references/dsl-and-types.md)。
 
 ### 查询和分析数据
 
@@ -173,9 +177,9 @@ submitdata 题号必须与 `get_survey` 返回的原始 `q_index` 对齐——**
 | `wjx://reference/user-roles` | 子账号角色编码 |
 | `wjx://reference/push-format` | 数据推送格式和加密说明 |
 
-## Prompt 模板（19 个）
+## Prompt 模板
 
-**通用/运维（6）：** design-survey, analyze-results, create-nps-survey, configure-webhook, anomaly-detection, user-system-workflow
+**通用/运维（6）：** design-survey, analyze-results, create-nps-survey, configure-webhook, anomaly-detection, user-system-workflow（兼容/已过时）
 
 **分析（6）：** nps-analysis, csat-analysis, cross-tabulation, sentiment-analysis, survey-health-check, comparative-analysis
 
@@ -195,7 +199,7 @@ submitdata 题号必须与 `get_survey` 返回的原始 `q_index` 对齐——**
 ## Reference 文件（按需查阅）
 
 - [DSL 语法与题型](references/dsl-and-types.md) — DSL 格式、25+ 题型标签、q_type/q_subtype 映射表
-- [问卷工具详解](references/tools-survey.md) — 12 个问卷管理工具的完整参数
+- [问卷工具详解](references/tools-survey.md) — 13 个问卷管理工具的完整参数
 - [答卷工具详解](references/tools-response.md) — 9 个答卷数据工具的完整参数
 - [其他工具详解](references/tools-other.md) — 通讯录、子账号、SSO、分析、推送工具参数
 - [错误排查](references/troubleshooting.md) — API 错误码、配置问题、自定义域名、考试限制

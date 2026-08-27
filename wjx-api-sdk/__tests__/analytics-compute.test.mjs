@@ -288,6 +288,22 @@ describe("detectAnomalies", () => {
     ]);
     assert.equal(result.flagged.length, 0);
   });
+
+  it("should accept API response fields submitdata and inputcosttime", () => {
+    const result = detectAnomalies([
+      { jid: 1, submitdata: "1$1}2$1}3$1", inputcosttime: 100, ip: "192.168.1.1" },
+      { jid: 2, submitdata: "1$2}2$3}3$4", inputcosttime: 100, ip: "192.168.1.2" },
+      { jid: 3, submitdata: "1$3}2$3}3$3", inputcosttime: 10, ip: "192.168.1.3" },
+      { jid: 4, submitdata: "1$1}2$1}3$1", inputcosttime: 100, ip: "192.168.1.1" },
+    ]);
+    const flagged = result.flagged.find((f) => f.responseId === 3);
+    assert.ok(flagged);
+    assert.ok(flagged.reasons.includes("straight-lining"));
+    assert.ok(flagged.reasons.includes("speed-anomaly"));
+    const duplicate = result.flagged.find((f) => f.responseId === 4);
+    assert.ok(duplicate);
+    assert.ok(duplicate.reasons.includes("ip-content-duplicate"));
+  });
 });
 
 // ═══════════════════════════════════════════════════════════════════════════════

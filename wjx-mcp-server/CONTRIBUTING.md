@@ -233,5 +233,5 @@ server.registerTool(
 ## 需要帮助？
 
 - 查看 [架构设计文档](docs/architecture.md) 了解整体结构
-- 查看 [问卷星 OpenAPI 参考](docs/wjx-openapi-spec.md) 了解 API 规范
+- 查看 [MCP 工具参考](../wjx-docs/reference/mcp-tools.md) 了解当前公开能力；底层请求以 `wjx-api-sdk/src` 与问卷星官方 OpenAPI 为准
 - 提交 Issue 讨论新功能或报告问题

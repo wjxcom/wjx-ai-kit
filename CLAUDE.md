@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 wjx-ai-kit is a monorepo (npm workspaces) wrapping the Wenjuanxing (问卷星) OpenAPI. Three packages provide the same API surface through different interfaces:
 
-- **wjx-cli** — Commander.js CLI (67 subcommands) designed for AI Agent consumption. **Main product / primary entry point**, recommended for nearly all use cases.
+- **wjx-cli** — Commander.js CLI; command count follows `wjx --help`. **Main product / primary entry point**, recommended for nearly all use cases.
 - **wjx-api-sdk** — Zero-dependency TypeScript SDK (48+ functions, foundation layer). Used by wjx-cli and any Node.js project.
 - **wjx-mcp-server** — MCP Server (58 tools, 8 resources, 22 prompts) for AI clients. **Secondary / maintenance-mode**: only useful for clients with native MCP protocol support (Claude Code/Desktop, Cursor, Cline). Functionality matches wjx-cli; if in doubt, prefer wjx-cli.
 
@@ -26,13 +26,13 @@ npm run build --workspace=wjx-cli
 npm run build --workspace=wjx-mcp-server   # secondary, build only when working on MCP
 
 # Test (from monorepo root)
-npm test --workspace=wjx-api-sdk        # ~697 tests
-npm test --workspace=wjx-cli            # ~163 tests
-npm test --workspace=wjx-mcp-server     # ~288 tests (secondary)
+npm test --workspace=wjx-api-sdk
+npm test --workspace=wjx-cli
+npm test --workspace=wjx-mcp-server     # secondary
 
 # Run a single test file (must build first)
 cd wjx-api-sdk && npm run build && node --test __tests__/survey.test.mjs
-cd wjx-mcp-server && npm run build && node --test __tests__/sign.test.mjs
+cd wjx-mcp-server && npm run build && node --test __tests__/helpers.test.mjs
 
 # MCP server specific
 npm run test:unit --workspace=wjx-mcp-server        # unit tests only

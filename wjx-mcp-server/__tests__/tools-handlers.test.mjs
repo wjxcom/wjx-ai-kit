@@ -196,6 +196,25 @@ describe("analytics tools via MCP", () => {
       assert.ok(flagged.reasons.includes("straight-lining"));
     });
 
+    it("accepts raw API response fields", async () => {
+      const result = await client.callTool({
+        name: "detect_anomalies",
+        arguments: {
+          responses: [
+            { jid: 1, submitdata: "1$1}2$1}3$1", inputcosttime: 100 },
+            { jid: 2, submitdata: "1$2}2$3}3$4", inputcosttime: 100 },
+            { jid: 3, submitdata: "1$3}2$3}3$3", inputcosttime: 10 },
+          ],
+        },
+      });
+      assert.equal(result.isError, false);
+      const data = JSON.parse(result.content[0].text);
+      const flagged = data.flagged.find((item) => item.responseId === 3);
+      assert.ok(flagged);
+      assert.ok(flagged.reasons.includes("straight-lining"));
+      assert.ok(flagged.reasons.includes("speed-anomaly"));
+    });
+
     it("handles empty responses", async () => {
       const result = await client.callTool({
         name: "detect_anomalies",

@@ -36,7 +36,7 @@ export function registerSsoCommands(program: Command): void {
   // --- user-system-url ---
   sso
     .command("user-system-url")
-    .description("生成用户系统参与者SSO链接")
+    .description("[已过时] 为已有用户系统参与者生成 SSO 链接")
     .option("--u <s>", "账号用户名")
     .option("--system_id <n>", "用户系统ID", strictInt)
     .option("--uid <s>", "参与者ID")

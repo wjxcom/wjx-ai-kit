@@ -367,7 +367,7 @@ ${examCountInstruction(single_count, multi_count, truefalse_count, fillin_count)
 
 ${examFormatInstructions("期末考试")}
 
-【重要提示】考试问卷的正确答案和每题分值无法通过 API 设置。创建考试后请使用 build_preview_url 或 build_survey_url(mode=edit) 提供链接，指引用户在网页端设置答案与评分。`,
+【重要提示】本 Prompt 使用已弃用的 DSL 兼容路径；DSL 无法携带正确答案和每题分值。新项目请改用 generate-exam-json / create_survey_by_json，在 JSONL 中设置 correctselect、quizscore 和 answeranalysis。`,
         },
       }],
     }),
@@ -397,7 +397,7 @@ ${examCountInstruction(single_count, multi_count, truefalse_count, fillin_count)
 
 ${examFormatInstructions(`${knowledge_scope} - 考试`)}
 
-【重要提示】考试问卷的正确答案和每题分值无法通过 API 设置。创建考试后请使用 build_preview_url 或 build_survey_url(mode=edit) 提供链接，指引用户在网页端设置答案与评分。`,
+【重要提示】本 Prompt 使用已弃用的 DSL 兼容路径；DSL 无法携带正确答案和每题分值。新项目请改用 generate-exam-json / create_survey_by_json，在 JSONL 中设置 correctselect、quizscore 和 answeranalysis。`,
         },
       }],
     }),

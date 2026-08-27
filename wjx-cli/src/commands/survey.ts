@@ -35,7 +35,7 @@ export function registerSurveyCommands(program: Command): void {
     .option("--page <n>", "页码", strictInt)
     .option("--page_size <n>", "每页数量", strictInt)
     .option("--status <n>", "状态筛选", strictInt)
-    .option("--atype <n>", "问卷类型筛选：1=调查, 2=测评, 3=投票, 4=360度评估, 5=360评估无测评关系, 6=考试, 7=表单, 8=用户体系, 9=教学评估, 10=量表, 11=民主评议", strictInt)
+    .option("--atype <n>", "问卷类型筛选：1=调查, 2=测评, 3=投票, 4=360度评估, 5=360评估无测评关系, 6=考试, 7=表单, 8=用户体系（历史兼容）, 9=教学评估, 10=量表, 11=民主评议", strictInt)
     .option("--name_like <s>", "名称搜索")
     .option("--sort <n>", "排序规则：0=ID升序, 1=ID降序, 2=开始时间升序, 3=开始时间降序, 4=创建时间升序, 5=创建时间降序", strictInt)
     .option("--creater <s>", "创建者（子账号用户名）")
@@ -43,7 +43,7 @@ export function registerSurveyCommands(program: Command): void {
     .option("--is_xingbiao", "仅显示星标问卷")
     .option("--query_all", "查询所有问卷（含子账号）")
     .option("--verify_status <n>", "审核状态筛选", strictInt)
-    .option("--time_type <n>", "时间类型：0=创建时间, 1=最后修改时间", strictInt)
+    .option("--time_type <n>", "时间类型：0=不按时间查询（默认）, 1=按问卷开始时间, 2=按问卷创建时间", strictInt)
     .option("--begin_time <n>", "起始时间（毫秒时间戳）", strictInt)
     .option("--end_time <n>", "结束时间（毫秒时间戳）", strictInt)
     .action(async (_opts, cmd) => {
@@ -509,10 +509,10 @@ const TEMPLATE_QUESTIONS_BY_ATYPE: Record<number, Array<Record<string, unknown>>
     { qtype: "投票多选", title: "请选出您支持的候选项（最多 2 项）", select: ["候选 A", "候选 B", "候选 C", "候选 D"] },
   ],
   6: [
-    { qtype: "考试单选", title: "下列说法正确的是？", select: ["A. 错误说法", "B. 正确说法", "C. 错误说法"], correctselect: ["B"], quizscore: "10" },
-    { qtype: "考试多选", title: "请选出所有正确选项", select: ["A. 正确", "B. 错误", "C. 正确", "D. 错误"], correctselect: ["A", "C"], quizscore: "10" },
-    { qtype: "考试判断", title: "1+1=2", select: ["对", "错"], correctselect: ["对"], quizscore: "5" },
-    { qtype: "考试简答", title: "请简述你的看法", quizscore: "20" },
+    { qtype: "考试单选", title: "下列说法正确的是？", select: ["A. 错误说法", "B. 正确说法", "C. 错误说法"], correctselect: ["B"], quizscore: "10", isquiz: "1" },
+    { qtype: "考试多选", title: "请选出所有正确选项", select: ["A. 正确", "B. 错误", "C. 正确", "D. 错误"], correctselect: ["A", "C"], quizscore: "10", isquiz: "1" },
+    { qtype: "考试判断", title: "1+1=2", select: ["对", "错"], correctselect: ["对"], quizscore: "5", isquiz: "1" },
+    { qtype: "考试简答", title: "请简述你的看法", quizscore: "20", isquiz: "1" },
   ],
   7: [
     { qtype: "单项填空", title: "您的姓名" },

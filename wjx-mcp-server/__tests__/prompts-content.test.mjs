@@ -108,22 +108,38 @@ describe("prompts content correctness", () => {
       assert.ok(text.includes("recommend"));
     });
 
-    it("includes create_survey tool reference", async () => {
+    it("includes the JSONL creation tool reference", async () => {
       const result = await client.getPrompt({
         name: "create-nps-survey",
         arguments: { product_name: "TestProduct" },
       });
       const text = result.messages[0].content.text;
-      assert.ok(text.includes("create_survey"));
+      assert.ok(text.includes("create_survey_by_json"));
     });
 
-    it("includes q_type and q_subtype references", async () => {
+    it("includes the canonical qtype reference", async () => {
       const result = await client.getPrompt({
         name: "create-nps-survey",
         arguments: { product_name: "Test" },
       });
       const text = result.messages[0].content.text;
-      assert.ok(text.includes("q_type"));
+      assert.ok(text.includes('qtype="NPS量表"'));
+    });
+  });
+
+  // ── Legacy user-system workflow ──────────────────────────────────
+  describe("user-system-workflow", () => {
+    it("warns that the workflow is legacy and does not suggest creating atype=8", async () => {
+      const result = await client.getPrompt({
+        name: "user-system-workflow",
+        arguments: { scenario: "员工考核" },
+      });
+      const text = result.messages[0].content.text;
+      assert.ok(text.includes("已过时"));
+      assert.ok(text.includes("不能通过 API 新建 atype=8"));
+      assert.ok(text.includes("sso_user_system_url"));
+      assert.ok(!text.includes("创建用户体系问卷"));
+      assert.ok(!text.includes("build_sso_user_system_url"));
     });
   });
 

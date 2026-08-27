@@ -5,12 +5,12 @@
 wjx-cli 是 `wjx-ai-kit` monorepo 的第三个包，与 `wjx-api-sdk`、`wjx-mcp-server` 并列。
 monorepo 根目录：`wjx-ai-kit/`，使用 npm workspaces。
 
-SDK 已完成（v0.1.23, ~623 tests），MCP Server 已完成（v0.1.23, ~280 tests）。
-CLI 已完成 v0.1.23（~133 tests）。
+当前包版本以各自 `package.json` 为准：SDK 0.3.1、MCP Server 0.3.1、CLI 0.3.5。
+测试数量会随功能变化，使用各 workspace 的 `npm test` 获取实时结果。
 
 ## 关键文件
 
-- SDK barrel：`wjx-api-sdk/src/index.ts`（48+ 函数列表）
+- SDK barrel：`wjx-api-sdk/src/index.ts`（公开导出以源码为准）
 - SDK 类型示例：`wjx-api-sdk/src/modules/survey/types.ts`
 - SDK client 示例：`wjx-api-sdk/src/modules/survey/client.ts`
 - MCP tools 参考：`wjx-mcp-server/src/modules/survey/tools.ts`

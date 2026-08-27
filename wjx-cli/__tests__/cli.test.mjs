@@ -935,6 +935,21 @@ describe("analytics", () => {
     assert.equal(typeof parsed.csat, "number");
   });
 
+  it("analytics anomalies accepts API response fields", () => {
+    const responses = JSON.stringify([
+      { jid: 1, submitdata: "1$1}2$1}3$1", inputcosttime: 100 },
+      { jid: 2, submitdata: "1$2}2$3}3$4", inputcosttime: 100 },
+      { jid: 3, submitdata: "1$3}2$3}3$3", inputcosttime: 10 },
+      { jid: 4, submitdata: "1$1}2$1}3$1", inputcosttime: 100, ip: "192.168.1.1" },
+    ]);
+    const out = run(["analytics", "anomalies", "--responses", responses]);
+    const parsed = JSON.parse(out);
+    const flagged = parsed.flagged.find((item) => item.responseId === 3);
+    assert.ok(flagged);
+    assert.ok(flagged.reasons.includes("straight-lining"));
+    assert.ok(flagged.reasons.includes("speed-anomaly"));
+  });
+
   it("analytics decode without --submitdata → INPUT_ERROR exit 2", async () => {
     const result = await runFull(["analytics", "decode"]);
     assert.equal(result.exitCode, 2);
@@ -1146,6 +1161,10 @@ describe("survey jsonl-template", () => {
     assert.match(out, /考试单选/);
     assert.match(out, /correctselect/);
     assert.match(out, /quizscore/);
+    const questionLines = out.trim().split("\n").slice(1).map((line) => JSON.parse(line));
+    for (const question of questionLines) {
+      assert.equal(question.isquiz, "1", `考试题 ${question.qtype} 必须显式标记 isquiz=1`);
+    }
   });
 
   it("--type 99（无效值）→ INPUT_ERROR exit 2", async () => {
@@ -1157,12 +1176,27 @@ describe("survey jsonl-template", () => {
   });
 
   it("骨架可直接通过 preflight（配合 create-by-json --dry-run）", async () => {
-    const tmpl = run(["survey", "jsonl-template", "--raw"]);
+    const tmpl = run(["survey", "jsonl-template", "--type", "6", "--raw"]);
     const result = await runFull(
       ["survey", "create-by-json", "--jsonl", tmpl, "--dry-run"],
       { env: { WJX_API_KEY: "fake-key-1234567890", ...NO_CONFIG } },
     );
     assert.equal(result.exitCode, 0, `dry-run 应成功，stderr=${result.stderr}`);
+    const preview = JSON.parse(result.stderr);
+    const body = JSON.parse(preview.request.body);
+    const examLine = body.surveydatajson
+      .split("\n")
+      .map((line) => JSON.parse(line))
+      .find((question) => question.qtype === "考试单选");
+    assert.deepEqual(examLine.correctselect, ["B"]);
+    assert.equal(examLine.quizscore, "10");
+  });
+});
+
+describe("survey list help", () => {
+  it("describes time_type according to the API semantics", () => {
+    const out = run(["survey", "list", "--help"]);
+    assert.match(out, /time_type.*0=.*不按时间查询.*1=.*问卷开始时间.*2=.*问卷创建时间/);
   });
 });
 

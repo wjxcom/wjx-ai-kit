@@ -21,12 +21,12 @@ tools:
 
 - **`skills/wjx-cli-use/SKILL.md`** — 命令总览、核心工作流、常用枚举值
 - **`skills/wjx-cli-use/references/`** — 按需查阅的详细参考：
-  - `dsl-syntax.md` — DSL 文本语法（create-by-text 用）
+  - `question-types.md` — JSONL 中文题型与字段（create-by-json 用）
   - `survey-commands.md` — survey 模块全部参数
   - `response-commands.md` — response 模块全部参数
   - `contacts-commands.md` — contacts/department/admin/tag/account/sso 参数
   - `analytics-commands.md` — analytics 本地分析命令
-  - `question-types.md` — q_type/q_subtype 完整映射表
+  - `formula-helper.md` — 计算公式与表格/推送字段示例
 
 **工作方式：先读 SKILL.md 获取全局视图，遇到具体参数问题时再读对应的 references 文件。**
 
@@ -65,7 +65,7 @@ wjx doctor
 ### 考试问卷注意事项
 
 - 创建考试问卷时 `--type 6`，考试中的单选/多选/填空自动变为考试题型
-- **API 限制**：考试的正确答案和每题分值无法通过 API 设置，创建后必须提供 `wjx survey url --mode edit --activity N` 编辑链接，指引用户在网页端手动配置答案与评分
+- **考试配置**：JSONL 创建路径支持 `correctselect`、`quizscore` 和 `answeranalysis`；只有旧 DSL 路径不支持这些字段。需要补充高级考试设置时，再提供 `wjx survey url --mode edit --activity N` 编辑链接。
 - 创建考试后使用 `wjx survey update-settings --vid N --time_setting '...'` 设置考试时间限制
 
 ### 查询数据

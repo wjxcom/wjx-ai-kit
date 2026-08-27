@@ -181,9 +181,12 @@ export function calculateCsat(
 // ─── detectAnomalies ─────────────────────────────────────────────────────────
 
 interface ResponseRecord {
-  id: string | number;
-  answers?: (string | number)[];
-  duration_seconds?: number;
+  id?: string | number;
+  jid?: string | number;
+  answers?: unknown;
+  submitdata?: string;
+  duration_seconds?: number | string;
+  inputcosttime?: number | string;
   ip?: string;
   [key: string]: unknown;
 }
@@ -191,22 +194,32 @@ interface ResponseRecord {
 export function detectAnomalies(responses: ResponseRecord[]): AnomalyResult {
   const flagged: AnomalyFlag[] = [];
 
+  // API responses use submitdata/inputcosttime, while callers may already have
+  // decoded answers/duration_seconds. Normalize both representations first so
+  // the three detectors operate on the same data.
+  const normalized = responses.map((response, index) => ({
+    response,
+    responseId: response.id ?? response.jid ?? index + 1,
+    answers: normalizeAnswers(response),
+    durationSeconds: normalizeDuration(response),
+  }));
+
   // Compute median duration for speed anomaly detection
-  const durations = responses
-    .map((r) => r.duration_seconds)
-    .filter((d): d is number => typeof d === "number" && d > 0);
+  const durations = normalized
+    .map((r) => r.durationSeconds)
+    .filter((d): d is number => d !== undefined);
   const medianDuration = durations.length > 0 ? median(durations) : 0;
   const speedThreshold = medianDuration * 0.3; // < 30% of median is suspicious
 
   // Build IP+content map for duplicate detection
   const ipContentMap = new Map<string, (string | number)[]>();
 
-  for (const r of responses) {
+  for (const { response: r, responseId, answers, durationSeconds } of normalized) {
     const reasons: string[] = [];
 
     // 1. Straight-lining: all answers identical
-    if (r.answers && r.answers.length > 2) {
-      const unique = new Set(r.answers.map(String));
+    if (answers && answers.length > 2) {
+      const unique = new Set(answers);
       if (unique.size === 1) {
         reasons.push("straight-lining");
       }
@@ -214,32 +227,57 @@ export function detectAnomalies(responses: ResponseRecord[]): AnomalyResult {
 
     // 2. Speed anomaly: completed too fast
     if (
-      typeof r.duration_seconds === "number" &&
+      durationSeconds !== undefined &&
       medianDuration > 0 &&
-      r.duration_seconds > 0 &&
-      r.duration_seconds < speedThreshold
+      durationSeconds < speedThreshold
     ) {
       reasons.push("speed-anomaly");
     }
 
     // 3. IP + content duplicate
-    if (r.ip && r.answers) {
-      const contentKey = `${r.ip}:${r.answers.map(String).join(",")}`;
+    if (r.ip && answers) {
+      const contentKey = `${r.ip}:${answers.join(",")}`;
       const existing = ipContentMap.get(contentKey);
       if (existing) {
-        existing.push(r.id);
+        existing.push(responseId);
         reasons.push("ip-content-duplicate");
       } else {
-        ipContentMap.set(contentKey, [r.id]);
+        ipContentMap.set(contentKey, [responseId]);
       }
     }
 
     if (reasons.length > 0) {
-      flagged.push({ responseId: r.id, reasons });
+      flagged.push({ responseId, reasons });
     }
   }
 
   return { flagged, totalChecked: responses.length };
+}
+
+function normalizeAnswers(response: ResponseRecord): string[] | undefined {
+  if (Array.isArray(response.answers)) {
+    return response.answers.map(stringifyAnswer);
+  }
+
+  if (typeof response.submitdata === "string") {
+    const decoded = decodeResponses(response.submitdata);
+    if (decoded.answers.length === 0) return undefined;
+    return decoded.answers.map((answer) => stringifyAnswer(answer.value));
+  }
+
+  return undefined;
+}
+
+function normalizeDuration(response: ResponseRecord): number | undefined {
+  const raw = response.duration_seconds ?? response.inputcosttime;
+  const value = typeof raw === "number" ? raw : typeof raw === "string" ? Number(raw) : NaN;
+  return Number.isFinite(value) && value > 0 ? value : undefined;
+}
+
+function stringifyAnswer(value: unknown): string {
+  if (typeof value === "string") return value;
+  if (typeof value === "number" || typeof value === "boolean" || value === null) return String(value);
+  return JSON.stringify(value) ?? String(value);
 }
 
 // ─── compareMetrics ──────────────────────────────────────────────────────────

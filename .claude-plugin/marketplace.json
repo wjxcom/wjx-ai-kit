@@ -11,7 +11,7 @@
   "plugins": [
     {
       "name": "wjx-cli-use",
-      "description": "（推荐）通过 wjx-cli 命令行操作问卷星。覆盖 67 子命令、15 模块：创建问卷、查询和提交答卷、NPS/CSAT 分析、通讯录与子账号管理。任意 AI 客户端均可用（不需要 MCP 协议）。",
+      "description": "（推荐）通过 wjx-cli 命令行操作问卷星。覆盖完整 CLI 命令集：创建问卷、查询和提交答卷、NPS/CSAT 分析、通讯录与子账号管理。任意 AI 客户端均可用（不需要 MCP 协议）。",
       "source": "./",
       "strict": false,
       "skills": ["./wjx-skills/wjx-cli-use"],

@@ -80,20 +80,18 @@ describe("survey-generation-json prompts", () => {
   });
 
   describe("generate-form-json", () => {
-    it("uses official '7' whitelist qtypes and atype=7 hint", async () => {
+    it("uses parser-supported form qtypes and atype=7 hint", async () => {
       const result = await client.getPrompt({
         name: "generate-form-json",
         arguments: { topic: "活动报名" },
       });
       const text = result.messages[0].content.text;
       assert.ok(text.includes("活动报名"));
-      // 表单专用题型
-      assert.ok(text.includes("签名题"));
-      assert.ok(text.includes("地图"));
+      // 转换器支持的表单常用题型
+      assert.ok(text.includes("手机"));
+      assert.ok(text.includes("日期"));
       assert.ok(text.includes("表格数值"));
       assert.ok(text.includes("商品题"));
-      assert.ok(text.includes("预约题"));
-      assert.ok(text.includes("手机验证"));
       // atype 提示
       assert.ok(text.includes("atype=7"));
       assert.ok(text.includes("create_survey_by_json"));

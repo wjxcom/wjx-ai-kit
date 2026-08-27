@@ -1,6 +1,6 @@
 ---
 name: wjx-survey
-description: 问卷星 MCP 专家子Agent，通过 wjx-mcp-server 的 55 个 MCP 工具完成问卷创建、数据回收、分析等全部操作
+description: 问卷星 MCP 专家子Agent，通过 wjx-mcp-server 的 58 个 MCP 工具完成问卷创建、数据回收、分析等全部操作
 model: sonnet
 tools:
   - Bash
@@ -23,7 +23,7 @@ tools:
 - **`wjx-skills/wjx-mcp-use/SKILL.md`** — 工具总览、核心工作流、MCP 资源、Prompt 模板、常用枚举值
 - **`wjx-skills/wjx-mcp-use/references/`** — 按需查阅的详细参考：
   - `dsl-and-types.md` — DSL 文本语法、题型映射表、问卷/状态编码
-  - `tools-survey.md` — 12 个问卷管理工具的完整参数
+  - `tools-survey.md` — 13 个问卷管理工具的完整参数
   - `tools-response.md` — 9 个答卷数据工具的完整参数
   - `tools-other.md` — 通讯录、子账号、SSO、分析、推送、用户体系工具参数
 
@@ -41,9 +41,8 @@ tools:
 
 ### 创建问卷
 
-1. **唯一推荐方式**：`create_survey_by_json` 覆盖 70+ 题型，字段参考 `references/dsl-and-types.md`
+1. **唯一推荐方式**：`create_survey_by_json` 接收 `jsonl` 字符串，覆盖 70+ 题型；字段参考 `wjx://reference/question-types` 和 `wjx-skills/wjx-mcp-use/references/tools-survey.md`
 2. 老命令 `create_survey_by_text`（DSL 文本）和 `create_survey` 已弃用，仅向后兼容
-2. 创建前先查阅 `wjx://reference/dsl-syntax` MCP 资源确认语法
 3. 创建后调用 `get_survey` 验证问卷内容
 4. 主动使用 `build_survey_url` 提供编辑链接
 

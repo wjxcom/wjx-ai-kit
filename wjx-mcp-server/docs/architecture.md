@@ -1,17 +1,17 @@
 # wjx-mcp-server 架构设计
 
-> 版本基线：`v0.1.4`
+> 本页是 `wjx-mcp-server` 包的内部开发文档。面向使用者的统一入口、任务流程和能力边界请阅读 [`wjx-docs/concepts/architecture.md`](../../wjx-docs/concepts/architecture.md)。
+
+> 版本：以 `wjx-mcp-server/package.json` 为准
 > 技术栈：Node.js `>=20`、TypeScript、`@modelcontextprotocol/sdk`、Zod
 
 ## 1. 概述
 
 `wjx-mcp-server` 是一个围绕问卷星 OpenAPI 构建的 MCP Server。它把问卷管理、答卷查询、通讯录/用户体系管理、SSO 快速集成，以及本地分析能力统一暴露为 MCP 的三类原语：
 
-- Tools：57 个
-- Resources：8 个
-- Prompts：19 个
+- Tools、Resources、Prompts：以源码注册数为准
 
-整体设计遵循”入口层选择传输、MCP Server 统一注册能力、模块层封装业务、核心层处理签名/重试/超时”的分层思路。57 个 tools 中，`survey`/`response`/`contacts`/`user-system`/`multi-user` 主要访问问卷星远程接口，`sso` 与 `analytics` 则以内存计算和 URL 组装为主，不依赖远程 OpenAPI。
+整体设计遵循“入口层选择传输、MCP Server 统一注册能力、模块层封装业务、核心层处理认证/重试/超时”的分层思路。各模块数量以注册源码为准；`survey`/`response`/`contacts`/`user-system`/`multi-user` 主要访问问卷星远程接口，`sso` 与 `analytics` 则以内存计算和 URL 组装为主，不依赖远程 OpenAPI。
 
 ## 2. 整体架构
 
@@ -28,8 +28,8 @@ flowchart TD
 
     F --> G[McpServer]
     G --> H[Resources 8]
-    G --> I[Prompts 19]
-    G --> J[Tools 57]
+    G --> I[Prompts 22]
+    G --> J[Tools 58]
 
     J --> M1[survey]
     J --> M2[response]
@@ -44,12 +44,11 @@ flowchart TD
     M3 --> N1
     M4 --> N1
     M5 --> N1
-    N1 --> O[src/core/api-client.ts]
-    O --> P[src/core/sign.ts]
+    N1 --> O[src/core/api-client.ts → wjx-api-sdk]
     O --> Q[src/core/constants.ts]
     O --> R[(WJX OpenAPI default.aspx / usersystem.aspx)]
 
-    M6 --> S[src/modules/sso/sign.ts + URL builders]
+    M6 --> S[wjx-api-sdk/src/modules/sso/client.ts URL builders]
     M7 --> T[src/modules/analytics/compute.ts + push-decode.ts]
     J --> U[src/helpers.ts toolResult/toolError]
 ```
@@ -97,15 +96,16 @@ flowchart TD
 
 | 模块 | Tool 数量 | 主要职责 | 核心 API / 入口 |
 | --- | ---: | --- | --- |
-| `survey` | 12 | 问卷 CRUD、设置读写、标签、回收站、文本创建、文件上传 | `createSurvey()`、`createSurveyByText()`、`getSurvey()`、`updateSurveySettings()`、`clearRecycleBin()` |
-| `response` | 10 | 答卷查询、下载、报告、提交、修改、清空 | `queryResponses()`、`downloadResponses()`、`getReport()`、`submitResponse()` |
+| `survey` | 13 | 问卷 CRUD、设置读写、标签、回收站、文本创建、文件上传 | `createSurvey()`、`createSurveyByText()`、`getSurvey()`、`updateSurveySettings()`、`clearRecycleBin()` |
+| `response` | 9 | 答卷查询、下载、报告、提交、修改、清空 | `queryResponses()`、`downloadResponses()`、`getReport()`、`submitResponse()` |
 | `contacts` | 14 | 通讯录成员、管理员、部门、标签管理 | `queryContacts()`、`addContacts()`、`listDepartments()`、`listTags()` |
 | `sso` | 5 | 子账号 SSO、用户体系 SSO、代理商 SSO、问卷创建/编辑/预览链接 | `buildSsoSubaccountUrl()`、`buildSsoUserSystemUrl()`、`buildSsoPartnerUrl()`、`buildSurveyUrl()`、`buildPreviewUrl()` |
 | `user-system` | 6 | 参与者管理、活动绑定、问卷绑定查询、用户关联问卷查询 | `addParticipants()`、`bindActivity()`、`querySurveyBinding()`、`queryUserSurveys()` |
 | `multi-user` | 5 | 子账号创建、修改、删除、恢复、查询 | `addSubAccount()`、`modifySubAccount()`、`querySubAccounts()` |
 | `analytics` | 5 | 答卷解码、NPS/CSAT、本地异常检测、指标对比 | `decodeResponses()`、`calculateNps()`、`calculateCsat()`、`detectAnomalies()`、`compareMetrics()` |
+| `server`（诊断） | 1 | 配置与运行环境诊断 | `get_config` |
 
-表内 Tool 数量直接对应各 `src/modules/*/tools.ts` 中 `server.registerTool()` 的出现次数，总计 `12 + 10 + 14 + 5 + 6 + 5 + 5 = 57`。
+业务模块中的 Tool 数量直接对应各 `src/modules/*/tools.ts` 中 `server.registerTool()` 的出现次数，共 57 个；`src/server.ts` 另注册 1 个 `get_config` 诊断工具，总计 58 个。
 
 ### 5.2 survey 模块
 
@@ -120,12 +120,15 @@ flowchart TD
 - `delete_survey`
 - `get_question_tags`
 - `get_tag_details`
+- `upload_file`
 - `clear_recycle_bin`
+- `create_survey_by_text`（兼容）
+- `create_survey_by_json`（推荐）
 
 特点：
 
 - `createSurvey()` 在调用前校验 `questions` 是否为合法 JSON 数组。
-- `buildCreateSurveyParams()` 作为测试辅助函数，可验证签名前参数结构。
+- `buildCreateSurveyParams()` 作为测试辅助函数，可验证请求参数结构。
 - 设置更新工具要求至少传入一个设置块，避免空写请求。
 
 ### 5.3 response 模块
@@ -167,8 +170,9 @@ flowchart TD
 - `sso_user_system_url`
 - `sso_partner_url`
 - `build_survey_url`
+- `build_preview_url`
 
-其中前三者依赖本地 SHA1 签名，最后一个按规则拼接创建/编辑问卷链接。这一层与普通 OpenAPI 最大不同点是：签名使用“按参数业务顺序拼接值”，不是按 key 排序。
+前三者使用 `URLSearchParams` 编码登录参数，不走问卷星 OpenAPI，也不生成签名；`build_survey_url` 和 `build_preview_url` 分别生成后台创建/编辑链接与答卷预览链接。
 
 ### 5.6 user-system 模块
 
@@ -177,6 +181,7 @@ flowchart TD
 - `add_participants`
 - `modify_participants`
 - `delete_participants`
+- `bind_activity`
 - `query_survey_binding`
 - `query_user_surveys`
 
@@ -192,7 +197,7 @@ flowchart TD
 - `restore_sub_account`
 - `query_sub_accounts`
 
-设计上和 `contacts`、`user-system` 一致，继续复用核心层签名、超时和重试策略。
+设计上和 `contacts`、`user-system` 一致，继续复用核心层认证、超时和重试策略。
 
 ### 5.8 analytics 模块
 
@@ -203,7 +208,6 @@ flowchart TD
 - `calculate_csat`
 - `detect_anomalies`
 - `compare_metrics`
-- `decode_push_payload`
 
 它提供了面向 AI Agent 的二次处理能力：
 
@@ -229,51 +233,36 @@ flowchart TD
 - 凭证结构
 - WJX 成功/失败响应联合类型
 - 可注入 `fetch` 接口
-- 请求选项和可签名参数类型
+- 请求选项和日志类型
 
 ### 6.2 API Client
 
 `src/core/api-client.ts` 是远程调用总入口，承担：
 
 1. 读取凭据中的 `WJX_API_KEY`
-2. 生成 Unix 时间戳
-3. 生成 32 位无连字符 `traceid`
-4. 为请求附加 `appid`、`ts`、`traceid`
-5. 调用签名函数生成 `sign`
-6. 通过 `fetch` 发起 POST JSON 请求
-7. 处理超时、重试、响应解析和错误归一化
+2. 生成 32 位无连字符 `traceid`
+3. 将 `traceid` 与 `action` 放入 URL 查询参数
+4. 使用 `Authorization: Bearer <WJX_API_KEY>` 发起 POST JSON 请求
+5. 处理超时、重试、响应解析和错误归一化
 
 关键设计点：
 
-- `callWjxApi()` 默认访问 `default.aspx`；`callWjxUserSystemApi()` 则复用同一套逻辑切到 `usersystem.aspx`。
-- `traceid` 参与签名，但不会进入 POST body，而是放在 query string 中。
+- MCP 的 `src/core/api-client.ts` 是 SDK API 的 re-export；实际请求实现位于 `wjx-api-sdk/src/core/api-client.ts`。
+- `callWjxApi()` 默认访问 `default.aspx`；`callWjxUserSystemApi()`、`callWjxSubuserApi()` 和 `callWjxContactsApi()` 切换到对应端点。
+- `traceid` 只用于链路排障，不进入 POST body。
 - 重试采用指数退避并加入随机抖动。
-- 重试前刷新时间戳，因为问卷星签名窗口只有 30 秒。
 - 只有 `429` 和 `5xx` 属于可重试 HTTP 状态。
 - 网络错误和超时可重试；业务失败响应不会自动重试。
-- `fetchImpl`、`timestamp`、`credentials` 都可注入，方便单元测试和协议级验证。
+- `fetchImpl`、`credentials` 和 `logger` 都可注入，方便单元测试和协议级验证。
 
-### 6.3 通用签名算法
+### 6.3 URL 构建器
 
-`src/core/sign.ts` 实现问卷星 OpenAPI 的标准签名：
+`wjx-api-sdk/src/modules/sso/client.ts` 提供 SSO、创建、编辑和预览 URL 构建器：
 
-1. 排除 `sign` 字段
-2. 按 key ASCII 升序排序
-3. 取每个非空 value 按顺序拼接
-4. 在末尾追加 `appKey`
-5. 对拼接串做 SHA1 并输出小写十六进制
-
-这部分由 `withSignature()` 封装，供所有远程 API 模块复用。
-
-### 6.4 SSO 签名算法
-
-`src/modules/sso/sign.ts` 单独实现 SSO 签名：
-
-- 不按 key 排序
-- 按接口要求的业务顺序直接拼接值
-- 对最终字符串做 SHA1
-
-这与 OpenAPI 的排序签名形成明确分层，避免混用。
+- 使用 `URLSearchParams` 编码参数
+- 使用 `WJX_BASE_URL` 或对应 URL 环境变量
+- 当前 URL 构建不生成 `appid`、`ts` 或 `sign`
+- `build_preview_url` 优先使用服务端返回的 `sid`；没有 `sid` 时才接受正整数 `vid`
 
 ## 7. Tool 注册模式
 
@@ -306,7 +295,7 @@ server.registerTool("tool_name", { inputSchema }, async (args) => {
 
 ## 8. Resources 与 Prompts 设计
 
-### 8.8 Resources
+### 8.1 Resources
 
 当前注册了 8 个只读资源：
 
@@ -321,13 +310,13 @@ server.registerTool("tool_name", { inputSchema }, async (args) => {
 
 资源层的作用是把稳定字典、格式规范和分析基准放进 MCP 上下文，而不是每次让模型重复猜测编码意义。
 
-### 8.22 Prompts
+### 8.2 Prompts
 
-当前注册了 23 个 prompts，分为三组：
+当前注册的 prompts 分为通用、分析和问卷生成三组，数量以 `src/prompts/**/*.ts` 为准：
 
 - 通用/运维 prompts（6）：`design-survey`、`analyze-results`、`create-nps-survey`、`configure-webhook`、`anomaly-detection`、`user-system-workflow`
 - 分析型 prompts（6）：`nps-analysis`、`csat-analysis`、`cross-tabulation`、`sentiment-analysis`、`survey-health-check`、`comparative-analysis`
-- 问卷生成 prompts（7）：`generate-survey`、`generate-nps-survey`、`generate-360-evaluation`、`generate-satisfaction-survey`、`generate-engagement-survey`、`generate-exam-from-document`、`generate-exam-from-knowledge`
+- 问卷生成 prompts（10）：以上 7 个旧文本生成模板，以及 `generate-survey-json`、`generate-exam-json`、`generate-form-json` 三个 JSONL 模板
 
 这些 prompts 本质上是”最佳实践工作流模板”，把工具调用顺序、分页要求、分析口径提前固化。
 
@@ -335,12 +324,11 @@ server.registerTool("tool_name", { inputSchema }, async (args) => {
 
 ### 9.1 API 调用安全
 
-远程 API 安全基础来自签名与时效：
+远程 API 安全基础来自 Bearer 凭据与传输控制：
 
-- `appid + appKey` 双凭证模式
-- `ts` 限制请求时效
+- `Authorization: Bearer <WJX_API_KEY>` 传递问卷星 API Key
 - `traceid` 便于链路排障
-- SHA1 签名防篡改
+- HTTPS、反向代理和网络白名单由部署方负责
 
 ### 9.2 HTTP Transport 认证
 
@@ -417,7 +405,6 @@ HTTP 模式基于 `StreamableHTTPServerTransport`，提供：
 项目保留了几层 re-export 兼容入口：
 
 - `src/wjx-client.ts`
-- `src/sign.ts`
 - `src/resources.ts`
 - `src/prompts.ts`
 
@@ -431,12 +418,11 @@ HTTP 模式基于 `StreamableHTTPServerTransport`，提供：
 | `src/server.ts` | `McpServer` 创建与能力注册 |
 | `src/transports/http.ts` | HTTP transport、认证、健康检查 |
 | `src/core/api-client.ts` | 凭证读取、traceid、超时、重试、远程调用 |
-| `src/core/sign.ts` | OpenAPI 排序签名 |
 | `src/core/constants.ts` | API 地址、Action、默认超时/重试参数 |
 | `src/helpers.ts` | `toolResult()` / `toolError()` 统一返回格式 |
 | `src/modules/*/tools.ts` | Zod schema + tool 注册层 |
 | `src/modules/*/client.ts` | 业务 API/URL 构建层 |
-| `src/modules/sso/sign.ts` | SSO 顺序签名 |
+| `wjx-api-sdk/src/modules/sso/client.ts` | SSO、创建、编辑和预览 URL 构建 |
 | `src/modules/analytics/compute.ts` | 本地分析计算 |
 | `src/modules/analytics/push-decode.ts` | 推送解密与验签 |
 
@@ -444,7 +430,7 @@ HTTP 模式基于 `StreamableHTTPServerTransport`，提供：
 
 `wjx-mcp-server` 的核心价值不在于简单映射问卷星接口，而在于把三种能力统一进一个稳定架构：
 
-- 远程 API 能力：通过统一签名、超时、重试层调用问卷星
+- 远程 API 能力：通过 Bearer 认证、超时、重试层调用问卷星
 - 本地智能能力：通过 analytics 模块直接做结构化计算和解密
 - MCP 原语能力：通过 tools、resources、prompts 让 Agent 既能“调用”，也能“理解”和“规划”
 

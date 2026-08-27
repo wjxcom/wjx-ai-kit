@@ -178,7 +178,7 @@ describe("createSurveyByJson exam handling", () => {
       {
         jsonl: [
           '{"qtype":"问卷基础信息","title":"Python 基础考试"}',
-          '{"qtype":"考试判断","title":"Q","select":["对","错"]}',
+          '{"qtype":"考试判断","title":"Q","select":["对","错"],"correctselect":["对"],"quizscore":"5"}',
         ].join("\n"),
       },
       { apiKey: "k" },
@@ -186,7 +186,10 @@ describe("createSurveyByJson exam handling", () => {
     );
     assert.equal(captured.body.atype, 6);
     const sentLines = captured.body.surveydatajson.split("\n");
-    assert.equal(JSON.parse(sentLines[1]).isquiz, "1");
+    const examLine = JSON.parse(sentLines[1]);
+    assert.equal(examLine.isquiz, "1");
+    assert.deepEqual(examLine.correctselect, ["对"]);
+    assert.equal(examLine.quizscore, "5");
   });
 
   it("preserves user-supplied atype even when exam qtypes present", async () => {

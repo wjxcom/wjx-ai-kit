@@ -44,7 +44,7 @@ export function checkLatestVersion(): void {
       if (!latest || typeof latest !== "string") return;
       if (compareSemver(current, latest) < 0) {
         console.error(
-          `[wjx-mcp-server] 新版本可用：${latest}（当前 ${current}）。请重启 MCP 客户端以加载新版；config 已使用 npx -y wjx-mcp-server@latest 时无需手动清缓存。设置 WJX_DISABLE_VERSION_CHECK=1 可关闭此提示。`,
+          `[wjx-mcp-server] 新版本可用：${latest}（当前 ${current}）。请从 GitHub 获取最新源码并重新构建，然后重启 MCP 客户端。设置 WJX_DISABLE_VERSION_CHECK=1 可关闭此提示。`,
         );
       }
     })

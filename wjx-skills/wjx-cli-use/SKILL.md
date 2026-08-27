@@ -31,6 +31,10 @@ wjx-cli 是问卷星 OpenAPI 的命令行工具。命令格式：`wjx <模块> <
 
 只使用 [references/question-types.md](references/question-types.md) 列出的 JSONL `qtype`，不要自行发明题型名。地区题使用 `qtype:"多级下拉"` 并提供 `leveldata`。若当前 JSONL 格式确实无法表达用户要求，明确说明限制和替代方案，继续创建其余题目，**不要**反复尝试或拆分多个问卷。
 
+### 规则 3.1：用户体系只允许兼容维护
+
+`user-system` 命令和 `sso user-system-url` 仍可发现，但已标记为 Deprecated，仅用于已有用户体系的历史维护。`atype=8` 不能通过创建命令新建；新项目不要主动使用用户体系工作流，只有用户明确提供已有 `sysid` 并要求维护时才执行，并先说明兼容风险。
+
 **NPS 量表必须遵守以下强约束**：`select` 必填，且必须严格是从 `"0"` 到 `"10"` 的 11 个字符串，不能省略、缩短、改成数字或用其他字段代替。以下是唯一规范 JSONL 示例，生成 NPS 题时按此结构改写题干和端点文案：
 
 ```jsonl
@@ -217,7 +221,7 @@ wjx doctor
 | `admin` | add, delete, restore | 管理员管理 |
 | `tag` | list, add, modify, delete | 标签管理 |
 | `account` | list, add, modify, delete, restore | 子账号管理 |
-| `sso` | subaccount-url, user-system-url, partner-url | SSO 链接生成 |
+| `sso` | subaccount-url, user-system-url（兼容/已过时）, partner-url | SSO 链接生成 |
 | `analytics` | decode, nps, csat, anomalies, compare, decode-push | 本地分析（无需 API Key） |
 | `init` / `doctor` / `whoami` | — | 配置 / 诊断 / 验证 |
 

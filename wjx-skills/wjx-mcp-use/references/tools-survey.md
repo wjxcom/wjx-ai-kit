@@ -16,17 +16,17 @@
 | `compress_img` | boolean | 否 | 是否压缩图片 |
 | `is_string` | boolean | 否 | 是否使用原始 activity string 格式 |
 
-## create_survey_by_json — 用 JSON 创建问卷（推荐）
+## create_survey_by_json — 用 JSONL 创建问卷（推荐）
 
-**首选方式**：支持 70+ 题型，覆盖全部 q_type/q_subtype 编码。配合 prompt 模板（generate-survey-json、generate-exam-json、generate-form-json）使用效果最佳。
+**首选方式**：支持 70+ 题型。`jsonl` 是 MCP 工具的唯一题目输入；不要传 `questions` 数组或旧的 `q_type/q_subtype` 创建结构。配合 prompt 模板（generate-survey-json、generate-exam-json、generate-form-json）使用效果最佳。
 
 | 参数 | 类型 | 必填 | 说明 |
 |------|------|------|------|
-| `title` | string | 是 | 问卷标题 |
-| `questions` | array | 是 | 题目 JSON 数组（格式同 create_survey 的 questions 参数） |
+| `jsonl` | string | 是 | JSONL 字符串；首行为 `qtype:"问卷基础信息"`，后续每行一个题目对象 |
+| `title` | string | 否 | 覆盖 JSONL 首行中的问卷标题 |
 | `atype` | number | 否 | 问卷类型：1=调查(默认), 2=测评, 3=投票, 6=考试, 7=表单 |
-| `desc` | string | 否 | 问卷描述 |
 | `publish` | boolean | 否 | 是否立即发布（默认 false） |
+| `optional_titles` | string[] | 否 | 允许设为选填的题目标题；其余题目默认必答 |
 | `creater` | string | 否 | 创建者子账号用户名 |
 
 ### 常见题型 qtype 片段
@@ -84,7 +84,7 @@
 | `is_xingbiao` | boolean | 否 | 只获取星标问卷 |
 | `query_all` | boolean | 否 | 获取企业所有问卷 |
 | `verify_status` | number | 否 | 审核状态筛选 |
-| `time_type` | number | 否 | 时间查询类型（0-2） |
+| `time_type` | number | 否 | 时间查询类型：0=不按时间查询（默认），1=按问卷开始时间，2=按问卷创建时间 |
 | `begin_time` | number | 否 | 起始时间（毫秒时间戳） |
 | `end_time` | number | 否 | 结束时间（毫秒时间戳） |
 

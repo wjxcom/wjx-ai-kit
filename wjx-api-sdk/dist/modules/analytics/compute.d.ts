@@ -3,9 +3,12 @@ export declare function decodeResponses(submitdata: string): DecodeResponsesResu
 export declare function calculateNps(scores: number[]): NpsResult;
 export declare function calculateCsat(scores: number[], scaleType?: "5-point" | "7-point"): CsatResult;
 interface ResponseRecord {
-    id: string | number;
-    answers?: (string | number)[];
-    duration_seconds?: number;
+    id?: string | number;
+    jid?: string | number;
+    answers?: unknown;
+    submitdata?: string;
+    duration_seconds?: number | string;
+    inputcosttime?: number | string;
     ip?: string;
     [key: string]: unknown;
 }

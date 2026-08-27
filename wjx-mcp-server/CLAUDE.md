@@ -13,7 +13,7 @@ npm run build          # tsc -p tsconfig.json -> dist/
 npm test               # build + run all tests (unit + integration)
 npm run test:unit      # build + unit tests only (__tests__/*.test.mjs)
 npm run test:integration  # build + integration tests only (tests/*.test.mjs)
-node --test __tests__/sign.test.mjs  # run a single test file (must build first)
+node --test __tests__/helpers.test.mjs  # run a single test file (must build first)
 npm start              # run server in stdio mode
 npm run start:http     # run server in HTTP mode
 ```
@@ -26,23 +26,22 @@ Tests use Node.js built-in test runner (`node:test`). Test files are `.test.mjs`
 `src/index.ts` (loads .env, selects transport) -> `src/server.ts` (`createServer()` registers all modules) -> stdio or HTTP transport
 
 ### Module Pattern (src/modules/<name>/)
-Each of the 7 modules (survey, response, contacts, sso, user-system, multi-user, analytics) follows a strict 3-file convention:
+Each of the 7 modules (survey, response, contacts, sso, user-system, multi-user, analytics) follows a strict 3-file convention. `user-system` is a legacy compatibility module: its six tools remain registered for existing systems but are marked Deprecated, and `atype=8` cannot be created through the API.
 - **types.ts** — Input/output interfaces
 - **client.ts** — Business logic calling `callWjxApi()`. Accepts optional credentials/fetchImpl/timestamp params for testability.
 - **tools.ts** — Exports `registerXxxTools(server)` that registers MCP tools with Zod input schemas
 
 ### Core Layer (src/core/)
-- **api-client.ts** — `callWjxApi()`: traceID generation, signature, POST, retry with exponential backoff (max 2 retries, 0 for writes), 15s timeout
-- **sign.ts** — SHA1 sorted-key signature algorithm (sort keys alphabetically, concat non-empty values, append appKey, SHA1)
+- **api-client.ts** — `callWjxApi()`: trace ID generation, Bearer API-key POST, retry with exponential backoff (max 2 retries for reads, 0 for writes), and timeout handling
 - **constants.ts** — API URLs, Action enum, timeout/retry defaults
 - **types.ts** — Shared types (WjxCredentials, WjxApiResponse, etc.)
 
 ### Resources & Prompts
 - `src/resources/` — 8 resources registered via `wjx://reference/<name>` URI scheme
-- `src/prompts/` — 22 prompts (4 general + 6 analysis + 2 operational + 7 survey generation + 4 JSON survey generation)
+- `src/prompts/` — 22 prompts (6 general/operational, 6 analysis, 7 text-survey generation, and 3 JSON-survey generation)
 
 ### Backward Compat Barrel Files
-Root-level `src/wjx-client.ts`, `src/sign.ts`, `src/prompts.ts`, `src/resources.ts` are re-exports from modular locations. Don't add new code here.
+Root-level `src/wjx-client.ts`, `src/prompts.ts`, and `src/resources.ts` are re-exports from modular locations. Don't add new code here.
 
 ## Tool Registration Convention
 

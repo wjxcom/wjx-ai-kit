@@ -16,6 +16,10 @@
     "wjx-mcp-server",
     "wjx-cli"
   ],
+  "scripts": {
+    "docs:build": "node .claude/scripts/build-docs-html.js",
+    "docs:check": "node .claude/scripts/check-docs.js"
+  },
   "devDependencies": {
     "marked": "^18.0.2"
   }
