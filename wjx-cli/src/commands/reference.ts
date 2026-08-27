@@ -1,6 +1,7 @@
 import { Command } from "commander";
 import { LABEL_TO_TYPE, TYPE_MAP } from "wjx-api-sdk";
 import { CliError, handleError } from "../lib/errors.js";
+import { formatOutput } from "../lib/output.js";
 
 // ─── Generate DSL label reference from the authoritative LABEL_TO_TYPE ───
 
@@ -443,7 +444,7 @@ export function registerReferenceCommands(program: Command): void {
     .argument("[topic]", "主题：dsl, question-types, survey, response, analytics（默认列出所有主题）")
     .action((topic?: string) => {
       if (!topic) {
-        console.log(TOPICS["topics"].content);
+        formatOutput(TOPICS["topics"].content, program.opts());
         return;
       }
 
@@ -452,6 +453,6 @@ export function registerReferenceCommands(program: Command): void {
         handleError(new CliError("INPUT_ERROR", `未知主题: ${topic}\n可用主题: ${Object.keys(TOPICS).filter(k => k !== "topics").join(", ")}`));
       }
 
-      console.log(entry.content);
+      formatOutput(entry.content, program.opts());
     });
 }

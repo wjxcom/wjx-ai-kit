@@ -3,6 +3,7 @@ import { execSync } from "node:child_process";
 import { createInterface } from "node:readline/promises";
 import { stdin, stderr } from "node:process";
 import { updateSkill, getVersion } from "../lib/install-skill.js";
+import { formatOutput } from "../lib/output.js";
 
 export function registerUpdateCommands(program: Command): void {
   program
@@ -32,11 +33,11 @@ export function registerUpdateCommands(program: Command): void {
             if (globalError) stderr.write(`  全局更新失败: ${globalError}\n`);
             stderr.write(`${msg}\n`);
           } else {
-            process.stdout.write(JSON.stringify({
+            formatOutput({
               status: "error",
               oldVersion,
               message: msg,
-            }) + "\n");
+            }, program.opts());
           }
           process.exitCode = 1;
           return;
@@ -49,11 +50,11 @@ export function registerUpdateCommands(program: Command): void {
       const newVersion = getVersion();
 
       if (silent) {
-        process.stdout.write(JSON.stringify({
+        formatOutput({
           status: "updated",
           oldVersion,
           newVersion,
-        }) + "\n");
+        }, program.opts());
         return;
       }
 

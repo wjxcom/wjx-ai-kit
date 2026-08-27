@@ -3,6 +3,7 @@ import { stderr } from "node:process";
 import { installSkill, updateSkill } from "../lib/install-skill.js";
 import { installPptSkill, updatePptSkill } from "../lib/install-ppt-skill.js";
 import { resolveInstallRoot } from "../lib/install-root.js";
+import { formatOutput } from "../lib/output.js";
 
 interface SkillCmdOpts {
   force?: boolean;
@@ -33,7 +34,7 @@ export function registerSkillCommands(program: Command): void {
         rootSource: source,
       });
       if (opts.silent) {
-        process.stdout.write(JSON.stringify(result) + "\n");
+        formatOutput(result, program.opts());
       } else if (result.status === "error") {
         stderr.write(`${result.message}\n`);
       }
@@ -54,7 +55,7 @@ export function registerSkillCommands(program: Command): void {
         rootSource: source,
       });
       if (opts.silent) {
-        process.stdout.write(JSON.stringify(result) + "\n");
+        formatOutput(result, program.opts());
       } else if (result.status === "error") {
         stderr.write(`${result.message}\n`);
       }
@@ -79,7 +80,7 @@ export function registerSkillCommands(program: Command): void {
         rootSource: source,
       });
       if (opts.silent) {
-        process.stdout.write(JSON.stringify(result) + "\n");
+        formatOutput(result, program.opts());
       } else if (result.status === "error") {
         stderr.write(`${result.message}\n`);
       }
@@ -102,7 +103,7 @@ export function registerSkillCommands(program: Command): void {
         rootSource: source,
       });
       if (opts.silent) {
-        process.stdout.write(JSON.stringify(result) + "\n");
+        formatOutput(result, program.opts());
       } else if (result.status === "error") {
         stderr.write(`${result.message}\n`);
       }
