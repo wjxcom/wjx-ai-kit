@@ -3,7 +3,7 @@ import { createRequire } from "node:module";
 import { listSurveys } from "wjx-api-sdk";
 import { getCredentials } from "../lib/auth.js";
 import { formatOutput } from "../lib/output.js";
-import { handleError } from "../lib/errors.js";
+import { ensureApiSuccess, handleError } from "../lib/errors.js";
 import { loadConfig, CONFIG_PATH } from "../lib/config.js";
 import { maskApiKey } from "../lib/mask.js";
 import { resolveProfile } from "../lib/profiles.js";
@@ -25,11 +25,7 @@ export function registerDiagnosticCommands(program: Command): void {
           creds,
         );
 
-        if (result.result === false) {
-          // API Key invalid or API error
-          formatOutput({ authenticated: false, error: result.errormsg || "ApiKey 无效" }, program.opts());
-          process.exit(1);
-        }
+        ensureApiSuccess(result);
 
         // Extract useful info from the response
         const data = result as unknown as Record<string, unknown>;

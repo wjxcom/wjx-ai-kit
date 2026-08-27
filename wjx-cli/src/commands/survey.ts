@@ -22,7 +22,7 @@ import {
   Action,
 } from "wjx-api-sdk";
 import { enrichSurveyListOutput, formatOutput } from "../lib/output.js";
-import { CliError, handleError } from "../lib/errors.js";
+import { CliError, ensureApiSuccess, handleError } from "../lib/errors.js";
 import { getCredentials } from "../lib/auth.js";
 import { executeCommand, strictInt, requireField, getMerged, createCapturingFetch, printDryRunPreview, ensureJsonString, ensureStringArray } from "../lib/command-helpers.js";
 import { executeRuntimeCommand } from "../lib/runtime/executor.js";
@@ -77,7 +77,7 @@ export function registerSurveyCommands(program: Command): void {
             ...Object.fromEntries(Object.entries(input).filter(([, value]) => value !== undefined)),
           },
         })],
-        execute: (input, credentials) => listSurveys(input, credentials),
+        execute: (input, credentials, requestOptions) => listSurveys(input, credentials, undefined, requestOptions),
         transformResult: enrichSurveyListOutput,
       });
     });
@@ -200,9 +200,7 @@ export function registerSurveyCommands(program: Command): void {
           creater: merged.creater as string | undefined,
         }, creds);
 
-        if (result.result === false) {
-          throw new CliError("API_ERROR", result.errormsg || "API request failed");
-        }
+        ensureApiSuccess(result);
 
         formatOutput(result, globalOpts);
       } catch (e) {
@@ -272,9 +270,7 @@ export function registerSurveyCommands(program: Command): void {
           creater: merged.creater as string | undefined,
         }, creds);
 
-        if (result.result === false) {
-          throw new CliError("API_ERROR", result.errormsg || "API request failed");
-        }
+        ensureApiSuccess(result);
 
         formatOutput(result, globalOpts);
       } catch (e) {
@@ -430,9 +426,7 @@ export function registerSurveyCommands(program: Command): void {
 
         const result = await getSurvey({ vid: merged.vid as number }, creds);
 
-        if (result.result === false) {
-          throw new CliError("API_ERROR", result.errormsg || "API request failed");
-        }
+        ensureApiSuccess(result);
 
         const data = (result as unknown as Record<string, unknown>).data;
         if (!data) {

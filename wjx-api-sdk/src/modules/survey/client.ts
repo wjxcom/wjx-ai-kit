@@ -1,4 +1,4 @@
-import type { WjxApiResponse, WjxCredentials, FetchLike } from "../../core/types.js";
+import type { WjxApiResponse, WjxCredentials, FetchLike, RequestOverrides } from "../../core/types.js";
 import { Action, LONG_TIMEOUT_MS } from "../../core/constants.js";
 import { callWjxApi, getWjxCredentials, assignDefined } from "../../core/api-client.js";
 export { textToSurvey, parsedQuestionsToWire } from "./text-to-survey.js";
@@ -160,6 +160,7 @@ export async function getSurvey<T = unknown>(
   input: GetSurveyInput,
   credentials: WjxCredentials = getWjxCredentials(),
   fetchImpl: FetchLike = fetch,
+  requestOptions?: RequestOverrides,
 ): Promise<WjxApiResponse<T>> {
   const params: Record<string, unknown> = {
     action: Action.GET_SURVEY,
@@ -173,13 +174,14 @@ export async function getSurvey<T = unknown>(
   if (input.get_tags !== undefined) params.get_tags = input.get_tags;
   if (input.showtitle !== undefined) params.showtitle = input.showtitle;
 
-  return callWjxApi<T>(params, { credentials, fetchImpl });
+  return callWjxApi<T>(params, { ...requestOptions, credentials, fetchImpl });
 }
 
 export async function listSurveys<T = unknown>(
   input: ListSurveysInput = {},
   credentials: WjxCredentials = getWjxCredentials(),
   fetchImpl: FetchLike = fetch,
+  requestOptions?: RequestOverrides,
 ): Promise<WjxApiResponse<T>> {
   const params: Record<string, unknown> = {
     action: Action.LIST_SURVEYS,
@@ -199,7 +201,7 @@ export async function listSurveys<T = unknown>(
   if (input.begin_time !== undefined) params.begin_time = input.begin_time;
   if (input.end_time !== undefined) params.end_time = input.end_time;
 
-  return callWjxApi<T>(params, { credentials, fetchImpl });
+  return callWjxApi<T>(params, { ...requestOptions, credentials, fetchImpl });
 }
 
 export async function updateSurveyStatus<T = unknown>(

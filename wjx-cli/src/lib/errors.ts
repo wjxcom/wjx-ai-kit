@@ -1,4 +1,5 @@
 export type ErrorCode = "API_ERROR" | "INPUT_ERROR" | "AUTH_ERROR" | "CONFIRMATION_REQUIRED" | "POLICY_DENIED";
+import type { WjxApiResponse } from "wjx-api-sdk";
 
 const EXIT_CODES: Record<ErrorCode, number> = {
   API_ERROR: 1,
@@ -75,4 +76,13 @@ function classifyError(err: unknown): CliError {
 export function handleError(err: unknown): never {
   const cliErr = classifyError(err);
   stderrJson(cliErr.code, cliErr.message, cliErr.details);
+}
+
+/** Convert a WJX response failure without dropping upstream diagnostics. */
+export function ensureApiSuccess<T>(response: WjxApiResponse<T>): asserts response is Extract<WjxApiResponse<T>, { result: true }> {
+  if (response.result !== false) return;
+  const details: ErrorDetails = {};
+  if (response.errorcode !== undefined) details.errorcode = response.errorcode;
+  if (response.traceid !== undefined) details.traceid = response.traceid;
+  throw new CliError("API_ERROR", response.errormsg || "API 请求失败", details);
 }

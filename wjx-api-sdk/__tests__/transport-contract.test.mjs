@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { callWjxApi } from "../dist/index.js";
+import { callWjxApi, listSurveys, submitResponse } from "../dist/index.js";
 
 test("SDK accepts additive retryBudget and traceId options", async () => {
   let calls = 0;
@@ -9,4 +9,17 @@ test("SDK accepts additive retryBudget and traceId options", async () => {
     fetchImpl: async (url) => { calls += 1; assert.match(String(url), /trace-test/); return new Response(JSON.stringify({ result: true, data: { ok: true } })); },
   });
   assert.equal(calls, 1); assert.equal(response.result, true);
+});
+
+test("module clients forward additive transport overrides without changing defaults", async () => {
+  const urls = [];
+  const fetchImpl = async (url) => {
+    urls.push(String(url));
+    return new Response(JSON.stringify({ result: true, data: {} }));
+  };
+  await listSurveys({}, { apiKey: "key" }, fetchImpl, { retryBudget: 0, timeoutMs: 1234, traceId: "list-trace" });
+  await submitResponse({ vid: 7, inputcosttime: 1, submitdata: "1$yes" }, { apiKey: "key" }, fetchImpl, { traceId: "submit-trace" });
+  assert.equal(urls.length, 2);
+  assert.match(urls[0], /traceid=list-trace/);
+  assert.match(urls[1], /traceid=submit-trace/);
 });

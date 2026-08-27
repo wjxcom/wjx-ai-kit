@@ -1,4 +1,4 @@
-import type { WjxApiResponse, WjxCredentials, FetchLike } from "../../core/types.js";
+import type { WjxApiResponse, WjxCredentials, FetchLike, RequestOverrides } from "../../core/types.js";
 import { Action, LONG_TIMEOUT_MS } from "../../core/constants.js";
 import { callWjxApi, getWjxCredentials, assignDefined } from "../../core/api-client.js";
 import type {
@@ -84,6 +84,7 @@ export async function submitResponse<T = unknown>(
   input: SubmitResponseInput,
   credentials: WjxCredentials = getWjxCredentials(),
   fetchImpl: FetchLike = fetch,
+  requestOptions?: RequestOverrides,
 ): Promise<WjxApiResponse<T>> {
   const params: Record<string, unknown> = {
     action: Action.SUBMIT_RESPONSE,
@@ -93,7 +94,7 @@ export async function submitResponse<T = unknown>(
   };
   assignDefined(params, input, ["udsid", "sojumpparm", "submittime", "jpmversion"]);
 
-  return callWjxApi<T>(params, { credentials, fetchImpl, maxRetries: 0 });
+  return callWjxApi<T>(params, { ...requestOptions, credentials, fetchImpl, maxRetries: 0 });
 }
 
 export async function getFileLinks<T = unknown>(

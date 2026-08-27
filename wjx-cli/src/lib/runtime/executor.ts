@@ -1,7 +1,7 @@
 import type { Command } from "commander";
-import type { WjxCredentials, WjxApiResponse } from "wjx-api-sdk";
+import type { WjxCredentials, WjxApiResponse, RequestOverrides } from "wjx-api-sdk";
 import { getCredentials } from "../auth.js";
-import { handleError } from "../errors.js";
+import { ensureApiSuccess, handleError } from "../errors.js";
 import { formatOutput } from "../output.js";
 import { getMerged } from "../command-helpers.js";
 import { normalizeInput } from "./input.js";
@@ -17,8 +17,8 @@ interface RuntimeCommandSpec {
   validate?: (input: Record<string, unknown>) => void;
   /** Pure request projection. It must not require credentials or a transport. */
   buildPlans: (input: Record<string, unknown>) => RequestPlan[];
-  prepareExecute?: (input: Record<string, unknown>, credentials: WjxCredentials) => Promise<Record<string, unknown>>;
-  execute: (input: Record<string, unknown>, credentials: WjxCredentials) => Promise<WjxApiResponse<unknown>>;
+  prepareExecute?: (input: Record<string, unknown>, credentials: WjxCredentials, requestOptions?: RequestOverrides) => Promise<Record<string, unknown>>;
+  execute: (input: Record<string, unknown>, credentials: WjxCredentials, requestOptions?: RequestOverrides) => Promise<WjxApiResponse<unknown>>;
   transformResult?: (result: WjxApiResponse<unknown>) => unknown;
   context?: RuntimeContext;
 }
@@ -67,12 +67,10 @@ export async function executeRuntimeCommand(
     });
 
     const finalInput = spec.prepareExecute
-      ? await spec.prepareExecute(input, credentials)
+      ? await spec.prepareExecute(input, credentials, context.requestOptions)
       : input;
-    const result = await spec.execute(finalInput, credentials);
-    if (result.result === false) {
-      throw new Error(result.errormsg || "API 请求失败");
-    }
+    const result = await spec.execute(finalInput, credentials, context.requestOptions);
+    ensureApiSuccess(result);
     formatOutput(spec.transformResult ? spec.transformResult(result) : result, program.opts());
   } catch (error) {
     handleError(error);

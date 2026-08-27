@@ -6,6 +6,7 @@ export interface WjxCredentials {
 export interface WjxApiSuccess<T = unknown> {
   result: true;
   data: T;
+  traceid?: string;
 }
 
 export interface WjxApiFailure {
@@ -13,6 +14,7 @@ export interface WjxApiFailure {
   errormsg: string;
   errorcode?: number;
   data?: unknown;
+  traceid?: string;
 }
 
 export type WjxApiResponse<T = unknown> = WjxApiSuccess<T> | WjxApiFailure;
@@ -37,3 +39,6 @@ export interface RequestOptions {
   traceId?: string;
   logger?: Logger;
 }
+
+/** Per-call transport overrides for module convenience functions. */
+export type RequestOverrides = Omit<RequestOptions, "credentials" | "fetchImpl">;

@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { execFile } from "node:child_process";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { startFixture } from "./fixtures/http-fixture.mjs";
 
 const ROOT = fileURLToPath(new URL("..", import.meta.url));
 const CLI = resolve(ROOT, "dist", "index.js");
@@ -38,4 +39,23 @@ test("errors are ProblemEnvelope on stderr and stdout remains empty", async () =
   const parsed = JSON.parse(result.stderr);
   assert.equal(parsed.ok, false);
   assert.equal(parsed.error.type, "validation");
+});
+
+test("API response failures never become successful stdout envelopes", async () => {
+  const fixture = await startFixture({
+    response: { result: false, errormsg: "无效凭据", errorcode: 40102, traceid: "trace-whoami" },
+    env: { WJX_API_KEY: "bad-key" },
+  });
+  try {
+    const result = await fixture.run(["whoami"]);
+    assert.equal(result.exitCode, 1);
+    assert.equal(result.stdout, "");
+    const problem = JSON.parse(result.stderr);
+    assert.equal(problem.ok, false);
+    assert.equal(problem.error.code, "API_ERROR");
+    assert.equal(problem.error.errorcode, 40102);
+    assert.equal(problem.error.traceid, "trace-whoami");
+  } finally {
+    await fixture.close();
+  }
 });

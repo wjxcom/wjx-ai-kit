@@ -15,7 +15,7 @@ import {
   Action,
 } from "wjx-api-sdk";
 import type { WjxCredentials } from "wjx-api-sdk";
-import { CliError } from "../lib/errors.js";
+import { CliError, ensureApiSuccess } from "../lib/errors.js";
 import { executeCommand, strictInt, requireField, ensureJsonString, getMerged, createCapturingFetch, printDryRunPreview } from "../lib/command-helpers.js";
 import { getCredentials } from "../lib/auth.js";
 import { handleError } from "../lib/errors.js";
@@ -203,7 +203,7 @@ export function registerResponseCommands(program: Command): void {
           },
           unresolved: input.autoVersion && input.jpmversion === undefined ? ["jpmversion"] : undefined,
         })],
-        prepareExecute: async (input, creds) => {
+        prepareExecute: async (input, creds, requestOptions) => {
           const explicitVersion = input.jpmversion;
           const autoVersion = (input as Record<string, unknown>).autoVersion !== false;
           // 仅在未显式传 jpmversion 且未关闭自动注入时才请求 getSurvey
@@ -214,6 +214,8 @@ export function registerResponseCommands(program: Command): void {
               survey = await getSurvey(
                 { vid: input.vid as number },
                 creds as WjxCredentials,
+                undefined,
+                requestOptions,
               );
             } catch {
               // 拿不到结构不阻塞提交
@@ -239,10 +241,10 @@ export function registerResponseCommands(program: Command): void {
           }
           return result;
         },
-        execute: (input, credentials) => {
+        execute: (input, credentials, requestOptions) => {
           const finalInput = { ...input };
           delete finalInput.autoVersion;
-          return submitResponse(finalInput as unknown as Parameters<typeof submitResponse>[0], credentials);
+          return submitResponse(finalInput as unknown as Parameters<typeof submitResponse>[0], credentials, undefined, requestOptions);
         },
       });
     });
@@ -362,9 +364,7 @@ export function registerResponseCommands(program: Command): void {
           { vid: merged.vid as number, get_questions: true, get_items: true },
           creds as WjxCredentials,
         );
-        if (survey.result === false) {
-          throw new CliError("API_ERROR", survey.errormsg || "获取问卷结构失败");
-        }
+        ensureApiSuccess(survey);
         const surveyData = survey.data as {
           title?: string;
           questions?: Array<{

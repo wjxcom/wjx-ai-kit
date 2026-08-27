@@ -114,3 +114,60 @@ test("all declared destructive shortcuts require confirmation", async () => {
     await fixture.close();
   }
 });
+
+test("raw API applies catalog risk confirmation before transport", async () => {
+  const fixture = await startFixture({ env: { WJX_API_KEY: "risk-test-key" } });
+  try {
+    const result = await fixture.run([
+      "api", "--service", "default", "--action", "survey.delete",
+      "--body", JSON.stringify({ vid: 7, username: "alice" }),
+    ]);
+    assert.notEqual(result.exitCode, 0);
+    assert.equal(fixture.requests().length, 0);
+    const problem = parseProblem(result);
+    assert.equal(problem.code, "CONFIRMATION_REQUIRED");
+    assert.equal(problem.command, "survey.delete");
+    assert.equal(problem.risk, "high-risk-write");
+  } finally {
+    await fixture.close();
+  }
+});
+
+test("raw API preserves upstream error diagnostics", async () => {
+  const fixture = await startFixture({
+    response: { result: false, errormsg: "拒绝删除", errorcode: 40301, traceid: "trace-raw" },
+    env: { WJX_API_KEY: "risk-test-key" },
+  });
+  try {
+    const result = await fixture.run([
+      "--yes", "api", "--service", "default", "--action", "survey.delete",
+      "--body", JSON.stringify({ vid: 7, username: "alice" }),
+    ]);
+    assert.equal(result.exitCode, 1);
+    assert.equal(fixture.requests().length, 1);
+    const problem = parseProblem(result);
+    assert.equal(problem.code, "API_ERROR");
+    assert.equal(problem.errorcode, 40301);
+    assert.equal(problem.traceid, "trace-raw");
+  } finally {
+    await fixture.close();
+  }
+});
+
+test("raw API accepts params and body from stdin", async () => {
+  const fixture = await startFixture({ env: { WJX_API_KEY: "risk-test-key" } });
+  try {
+    const result = await fixture.run(
+      ["api", "--service", "default", "--action", "survey.list", "--stdin"],
+      { input: JSON.stringify({ params: { page_index: 2 }, body: { page_size: 5 } }) },
+    );
+    assert.equal(result.exitCode, 0);
+    const [request] = fixture.requests();
+    const payload = JSON.parse(request.body);
+    assert.equal(payload.page_index, 2);
+    assert.equal(payload.page_size, 5);
+    assert.equal(payload.action, "1000002");
+  } finally {
+    await fixture.close();
+  }
+});

@@ -23,6 +23,7 @@ export type {
   WjxApiResponse,
   FetchLike,
   RequestOptions,
+  RequestOverrides,
   Logger,
 } from "./core/types.js";
 export {

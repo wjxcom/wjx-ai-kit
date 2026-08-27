@@ -2,7 +2,7 @@ import { Command } from "commander";
 import type { WjxApiResponse, FetchLike } from "wjx-api-sdk";
 import { getCredentials } from "./auth.js";
 import { formatOutput } from "./output.js";
-import { CliError, handleError } from "./errors.js";
+import { CliError, ensureApiSuccess, handleError } from "./errors.js";
 import { mergeStdinWithOpts } from "./stdin.js";
 import { maskAuthHeader } from "./mask.js";
 import { getCommandMetadata, getCommandPath } from "./command-metadata.js";
@@ -206,12 +206,7 @@ export async function executeCommand(
     const result = await sdkFn(finalInput, creds);
 
     // P0 fix: detect SDK API failure response
-    if (result.result === false) {
-      throw new CliError(
-        "API_ERROR",
-        result.errormsg || "API 请求失败",
-      );
-    }
+    ensureApiSuccess(result);
 
     const output = opts.transformResult ? opts.transformResult(result) : result;
     formatOutput(output, globalOpts);
