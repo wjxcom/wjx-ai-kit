@@ -38,7 +38,9 @@ program
   .option("--json", "JSON 输出（默认）")
   .option("--table", "表格输出")
   .option("--stdin", "从 stdin 读取 JSON 参数")
-  .option("--dry-run", "预览 API 请求（不实际发送）");
+  .option("--dry-run", "预览 API 请求（不实际发送）")
+  .option("--yes", "确认执行高风险写操作")
+  .option("--non-interactive", "禁止交互式确认；高风险操作必须显式带 --yes");
 
 // Prevent Commander from calling process.exit on errors — we handle it ourselves
 program.exitOverride();

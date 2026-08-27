@@ -7,6 +7,8 @@ import { getMerged } from "../command-helpers.js";
 import { normalizeInput } from "./input.js";
 import { renderDryRun } from "./dry-run.js";
 import type { RequestPlan } from "./types.js";
+import { getCommandMetadata, getCommandPath } from "../command-metadata.js";
+import { ensureConfirmation } from "./confirmation.js";
 
 interface RuntimeCommandSpec {
   normalize?: (context: { values: Record<string, unknown>; source: Record<string, string> }) => Record<string, unknown>;
@@ -30,6 +32,8 @@ export async function executeRuntimeCommand(
       ? spec.normalize({ values: normalized.values, source: normalized.source })
       : normalized.values;
     spec.validate?.(input);
+    const command = getCommandPath(actionCommand);
+    const metadata = getCommandMetadata(command);
     const credentials = getCredentials(program.opts());
     const plans = spec.buildPlans(input, credentials);
 
@@ -40,6 +44,17 @@ export async function executeRuntimeCommand(
       process.stderr.write(JSON.stringify({ dry_run: true, ...request }, null, 2) + "\n");
       return;
     }
+
+    await ensureConfirmation({
+      command,
+      metadata,
+      input,
+      options: {
+        yes: program.opts().yes === true,
+        nonInteractive: program.opts().nonInteractive === true,
+        dryRun: false,
+      },
+    });
 
     const finalInput = spec.prepareExecute
       ? await spec.prepareExecute(input, credentials)

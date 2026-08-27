@@ -1,30 +1,36 @@
-export type ErrorCode = "API_ERROR" | "INPUT_ERROR" | "AUTH_ERROR";
+export type ErrorCode = "API_ERROR" | "INPUT_ERROR" | "AUTH_ERROR" | "CONFIRMATION_REQUIRED" | "POLICY_DENIED";
 
 const EXIT_CODES: Record<ErrorCode, number> = {
   API_ERROR: 1,
   AUTH_ERROR: 1,
   INPUT_ERROR: 2,
+  CONFIRMATION_REQUIRED: 3,
+  POLICY_DENIED: 4,
 };
+
+export type ErrorDetails = Record<string, unknown>;
 
 export class CliError extends Error {
   readonly code: ErrorCode;
   readonly exitCode: number;
+  readonly details?: ErrorDetails;
 
-  constructor(code: ErrorCode, message: string) {
+  constructor(code: ErrorCode, message: string, details?: ErrorDetails) {
     super(message);
     this.name = "CliError";
     this.code = code;
     this.exitCode = EXIT_CODES[code];
+    this.details = details;
   }
 }
 
 /**
  * Write structured JSON error to stderr and exit.
  */
-export function stderrJson(code: ErrorCode, message: string): never {
+export function stderrJson(code: ErrorCode, message: string, details?: ErrorDetails): never {
   const exitCode = EXIT_CODES[code];
   process.stderr.write(
-    JSON.stringify({ error: true, message, code, exitCode }) + "\n",
+    JSON.stringify({ error: true, message, code, exitCode, ...(details ?? {}) }) + "\n",
   );
   process.exit(exitCode);
 }
@@ -66,5 +72,5 @@ function classifyError(err: unknown): CliError {
  */
 export function handleError(err: unknown): never {
   const cliErr = classifyError(err);
-  stderrJson(cliErr.code, cliErr.message);
+  stderrJson(cliErr.code, cliErr.message, cliErr.details);
 }

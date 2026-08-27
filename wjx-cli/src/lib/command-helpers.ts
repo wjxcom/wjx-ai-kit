@@ -5,6 +5,8 @@ import { formatOutput } from "./output.js";
 import { CliError, handleError } from "./errors.js";
 import { mergeStdinWithOpts } from "./stdin.js";
 import { maskAuthHeader } from "./mask.js";
+import { getCommandMetadata, getCommandPath } from "./command-metadata.js";
+import { ensureConfirmation } from "./runtime/confirmation.js";
 
 /**
  * Strict integer parser. Rejects garbage like "123abc".
@@ -163,6 +165,17 @@ export async function executeCommand(
       formatOutput(result, globalOpts);
       return;
     }
+
+    await ensureConfirmation({
+      command: getCommandPath(actionCommand),
+      metadata: getCommandMetadata(getCommandPath(actionCommand)),
+      input,
+      options: {
+        yes: globalOpts.yes === true,
+        nonInteractive: globalOpts.nonInteractive === true,
+        dryRun: globalOpts.dryRun === true,
+      },
+    });
 
     const creds = getCredentials(globalOpts);
 
