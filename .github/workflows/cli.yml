@@ -4,11 +4,14 @@ on:
   pull_request:
 jobs:
   checks:
+    strategy:
+      matrix:
+        node-version: [20, 22]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
-        with: { node-version: 22, cache: npm }
+        with: { node-version: ${{ matrix.node-version }}, cache: npm }
       - run: npm ci
       - run: npm --workspace=wjx-api-sdk run build
       - run: npm --workspace=wjx-api-sdk test

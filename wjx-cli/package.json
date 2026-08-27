@@ -25,7 +25,7 @@
     "sync-bundled:check": "node scripts/sync-bundled.mjs --check",
     "protocol:check": "node scripts/check-protocol-contract.mjs",
     "release:check": "npm run sync-bundled:check && npm run build && npm run manifest:check && npm run protocol:check && node scripts/check-release-artifacts.mjs",
-    "prepublishOnly": "npm run sync-bundled && npm run build && npm run manifest:check && node scripts/check-release-artifacts.mjs"
+    "prepublishOnly": "npm run sync-bundled && npm run release:check"
   },
   "keywords": [
     "wjx",

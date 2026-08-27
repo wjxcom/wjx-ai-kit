@@ -13,6 +13,8 @@ import { buildRequestPlan } from "../dist/lib/runtime/request-plan.js";
 import { renderDryRun } from "../dist/lib/runtime/dry-run.js";
 import { Command } from "commander";
 import { executeCommand } from "../dist/lib/command-helpers.js";
+import { executeRuntimeCommand } from "../dist/lib/runtime/executor.js";
+import { createRuntimeContext } from "../dist/lib/runtime/context.js";
 
 const PACKAGE_ROOT = fileURLToPath(new URL("..", import.meta.url));
 const CLI = resolve(PACKAGE_ROOT, "dist", "index.js");
@@ -134,6 +136,25 @@ test("legacy executor skips execution-only input transforms during dry-run", asy
   );
 
   assert.equal(transformCalled, false);
+});
+
+test("runtime context forwards transport options only to execute", async () => {
+  const program = new Command("wjx");
+  program.option("--api-key <apiKey>");
+  program.setOptionValue("apiKey", "test-key");
+  const command = program.command("probe");
+  let received;
+
+  await executeRuntimeCommand(program, command, {
+    buildPlans: () => [],
+    execute: async (_input, _credentials, requestOptions) => {
+      received = requestOptions;
+      return { result: true, data: { ok: true } };
+    },
+    context: createRuntimeContext({ requestOptions: { retryBudget: 0, timeoutMs: 1234 } }),
+  });
+
+  assert.deepEqual(received, { retryBudget: 0, timeoutMs: 1234 });
 });
 
 test("dry-run renderer keeps plans separate from diagnostics", () => {
