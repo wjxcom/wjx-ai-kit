@@ -30,6 +30,9 @@ const { version } = require("../package.json");
 
 const program = new Command();
 
+// Commander diagnostics are folded into the single ProblemEnvelope emitted by root lifecycle.
+program.configureOutput({ writeErr: () => undefined });
+
 program
   .name("wjx")
   .description("问卷星 (Wenjuanxing) CLI — AI Agent 原生命令行工具")
@@ -37,6 +40,7 @@ program
   .option("--api-key <apiKey>", "WJX API Key（或设置 WJX_API_KEY 环境变量）")
   .option("--json", "JSON 输出（默认）")
   .option("--table", "表格输出")
+  .option("--format <format>", "输出格式：json|pretty|table|ndjson|csv")
   .option("--stdin", "从 stdin 读取 JSON 参数")
   .option("--dry-run", "预览 API 请求（不实际发送）")
   .option("--yes", "确认执行高风险写操作")

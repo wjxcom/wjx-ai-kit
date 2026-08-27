@@ -29,8 +29,10 @@ export class CliError extends Error {
  */
 export function stderrJson(code: ErrorCode, message: string, details?: ErrorDetails): never {
   const exitCode = EXIT_CODES[code];
+  const type = code === "INPUT_ERROR" ? "validation" : code === "AUTH_ERROR" ? "authentication" : code === "CONFIRMATION_REQUIRED" ? "confirmation" : code === "POLICY_DENIED" ? "policy" : "api";
+  const error = { type, subtype: code.toLowerCase(), code, message, retryable: false, ...(details ?? {}) };
   process.stderr.write(
-    JSON.stringify({ error: true, message, code, exitCode, ...(details ?? {}) }) + "\n",
+    JSON.stringify({ ok: false, error, exitCode }) + "\n",
   );
   process.exit(exitCode);
 }

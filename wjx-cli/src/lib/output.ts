@@ -1,6 +1,7 @@
 export interface OutputOpts {
   json?: boolean;
   table?: boolean;
+  format?: "json" | "pretty" | "table" | "ndjson" | "csv";
 }
 
 function getHttpOrigin(value: string): string | undefined {
@@ -82,11 +83,45 @@ export function enrichSurveyListOutput(data: unknown): unknown {
 }
 
 export function formatOutput(data: unknown, opts: OutputOpts): void {
-  if (opts.table) {
-    printTable(data);
-  } else {
-    console.log(JSON.stringify(data, null, 2));
+  const envelope = toResultEnvelope(data);
+  const format = opts.format ?? (opts.table ? "table" : "json");
+  if (format === "json") process.stdout.write(`${JSON.stringify(envelope, null, 2)}\n`);
+  else if (format === "pretty") printPretty(envelope);
+  else if (format === "table") printTable(envelope);
+  else if (format === "ndjson") printNdjson(envelope);
+  else printCsv(envelope);
+}
+
+function toResultEnvelope(data: unknown): Record<string, unknown> {
+  if (data && typeof data === "object" && "ok" in data) return data as Record<string, unknown>;
+  if (data && typeof data === "object" && "result" in data) {
+    const raw = data as Record<string, unknown>;
+    const meta: Record<string, unknown> = {};
+    for (const key of ["result", "errorcode", "errormsg", "traceid"]) if (key in raw) meta[key] = raw[key];
+    return { ok: true, data: raw.data ?? raw, ...(Object.keys(meta).length ? { meta: { upstream: meta } } : {}) };
   }
+  return { ok: true, data };
+}
+
+function printPretty(envelope: Record<string, unknown>): void {
+  const payload = envelope.ok === true ? envelope.data : envelope;
+  process.stdout.write(`${typeof payload === "string" ? payload : JSON.stringify(payload, null, 2)}\n`);
+}
+
+function printNdjson(envelope: Record<string, unknown>): void {
+  const payload = envelope.ok === true ? envelope.data : envelope;
+  const records = Array.isArray(payload) ? payload : [payload];
+  for (const record of records) process.stdout.write(`${JSON.stringify(record)}\n`);
+}
+
+function printCsv(envelope: Record<string, unknown>): void {
+  const payload = envelope.ok === true ? envelope.data : envelope;
+  const records = (Array.isArray(payload) ? payload : [payload]).filter((v) => v && typeof v === "object") as Record<string, unknown>[];
+  if (records.length === 0) return;
+  const columns = [...new Set(records.flatMap((record) => Object.keys(record)))];
+  const quote = (value: unknown) => `"${String(value ?? "").replaceAll("\"", "\"\"")}"`;
+  process.stdout.write(`${columns.map(quote).join(",")}\n`);
+  for (const record of records) process.stdout.write(`${columns.map((key) => quote(record[key])).join(",")}\n`);
 }
 
 function printTable(data: unknown): void {
@@ -97,7 +132,9 @@ function printTable(data: unknown): void {
 
   // If it's an API response with result/data, unwrap
   const obj = data as Record<string, unknown>;
-  const payload = obj.result !== undefined && obj.data !== undefined ? obj.data : data;
+  const payload = obj.ok === true
+    ? obj.data
+    : obj.result !== undefined && obj.data !== undefined ? obj.data : data;
 
   if (Array.isArray(payload)) {
     if (payload.length === 0) {

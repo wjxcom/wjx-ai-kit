@@ -498,11 +498,7 @@ export function registerSurveyCommands(program: Command): void {
           activity: merged.activity as number | undefined,
         });
         const globalOpts = program.opts();
-        if (globalOpts.table) {
-          console.log(url);
-        } else {
-          console.log(JSON.stringify({ url }, null, 2));
-        }
+        formatOutput({ url }, globalOpts);
       } catch (e) {
         handleError(e);
       }

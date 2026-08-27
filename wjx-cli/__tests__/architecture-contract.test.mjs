@@ -178,10 +178,51 @@ test("startup baseline keeps runner entries under the versioned document", () =>
   assert.ok(selectedBaseline, "baseline must provide an exact runner entry or default fallback");
 });
 
-test.todo("runtime commands expose one structured success result protocol");
+test("runtime commands expose one structured success result protocol", () => {
+  const output = execFileSync(process.execPath, [resolve(PACKAGE_ROOT, "dist", "index.js"), "survey", "url"], {
+    cwd: PACKAGE_ROOT, encoding: "utf8", env: { ...process.env, WJX_CONFIG_PATH: resolve(PACKAGE_ROOT, "__missing__") },
+  });
+  const parsed = JSON.parse(output);
+  assert.equal(parsed.ok, true);
+  assert.ok(parsed.data.url);
+});
 
-test.todo("runtime errors are structured JSON on stderr with a stable exit code");
+test("runtime errors are structured JSON on stderr with a stable exit code", () => {
+  try {
+    execFileSync(process.execPath, [resolve(PACKAGE_ROOT, "dist", "index.js"), "survey", "get"], {
+      cwd: PACKAGE_ROOT, encoding: "utf8", env: { ...process.env, WJX_CONFIG_PATH: resolve(PACKAGE_ROOT, "__missing__") },
+    });
+    assert.fail("expected input error");
+  } catch (error) {
+    const childError = error;
+    assert.equal(childError.status, 2);
+    const parsed = JSON.parse(childError.stderr);
+    assert.equal(parsed.ok, false);
+    assert.equal(parsed.error.type, "validation");
+  }
+});
 
-test.todo("unknown commands use the structured error protocol");
+test("unknown commands use the structured error protocol", () => {
+  try {
+    execFileSync(process.execPath, [resolve(PACKAGE_ROOT, "dist", "index.js"), "does-not-exist"], {
+      cwd: PACKAGE_ROOT, encoding: "utf8",
+    });
+    assert.fail("expected unknown command error");
+  } catch (error) {
+    assert.notEqual(error.status, 0);
+    assert.equal(JSON.parse(error.stderr).ok, false);
+  }
+});
 
-test.todo("dry-run performs zero network requests and never calls global fetch");
+test("dry-run performs zero network requests and never calls global fetch", async () => {
+  const fixture = await startFixture({ env: { WJX_API_KEY: "test-key" } });
+  try {
+    const result = await fixture.run(["survey", "list", "--dry-run"]);
+    assert.equal(result.exitCode, 0);
+    assert.equal(result.stdout, "");
+    assert.equal(fixture.requests().length, 0);
+    assert.equal(JSON.parse(result.stderr).dry_run, true);
+  } finally {
+    await fixture.close();
+  }
+});
