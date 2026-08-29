@@ -8,6 +8,7 @@
 [![npm wjx-mcp-server](https://img.shields.io/npm/v/wjx-mcp-server?label=wjx-mcp-server)](https://www.npmjs.com/package/wjx-mcp-server)
 [![npm wjx-cli](https://img.shields.io/npm/v/wjx-cli?label=wjx-cli)](https://www.npmjs.com/package/wjx-cli)
 [![npm downloads](https://img.shields.io/npm/dm/wjx-mcp-server?label=downloads)](https://www.npmjs.com/package/wjx-mcp-server)
+[![SafeSkill 20/100](https://img.shields.io/badge/SafeSkill-20%2F100_Blocked-red)](https://safeskill.dev/scan/wjxcom-wjx-ai-kit)
 
 ---
 
