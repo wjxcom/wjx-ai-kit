@@ -94,7 +94,13 @@ export async function submitResponse<T = unknown>(
   };
   assignDefined(params, input, ["udsid", "sojumpparm", "submittime", "jpmversion"]);
 
-  return callWjxApi<T>(params, { ...requestOptions, credentials, fetchImpl, maxRetries: 0 });
+  return callWjxApi<T>(params, {
+    ...requestOptions,
+    credentials,
+    fetchImpl,
+    retryBudget: 0,
+    maxRetries: 0,
+  });
 }
 
 export async function getFileLinks<T = unknown>(

@@ -4,6 +4,7 @@ import { execFileSync, execFile } from "node:child_process";
 import { resolve, dirname } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { mkdirSync, readFileSync, rmSync } from "node:fs";
+import { startFixture } from "./fixtures/http-fixture.mjs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const CLI = resolve(__dirname, "..", "dist", "index.js");
@@ -57,20 +58,30 @@ function parseDryRunData(serialized) {
 function parseDryRunPlan(result) {
   assert.equal(result.stderr.trim(), "", `dry-run diagnostics should be empty: ${result.stderr}`);
   const data = parseDryRunData(result.stdout);
-  assert.equal(data.plans.length, 1);
+  assert.ok(
+    data.plans.length >= 1,
+    `expected at least 1 plan, got ${data.plans.length}`,
+  );
   return data.plans[0];
 }
 
 function parseCreateByTextDryRun(result) {
-  const plan = parseDryRunPlan(result);
+  assert.equal(result.stderr.trim(), "", `dry-run diagnostics should be empty: ${result.stderr}`);
+  const data = parseDryRunData(result.stdout);
+  assert.equal(data.plans.length, 1, `create-by-text expects exactly 1 plan, got ${data.plans.length}`);
+  const plan = data.plans[0];
   const body = JSON.parse(plan.body);
   const wireQuestions = JSON.parse(body.questions);
   return {
     ...body,
-    parsed_title: body.title,
-    parsed_description: body.desc,
-    question_count: wireQuestions.length,
+    // preview 字段后展开，确保 parsed_* / question_count / skipped_paragraphs
+    // 始终来自 dryRunPreview 回调而非请求体派生值——否则该回调退化时测试无感知。
+    ...data,
     wire_questions: wireQuestions,
+    // 请求体派生值放在独立键下，供需要断言实际请求内容的用例使用。
+    body_title: body.title,
+    body_description: body.desc,
+    wire_question_count: wireQuestions.length,
   };
 }
 
@@ -1098,6 +1109,39 @@ describe("survey create-by-text", () => {
     const err = parseProblem(result.stderr);
     assert.equal(err.code, "AUTH_ERROR");
   });
+
+  it("create-by-text real execution prints a deprecation warning", async () => {
+    const fixture = await startFixture();
+    try {
+      const result = await fixture.run(
+        ["survey", "create-by-text", "--text", "标题\n\n1. Q[单选题]\nA. a\nB. b", "--yes"],
+        { env: { WJX_API_KEY: "fake-key-1234567890" } },
+      );
+      assert.equal(result.exitCode, 0);
+      assert.match(result.stderr, /create-by-text 已弃用/);
+      assert.equal(fixture.requests().length, 1);
+    } finally {
+      await fixture.close();
+    }
+  });
+
+  it("create-by-text API failure keeps stderr as a ProblemEnvelope", async () => {
+    const fixture = await startFixture({
+      response: { result: false, errormsg: "invalid survey" },
+    });
+    try {
+      const result = await fixture.run(
+        ["survey", "create-by-text", "--text", "标题\n\n1. Q[单选题]\nA. a\nB. b", "--yes"],
+        { env: { WJX_API_KEY: "fake-key-1234567890" } },
+      );
+      assert.equal(result.exitCode, 1);
+      const error = parseProblem(result.stderr);
+      assert.equal(error.code, "API_ERROR");
+      assert.doesNotMatch(result.stderr, /create-by-text 已弃用/);
+    } finally {
+      await fixture.close();
+    }
+  });
 });
 
 // ═══════════════════════════════════════
@@ -1520,6 +1564,7 @@ describe("create-by-text use cases", () => {
     assert.equal(p.parsed_title, "员工满意度调查");
     assert.equal(p.parsed_description, "请根据您的真实感受作答");
     assert.equal(p.question_count, 3);
+    assert.deepEqual(p.skipped_paragraphs, ["薪酬福利"]);
 
     // 段落说明被过滤（API 不支持 q_type=2），不会进入请求题目
     assert.ok(!p.wire_questions.some((question) => question.q_type === 2));

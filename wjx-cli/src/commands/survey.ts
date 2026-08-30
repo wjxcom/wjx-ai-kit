@@ -16,6 +16,8 @@ import {
   uploadFile,
   buildSurveyUrl,
   surveyToText,
+  textToSurvey,
+  parsedQuestionsToWire,
   MAX_JSONL_SIZE,
   Action,
 } from "wjx-api-sdk";
@@ -163,6 +165,18 @@ export function registerSurveyCommands(program: Command): void {
           publish: merged.publish as boolean | undefined,
           creater: merged.creater as string | undefined,
         };
+      }, {
+        deprecationWarning: "[wjx] ⚠️ create-by-text 已弃用，建议改用 create-by-json： wjx survey create-by-json --file <path>.jsonl",
+        dryRunPreview: (input) => {
+          const parsed = textToSurvey(String(input.text));
+          const { questions, skippedParagraphs } = parsedQuestionsToWire(parsed.questions);
+          return {
+            parsed_title: parsed.title,
+            parsed_description: parsed.description,
+            question_count: questions.length,
+            skipped_paragraphs: skippedParagraphs.map((question) => question.title),
+          };
+        },
       });
     });
 

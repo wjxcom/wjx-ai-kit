@@ -449,6 +449,25 @@ describe("traceid handling", () => {
 // ─── retry behavior ─────────────────────────────────────────────────
 
 describe("retry behavior", () => {
+  it("submitResponse should not retry even when caller provides retryBudget", async () => {
+    let callCount = 0;
+    const fetch = async () => {
+      callCount++;
+      return new Response("err", { status: 500, statusText: "Error" });
+    };
+
+    await assert.rejects(
+      () => submitResponse(
+        { vid: 1, inputcosttime: 1, submitdata: "1$1" },
+        credentials,
+        fetch,
+        { retryBudget: 2 },
+      ),
+      /WJX API request failed with 500/,
+    );
+    assert.equal(callCount, 1, "submitResponse must never retry a write");
+  });
+
   it("createSurvey should NOT retry on 500 (maxRetries=0)", async () => {
     let callCount = 0;
     const fetch = async (input, init) => {

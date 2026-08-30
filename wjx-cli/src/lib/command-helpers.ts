@@ -35,6 +35,10 @@ export function requireField(merged: Record<string, unknown>, field: string, lab
 
 interface ExecuteOpts {
   noAuth?: boolean;
+  /** Print only after a successful real execution; never pollutes errors or dry-run output. */
+  deprecationWarning?: string;
+  /** Add pure local information to a dry-run result without making network requests. */
+  dryRunPreview?: (input: Record<string, unknown>) => Record<string, unknown> | undefined;
   /** 在输出前转换 API 返回结果（用于提取/重塑数据） */
   transformResult?: (result: WjxApiResponse<unknown>) => unknown;
   /** 在调用 SDK 之前异步转换 input（如获取问卷结构修正 submitdata） */
@@ -201,7 +205,15 @@ export async function executeCommand(
       // use a redacted placeholder so preview does not require credentials.
       const dryRunCreds = globalOpts.apiKey ? { apiKey: globalOpts.apiKey } : { apiKey: "dry-run" };
       await sdkFn(input, dryRunCreds, fetchImpl);
-      printDryRunPreview(getCapturedRequest(), globalOpts);
+      const request = getCapturedRequest();
+      const preview = opts.dryRunPreview?.(input);
+      formatOutput({
+        // Preview fields spread first so a command's dryRunPreview callback can
+        // never shadow the envelope's protocol keys.
+        ...(preview ?? {}),
+        kind: "dry-run",
+        plans: request ? [request] : [],
+      }, globalOpts);
       return;
     }
 
@@ -211,6 +223,10 @@ export async function executeCommand(
 
     // P0 fix: detect SDK API failure response
     ensureApiSuccess(result);
+
+    if (opts.deprecationWarning) {
+      context.streams.stderr.write(`${opts.deprecationWarning}\n`);
+    }
 
     const output = opts.transformResult ? opts.transformResult(result) : result;
     formatOutput(output, globalOpts);
