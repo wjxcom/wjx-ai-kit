@@ -5,6 +5,7 @@ import type {
 } from "../../core/types.js";
 import { callWjxApi, getWjxCredentials } from "../../core/api-client.js";
 import { Action, LONG_TIMEOUT_MS } from "../../core/constants.js";
+import { validateWjxDsl } from "./validate.js";
 import type {
   CreateWjxDslSurveyInput,
   CreateWjxDslSurveyResult,
@@ -39,6 +40,7 @@ export async function createSurveyByWjxDsl<T = CreateWjxDslSurveyResult>(
   credentials: WjxCredentials = getWjxCredentials(),
   fetchImpl: FetchLike = fetch,
 ): Promise<WjxApiResponse<T, WjxDslFailureData>> {
+  validateWjxDsl(input.dsl);
   return callWjxApi<T, WjxDslFailureData>(
     {
       action: Action.CREATE_SURVEY_BY_WJX_DSL,
@@ -61,6 +63,7 @@ export async function updateWjxDsl<T = UpdateWjxDslResult>(
   credentials: WjxCredentials = getWjxCredentials(),
   fetchImpl: FetchLike = fetch,
 ): Promise<WjxApiResponse<T, WjxDslFailureData>> {
+  validateWjxDsl(input.dsl);
   return callWjxApi<T, WjxDslFailureData>(
     {
       action: Action.UPDATE_WJX_DSL,

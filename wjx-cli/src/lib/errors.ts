@@ -57,6 +57,7 @@ function classifyError(err: unknown): CliError {
       err.message.includes("问卷标题") ||
       err.message.includes("未找到有效题目") ||
       err.message.includes("optionalTitles") ||
+      err.message.includes("DSL validation failed") ||
       err.message.startsWith("题目「")
     ) {
       return new CliError("INPUT_ERROR", err.message);

@@ -75,6 +75,7 @@ export {
 } from "./modules/survey/client.js";
 export { surveyToText, typeToLabel, stripHtml } from "./modules/survey/survey-to-text.js";
 export { textToSurvey, parsedQuestionsToWire, LABEL_TO_TYPE, TYPE_MAP } from "./modules/survey/text-to-survey.js";
+export { validateWjxDsl } from "./modules/dsl/validate.js";
 export type { WireQuestion, WireConversionResult } from "./modules/survey/text-to-survey.js";
 export {
   extractJsonlMetadata,
