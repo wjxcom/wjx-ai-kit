@@ -4,6 +4,21 @@
 
 格式基于 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [0.3.6] - 2026-09-01
+
+### Added
+
+- 增加 WJX XML DSL 的查询、创建和修改 CLI 能力。
+- 增加 AI 主页创建和更新命令，对应 `A1000107`、`A1000108` 接口。
+
+### Changed
+
+- DSL 写入前增加协议校验，并完善 CLI Skill 的 DSL 使用说明。
+
+### Fixed
+
+- 修复 CLI Skill 文档中指向已不存在 `dsl-syntax.md` 的失效引用。
+
 ## [0.3.5] - 2026-08-19
 
 ### Added
