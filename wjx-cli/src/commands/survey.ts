@@ -4,6 +4,8 @@ import {
   createSurvey,
   createSurveyByText,
   createSurveyByJson,
+  createAiPage,
+  updateAiPage,
   getSurvey,
   listSurveys,
   updateSurveyStatus,
@@ -24,6 +26,22 @@ import { enrichSurveyListOutput, formatOutput } from "../lib/output.js";
 import { CliError, handleError } from "../lib/errors.js";
 import { getCredentials } from "../lib/auth.js";
 import { executeCommand, strictInt, requireField, getMerged, createCapturingFetch, printDryRunPreview, ensureJsonString, ensureStringArray, isRequestPreview } from "../lib/command-helpers.js";
+
+function resolveAiPageHtml(merged: Record<string, unknown>): string {
+  if (typeof merged.html_content === "string" && merged.html_content.length > 0) {
+    return merged.html_content;
+  }
+
+  if (typeof merged.file === "string" && merged.file.length > 0) {
+    try {
+      return readFileSync(merged.file, "utf8");
+    } catch {
+      throw new CliError("INPUT_ERROR", `无法读取文件: ${merged.file}`);
+    }
+  }
+
+  throw new CliError("INPUT_ERROR", "必须提供 --html_content 或 --file 参数");
+}
 
 export function registerSurveyCommands(program: Command): void {
   const survey = program.command("survey").description("问卷管理");
@@ -117,6 +135,90 @@ export function registerSurveyCommands(program: Command): void {
           publish: m.publish,
         };
       });
+    });
+
+  // --- create-ai-page ---
+  survey
+    .command("create-ai-page")
+    .description("创建 AI 主页")
+    .option("--title <s>", "AI 主页标题")
+    .option("--html_content <s>", "AI 主页 HTML 内容")
+    .option("--file <path>", "从文件读取 AI 主页 HTML 内容")
+    .option("--page_type <n>", "页面类型：0=网页, 1=海报, 2=PPT", strictInt)
+    .option("--publish", "创建后立即发布")
+    .option("--creater <s>", "创建者子账号")
+    .action(async (_opts, cmd) => {
+      try {
+        const merged = getMerged(cmd);
+        const globalOpts = program.opts();
+        const htmlContent = resolveAiPageHtml(merged);
+        const input = {
+          html_content: htmlContent,
+          title: merged.title as string | undefined,
+          page_type: merged.page_type as number | undefined,
+          publish: merged.publish as boolean | undefined,
+          creater: merged.creater as string | undefined,
+        };
+        const creds = getCredentials(globalOpts);
+
+        if (isRequestPreview(globalOpts)) {
+          const { fetchImpl, getCapturedRequest } = createCapturingFetch();
+          await createAiPage(input, creds, fetchImpl);
+          printDryRunPreview(getCapturedRequest());
+          return;
+        }
+
+        const result = await createAiPage(input, creds);
+        if (result.result === false) {
+          throw new CliError("API_ERROR", result.errormsg || "API request failed");
+        }
+        formatOutput(result, globalOpts);
+      } catch (e) {
+        handleError(e);
+      }
+    });
+
+  // --- update-ai-page ---
+  survey
+    .command("update-ai-page")
+    .description("更新 AI 主页（已发布主页需先显式暂停）")
+    .option("--vid <n>", "传统 AI 主页 vid", strictInt)
+    .option("--html_content <s>", "AI 主页 HTML 内容")
+    .option("--file <path>", "从文件读取 AI 主页 HTML 内容")
+    .option("--title <s>", "AI 主页标题")
+    .option("--page_type <n>", "页面类型：0=网页, 1=海报, 2=PPT", strictInt)
+    .action(async (_opts, cmd) => {
+      try {
+        const merged = getMerged(cmd);
+        const globalOpts = program.opts();
+        requireField(merged, "vid");
+        const htmlContent = resolveAiPageHtml(merged);
+        const input = {
+          vid: merged.vid as number,
+          html_content: htmlContent,
+          title: merged.title as string | undefined,
+          page_type: merged.page_type as number | undefined,
+        };
+        const creds = getCredentials(globalOpts);
+
+        if (isRequestPreview(globalOpts)) {
+          const { fetchImpl, getCapturedRequest } = createCapturingFetch();
+          await updateAiPage(input, creds, fetchImpl);
+          printDryRunPreview(getCapturedRequest());
+          return;
+        }
+
+        const result = await updateAiPage(input, creds);
+        if (result.result === false) {
+          throw new CliError(
+            "API_ERROR",
+            result.errormsg || "API request failed; if the AI page is published, pause it first with --state 2",
+          );
+        }
+        formatOutput(result, globalOpts);
+      } catch (e) {
+        handleError(e);
+      }
     });
 
   // --- create-by-text ---

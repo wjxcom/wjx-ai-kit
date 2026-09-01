@@ -60,6 +60,25 @@ function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+/**
+ * The legacy OpenAPI reader URL-decodes every JSON body containing a percent
+ * sign and also converts plus signs to spaces. Protect those two characters
+ * while keeping the payload valid JSON; the server's single decode pass restores
+ * the original values before deserialization.
+ */
+function protectLegacyJsonTransport(value: unknown): unknown {
+  if (typeof value === "string") {
+    return value.replace(/%/g, "%25").replace(/\+/g, "%2B");
+  }
+  if (Array.isArray(value)) return value.map(protectLegacyJsonTransport);
+  if (value && typeof value === "object") {
+    return Object.fromEntries(
+      Object.entries(value).map(([key, item]) => [key, protectLegacyJsonTransport(item)]),
+    );
+  }
+  return value;
+}
+
 async function _callApi<T = unknown, TFailureData = unknown>(
   baseUrl: string,
   params: Record<string, unknown>,
@@ -108,10 +127,13 @@ async function _callApi<T = unknown, TFailureData = unknown>(
           headers["If-Match"] = opts.ifMatch;
         }
 
+        const requestParams = opts.legacyJsonTransport
+          ? protectLegacyJsonTransport(params)
+          : params;
         response = await fetchImpl(url, {
           method: "POST",
           headers,
-          body: JSON.stringify(params),
+          body: JSON.stringify(requestParams),
           signal: controller.signal,
         });
       } finally {

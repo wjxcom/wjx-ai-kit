@@ -28,7 +28,7 @@ WJX_API_KEY="你的 API Key" npm start --workspace=wjx-mcp-server
 
 ## 能力发现
 
-当前版本提供 58 个 Tool、8 个 Resource、22 个 Prompt。完整名称和模块见 [MCP 工具参考](../reference/mcp-tools.md)。
+当前版本提供 63 个 Tool、9 个 Resource、22 个 Prompt。完整名称和模块见 [MCP 工具参考](../reference/mcp-tools.md)。
 
 ## 凭据安全
 

@@ -11,6 +11,7 @@ fn(input, credentials?, fetchImpl?)
 | 模块 | 示例 |
 | --- | --- |
 | survey | `listSurveys`, `getSurvey`, `createSurvey`, `createSurveyByJson`, `updateSurveyStatus` |
+| AI page | `createAiPage`, `updateAiPage` |
 | response | `queryResponses`, `downloadResponses`, `getReport`, `submitResponse` |
 | analytics | `decodeResponses`, `calculateNps`, `calculateCsat`, `detectAnomalies`, `compareMetrics` |
 | contacts | `queryContacts`, `addContacts` |

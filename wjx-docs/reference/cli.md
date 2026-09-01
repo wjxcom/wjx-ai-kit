@@ -1,6 +1,6 @@
 # CLI 命令参考
 
-运行 `wjx <command> --help` 可查看当前命令和参数；本版本包含 76 个叶子命令。
+运行 `wjx <command> --help` 可查看当前命令和参数；本版本包含 81 个叶子命令。
 
 ## 顶层命令
 
@@ -24,9 +24,13 @@
 | 导出格式 | `wjx response download --suffix 0\|1\|2` |
 | 查询单份答卷 | `wjx response query --jid <id>` |
 | 创建 JSONL 问卷 | `wjx survey create-by-json --file <path>` |
+| 创建 AI 主页 | `wjx survey create-ai-page --html_content <html>` |
+| 更新 AI 主页 | `wjx survey update-ai-page --vid <vid> --html_content <html>` |
 
 旧参数 `--permanent`、`--base64`、`--filename`、`--format`、`--response_id` 不属于当前 CLI 参考路径。需要确认本机版本时运行 `wjx --version` 和 `wjx <command> --help`。
 
 ## 输出与输入
 
 默认输出 JSON；`--table` 用于人工查看；`--stdin` 接收 JSON 参数；`--dry-run` 只打印请求预览，不发送 API 请求。命令失败时使用结构化错误码，脚本应检查退出码。
+
+AI 主页更新要求传入传统数字 `vid`。已发布主页不能直接更新，需先执行 `wjx survey status --vid <vid> --state 2` 暂停；CLI 不会自动暂停。

@@ -1,12 +1,12 @@
 # MCP 工具参考
 
-当前版本提供 58 个 Tool、8 个 Resource 和 22 个 Prompt。输入 schema 和描述以运行时能力发现结果为最终契约。
+当前版本提供 63 个 Tool、9 个 Resource 和 22 个 Prompt。输入 schema 和描述以运行时能力发现结果为最终契约。
 
 ## Tool 模块
 
 | 模块 | 工具（完整清单） | 说明 |
 | --- | --- | --- |
-| survey（13） | `create_survey`, `get_survey`, `list_surveys`, `update_survey_status`, `get_survey_settings`, `update_survey_settings`, `delete_survey`, `get_question_tags`, `get_tag_details`, `upload_file`, `clear_recycle_bin`, `create_survey_by_text`（已弃用）, `create_survey_by_json` | 问卷创建、查询、设置和生命周期 |
+| survey（15） | `create_survey`, `create_ai_page`, `update_ai_page`, `get_survey`, `list_surveys`, `update_survey_status`, `get_survey_settings`, `update_survey_settings`, `delete_survey`, `get_question_tags`, `get_tag_details`, `upload_file`, `clear_recycle_bin`, `create_survey_by_text`（已弃用）, `create_survey_by_json` | 问卷和 AI 主页创建、查询、设置及生命周期 |
 | response（9） | `query_responses`, `query_responses_realtime`, `download_responses`, `get_report`, `submit_response`, `get_winners`, `modify_response`, `get_360_report`, `clear_responses` | 答卷、报告和数据清理 |
 | contacts（14） | `query_contacts`, `add_contacts`, `delete_contacts`, `add_admin`, `delete_admin`, `restore_admin`, `list_departments`, `add_department`, `modify_department`, `delete_department`, `list_tags`, `add_tag`, `modify_tag`, `delete_tag` | 通讯录、部门、标签和管理员 |
 | user-system（6，兼容/已过时） | `add_participants`, `modify_participants`, `delete_participants`, `bind_activity`, `query_survey_binding`, `query_user_surveys` | 仅用于已有用户体系的兼容操作；不能通过创建接口新建 `atype=8` 用户体系问卷 |

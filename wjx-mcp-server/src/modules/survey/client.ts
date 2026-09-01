@@ -2,6 +2,8 @@ export {
   createSurvey,
   createSurveyByText,
   createSurveyByJson,
+  createAiPage,
+  updateAiPage,
   getSurvey,
   listSurveys,
   updateSurveyStatus,

@@ -20,9 +20,13 @@ CLI 是默认建议。MCP 和 SDK 是针对特定运行环境的入口，不是�
 - [导出答卷](tasks/export-responses.md)
 - [配置 AI 客户端](tasks/configure-client.md)
 
+## 开发计划
+
+AI 主页接口集成计划见 [AI page API integration](tasks/ai-page-api-integration.md)。
+
 ## 能力边界
 
-当前版本提供 MCP **58 个 Tool**、**8 个 Resource**、**22 个 Prompt**，以及 CLI **76 个叶子命令**；SDK 的公开导出以 [SDK API 参考](reference/sdk.md) 为准。
+当前版本提供 MCP **63 个 Tool**、**9 个 Resource**、**22 个 Prompt**，以及 CLI **81 个叶子命令**；SDK 的公开导出以 [SDK API 参考](reference/sdk.md) 为准。
 
 问卷创建以 JSONL/JSON 为规范路径。旧 DSL 仅为兼容保留，见 [DSL 兼容](legacy/dsl.md)。
 

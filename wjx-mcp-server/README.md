@@ -6,7 +6,7 @@
 [![license](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 [![node](https://img.shields.io/badge/node-%3E%3D20-green)](https://nodejs.org/)
 
-通过 Claude、Cursor 或任何 MCP 兼容的 AI 客户端，以自然语言创建、管理和分析问卷。服务器封装了问卷星 OpenAPI，提供 **61 个 Tools**、**9 个 Resources** 和 **22 个 Prompts**。
+通过 Claude、Cursor 或任何 MCP 兼容的 AI 客户端，以自然语言创建、管理和分析问卷。服务器封装了问卷星 OpenAPI，提供 **63 个 Tools**、**9 个 Resources** 和 **22 个 Prompts**。
 
 ---
 
@@ -27,11 +27,11 @@
 
 ## 功能特性
 
-### 8 大业务模块 · 61 个 Tools
+### 8 大业务模块 · 63 个 Tools
 
 | 模块 | 工具数 | 说明 |
 |------|:------:|------|
-| **Survey** 问卷管理 | 13 | 创建、查询、列表、状态变更、设置读写、删除、题目标签、回收站、兼容格式创建、上传 |
+| **Survey** 问卷管理 | 15 | 创建问卷和 AI 主页、查询、列表、状态变更、设置读写、删除、题目标签、回收站、兼容格式创建、上传 |
 | **WJX XML DSL** | 3 | 查询完整 DSL、创建草稿、提交修改；If-Match 仅为可选弱前置校验 |
 | **Response** 答卷数据 | 9 | 查询、实时查询、下载、统计报告、代填提交、中奖者、改分、360° 报告、清空 |
 | **Contacts** 通讯录 | 14 | 成员管理、管理员管理、部门管理、标签管理 |

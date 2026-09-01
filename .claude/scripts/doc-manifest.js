@@ -42,6 +42,9 @@ const MANIFEST = [
     ["changelog", "变更记录"],
     ["migration", "迁移指南"],
   ]},
+  { group: "AI 主页接口", collapsed: true, items: [
+    ["tasks/ai-page-api-integration", "AI 主页接口集成"],
+  ]},
 ];
 
 const entries = MANIFEST.flatMap((group) => group.items.map(([key, label]) => ({ key, label, group: group.group })));

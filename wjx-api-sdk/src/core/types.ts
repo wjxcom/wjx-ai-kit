@@ -37,4 +37,10 @@ export interface RequestOptions {
   logger?: Logger;
   /** Dedicated optimistic-concurrency header; arbitrary headers are intentionally unsupported. */
   ifMatch?: string;
+  /**
+   * Encode characters affected by the legacy server's unconditional URL decoding
+   * before sending JSON. This is required only by legacy JSON endpoints that
+   * read the raw body through HttpContextService.GetHttpPostString.
+   */
+  legacyJsonTransport?: boolean;
 }
