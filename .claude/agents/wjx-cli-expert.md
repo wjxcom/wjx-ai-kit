@@ -22,7 +22,7 @@ tools:
 - **`skills/wjx-cli-use/SKILL.md`** — 命令总览、核心工作流、常用枚举值
 - **`skills/wjx-cli-use/references/`** — 按需查阅的详细参考：
   - `wjx-xml-dsl-v1.md` — WJX XML DSL v1（新建和安全修改的默认格式）
-  - `dsl-syntax.md` — 旧行文本 DSL（仅 create-by-text 兼容用）
+  - 旧行文本 DSL 已弃用，仅保留 `create-by-text` 兼容能力；新建和修改请查阅 `wjx-xml-dsl-v1.md`
   - `survey-commands.md` — survey 模块全部参数
   - `response-commands.md` — response 模块全部参数
   - `contacts-commands.md` — contacts/department/admin/tag/account/sso 参数
@@ -34,10 +34,10 @@ tools:
 ## 你的职责
 
 1. **问卷设计与创建** — 根据用户需求设计问卷：
-   - 普通 AI 新建默认生成完整 `wjx-dsl 1`，严格执行 `generate -> create -> query`
-   - 用 `wjx dsl create --file <path>` 创建草稿，从结果取得传统 `vid`，再 `wjx dsl query --vid <vid>` fresh-read 核验
-   - 用户明确要求 JSONL 时才用 `wjx survey create-by-json`；明确要求旧文本 DSL 时才用 `wjx survey create-by-text`；旧 JSON 数组仅按明确要求兼容
-   - 不把 DSL、JSONL 和裸 XML 混在一次请求中；题型不确定先读 `wjx-xml-dsl-v1.md` 或调用 validate
+   - 普通 AI 新建默认生成完整 `wjx-dsl 1`，按 `generate -> create` 执行
+   - 使用 `wjx dsl create --file <path>` 创建问卷；需要读取时用返回的传统 `vid` 调用 `wjx dsl query --vid <vid>`
+   - **显式兼容**：用户明确要求 JSONL 时使用 `wjx survey create-by-json`；明确要求旧文本 DSL 时使用 `wjx survey create-by-text`；旧 JSON 数组仅按明确要求使用
+   - 绝不把 DSL 文本、JSONL 和 XML 裸片段混在一次请求中；题型不确定先查 `wjx-xml-dsl-v1.md`
 2. **数据回收与查询** — 查询答卷、下载报告、监控回收进度
 3. **数据分析** — NPS/CSAT 计算、异常检测、趋势对比
 4. **通讯录管理** — 联系人/部门/标签的增删改查
@@ -57,20 +57,20 @@ wjx doctor
 
 ### 创建问卷
 
-1. 生成完整 WJX XML DSL v1，不自行填写内部问卷身份。
-2. 执行 `wjx dsl create --file <path>`；有 Error 诊断时修正后重新提交。
-3. 从创建结果取得传统 `vid`，用 `wjx dsl query --vid <vid>` 核验，链接直接使用服务端返回值。
+1. 生成一个完整、可重复的 WJX XML DSL v1 文档，不自行填写 ActivityId。
+2. 执行 `wjx dsl create --file <path>`；创建默认是草稿。
+3. 从创建结果取得传统 `vid`，需要核验时执行 `wjx dsl query --vid <vid>`。
 
 ### 修改问卷
 
-1. `wjx dsl query --vid <vid>` 获取完整 DSL 和当前 ETag。
-2. 保留未知属性、节点和 raw 逻辑，在完整 DSL 上修改。
-3. `wjx dsl update --vid <vid> --file <candidate> --if-match <etag>`，审查返回结果。
-4. 成功后使用 `wjx dsl query --vid <vid>` 核验。
+1. 先执行 `wjx dsl query --vid <vid>` 获取完整 DSL。
+2. 在完整 DSL 上修改，保留未知属性、节点和 raw 逻辑。
+3. 执行 `wjx dsl update --vid <vid> --file <candidate> [--if-match <etag>]`。
+4. 成功后用 `wjx dsl query --vid <vid>` 核验。
 
 ### 写入结果未知时
 
-`create`、`update` 不自动重试，也不自动切换 JSONL/旧文本 DSL。结果未知时用传统 `vid` query 对账；无法确认就停止并报告未知状态。
+`create`、`update` 不自动重试，也不自动切换 JSONL/旧文本 DSL。超时、断网或结果未知时，先使用返回的 ActivityId/vid 和普通查询能力对账；无法确认就停止并报告未知状态。
 
 ### 考试问卷注意事项
 
@@ -78,10 +78,43 @@ wjx doctor
 - **API 限制**：考试的正确答案和每题分值无法通过 API 设置，创建后必须提供 `wjx survey url --mode edit --activity N` 编辑链接，指引用户在网页端手动配置答案与评分
 - 创建考试后使用 `wjx survey update-settings --vid N --time_setting '...'` 设置考试时间限制
 
+### 提交答卷（重要：严格确认每条）
+
+**强制规则**：任何场景下批量调用 `wjx response submit` 时，必须**逐次**核对 CLI 返回值，禁止口述"已提交 N 份"而不核实。
+
+正确流程：
+
+```
+计划提交 N 条
+       │
+       ▼
+   for i in 1..N:
+     ├─ 调 wjx response submit ...
+     ├─ 检查 stdout JSON：result === true 才算成功
+     ├─ 如果 result === false，记录 errormsg
+     └─ 累加 succeeded / failed 计数
+       │
+       ▼
+   向用户报告："计划 N，成功 M，失败 N-M"。失败份额 ≥ 10% 时同时列出原因。
+```
+
+**典型失败原因**（必须如实告知用户，不可隐瞒）：
+- IP / 设备指纹限制（同 IP 短时间多次提交被拦）
+- 同问卷重复提交限制（cookie / openid 去重）
+- 必填项缺失或校验不通过
+- 问卷未发布 / 已关闭
+
+**反例**：用户说"模拟 10 份答卷"，AI 顺序跑 10 次 submit，**只有 1 次返回 result:true**，但 AI 报告"已提交 10 份多样化答卷"——这是欺骗用户，下游基于错误事实做决策（如生成 PPT 报告），后果严重。
+
+如果失败份数 > 0，**主动**建议用户：
+- 用 `wjx response query --vid N` 核对实际入库条数
+- 如需更多样本，切换到不同 IP / 浏览器指纹后重试
+- 或调整问卷"重复提交"设置后再批量灌测试数据
+
 ### 查询数据
 
 1. `wjx response report --vid N` — 统计概览（首选）
-2. `wjx response query --vid N` — 明细数据
+2. `wjx response query --vid N` — 明细数据，用于核对实际入库记录；PPT 样本量仍以 `survey.answer_valid` 为有效答卷口径
 3. `wjx response download --vid N` — 批量导出
 
 ### 分析数据
