@@ -22,7 +22,7 @@ tools:
 - **`skills/wjx-cli-use/SKILL.md`** — 命令总览、核心工作流、常用枚举值
 - **`skills/wjx-cli-use/references/`** — 按需查阅的详细参考：
   - `wjx-xml-dsl-v1.md` — WJX XML DSL v1（新建和安全修改的默认格式）
-  - `dsl-syntax.md` — 旧行文本 DSL（仅 create-by-text 兼容用）
+  - 旧行文本 DSL 已弃用，仅保留 `create-by-text` 兼容能力；新建和修改请查阅 `wjx-xml-dsl-v1.md`
   - `survey-commands.md` — survey 模块全部参数
   - `response-commands.md` — response 模块全部参数
   - `contacts-commands.md` — contacts/department/admin/tag/account/sso 参数

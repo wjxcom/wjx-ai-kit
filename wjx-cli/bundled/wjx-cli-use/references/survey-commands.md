@@ -74,7 +74,7 @@ wjx survey create-by-text --text "..." --dry-run   # 预览解析结果
 | `--creater <s>` | 否 | 创建者子账号 |
 | `--dry-run` | 否 | 预览解析结果，不实际创建 |
 
-DSL 语法详见 [dsl-syntax.md](dsl-syntax.md)。
+新建和修改 DSL 语法详见 [wjx-xml-dsl-v1.md](wjx-xml-dsl-v1.md)；旧文本 DSL 仅为兼容保留。
 
 ## wjx survey create（向后兼容，不再推荐）
 

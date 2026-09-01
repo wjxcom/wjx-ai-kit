@@ -244,8 +244,7 @@ wjx dsl query --vid <vid>
 
 ## 参考文件（按需读取）
 
-- [DSL 语法](references/dsl-syntax.md) — 旧 `create-by-text` 的 DSL 格式（已弃用，仅供历史代码参考）
-- [WJX XML DSL v1](references/wjx-xml-dsl-v1.md) — 普通新建和安全修改的默认协议
+- [WJX XML DSL v1](references/wjx-xml-dsl-v1.md) — 普通新建和安全修改的默认协议；旧 `create-by-text` DSL 已弃用
 - [问卷命令](references/survey-commands.md) — survey 模块全部子命令参数、JSON 创建格式、设置
 - [答卷命令](references/response-commands.md) — 查询筛选、submitdata 格式、下载选项
 - [通讯录命令](references/contacts-commands.md) — 联系人、部门、管理员、标签、子账号、SSO

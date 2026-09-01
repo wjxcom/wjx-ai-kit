@@ -106,7 +106,7 @@ wjx dsl update --vid <vid> --file candidate.wjx --if-match <etag>
 wjx dsl query --vid <vid>
 ```
 
-流程是 `query -> 修改 DSL -> update(If-Match 可选) -> query`。从 query 返回的完整 DSL 修改并保留未知内容；ETag 过期时重新 query，不覆盖并发修改。breaking change 默认拒绝；确需修改索引时必须显式增加 `--allow-breaking-changes`，且问卷已有回收答卷时服务端仍会拒绝。
+流程是 `query -> 修改 DSL -> update(If-Match 可选) -> query`。从 query 返回的完整 DSL 修改并保留未知内容；ETag 过期时重新 query，不覆盖并发修改。breaking change 默认拒绝。
 
 ## 未知结果和兼容路径
 
