@@ -4,7 +4,7 @@ export interface JsonSurveyMetadata {
     description: string;
     endpageinformation: string;
     language: string;
-    /** 用户在 JSONL 内部声明的 atype（1=调查 / 2=测评 / 3=投票 / 6=考试 / 7=表单）。未声明时为 undefined。 */
+    /** 用户在 JSONL 内部声明的 atype（可创建：1/2/3/4/5/6/7/9/10/11；8=用户体系不支持新建）。未声明时为 undefined。 */
     atype?: number;
 }
 /** A raw JSON question object parsed from JSONL input. */
@@ -63,7 +63,7 @@ export interface JsonSurveyQuestion {
     aigoal?: string;
     /** MaxDiff / BWS / 图片PK */
     mdattr?: string[];
-    /** 联合分析 */
+    /** 联合分析；表格/自增表格也可用作列标题 */
     columntitle?: string[];
     /** 表格题字段类型（与 rowtitle 一一对应） */
     columntype?: string[];
@@ -91,7 +91,7 @@ export interface JsonSurveyQuestion {
     /** 分页栏 */
     mintime?: number;
     maxtime?: number;
-    /** 自增表格 */
+    /** 自增表格的最小/最大可添加行数；不要用 minvalue/maxvalue 表示行数 */
     min_rows?: number;
     max_rows?: number;
     /** 答卷摄像 */

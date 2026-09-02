@@ -231,7 +231,7 @@ wjx doctor
 
 | 模块 | 命令 | 说明 |
 |------|------|------|
-| `survey` | list, get, create, jsonl-template, delete, status, settings, update-settings, tags, tag-details, clear-bin, upload, export-text, url | 问卷增删改查与配置 |
+| `survey` | list, get, create, jsonl-template, delete, status, settings, update-settings, tags, tag-details, clear-bin, upload, export-text, url, preview-url | 问卷增删改查、配置与预览链接 |
 | `response` | query, realtime, download, submit-template, submit, modify, clear, report, count, winners, 360-report | 答卷数据操作 |
 | `contacts` | query, add, delete | 联系人管理（需 WJX_CORP_ID） |
 | `department` | list, add, modify, delete | 部门管理 |
@@ -265,7 +265,7 @@ JSONL 每个非空行放一个 JSON 对象，且首行必须是问卷基础信�
 
 字段命名和可用中文 `qtype` 见 [references/question-types.md](references/question-types.md)。题目 `title` 只写正文；普通选择题使用 `select`，矩阵题使用 `rowtitle + select`，表格组合使用 `rowtitle + types + selects`。投票题使用 `qtype:"投票单选"` / `qtype:"投票多选"` + `select`。
 
-问卷类型：`--type 1` 调查（默认），`3` 投票，`6` 考试，`7` 表单。
+问卷类型：`--type 1` 调查（默认），`2` 测评，`3` 投票，`4` 360度评估，`5` 360评估无测评关系，`6` 考试，`7` 表单，`9` 教学评估，`10` 量表，`11` 民主评议。`8` 用户体系仅作历史维护，不能新建。
 
 创建成功后，先保存并结构化解析完整 JSON 响应。若响应带有可验证的 `fill_url`，直接将它作为填写地址；否则从同一响应记录的 `activity_domain` 与 `pc_path`（桌面端优先）或 `mobile_path` 组合地址，并确认使用的是短 `sid`。只有创建响应缺少这些路径时，才用响应中的 `vid` 到列表接口逐页查找对应记录。不要为此调用 `survey get`，也不要把 `survey url` 的编辑/创建地址当作填写地址。
 

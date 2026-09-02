@@ -1,6 +1,6 @@
 # CLI 命令参考
 
-运行 `wjx <command> --help` 可查看当前命令和参数；本版本包含 74 个叶子命令。
+运行 `wjx <command> --help` 可查看当前命令和参数；本版本包含 75 个叶子命令。
 
 ## 顶层命令
 
@@ -24,12 +24,15 @@
 | 导出格式 | `wjx response download --suffix 0\|1\|2` |
 | 查询单份答卷 | `wjx response query --jid <id>` |
 | 创建 JSONL 问卷 | `wjx survey create --file <path>` |
+| 生成填写/预览链接 | `wjx survey preview-url --sid <sid>` |
 
 旧参数 `--permanent`、`--base64`、`--filename`、`--response_id` 不属于当前 CLI 参考路径。需要确认本机版本时运行 `wjx --version` 和 `wjx <command> --help`。
 
 ## 输出与输入
 
 默认输出 JSON；使用 `--format table` 进行人工查看；`--stdin` 接收 JSON 参数。`--dry-run` 不发送 API 请求，并在 stdout 返回统一 envelope：`{"ok":true,"data":{"kind":"dry-run","plans":[...]}}`；stderr 只保留诊断信息。命令失败时使用结构化错误码，脚本应检查退出码。`--json`、`--table` 已移除，低于 `0.4.1` 的客户端必须先升级。
+
+`survey preview-url` 优先接受 API 返回的 `sid`；只有没有 `sid` 时才接受正整数 `vid`，同时提供两者时以 `sid` 为准。它生成答卷人填写/预览链接，不是后台编辑链接；后台编辑请使用 `survey url --mode edit --activity <vid>`。
 
 `wjx update` 会先读取 npm registry 的 `latest` 版本；只有远端版本严格高于当前版本才执行安装。当前版本未发布或 registry 检查失败时不会盲目更新，避免把本地版本降级或覆盖。
 

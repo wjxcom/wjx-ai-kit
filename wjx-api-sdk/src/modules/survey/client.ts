@@ -33,12 +33,17 @@ import type {
 } from "./types.js";
 
 // User-system surveys are a legacy maintenance boundary and cannot be
-// created through the JSONL create API.
-const DISABLED_CREATE_SURVEY_ATYPES = new Set<number>([8]);
+// created through the JSONL create API. All other documented atypes are
+// accepted by action 1000106 and interpreted by the service.
+export const CREATABLE_SURVEY_ATYPES: ReadonlySet<number> = new Set([
+  1, 2, 3, 4, 5, 6, 7, 9, 10, 11,
+]);
 
 function assertCreatableSurveyAtype(atype: number): void {
-  if (DISABLED_CREATE_SURVEY_ATYPES.has(atype)) {
-    throw new Error(`当前接口不支持创建 atype=${atype} 类型的问卷。`);
+  if (!CREATABLE_SURVEY_ATYPES.has(atype)) {
+    throw new Error(
+      `当前接口不支持创建 atype=${atype} 类型的问卷。可创建类型：1=调查, 2=测评, 3=投票, 4=360度评估, 5=360评估无测评关系, 6=考试, 7=表单, 9=教学评估, 10=量表, 11=民主评议。`,
+    );
   }
 }
 

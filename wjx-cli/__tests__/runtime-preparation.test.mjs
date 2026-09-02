@@ -15,6 +15,7 @@ import { Command } from "commander";
 import { executeRuntimeAction } from "../dist/lib/runtime/executor.js";
 import { executeRuntimeCommand } from "../dist/lib/runtime/executor.js";
 import { createRuntimeContext } from "../dist/lib/runtime/context.js";
+import { createCapturingFetch, printDryRunPreview } from "../dist/lib/command-helpers.js";
 
 const PACKAGE_ROOT = fileURLToPath(new URL("..", import.meta.url));
 const CLI = resolve(PACKAGE_ROOT, "dist", "index.js");
@@ -84,6 +85,33 @@ test("request plan keeps raw body data for execution and redacts only dry-run re
   assert.deepEqual(JSON.parse(rendered.plans[0].body), {
     submitdata: "secret-answer",
     apiKey: "****",
+  });
+});
+
+test("captured requests stay raw until printDryRunPreview renders them", async () => {
+  const { fetchImpl, getCapturedRequest } = createCapturingFetch();
+  await fetchImpl("https://example.test/openapi/default.aspx", {
+    method: "POST",
+    headers: { Authorization: "Bearer raw-secret" },
+    body: JSON.stringify({ apiKey: "raw-secret", answer: "keep-me" }),
+  });
+  const captured = getCapturedRequest();
+  assert.equal(captured?.body, JSON.stringify({ apiKey: "raw-secret", answer: "keep-me" }));
+
+  // The public renderer remains the only boundary that emits a masked body.
+  const originalWrite = process.stdout.write;
+  let output = "";
+  process.stdout.write = ((chunk) => { output += String(chunk); return true; });
+  try {
+    printDryRunPreview(captured);
+  } finally {
+    process.stdout.write = originalWrite;
+  }
+  const rendered = JSON.parse(output).data.plans[0];
+  assert.doesNotMatch(JSON.stringify(rendered), /raw-secret/);
+  assert.deepEqual(JSON.parse(rendered.body), {
+    apiKey: "****",
+    answer: "keep-me",
   });
 });
 

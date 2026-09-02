@@ -31,6 +31,13 @@ const serverInfo = {
   version: getPackageVersion(),
 };
 
+/** Mask API keys without exposing short credentials in diagnostics. */
+export function maskApiKeyForDisplay(apiKey: string): string {
+  if (!apiKey) return "(未设置)";
+  if (apiKey.length <= 12) return "****";
+  return `${apiKey.slice(0, 8)}****${apiKey.slice(-4)}`;
+}
+
 export function createServer(): McpServer {
   const server = new McpServer(serverInfo, {
     capabilities: { tools: {}, resources: {}, prompts: {} },
@@ -68,9 +75,7 @@ export function createServer(): McpServer {
     },
     async () => {
       const apiKey = process.env.WJX_API_KEY || "";
-      const maskedKey = apiKey
-        ? apiKey.slice(0, 8) + "****" + apiKey.slice(-4)
-        : "(未设置)";
+      const maskedKey = maskApiKeyForDisplay(apiKey);
       const baseUrl = getWjxBaseUrl();
       const corpId = process.env.WJX_CORP_ID || "(未设置)";
 

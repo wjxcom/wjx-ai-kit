@@ -1,4 +1,12 @@
-# 答卷数据工具详解（9 tools）
+# 答卷数据工具详解（11 tools）
+
+## count_responses — 快速获取答卷总数
+
+仅请求一条答卷记录并返回服务端聚合的 `total_count` 与 `join_times`，适合 Agent 先判断数据规模，避免拉取全量答卷。
+
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| `vid` | number | 是 | 问卷编号 |
 
 ## query_responses — 答卷查询
 
@@ -78,6 +86,7 @@
 | `udsid` | number | 否 | 自定义来源编号 |
 | `sojumpparm` | string | 否 | 自定义链接参数 |
 | `submittime` | string | 否 | 提交时间（日期时间字符串） |
+| `jpmversion` | number | 否 | 问卷版本号；未传时服务端工具会先获取最新版本并注入；显式传入时即使题目元数据获取失败也不会阻止提交 |
 
 ### submitdata 编码格式
 
@@ -114,6 +123,14 @@
 ```
 
 > 矩阵题的"行数"来自 `get_survey` 返回的 `item_rows.length`；`items` 是**列头**（列选项），不是行——切勿用 `items.length` 当行数，会少算或多算。
+
+## build_submit_template — 生成答卷模板
+
+纯本地工具。传入 `get_survey` 返回的 `questions` 数组，输出 `submitdata` 占位模板和逐题提示；自动跳过分页栏/段落说明并保留原始 `q_index`。
+
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| `questions` | object[] | 是 | `get_survey` 返回的题目结构数组 |
 
 **多题拼接**：用 `}` 接起来。假设 vid=N 的问卷返回 q_index=2 的单选 + q_index=3 的多选 + q_index=4 的矩阵单选：
 

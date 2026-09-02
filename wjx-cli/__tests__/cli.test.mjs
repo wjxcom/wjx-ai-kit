@@ -101,7 +101,7 @@ describe("wjx CLI", () => {
 
   it("survey --help lists all subcommands", () => {
     const out = run(["survey", "--help"]);
-    for (const cmd of ["list", "get", "create", "jsonl-template", "delete", "status", "settings", "update-settings", "tags", "tag-details", "clear-bin", "upload", "url"]) {
+    for (const cmd of ["list", "get", "create", "jsonl-template", "delete", "status", "settings", "update-settings", "tags", "tag-details", "clear-bin", "upload", "url", "preview-url"]) {
       assert.match(out, new RegExp(cmd), `missing subcommand: ${cmd}`);
     }
   });
@@ -111,6 +111,18 @@ describe("wjx CLI", () => {
     const parsed = parseResultData(out);
     assert.ok(parsed.url);
     assert.match(parsed.url, /sojump|wjx/);
+  });
+
+  it("survey preview-url supports sid and source without authentication", () => {
+    const parsed = parseResultData(run(["survey", "preview-url", "--sid", "short-code", "--source", "agent"]));
+    assert.match(parsed.url, /\/vm\/short-code\.aspx\?source=agent$/);
+  });
+
+  it("survey preview-url rejects missing sid and vid", async () => {
+    const result = await runFull(["survey", "preview-url"]);
+    assert.equal(result.exitCode, 2);
+    const error = parseProblem(result.stderr);
+    assert.match(error.message, /--sid|--vid/);
   });
 
   it("exits with error when no api-key provided", async () => {
@@ -594,6 +606,12 @@ describe("response subcommands", () => {
   it("response submit --help 含 --submitdata-file 选项", () => {
     const out = run(["response", "submit", "--help"]);
     assert.match(out, /--submitdata-file/);
+  });
+
+  it("response submit --help documents service q_index rather than sequential numbering", () => {
+    const out = run(["response", "submit", "--help"]);
+    assert.match(out, /原始\s+q_index/);
+    assert.doesNotMatch(out, /顺序递增/);
   });
 
   it("response submit-template without --vid → INPUT_ERROR exit 2", async () => {

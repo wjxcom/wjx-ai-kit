@@ -11,7 +11,7 @@
     "node": ">=20"
   },
   "scripts": {
-    "build": "npx -p typescript tsc -p tsconfig.json",
+    "build": "node scripts/clean-dist.mjs && npx -p typescript tsc -p tsconfig.json",
     "test": "npm run build && node --test __tests__/*.test.mjs",
     "clean": "rm -rf dist",
     "prepublishOnly": "npm run build"

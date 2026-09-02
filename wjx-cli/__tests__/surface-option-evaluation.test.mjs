@@ -100,8 +100,8 @@ async function discoverLeaves() {
 
 test("CLI surface inventory discovers every leaf command", async () => {
   const leaves = await discoverLeaves();
-  assert.equal(leaves.length, 74, `unexpected leaf count: ${leaves.map((item) => item.join(" ")).join(", ")}`);
-  assert.equal(new Set(leaves.map((item) => item.join(".")).sort()).size, 74);
+  assert.equal(leaves.length, 75, `unexpected leaf count: ${leaves.map((item) => item.join(" ")).join(", ")}`);
+  assert.equal(new Set(leaves.map((item) => item.join(".")).sort()).size, 75);
 });
 
 test("every source-declared option is exposed by at least one command help", async () => {
@@ -130,7 +130,7 @@ test("every source-declared option is exposed by at least one command help", asy
   const builtInOptions = new Set(["--help", "--version"]);
   assert.deepEqual([...helpOptions].filter((option) => !sourceOptions.has(option) && !builtInOptions.has(option)), [],
     "help exposes options that are not declared in source");
-  assert.equal(sourceOptions.size, 137, "update this denominator when a new option is intentionally added");
+  assert.equal(sourceOptions.size, 139, "update this denominator when a new option is intentionally added");
 });
 
 test("every leaf accepts all of its declared options syntactically", async () => {

@@ -29,6 +29,18 @@ _QTYPE_MAP: dict[int, str] = {
     10: "scale",   # 滑块题
 }
 
+# Only these query subtypes have a chart/summary representation in this skill.
+# Unknown subtypes must not silently become a single-choice chart.
+_SUPPORTED_SUBTYPES: dict[int, set[int | None]] = {
+    3: {None, 3, 301, 302, 303, 305},
+    4: {None, 4, 401, 402, 403},
+    5: {None, 5, 501},
+    6: {None, 6, 601, 602},
+    7: {None, 7, *range(701, 713)},
+    9: {None, 9},
+    10: {None, 10},
+}
+
 
 def _resolve_wjx() -> str:
     """Locate the wjx CLI executable cross-platform.
@@ -117,7 +129,14 @@ def _classify_question(q: dict[str, Any]) -> tuple[str, str | None]:
             return ("scale", "nps_0_10")
         return ("scale", None)
 
-    base = _QTYPE_MAP.get(int(q_type) if q_type else 0, "single")
+    try:
+        q_type_num = int(q_type) if q_type is not None else 0
+        q_subtype_num = int(q_subtype) if q_subtype is not None else None
+    except (TypeError, ValueError):
+        return ("unsupported", None)
+    if q_type_num not in _QTYPE_MAP or q_subtype_num not in _SUPPORTED_SUBTYPES[q_type_num]:
+        return ("unsupported", None)
+    base = _QTYPE_MAP[q_type_num]
     return (base, None)
 
 
@@ -193,6 +212,15 @@ def fetch_from_vid(vid: str, workdir: Path) -> dict[str, Any]:
 
     # 合并题目结构 + 聚合分布
     questions = _normalize_questions(questions_raw, answer_report, detail, matrix_report)
+    skipped_questions = [
+        {
+            "qid": q["qid"],
+            "title": q["title"],
+            "reason": q["skip_reason"],
+        }
+        for q in questions
+        if q.get("type") == "unsupported"
+    ]
 
     # 开放题答案：360-report 拿不到时（普通问卷），单独分页 query 抓 answer_text 样本
     text_qs_missing = [
@@ -273,6 +301,7 @@ def fetch_from_vid(vid: str, workdir: Path) -> dict[str, Any]:
             "avg_time": None,  # wjx-cli 当前不返回平均时长
         },
         "questions": questions,
+        "skipped_questions": skipped_questions,
         "analytics": analytics,
         "nps_cross_tab": nps_cross_tab,
     }
@@ -472,8 +501,7 @@ def _normalize_questions(
                 )
             options = [it.get("item_title", "") for it in items] if items else None
 
-        out.append(
-            {
+        normalized = {
                 "qid": str(q_index),
                 "type": qtype,
                 "scale_type": scale_type,
@@ -482,7 +510,12 @@ def _normalize_questions(
                 "options": options,
                 "open_answers": _extract_open_answers(detail, q_index),
             }
-        )
+        if qtype == "unsupported":
+            normalized["skip_reason"] = (
+                f"unsupported question type q_type={q.get('q_type')} "
+                f"q_subtype={q.get('q_subtype')}"
+            )
+        out.append(normalized)
     return out
 
 

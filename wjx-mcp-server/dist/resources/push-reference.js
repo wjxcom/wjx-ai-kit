@@ -49,7 +49,7 @@ export const PUSH_FORMAT_GUIDE = {
         ],
     },
     tools: {
-        decrypt_note: "SDK 提供 decodePushPayload() 函数可直接解密推送密文（需在代码中调用，MCP 未暴露为独立工具）",
+        decrypt_note: "可直接调用 MCP decode_push_payload 工具解密推送密文；SDK 同时提供 decodePushPayload() 编程接口",
         get_survey_settings: "使用 get_survey_settings 查看当前推送配置",
         update_survey_settings: "使用 update_survey_settings 的 msg_setting 字段修改推送配置",
     },

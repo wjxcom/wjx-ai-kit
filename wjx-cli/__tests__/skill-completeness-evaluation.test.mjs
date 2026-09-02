@@ -87,6 +87,7 @@ function sampleQuestion(qtype) {
     if (qtype === "表格下拉框") question.selects = [["选项一", "选项二"], ["选项三", "选项四"]];
   } else if (["自增表格", "表格自增题"].includes(qtype)) {
     question.rowtitle = ["姓名", "联系方式"];
+    question.columntitle = ["列一", "列二"];
     question.selects = [["", "工作日|周末"]];
     question.min_rows = 1;
     question.max_rows = 5;

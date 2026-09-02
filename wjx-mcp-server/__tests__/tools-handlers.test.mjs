@@ -1,12 +1,26 @@
 import assert from "node:assert/strict";
 import { describe, it, before } from "node:test";
+import { createCipheriv, createHash } from "node:crypto";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
-import { createServer } from "../dist/server.js";
+import { createServer, maskApiKeyForDisplay } from "../dist/server.js";
+
+describe("diagnostic API key masking", () => {
+  it("fully masks empty and short keys", () => {
+    assert.equal(maskApiKeyForDisplay(""), "(未设置)");
+    assert.equal(maskApiKeyForDisplay("short-key"), "****");
+    assert.equal(maskApiKeyForDisplay("123456789012"), "****");
+  });
+
+  it("keeps only a bounded prefix and suffix for long keys", () => {
+    assert.equal(maskApiKeyForDisplay("12345678901234567890"), "12345678****7890");
+  });
+});
 
 // Set dummy env vars so API-calling tools don't crash on missing credentials
 process.env.WJX_APP_ID = process.env.WJX_APP_ID || "test-app-id";
 process.env.WJX_APP_KEY = process.env.WJX_APP_KEY || "test-app-key";
+process.env.WJX_API_KEY = process.env.WJX_API_KEY || "test-api-key";
 
 async function createTestClient() {
   const server = createServer();
@@ -15,6 +29,13 @@ async function createTestClient() {
   const client = new Client({ name: "test", version: "1.0" });
   await client.connect(clientTransport);
   return { client, server };
+}
+
+function encryptPush(payload, appKey) {
+  const key = Buffer.from(createHash("md5").update(appKey, "utf8").digest("hex").slice(0, 16), "utf8");
+  const iv = Buffer.alloc(16, 7);
+  const cipher = createCipheriv("aes-128-cbc", key, iv);
+  return Buffer.concat([iv, cipher.update(JSON.stringify(payload), "utf8"), cipher.final()]).toString("base64");
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -176,6 +197,43 @@ describe("analytics tools via MCP", () => {
     });
   });
 
+  describe("decode_push_payload", () => {
+    it("decrypts an encrypted payload locally", async () => {
+      const result = await client.callTool({
+        name: "decode_push_payload",
+        arguments: { encrypted_data: encryptPush({ vid: 42, jid: 7 }, "push-test-key"), app_key: "push-test-key" },
+      });
+      assert.equal(result.isError, false);
+      assert.deepEqual(JSON.parse(result.content[0].text).decrypted, { vid: 42, jid: 7 });
+    });
+
+    it("rejects malformed encrypted data", async () => {
+      const result = await client.callTool({
+        name: "decode_push_payload",
+        arguments: { encrypted_data: "c2hvcnQ=", app_key: "push-test-key" },
+      });
+      assert.equal(result.isError, true);
+    });
+  });
+
+  describe("build_submit_template", () => {
+    it("builds a local template and skips framework questions", async () => {
+      const result = await client.callTool({
+        name: "build_submit_template",
+        arguments: { questions: [{ q_index: 1, q_type: 1 }, { q_index: 2, q_type: 3 }, { q_index: 3, q_type: 7, q_subtype: 703, item_rows: [{ item_index: 1 }, { item_index: 2 }] }] },
+      });
+      assert.equal(result.isError, false);
+      const data = JSON.parse(result.content[0].text);
+      assert.equal(data.submitdata, "2$1}3$1!1|2,2!1|2");
+      assert.equal(data.questions.length, 2);
+    });
+
+    it("rejects missing questions", async () => {
+      const result = await client.callTool({ name: "build_submit_template", arguments: {} });
+      assert.equal(result.isError, true);
+    });
+  });
+
   // ── detect_anomalies ──────────────────────────────────────────────
   describe("detect_anomalies", () => {
     it("detects straight-lining", async () => {
@@ -277,8 +335,74 @@ describe("analytics tools via MCP", () => {
     });
   });
 
-  // NOTE: decode_push_payload 未作为 MCP 工具注册。
-  // SDK 提供 decodePushPayload() 函数，但 MCP 不暴露独立工具。
+});
+
+describe("response convenience tools via MCP", () => {
+  let client;
+  before(async () => {
+    ({ client } = await createTestClient());
+  });
+
+  it("exposes a valid inputcosttime description without replacement characters", async () => {
+    const listed = await client.listTools();
+    const tool = listed.tools.find((entry) => entry.name === "submit_response");
+    assert.ok(tool);
+    assert.match(tool.inputSchema.properties.inputcosttime.description, /填写时间（秒），需 >1 秒，否则视为机器提交/);
+    assert.doesNotMatch(tool.inputSchema.properties.inputcosttime.description, /\uFFFD/);
+  });
+
+  it("count_responses requests one row and returns aggregate counters", async () => {
+    const previousFetch = globalThis.fetch;
+    const requests = [];
+    globalThis.fetch = async (_url, init) => {
+      const body = JSON.parse(init.body);
+      requests.push(body);
+      return new Response(JSON.stringify({ result: true, data: { total_count: 12, join_times: 15 } }), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      });
+    };
+    try {
+      const result = await client.callTool({ name: "count_responses", arguments: { vid: 42 } });
+      assert.equal(result.isError, false);
+      assert.deepEqual(JSON.parse(result.content[0].text), { result: true, total_count: 12, join_times: 15 });
+      assert.equal(requests.length, 1);
+      assert.equal(requests[0].action, "1001002");
+      assert.equal(requests[0].page_size, 1);
+    } finally {
+      globalThis.fetch = previousFetch;
+    }
+  });
+
+  it("count_responses rejects a non-positive vid", async () => {
+    const result = await client.callTool({ name: "count_responses", arguments: { vid: 0 } });
+    assert.equal(result.isError, true);
+  });
+
+  it("count_responses preserves upstream business error diagnostics", async () => {
+    const previousFetch = globalThis.fetch;
+    globalThis.fetch = async () => new Response(JSON.stringify({
+      result: false,
+      errorcode: "NO_PERMISSION",
+      errormsg: "没有权限查询答卷",
+      traceid: "trace-count-1",
+    }), {
+      status: 200,
+      headers: { "content-type": "application/json" },
+    });
+    try {
+      const result = await client.callTool({ name: "count_responses", arguments: { vid: 42 } });
+      assert.equal(result.isError, true);
+      assert.deepEqual(JSON.parse(result.content[0].text), {
+        result: false,
+        errorcode: "NO_PERMISSION",
+        errormsg: "没有权限查询答卷",
+        traceid: "trace-count-1",
+      });
+    } finally {
+      globalThis.fetch = previousFetch;
+    }
+  });
 });
 
 // ═══════════════════════════════════════════════════════════════════════════════

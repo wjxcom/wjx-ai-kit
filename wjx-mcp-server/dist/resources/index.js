@@ -13,7 +13,7 @@ export function registerResources(server) {
                 text: formatResource(SURVEY_TYPES),
             }],
     }));
-    server.resource("question-types", "wjx://reference/question-types", { description: "问卷星题目类型与细分类型完整列表", mimeType: "application/json" }, async () => ({
+    server.resource("question-types", "wjx://reference/question-types", { description: "问卷详情返回的 q_type/q_subtype 读取编码映射；不是 JSONL 创建题型白名单", mimeType: "application/json" }, async () => ({
         contents: [{
                 uri: "wjx://reference/question-types",
                 mimeType: "application/json",

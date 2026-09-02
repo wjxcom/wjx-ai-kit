@@ -23,6 +23,7 @@ const metadata: Record<string, CommandMetadata> = {
   "survey.clear-bin": { path: "survey.clear-bin", risk: "high-risk-write", identities: ["user"], targetFields: ["username", "vid"] },
   "survey.upload": { path: "survey.upload", risk: "write", identities: ["user", "bot"], targetFields: ["file_name"] },
   "survey.url": { path: "survey.url", risk: "read", identities: ["user", "bot"], targetFields: ["activity", "mode"] },
+  "survey.preview-url": { path: "survey.preview-url", risk: "read", identities: ["user", "bot"], targetFields: ["sid", "vid"] },
   "survey.export-text": { path: "survey.export-text", risk: "read", identities: ["user", "bot"], targetFields: ["vid"] },
   "response.count": { path: "response.count", risk: "read", identities: ["user", "bot"], targetFields: ["vid"] },
   "response.query": { path: "response.query", risk: "read", identities: ["user", "bot"], targetFields: ["vid", "jid"] },

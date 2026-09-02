@@ -4,11 +4,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What This Is
 
-wjx-ai-kit is a monorepo (npm workspaces) wrapping the Wenjuanxing (问卷星) OpenAPI. Three packages provide the same API surface through different interfaces:
+wjx-ai-kit is a monorepo (npm workspaces) wrapping the Wenjuanxing (问卷星) OpenAPI. The SDK is the shared business foundation; CLI and MCP expose different interfaces with intentionally different scope:
 
 - **wjx-cli** — Commander.js CLI; command count follows `wjx --help`. **Main product / primary entry point**, recommended for nearly all use cases.
 - **wjx-api-sdk** — Zero-dependency TypeScript SDK (48+ functions, foundation layer). Used by wjx-cli and any Node.js project.
-- **wjx-mcp-server** — MCP Server (56 tools, 8 resources, 15 prompts) for AI clients. **Secondary / maintenance-mode**: only useful for clients with native MCP protocol support (Claude Code/Desktop, Cursor, Cline). Functionality matches wjx-cli; if in doubt, prefer wjx-cli.
+- **wjx-mcp-server** — MCP Server (59 tools, 8 resources, 15 prompts) for AI clients. **Secondary / maintenance-mode**: only useful for clients with native MCP protocol support (Claude Code/Desktop, Cursor, Cline). It deliberately covers the CLI's core business subset; workstation capabilities remain CLI-only. The authoritative difference list is `capabilities/capability-matrix.json`; if in doubt, prefer wjx-cli.
 
 When in doubt about which package to feature in docs / examples / new functionality, **CLI first**. Only add MCP-specific behavior when the user explicitly requests MCP support.
 

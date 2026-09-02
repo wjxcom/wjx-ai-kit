@@ -1,0 +1,21 @@
+{
+  "name": "wjx-cli-use",
+  "version": "1.0.0",
+  "description": "问卷星 AI Skill — 让 AI 助手通过 wjx-cli 操作问卷星：创建问卷、查询答卷、分析数据、管理通讯录",
+  "homepage": "https://www.wjx.cn",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/wjxcom/wjx-ai-kit.git",
+    "directory": "wjx-skills/wjx-cli-use"
+  },
+  "license": "MIT",
+  "keywords": [
+    "wenjuanxing",
+    "wjx",
+    "survey",
+    "questionnaire",
+    "ai-skill",
+    "mcp",
+    "cli"
+  ]
+}

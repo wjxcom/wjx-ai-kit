@@ -1,6 +1,7 @@
 import type { WjxApiResponse, WjxCredentials, FetchLike, RequestOverrides } from "../../core/types.js";
 export { extractJsonlMetadata, normalizeJsonl } from "./json-to-survey.js";
 import type { CreateSurveyByJsonInput, GetSurveyInput, ListSurveysInput, UpdateSurveyStatusInput, GetSurveySettingsInput, UpdateSurveySettingsInput, DeleteSurveyInput, GetQuestionTagsInput, GetTagDetailsInput, ClearRecycleBinInput, UploadFileInput } from "./types.js";
+export declare const CREATABLE_SURVEY_ATYPES: ReadonlySet<number>;
 export declare function getSurvey<T = unknown>(input: GetSurveyInput, credentials?: WjxCredentials, fetchImpl?: FetchLike, requestOptions?: RequestOverrides): Promise<WjxApiResponse<T>>;
 export declare function listSurveys<T = unknown>(input?: ListSurveysInput, credentials?: WjxCredentials, fetchImpl?: FetchLike, requestOptions?: RequestOverrides): Promise<WjxApiResponse<T>>;
 export declare function updateSurveyStatus<T = unknown>(input: UpdateSurveyStatusInput, credentials?: WjxCredentials, fetchImpl?: FetchLike): Promise<WjxApiResponse<T>>;

@@ -1,7 +1,32 @@
 import { z } from "zod";
 import { decodeResponses, calculateNps, calculateCsat, detectAnomalies, compareMetrics, } from "./compute.js";
 import { toolResult, toolError } from "../../helpers.js";
+import { decodePushPayload } from "wjx-api-sdk";
 export function registerAnalyticsTools(server) {
+    // ─── decode_push_payload ──────────────────────────────────────────
+    server.registerTool("decode_push_payload", {
+        title: "解密推送载荷",
+        description: "解密问卷星 AES-128-CBC 推送载荷，并可校验 SHA1(rawBody + appKey) 签名。纯本地计算，不调用 API。",
+        inputSchema: {
+            encrypted_data: z.string().min(1).describe("加密推送数据（Base64）"),
+            app_key: z.string().min(1).describe("问卷星应用密钥"),
+            signature: z.string().optional().describe("可选签名"),
+            raw_body: z.string().optional().describe("参与签名校验的原始请求体"),
+        },
+        annotations: {
+            openWorldHint: false,
+            destructiveHint: false,
+            idempotentHint: true,
+            title: "解密推送载荷",
+        },
+    }, async (args) => {
+        try {
+            return toolResult(decodePushPayload(args.encrypted_data, args.app_key, args.signature, args.raw_body), false);
+        }
+        catch (error) {
+            return toolError(error);
+        }
+    });
     // ─── decode_responses ──────────────────────────────────────────────
     server.registerTool("decode_responses", {
         title: "解码答卷数据",

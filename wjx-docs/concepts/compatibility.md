@@ -3,10 +3,10 @@
 - Node.js：要求 20+。
 - CLI：以 `wjx --version` 和 `--help` 为准；文档不承诺未在源码出现的旧参数。
 - MCP Server：当前通过 GitHub 源码安装和运行。
-- 问卷创建的当前入口统一为：CLI `survey create`、SDK `createSurveyByJson`、MCP `create_survey_by_json`。
+- 问卷创建的当前入口统一为：CLI `survey create`、SDK `createSurveyByJson`、MCP `create_survey_by_json`，三者都使用 action `1000106` 的 JSONL 链路。
 - DSL：`surveyToText`、CLI `survey export-text` 和 `get_survey` 的 DSL 输出继续用于读取、审阅和离线迁移旧问卷。当前 CLI、SDK 和 MCP 均不注册 `create-by-text`、`createSurveyByText`、`create_survey_by_text` 或原始 `create_survey`。
 
-兼容能力仅限读取旧数据；转换完成后统一使用 JSONL 创建。重大变化记录在 [变更记录](../changelog.md)，迁移动作见 [迁移指南](../migration.md)。
+兼容能力仅限读取旧数据；转换完成后统一使用 JSONL 创建。SDK 返回问卷星 OpenAPI 原始响应（业务失败通常是 `result: false`），CLI 则将结果投影为 `ok/data/meta` envelope；二者不是同一输出协议。重大变化记录在 [变更记录](../changelog.md)，迁移动作见 [迁移指南](../migration.md)。
 
 ## 创建接口的版本门禁
 

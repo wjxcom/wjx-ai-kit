@@ -55,6 +55,8 @@ wjx survey create --file survey.jsonl --publish
 
 创建请求会携带当前 CLI 名称和版本。若服务端以结构化信号要求升级，CLI 会返回 `UPGRADE_REQUIRED`；服务端提供最低版本或升级命令时，`error.hint` 才会包含对应信息。低于 `0.4.1` 的旧 CLI 需要先更新后再创建。
 
+创建成功后可用 `wjx survey preview-url --sid <sid>` 生成答卷人填写/预览链接；只有没有 `sid` 时才使用正整数 `vid`，编辑链接仍使用 `wjx survey url --mode edit --activity <vid>`。
+
 ## Windows 提示
 
 PowerShell、macOS 和 Linux 都支持 CLI。跨平台脚本使用 `wjx ...` 命令和 `--file`，不要复制只适用于 Bash 的 `export`、`$(...)` 或 `for ...; do` 片段。

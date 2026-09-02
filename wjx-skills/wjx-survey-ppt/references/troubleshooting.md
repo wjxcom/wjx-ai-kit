@@ -55,7 +55,7 @@ Windows 上 cairosvg 装完直接可用（pycairo 自带 wheel）；macOS 需 `b
 ## 症状：渲染 0 页（成功但 PPT 是空的）
 
 **原因**：`project/svg_final/` 目录下没有 SVG 文件，可能是：
-- 模板缺失（`templates/slide_layouts/` 为空或文件名不匹配）
+- 模板缺失（`templates/themes/<theme>/` 为空或文件名不匹配）
 - 数据为空导致所有页都被 skip
 **验证**：`ls <workdir>/project/svg_final/`。
 **解决**：

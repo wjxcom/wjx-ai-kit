@@ -46,13 +46,13 @@ const JSONL_FORMAT_INSTRUCTIONS = `
     - 表格数值 / 表格填空：使用 rowtitle 数组；表格数值可补 minvalue/maxvalue
     - 表格下拉框：使用 rowtitle + selects；selects[i] 对应 rowtitle[i] 的下拉选项
     - 表格组合：使用 rowtitle + types + selects；types[i] 对应 rowtitle[i]，无选项的文本/数字字段用 [] 占位
-    - 自增表格：使用 rowtitle + selects，其中 selects 只有一行模板；模板内 "" 表示文本，"a|b|c" 表示下拉选项
+    - 自增表格：使用 rowtitle + columntitle + selects，其中 selects 只有一行模板；模板内 "" 表示文本，"a|b|c" 表示下拉选项；可选 min_rows/max_rows 设置行数边界，不要用 minvalue/maxvalue 代替
     - 标准示例：
       {"qtype":"表格填空","title":"报名人基础信息","rowtitle":["姓名","手机号","微信号","紧急联系人"]}
       {"qtype":"表格数值","title":"活动参与与体能数据","rowtitle":["计划参与人数","每周打球次数","可接受人均费用(元)"],"minvalue":"0","maxvalue":"999"}
       {"qtype":"表格下拉框","title":"个人水平与装备情况","rowtitle":["羽毛球水平","是否自带球拍","是否需要拼车"],"selects":[["新手","初级","中级","高级","校队/专业"],["是","否"],["是","否"]]}
       {"qtype":"表格组合","title":"活动时间与场地偏好","rowtitle":["可参加时段","偏好场地类型","备注"],"types":["多选","下拉","文本"],"selects":[["工作日晚上","周末上午","周末下午","周末晚上"],["木地板","塑胶地","不限"],[]]}
-      {"qtype":"自增表格","title":"可参加日期清单","rowtitle":["可参加日期","可参加时段","是否可候补"],"selects":[["","工作日晚上|周末上午|周末下午|周末晚上","可以|不可以"]],"minvalue":"1","maxvalue":"5"}
+      {"qtype":"自增表格","title":"可参加日期清单","rowtitle":["可参加日期","可参加时段","是否可候补"],"columntitle":["日期","时段","是否可候补"],"selects":[["","工作日晚上|周末上午|周末下午|周末晚上","可以|不可以"]],"min_rows":1,"max_rows":5}
 
     - 多项文件题 (711)：一题收集多个命名的文件上传。rowtitle 列出每个上传项名称。
       示例：{"qtype":"多项文件题","title":"请上传以下材料","rowtitle":["身份证正面","身份证反面","学历证书扫描件"]}

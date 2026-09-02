@@ -24,6 +24,8 @@ export declare function createCapturingFetch(): {
     fetchImpl: FetchLike;
     getCapturedRequest: () => CapturedRequest | null;
 };
+/** Convert a captured transport request into a safe dry-run rendering. */
+export declare function redactCapturedRequest(request: CapturedRequest): CapturedRequest;
 export declare function printDryRunPreview(request: CapturedRequest | null, opts?: {
     format?: "json" | "pretty" | "table" | "ndjson" | "csv";
 }): void;

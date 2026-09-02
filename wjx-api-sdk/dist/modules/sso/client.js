@@ -95,6 +95,12 @@ export function buildPreviewUrl(input, baseUrl) {
     const sid = input.sid?.trim();
     const vid = input.vid;
     const hasValidVid = vid !== undefined && Number.isInteger(vid) && vid > 0;
+    if (sid && /^\d+$/.test(sid)) {
+        throw new Error("buildPreviewUrl 的 sid 必须是安全短编号，不能是纯数字 vid");
+    }
+    if (sid && hasValidVid && sid === vid.toString()) {
+        throw new Error("buildPreviewUrl 的 sid 不能与 vid 相同");
+    }
     if (!sid && vid !== undefined && !hasValidVid) {
         throw new Error("buildPreviewUrl 的 vid 必须是正整数");
     }

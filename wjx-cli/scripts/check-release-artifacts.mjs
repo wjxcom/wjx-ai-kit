@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { execFileSync } from "node:child_process";
 import { cpSync, existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync, mkdirSync } from "node:fs";
-import { dirname, join, resolve } from "node:path";
+import { basename, dirname, join, resolve } from "node:path";
 import { tmpdir } from "node:os";
 import { fileURLToPath, pathToFileURL } from "node:url";
 const root = new URL("..", import.meta.url);
@@ -64,10 +64,25 @@ try {
   const sdkTarball = JSON.parse(sdkPackOutput)[0]?.filename;
   if (!sdkTarball) throw new Error("wjx-api-sdk npm pack did not produce a tarball");
   const sdkTarballPath = join(outputStage, sdkTarball);
-  const listing = execFileSync("tar", ["-tf", tarballPath], { encoding: "utf8" }).split(/\r?\n/).filter(Boolean);
+  const sdkTarballName = basename(sdkTarballPath);
+  const sdkListing = execFileSync("tar", ["-tf", sdkTarballName], { cwd: outputStage, encoding: "utf8" })
+    .split(/\r?\n/)
+    .filter(Boolean);
+  if (!sdkListing.includes("package/dist/index.js")) throw new Error("SDK release tarball missing dist/index.js");
+  if (sdkListing.some((item) => item.startsWith("package/dist/modules/dsl/"))) {
+    throw new Error("SDK release tarball contains removed dist/modules/dsl artifacts");
+  }
+  const tarballName = basename(tarballPath);
+  const listing = execFileSync("tar", ["-tf", tarballName], { cwd: outputStage, encoding: "utf8" }).split(/\r?\n/).filter(Boolean);
   if (!listing.includes("package/dist/index.js")) throw new Error("release tarball missing dist/index.js");
-  for (const forbidden of ["package/manifest/", "package/perf/", "package/src/"]) if (listing.some((item) => item.startsWith(forbidden))) throw new Error(`release tarball contains ${forbidden}`);
-  const packedPackage = JSON.parse(execFileSync("tar", ["-xOf", tarballPath, "package/package.json"], { encoding: "utf8" }));
+  for (const forbidden of [
+    "package/manifest/",
+    "package/perf/",
+    "package/src/",
+    "package/dist/commands/dsl.",
+    "package/dist/modules/dsl/",
+  ]) if (listing.some((item) => item.startsWith(forbidden))) throw new Error(`release tarball contains ${forbidden}`);
+  const packedPackage = JSON.parse(execFileSync("tar", ["-xOf", tarballName, "package/package.json"], { cwd: outputStage, encoding: "utf8" }));
   if (packedPackage.version !== packageJson.version) throw new Error(`release tarball version mismatch: ${packedPackage.version}`);
   if (packedPackage.dependencies?.["wjx-api-sdk"] !== requiredSdkRange) {
     throw new Error(`release tarball must pin wjx-api-sdk to ^${sdkVersion}`);

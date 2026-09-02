@@ -13,7 +13,7 @@ wjx survey jsonl-template --type 1 --raw > survey.jsonl
 wjx survey create --file survey.jsonl
 ```
 
-模板类型：`1` 调查、`2` 测评、`3` 投票、`6` 考试、`7` 表单、`10` 量表。创建其他 CLI 支持的类型时，以 `wjx survey create -h` 的实时输出为准。
+模板类型：`1` 调查、`2` 测评、`3` 投票、`4` 360度评估、`5` 360评估无测评关系、`6` 考试、`7` 表单、`9` 教学评估、`10` 量表、`11` 民主评议。`8` 用户体系仅作历史维护，不能新建。
 
 ## 基本格式
 
@@ -32,23 +32,25 @@ wjx survey create --file survey.jsonl
 |------|------|
 | `qtype` | 必填；使用下文列出的中文题型名 |
 | `title` | 问卷标题或题目正文 |
-| `atype` | 首行问卷类型：1=调查, 2=测评, 3=投票, 6=考试, 7=表单, 10=量表, 11=民主测评 |
+| `atype` | 首行问卷类型：1=调查, 2=测评, 3=投票, 4=360度评估, 5=360评估无测评关系, 6=考试, 7=表单, 9=教学评估, 10=量表, 11=民主评议 |
 | `introduction` | 首行问卷说明 |
 | `endpageinformation` | 首行提交完成页说明 |
 | `language` | 首行语言，默认 `zh` |
 | `select` | 普通选择题的选项；矩阵题的列选项；NPS 量表的必填分值序列 |
 | `rowtitle` | 矩阵题的行标题；比重题或表格题的项目/字段 |
+| `columntitle` | 表格/自增表格的列标题；联合分析等题型的专用列数据 |
 | `requir` | 是否必答，默认 `true`；设为 `false` 时还需把同一题目标题传入 `--optional_titles` |
 | `randomchoice` | 是否随机排列选项 |
 | `lowlimit` / `uplimit` | 多选、排序等题型的最少/最多选择数 |
-| `minvalue` / `maxvalue` | 滑动条、矩阵滑动条、表格数值等题型的数值范围；**不能**代替 NPS 的 `select` |
+| `minvalue` / `maxvalue` | 滑动条、矩阵滑动条等数值题型的范围；自增表格行数使用 `min_rows` / `max_rows`，**不能**代替 NPS 的 `select` |
 | `minvaluetext` / `maxvaluetext` | 量表或滑动条两端显示文案；只描述端点，不定义 NPS 的分值范围 |
 | `total` | 比重题总值，默认 100 |
 | `correctselect` | 考试题正确答案数组 |
 | `quizscore` | 考试题分值字符串 |
 | `isquiz` | 考试题标记，使用 `"1"` |
 | `answeranalysis` | 考试题答案解析 |
-| `types` / `selects` | 表格组合各列的输入类型和对应选项 |
+| `types` / `selects` | 表格组合各列的输入类型和对应选项；自增表格的 `selects` 只有一行模板 |
+| `min_rows` / `max_rows` | 自增表格可添加行数的可选边界 |
 | `leveldata` | 多级下拉的层级数据 |
 | `ext` / `maxsize` / `uploadlimit` | 文件上传的扩展名、大小和数量限制 |
 
@@ -118,6 +120,14 @@ NPS 题必须使用 `qtype:"NPS量表"`，并提供完整且严格有序的 11 �
 ```
 
 `types` 支持 `单选`、`多选`、`下拉`、`数字`、`小数`、`日期`、`手机`、`Email`、`文本`。
+
+### 自增表格
+
+使用 `rowtitle` 和 `columntitle` 描述行/列，`selects` 只放一行列模板；模板中的空字符串表示文本列，使用 `|` 分隔的字符串表示下拉列。可选 `min_rows` / `max_rows` 限制可添加行数，不要用 `minvalue` / `maxvalue` 表示行数：
+
+```jsonl
+{"qtype":"自增表格","title":"可参加日期清单","rowtitle":["日期","时段","是否可候补"],"columntitle":["日期","时段","是否可候补"],"selects":[["","工作日晚上|周末上午","可以|不可以"]],"min_rows":1,"max_rows":5}
+```
 
 ### 投票
 

@@ -8,7 +8,7 @@
 |------|------|------|------|
 | `jsonl` | string | 是 | JSONL 字符串；首行为 `qtype:"问卷基础信息"`，后续每行一个题目对象 |
 | `title` | string | 否 | 覆盖 JSONL 首行中的问卷标题 |
-| `atype` | number | 否 | 问卷类型：1=调查(默认), 2=测评, 3=投票, 6=考试, 7=表单 |
+| `atype` | number | 否 | 问卷类型：1=调查(默认), 2=测评, 3=投票, 4=360度评估, 5=360评估无测评关系, 6=考试, 7=表单, 9=教学评估, 10=量表, 11=民主评议；8 用户体系不能新建 |
 | `publish` | boolean | 否 | 是否立即发布；未指定时普通题型默认 true，包含纯框架题型时默认 false |
 | `optional_titles` | string[] | 否 | 允许设为选填的题目标题；其余题目默认必答 |
 | `creater` | string | 否 | 创建者子账号用户名 |
@@ -26,7 +26,7 @@
 **多项填空（qtype="多项填空"）特殊规则**：
 - 子填空位数量 = title 中 `{_}` 占位符的数量。例 `"电话 {_}，邮箱 {_}"` 生成 2 个输入框。
 - **禁止使用 `rowtitle` 数组定义子项** — `rowtitle` 是矩阵题/比重题/Kano/PSM 的字段，多项填空不支持，服务端会忽略并只生成 1 个空位。
-- 考试多项填空（`qtype="考试多项填空"`）和考试完形填空同理，都依赖 `{_}` 占位符。
+- 考试多项填空（`qtype="考试多项填空"`）依赖 `{_}` 占位符；考试完形填空不在当前 JSONL 创建支持集合中。
 
 ## get_survey — 获取问卷详情
 
@@ -80,11 +80,11 @@
 | 参数 | 类型 | 必填 | 说明 |
 |------|------|------|------|
 | `vid` | number | 是 | 问卷编号 |
-| `api_setting` | string/JSON | 否 | API 请求次数限制设置 |
-| `after_submit_setting` | string/JSON | 否 | 作答后跳转设置 |
-| `msg_setting` | string/JSON | 否 | 数据推送设置 |
-| `sojumpparm_setting` | string/JSON | 否 | 自定义链接参数设置 |
-| `time_setting` | string/JSON | 否 | 时间设置 |
+| `api_setting` | string | 否 | API 请求次数限制设置 JSON 字符串 |
+| `after_submit_setting` | string | 否 | 作答后跳转设置 JSON 字符串 |
+| `msg_setting` | string | 否 | 数据推送设置 JSON 字符串 |
+| `sojumpparm_setting` | string | 否 | 自定义链接参数设置 JSON 字符串 |
+| `time_setting` | string | 否 | 时间设置 JSON 字符串 |
 
 ## delete_survey — 删除问卷（不可恢复）
 

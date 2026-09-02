@@ -5,13 +5,13 @@ description: "Guide for using wjx-mcp-server MCP tools to interact with the Wenj
 
 # wjx-mcp-server Usage Guide
 
-wjx-mcp-server 提供 MCP 工具、参考资源和 prompt 模板，覆盖问卷星 OpenAPI 的全部能力；具体数量以源码和构建脚本为准。
+wjx-mcp-server 提供 MCP 工具、参考资源和 prompt 模板，覆盖问卷星核心业务子集；CLI 是主入口，工作站能力（初始化、配置、补全、Skill 安装）保持 CLI-only。完整差异以仓库 `capabilities/capability-matrix.json` 为准。
 
 ## AI Agent 行为准则（必读）
 
 ### 规则 0：创建问卷只用 `create_survey_by_json`（强制）
 
-当前 MCP Server 只注册 `create_survey_by_json` 作为问卷创建工具。`create_survey_by_text` 与 `create_survey` 已移除；历史 DSL/JSON 必须在 MCP 外部转换为 JSONL。所有题型、投票、考试、表单都走 `create_survey_by_json`。
+当前 MCP Server 只注册 `create_survey_by_json` 作为问卷创建工具。`create_survey_by_text` 与 `create_survey` 已移除；历史 DSL/JSON 必须在 MCP 外部转换为 JSONL。所有当前可创建题型、投票、考试、表单都走 `create_survey_by_json`；JSONL 不承诺覆盖读取接口的全部数字 `q_type/q_subtype` 编码。
 
 ### 规则 1：一个需求 = 一个问卷
 
@@ -21,9 +21,9 @@ wjx-mcp-server 提供 MCP 工具、参考资源和 prompt 模板，覆盖问卷�
 
 "投票/考试/调查"是**问卷类型**（`atype` 参数）。JSONL 创建投票时使用 `qtype:"投票单选"` / `qtype:"投票多选"`，并显式传 `atype: 3`；只有旧 DSL 文本格式才使用普通 `[单选题]` / `[多选题]`，不存在 `[投票单选题]` 标签。
 
-### 规则 3：不支持的题型要明确告知
+### 规则 3：历史 DSL 不支持的题型要明确告知
 
-签名题（用 `[绘图题]` 替代）、地区题（用 `[多级下拉题]` 或网页端添加）、NPS 专用题（用 `[量表题]` + `0~10`）不在 DSL 支持范围内。告知用户替代方案，继续创建其他题目，**不要**反复尝试或拆分多个问卷。
+签名题（用 `[绘图题]` 替代）、地区题（用 `[多级下拉题]` 或网页端添加）、NPS 专用题（用 `[量表题]` + `0~10`）不在历史 DSL 支持范围内。新问卷应优先使用 JSONL 题型参考；只有读取或迁移 DSL 时才告知替代方案，**不要**反复尝试或拆分多个问卷。
 
 ### 规则 3.1：用户体系只允许兼容维护
 
@@ -62,25 +62,25 @@ https://www.wjx.cn/weixinlogin.aspx?redirecturl=%2Fnewwjx%2Fmanage%2Fuserinfo.as
   - 矩阵题的"行数"来自 `get_survey` 返回的 `item_rows.length`；`items` 数组是**列头**（列选项），不是行。
 - **考试题分值/答案字段**：JSONL 创建路径支持 `correctselect`、`quizscore` 和 `answeranalysis`；旧 DSL 兼容路径不支持。`submit_response` 仅用于答题端提交，不能修改考试配置。
 
-### 规则 7：填写链接必须使用加密短编号（强制）
+### 规则 7：填写链接优先使用短编号
 
-- `vid` 是后台问卷编号，只用于查询、编辑和答卷接口，**禁止**自行拼成 `https://<域名>/m/<vid>.aspx`、`/vm/<vid>.aspx` 或 `/jq/<vid>.aspx` 后提供给用户。
+- `vid` 是后台问卷编号，不得自行拼接 URL。需要链接时统一调用 `build_preview_url`，优先传服务端返回的短 `sid`。
 - 查询问卷列表时，优先使用与 `vid` 不同的 `sid` 生成短链；也可使用服务端返回且不含数字 `vid` 的 `activity_domain + mobile_path`。若二者冲突，选择 `sid`，不得输出暴露 `vid` 的路径。
 - 创建问卷后需要填写链接时，使用创建结果返回的 `sid` 调用 `build_preview_url({ sid })`。同时有 `sid` 和 `vid` 时必须优先 `sid`。
 - `build_survey_url({ mode: "edit", activity: vid })` 生成的是**后台编辑链接**，不是用户填写链接，二者不得混用。
-- 如果没有 `mobile_path`，且没有与 `vid` 不同的 `sid`，应明确说明暂时无法取得安全填写链接；**不得**用数字 `vid` 猜测或伪造链接。
+- 如果确实没有 `sid`，可以显式调用 `build_preview_url({ vid })` 生成兼容预览链接；该后备链接包含数字 vid，可能暴露内部编号，必须向用户说明它不是首选。不得绕过工具自行拼接链接。
 
 ## 快速路由
 
 | 用户意图 | 工具 |
 |---------|------|
-| 做调查/问卷 | `create_survey_by_json`（支持 70+ 题型） |
+| 做调查/问卷 | `create_survey_by_json`（支持 70+ 题型；atype 可创建 1/2/3/4/5/6/7/9/10/11，8 用户体系不能新建） |
 | 做考试/测验 | `create_survey_by_json` + prompt `generate-exam-json`，`atype: 6` |
 | 做投票 | `create_survey_by_json` + `atype: 3` |
 | 做表单/报名表 | `create_survey_by_json` + prompt `generate-form-json`，`atype: 7` |
 | 看问卷结果 | `get_report({ vid })` 统计概览，`query_responses({ vid })` 明细 |
 | 导出答卷数据 | `download_responses({ vid })` |
-| 查看填写链接 | 列表中的非数字 `sid` / 安全 `mobile_path`；创建后用 `build_preview_url({ sid })` |
+| 查看填写链接 | 列表中的 `sid` / `mobile_path`；创建后优先用 `build_preview_url({ sid })`，无 sid 时才用 `build_preview_url({ vid })` 并说明暴露风险 |
 | 查看编辑链接 | `build_survey_url({ mode: "edit", activity: vid })` |
 | 分析 NPS | `calculate_nps({ scores: [...] })` |
 | 查当前配置 | `get_config({})` |
@@ -90,11 +90,11 @@ https://www.wjx.cn/weixinlogin.aspx?redirecturl=%2Fnewwjx%2Fmanage%2Fuserinfo.as
 | 模块 | 工具数 | 说明 |
 |------|--------|------|
 | 问卷管理 | 11 | create_survey_by_json, get_survey, list_surveys, update_survey_status, get/update_survey_settings, delete_survey, get_question_tags, get_tag_details, upload_file, clear_recycle_bin |
-| 答卷数据 | 9 | query_responses, query_responses_realtime, download_responses, get_report, submit_response, get_winners, modify_response, get_360_report, clear_responses |
+| 答卷数据 | 11 | query_responses, count_responses, query_responses_realtime, download_responses, get_report, submit_response, build_submit_template, get_winners, modify_response, get_360_report, clear_responses |
 | 通讯录 | 14 | query/add/delete_contacts, add/delete/restore_admin, list/add/modify/delete_departments, list/add/modify/delete_tags |
 | 子账号 | 5 | add/modify/delete/restore/query_sub_accounts |
 | SSO | 5 | sso_subaccount_url, sso_user_system_url, sso_partner_url, build_survey_url, build_preview_url |
-| 分析计算 | 5 | decode_responses, calculate_nps, calculate_csat, detect_anomalies, compare_metrics |
+| 分析计算 | 6 | decode_responses, decode_push_payload, calculate_nps, calculate_csat, detect_anomalies, compare_metrics |
 | 用户体系（兼容/已过时） | 6 | add/modify/delete_participants, bind_activity, query_survey_binding, query_user_surveys；仅维护已有系统 |
 | 诊断 | 1 | get_config — API Key（脱敏）、Base URL、CLI 版本、配置来源 |
 
@@ -104,7 +104,7 @@ https://www.wjx.cn/weixinlogin.aspx?redirecturl=%2Fnewwjx%2Fmanage%2Fuserinfo.as
 
 ### 创建问卷（统一使用 JSON 方式）
 
-**唯一推荐**：所有问卷创建一律使用 `create_survey_by_json`（支持 70+ 题型，覆盖全部 q_type/q_subtype 编码）。
+**唯一推荐**：所有问卷创建一律使用 `create_survey_by_json`。JSONL 使用中文 `qtype` 名称；`get_survey` 等读取接口返回的数字 `q_type/q_subtype` 是另一套结果编码。`wjx://reference/question-types` 仅提供读取结果的编码映射；创建白名单以 SDK 的 `JSONL_SUPPORTED_QTYPES` 与服务端校验为准。
 
 ```
 1. 使用 prompt 模板生成题目 JSON（如 generate-survey-json、generate-exam-json 等）
@@ -119,16 +119,18 @@ https://www.wjx.cn/weixinlogin.aspx?redirecturl=%2Fnewwjx%2Fmanage%2Fuserinfo.as
 
 **考试问卷（atype=6）注意**：JSONL 路径支持 `correctselect`、`quizscore` 和 `answeranalysis`；DSL 兼容路径不支持这些字段。创建后仍可提供编辑链接补充未覆盖的高级设置。
 
-JSONL 题型字段详见 `wjx://reference/question-types` 资源；只有使用已弃用 DSL 兼容入口时才查阅 [references/dsl-and-types.md](references/dsl-and-types.md)。
+JSONL 题型字段详见 `create_survey_by_json` 的工具描述与 SDK `JSONL_SUPPORTED_QTYPES`；`wjx://reference/question-types` 只用于解释 `get_survey` 的 `q_type/q_subtype`。读取或迁移历史 DSL 时查阅 [references/dsl-and-types.md](references/dsl-and-types.md)，新问卷始终转换回 JSONL 后创建。
 
 ### 查询和分析数据
 
 ```
-1. get_report({ vid: N }) — 统计概览（首选）
-2. query_responses({ vid: N, page_size: 50 }) — 明细数据
-3. decode_responses({ submitdata: "..." }) — 解码答卷格式
-4. calculate_nps / calculate_csat — 分析指标
-5. detect_anomalies({ responses: [...] }) — 数据质量检查
+1. get_survey({ vid: N }) — 确认问卷结构
+2. count_responses({ vid: N }) — 先获取规模，决定是否拉取明细
+3. get_report({ vid: N }) — 统计概览
+4. query_responses({ vid: N, page_size: 50 }) — 按需分页读取明细
+5. decode_responses({ submitdata: "..." }) — 解码答卷格式
+6. calculate_nps / calculate_csat — 分析指标
+7. detect_anomalies({ responses: [...] }) — 数据质量检查
 ```
 
 ### 提交答卷（代填/导入）
@@ -162,7 +164,7 @@ submitdata 题号必须与 `get_survey` 返回的原始 `q_index` 对齐——**
 | "activity not found" | 问卷 vid 不存在 | `list_surveys` 确认正确 vid |
 | "corp_id required" | 通讯录操作缺企业 ID | 配置 `WJX_CORP_ID` 环境变量 |
 | 网络超时 | base_url 错误或网络不通 | `get_config` 检查 base_url |
-| 创建问卷题目丢失 | DSL 格式错误 | 检查题号 + [题型标签]，选项各占一行 |
+| 历史问卷迁移后题目丢失 | DSL 转换或 JSONL 字段错误 | 读取历史 DSL 时检查题号和题型映射；转换后先用 JSONL 预检，再重新获取问卷结构 |
 
 更多排查详见 [references/troubleshooting.md](references/troubleshooting.md)。
 
@@ -171,8 +173,8 @@ submitdata 题号必须与 `get_survey` 返回的原始 `q_index` 对齐——**
 | 资源 URI | 内容 |
 |----------|------|
 | `wjx://reference/dsl-syntax` | DSL 文本语法（仅读取、审阅和离线迁移） |
-| `wjx://reference/question-types` | 题型和子类型完整映射表 |
-| `wjx://reference/survey-types` | 问卷类型编码（1=调查, 6=考试 等） |
+| `wjx://reference/question-types` | `get_survey` 读取结果的 q_type/q_subtype 映射（不是 JSONL 创建白名单） |
+| `wjx://reference/survey-types` | 问卷类型编码及创建限制（1/2/3/4/5/6/7/9/10/11 可创建，8 用户体系不能新建） |
 | `wjx://reference/survey-statuses` | 问卷状态码 |
 | `wjx://reference/response-format` | submitdata 编码格式 |
 | `wjx://reference/analysis-methods` | NPS/CSAT/CES 公式和行业基准 |
@@ -191,7 +193,7 @@ submitdata 题号必须与 `get_survey` 返回的原始 `q_index` 对齐——**
 
 | 参数 | 值 |
 |------|-----|
-| 问卷类型 (atype) | 1=调查, 2=测评, 3=投票, 6=考试, 7=表单 |
+| 问卷类型 (atype) | 1=调查, 2=测评, 3=投票, 4=360度评估, 5=360评估无测评关系, 6=考试, 7=表单, 9=教学评估, 10=量表, 11=民主评议；8 用户体系不能新建 |
 | 问卷状态 (state) | 1=发布, 2=暂停, 3=删除 |
 | 下载格式 (suffix) | 0=CSV, 1=SAV, 2=Word |
 | 角色 (roleid) | 1=系统管理员, 2=问卷管理员, 3=统计查看, 4=全部查看 |
@@ -200,6 +202,6 @@ submitdata 题号必须与 `get_survey` 返回的原始 `q_index` 对齐——**
 
 - [DSL 语法与题型](references/dsl-and-types.md) — DSL 格式、25+ 题型标签、q_type/q_subtype 映射表
 - [问卷工具详解](references/tools-survey.md) — 11 个问卷管理工具的完整参数
-- [答卷工具详解](references/tools-response.md) — 9 个答卷数据工具的完整参数
+- [答卷工具详解](references/tools-response.md) — 11 个答卷数据工具的完整参数
 - [其他工具详解](references/tools-other.md) — 通讯录、子账号、SSO、分析、推送工具参数
 - [错误排查](references/troubleshooting.md) — API 错误码、配置问题、自定义域名、考试限制

@@ -35,7 +35,7 @@ const jsonl = (title, atype = 1) => [
 ].map((row) => JSON.stringify(row)).join("\n") + "\n";
 
 test("Skill documents every supported JSONL template type with usable JSONL", async () => {
-  const supported = [1, 2, 3, 6, 7, 10, 11];
+  const supported = [1, 2, 3, 4, 5, 6, 7, 9, 10, 11];
   const fixture = await startFixture();
   try {
     for (const atype of supported) {
@@ -52,7 +52,7 @@ test("Skill documents every supported JSONL template type with usable JSONL", as
       assert.ok(rows[0].title, `atype=${atype} template has no title`);
       assert.ok(rows.slice(1).every((row) => typeof row.qtype === "string" && row.title), `atype=${atype}`);
     }
-    for (const atype of [0, 4, 5, 8]) {
+    for (const atype of [0, 8]) {
       const result = await fixture.run(["survey", "jsonl-template", "--type", String(atype), "--raw"]);
       parseProblem(result);
       assert.equal(fixture.requests().length, 0);

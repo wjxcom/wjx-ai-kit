@@ -1,5 +1,5 @@
 import { readFileSync } from "node:fs";
-import { createSurveyByJson, getSurvey, listSurveys, updateSurveyStatus, getSurveySettings, updateSurveySettings, deleteSurvey, getQuestionTags, getTagDetails, clearRecycleBin, uploadFile, buildSurveyUrl, surveyToText, MAX_JSONL_SIZE, preflightJsonl, parseJsonl, Action, } from "wjx-api-sdk";
+import { createSurveyByJson, CREATABLE_SURVEY_ATYPES, getSurvey, listSurveys, updateSurveyStatus, getSurveySettings, updateSurveySettings, deleteSurvey, getQuestionTags, getTagDetails, clearRecycleBin, uploadFile, buildSurveyUrl, buildPreviewUrl, surveyToText, MAX_JSONL_SIZE, preflightJsonl, parseJsonl, Action, } from "wjx-api-sdk";
 import { enrichSurveyListOutput, formatOutput } from "../lib/output.js";
 import { CliError, ensureApiSuccess, handleError } from "../lib/errors.js";
 import { applyProfileCredentials, getCredentials, getProfileBaseUrl } from "../lib/auth.js";
@@ -109,7 +109,7 @@ export function registerSurveyCommands(program) {
         .option("--jsonl <s>", "JSONL 格式问卷文本")
         .option("--file <path>", "从文件读取 JSONL 文本")
         .option("--title <s>", "覆盖 JSONL 中的问卷标题")
-        .option("--type <n>", "问卷类型：1=调查, 2=测评, 3=投票, 6=考试, 7=表单, 10=量表, 11=民主测评", strictInt)
+        .option("--type <n>", "问卷类型：1=调查, 2=测评, 3=投票, 4=360度评估, 5=360评估无测评关系, 6=考试, 7=表单, 9=教学评估, 10=量表, 11=民主评议", strictInt)
         .option("--optional_titles <json>", "允许设为选填的题目标题 JSON 数组")
         .option("--publish", "显式要求创建后发布；普通题型默认发布，纯框架题型默认保持草稿")
         .option("--creater <s>", "创建者子账号")
@@ -148,7 +148,12 @@ export function registerSurveyCommands(program) {
             return {
                 jsonl: jsonlText,
                 title: merged.title,
-                atype: merged.type,
+                atype: (() => {
+                    if (merged.type !== undefined) {
+                        requireEnum({ type: merged.type }, "type", [...CREATABLE_SURVEY_ATYPES]);
+                    }
+                    return merged.type;
+                })(),
                 optionalTitles: ensureStringArray(merged.optional_titles, "optional_titles"),
                 publish: merged.publish,
                 creater: merged.creater,
@@ -319,7 +324,7 @@ export function registerSurveyCommands(program) {
     survey
         .command("jsonl-template")
         .description("输出 create 可直接使用的 JSONL 骨架（按 --type 切换调查/投票/考试/表单等）")
-        .option("--type <n>", "问卷类型：1=调查（默认）, 2=测评, 3=投票, 6=考试, 7=表单, 10=量表", strictInt)
+        .option("--type <n>", "问卷类型：1=调查（默认）, 2=测评, 3=投票, 4=360度评估, 5=360评估无测评关系, 6=考试, 7=表单, 9=教学评估, 10=量表, 11=民主评议", strictInt)
         .option("--raw", "直接输出 JSONL 文本（不包裹 JSON），便于重定向到文件")
         .action(async (_opts, cmd) => {
         try {
@@ -372,6 +377,30 @@ export function registerSurveyCommands(program) {
             handleError(e);
         }
     });
+    // --- preview-url ---
+    survey
+        .command("preview-url")
+        .description("生成问卷预览/填写链接")
+        .option("--sid <s>", "问卷短链 ID（优先使用创建接口返回的 sid）")
+        .option("--vid <n>", "问卷ID（没有 sid 时使用）", strictInt)
+        .option("--source <s>", "来源标识")
+        .action(async (_opts, cmd) => {
+        await executeRuntimeAction(program, cmd, ((input) => {
+            const baseUrl = getProfileBaseUrl(resolveProfile({ profile: program.opts().profile }));
+            const url = input.sid
+                ? buildPreviewUrl({ sid: input.sid, vid: input.vid, source: input.source }, baseUrl)
+                : buildPreviewUrl({ vid: input.vid, source: input.source }, baseUrl);
+            return { url };
+        }), (m) => {
+            const sid = typeof m.sid === "string" ? m.sid.trim() : "";
+            if (sid)
+                return { sid, vid: m.vid, source: m.source };
+            if (m.vid === undefined || typeof m.vid !== "number" || !Number.isInteger(m.vid) || m.vid <= 0) {
+                throw new CliError("INPUT_ERROR", "必须提供 --sid，或提供正整数 --vid");
+            }
+            return { vid: m.vid, source: m.source };
+        }, { noAuth: true });
+    });
 }
 const TEMPLATE_QUESTIONS_BY_ATYPE = {
     1: [
@@ -402,6 +431,15 @@ const TEMPLATE_QUESTIONS_BY_ATYPE = {
         { qtype: "手机", title: "您的手机号" },
         { qtype: "单选", title: "请选择您的部门", select: ["研发", "产品", "运营", "其他"] },
     ],
+    4: [
+        { qtype: "矩阵单选", title: "请对各项进行评估", rowtitle: ["项目一", "项目二", "项目三"], select: ["差", "一般", "好"] },
+    ],
+    5: [
+        { qtype: "矩阵单选", title: "请对各项进行评估", rowtitle: ["项目一", "项目二", "项目三"], select: ["差", "一般", "好"] },
+    ],
+    9: [
+        { qtype: "量表题", title: "请为本项评分（1-5）", select: ["1", "2", "3", "4", "5"] },
+    ],
     10: [
         { qtype: "矩阵量表", title: "请按以下维度打分（1-7 分）", rowtitle: ["条目 1", "条目 2", "条目 3"], select: ["1", "2", "3", "4", "5", "6", "7"] },
         { qtype: "量表题", title: "总体感受（1-7 分）", select: ["1", "2", "3", "4", "5", "6", "7"] },
@@ -417,13 +455,16 @@ const TEMPLATE_TITLE_BY_ATYPE = {
     3: "示例投票（请改成你的标题）",
     6: "示例考试（请改成你的标题）",
     7: "示例表单（请改成你的标题）",
+    4: "示例360度评估（请改成你的标题）",
+    5: "示例360评估（请改成你的标题）",
     10: "示例量表（请改成你的标题）",
+    9: "示例教学评估（请改成你的标题）",
     11: "示例民主测评（请改成你的标题）",
 };
 function buildJsonlTemplate(atype) {
-    const validAtypes = new Set([1, 2, 3, 6, 7, 10, 11]);
+    const validAtypes = CREATABLE_SURVEY_ATYPES;
     if (!validAtypes.has(atype)) {
-        throw new CliError("INPUT_ERROR", `无效的 --type "${atype}"，可选值：1=调查, 2=测评, 3=投票, 6=考试, 7=表单, 10=量表, 11=民主测评`);
+        throw new CliError("INPUT_ERROR", `无效的 --type "${atype}"，可选值：1=调查, 2=测评, 3=投票, 4=360度评估, 5=360评估无测评关系, 6=考试, 7=表单, 9=教学评估, 10=量表, 11=民主评议`);
     }
     const meta = {
         qtype: "问卷基础信息",

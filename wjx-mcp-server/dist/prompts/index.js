@@ -133,7 +133,7 @@ Use survey type 1 (survey) and pass a JSONL string to create_survey_by_json. The
 - 密钥派生：MD5(appKey) 取前 16 字符
 - 填充方式：PKCS7
 - 密文格式：前 16 字节为 IV，其余为加密数据，整体 Base64 编码
-（SDK 提供 decodePushPayload() 函数可直接解密，无需手动实现）
+（可调用 decode_push_payload 工具解密；SDK 也提供 decodePushPayload() 编程接口，无需手动实现）
 
 **第五步：签名验证**
 推送请求在 HTTP 头中携带 X-Wjx-Signature 签名，验证方法：

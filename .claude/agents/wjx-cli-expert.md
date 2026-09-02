@@ -60,15 +60,15 @@ wjx doctor
 2. 创建前用 `--dry-run` 预览解析结果
 3. 创建后用 `wjx survey get --vid N` 验证
 4. 向用户提供编辑链接：`wjx survey url --mode edit --activity N`
-5. 向用户提供预览链接：通过 SDK 的 `buildPreviewUrl` 或告知用户在编辑页面预览
+5. 向用户提供预览链接：使用 `wjx survey preview-url --sid <sid>`；只有没有 `sid` 时才使用正整数 `vid`，同时提供两者时以 `sid` 为准
 
 > `create-by-text`（DSL 文本）/ `create-by-json`（旧命令名）/ `create --questions`（JSON 数组）已移除；新代码统一使用 `survey create`，历史输入需先离线转换。
 
-读取或审阅 DSL 时使用 `wjx survey export-text --vid N --raw` 或 `wjx survey get --vid N` 的 DSL 输出；迁移完成后回到 `survey create`，不要把 DSL 当作新建入口。
+读取或审阅 DSL 时使用 `wjx survey export-text --vid N --raw`；`survey get` 只返回结构化 JSON。迁移完成后回到 `survey create`，不要把 DSL 当作新建入口。
 
 ### 考试问卷注意事项
 
-- 创建考试问卷时 `--type 6`，考试中的单选/多选/填空自动变为考试题型
+- 创建考试问卷时使用 `--type 6`，并明确使用 `考试单选`、`考试判断`、`考试多选`、`考试单项填空` 等考试专用 qtype；普通单选/多选/填空不会因为 `--type 6` 自动转换为考试题型
 - **考试配置**：使用 `wjx survey jsonl-template --type 6 --raw` 生成骨架，在考试题上用 `correctselect` 和 `quizscore` 设置正确答案与分值；模板未覆盖的高级考试设置再通过 `wjx survey url --mode edit --activity N` 指引用户在网页端补充
 - 创建考试后使用 `wjx survey update-settings --vid N --time_setting '...'` 设置考试时间限制
 

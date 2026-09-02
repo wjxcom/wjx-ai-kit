@@ -1,11 +1,11 @@
-"""Layer 2：把 data.json 填进 templates/slide_layouts/*.svg 模板，输出 SVG 到 project/svg_final/。
+"""Layer 2：把 data.json 填进 templates/themes/<theme>/*.svg 模板，输出 SVG 到 project/svg_final/。
 
 填槽语法（references/slot-filling.md 详述）：
 - {{KEY}}                标量替换
 - {{#LIST}}...{{/LIST}}  列表展开（循环体内 {{ITEM}} {{INDEX}} {{VALUE}} 等）
 - {{?KEY}}...{{/KEY}}    条件块（KEY 不存在或值假则整段删除）
 
-页面选择策略：固定 10 页框架，但根据数据特征跳过空页（如无矩阵题则跳过 P07）。
+页面选择策略：保留固定的页面框架，并根据数据特征动态增加或跳过分项页（如无矩阵题则跳过 P07）。
 """
 
 from __future__ import annotations
@@ -128,7 +128,7 @@ def build_outline(data: dict[str, Any], theme: str = _DEFAULT_THEME) -> dict[str
     return {
         "theme": theme,
         "_data_signature": data_signature(data),
-        "_help": "可编辑：theme（换主题）、include=false（跳页）、调整数组顺序（改顺序）、ai_findings/ai_insights/ai_summary（写自然语言解读）",
+        "_help": "可编辑：theme（换主题）、include=false（跳页）、调整数组顺序（改顺序）、ai_findings/ai_insights/ai_summary（写自然语言解读）。页面数量按题型和数据动态变化。",
         "_themes_available": list_themes(),
         "pages": pages,
     }

@@ -3,7 +3,7 @@ export interface CreateSurveyByJsonInput {
     jsonl: string;
     /** 问卷标题（可选，不传则从"问卷基础信息"条目提取） */
     title?: string;
-    /** 问卷类型：1=调查, 2=测评, 3=投票, 6=考试, 7=表单, 10=量表, 11=民主评议 */
+    /** 可创建问卷类型：1=调查, 2=测评, 3=投票, 4=360度评估, 5=360评估无测评关系, 6=考试, 7=表单, 9=教学评估, 10=量表, 11=民主评议；8=用户体系不支持新建 */
     atype?: number;
     /** 允许显式设为非必答的题目标题列表；未列入时，requir=false 会被拒绝 */
     optionalTitles?: string[];

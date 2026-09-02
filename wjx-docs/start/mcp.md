@@ -30,7 +30,7 @@ WJX_API_KEY="你的 API Key" npx wjx-mcp-server
 
 ## 能力发现
 
-当前版本提供 56 个 Tool、8 个 Resource、15 个 Prompt。完整名称和模块见 [MCP 工具参考](../reference/mcp-tools.md)。
+当前版本提供 59 个 Tool、8 个 Resource、15 个 Prompt。MCP 是 CLI 的核心业务子集入口；初始化、补全、Skill 安装等工作站能力保持 CLI-only。完整名称和差异见 [MCP 工具参考](../reference/mcp-tools.md) 与仓库 capability matrix。
 
 ## 凭据安全
 

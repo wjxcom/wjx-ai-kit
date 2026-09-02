@@ -188,7 +188,7 @@ wjx response submit --vid 12345 --submitdata '1$1}2$hello' --inputcosttime 30
 |------|------|------|
 | `--vid <n>` | 是 | 问卷编号 |
 | `--inputcosttime <n>` | 是 | 填写耗时（秒），必须 >1 否则视为机器提交 |
-| `--submitdata <s>` | 二选一 | 答卷数据，格式：`题号$答案}题号$答案`（按 1, 2, 3... 写） |
+| `--submitdata <s>` | 二选一 | 答卷数据，格式：`题号$答案}题号$答案`；题号必须使用 `submit-template`/`get_survey` 返回的原始 `q_index`，不能按题目顺序连续编号 |
 | `--submitdata-file <path>` | 二选一 | 从文件读 submitdata（推荐：彻底绕开 shell `$` 转义） |
 | `--udsid <n>` | 否 | 自定义来源编号 |
 | `--sojumpparm <s>` | 否 | 自定义链接参数 |

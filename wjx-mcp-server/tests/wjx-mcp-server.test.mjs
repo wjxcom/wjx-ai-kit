@@ -63,7 +63,7 @@ test("createSurveyByJson sends JSONL to action 1000106 with Bearer auth", async 
   assert.equal("traceid" in parsedBody, false, "traceid should not be in POST body");
 });
 
-test("server exposes all 56 tools, 8 resources, and 15 prompts over stdio", async () => {
+test("server exposes all 59 tools, 8 resources, and 15 prompts over stdio", async () => {
   const transport = new StdioClientTransport({
     command: "node",
     args: [serverEntry],
@@ -96,13 +96,16 @@ test("server exposes all 56 tools, 8 resources, and 15 prompts over stdio", asyn
       "add_tag",
       "bind_activity",
       "build_preview_url",
+      "build_submit_template",
       "build_survey_url",
       "calculate_csat",
       "calculate_nps",
       "clear_recycle_bin",
       "clear_responses",
       "compare_metrics",
+      "count_responses",
       "create_survey_by_json",
+      "decode_push_payload",
       "decode_responses",
       "delete_admin",
       "delete_contacts",
@@ -201,6 +204,9 @@ test("server exposes all 56 tools, 8 resources, and 15 prompts over stdio", asyn
       "wjx://reference/survey-types",
       "wjx://reference/user-roles",
     ]);
+    const resourceMeta = resourcesResult.resources.find((resource) => resource.uri === "wjx://reference/question-types");
+    assert.match(resourceMeta?.description ?? "", /读取编码映射/);
+    assert.match(resourceMeta?.description ?? "", /不是 JSONL 创建题型白名单/);
 
     // Verify a resource can be read
     const typesResource = await client.readResource({ uri: "wjx://reference/survey-types" });

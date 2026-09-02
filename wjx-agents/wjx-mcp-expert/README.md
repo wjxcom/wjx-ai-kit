@@ -1,6 +1,6 @@
 # wjx-mcp-expert
 
-问卷星 MCP 专家子 Agent —— 通过 wjx-mcp-server 完成问卷创建、数据回收、分析等全部操作。
+问卷星 MCP 专家子 Agent —— 通过 wjx-mcp-server 完成问卷星核心业务子集的创建、数据回收和分析。CLI 是完整的主入口，MCP 处于 secondary / maintenance-mode。
 
 ## 设计理念
 
@@ -14,7 +14,7 @@ Agent 不重复 Skill 中的工具参数内容，而是在需要时读取对应�
 
 启动后，它具备：
 
-- MCP 工具的完整知识（问卷、答卷、通讯录、分析等；数量以源码为准；用户体系工具仅兼容维护）
+- MCP 核心业务子集工具的使用知识（问卷、答卷、通讯录、分析等；用户体系工具仅兼容维护；差异以 capability matrix 为准）
 - 8 个 MCP 资源的参考数据（题型编码、DSL 语法、分析公式等）
 - 15 个 Prompt 模板（NPS 分析、异常检测、JSONL 问卷生成等；数量以源码为准）
 - 内置的工作流程和安全原则
@@ -102,7 +102,7 @@ claude --agent wjx-mcp-expert "创建一份英语考试问卷，包含单选、�
 仅在用户提供已有 `usid`/`sysid` 且明确要求维护时使用用户体系工具。不能通过 API 新建 `atype=8` 用户体系问卷；新项目应改用普通问卷、通讯录和标准分发能力。
 
 **分析问卷数据：**
-`get_report` 概览 → `query_responses` 明细 → `calculate_nps` 计算 NPS → `detect_anomalies` 检测异常
+`get_report` 概览 → `count_responses` 判断规模 → 按需 `query_responses` 明细 → `calculate_nps` 计算 NPS → `detect_anomalies` 检测异常
 
 **批量导入通讯录：**
 读取数据文件 → 查阅 `references/tools-other.md` 确认参数 → `add_contacts` 导入 → `query_contacts` 验证

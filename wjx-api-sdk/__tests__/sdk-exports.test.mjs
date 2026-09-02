@@ -102,7 +102,7 @@ describe("SDK barrel exports", () => {
     for (const name of [
       "queryResponses", "queryResponsesRealtime", "downloadResponses",
       "getReport", "submitResponse", "getFileLinks",
-      "getWinners", "modifyResponse", "get360Report", "clearResponses",
+      "getWinners", "modifyResponse", "get360Report", "clearResponses", "buildSubmitTemplate",
     ]) {
       it(`should export ${name} as a function`, () => {
         assert.equal(typeof sdk[name], "function", `${name} should be a function`);

@@ -1,6 +1,6 @@
 # wjx-mcp-server
 
-问卷星 MCP Server，供 Claude Desktop、Claude Code、Cursor 等原生 MCP 客户端直接调用。CLI 是默认入口；MCP 只在客户端明确支持协议时使用。
+问卷星 MCP Server，供 Claude Desktop、Claude Code、Cursor 等原生 MCP 客户端直接调用。CLI 是默认入口；MCP 处于 secondary / maintenance-mode，只覆盖核心业务子集，工作站能力保持 CLI-only。
 
 ## 安装与发布
 
@@ -33,7 +33,7 @@ npm run build --workspace=wjx-mcp-server
 }
 ```
 
-保存后完全重启客户端，再调用 `list_surveys` 验证。Tool、Resource、Prompt 的数量和模块见 [MCP 工具参考](../wjx-docs/reference/mcp-tools.md)。
+保存后完全重启客户端，再调用 `list_surveys` 验证。当前 Server 提供 59 个 Tool、8 个 Resource 和 15 个 Prompt；它不承诺与 CLI 完全同面，具体差异和 CLI-only 能力见 [MCP 工具参考](../wjx-docs/reference/mcp-tools.md) 与仓库 `capabilities/capability-matrix.json`。
 
 ## HTTP
 

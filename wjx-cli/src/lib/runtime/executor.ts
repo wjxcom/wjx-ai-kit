@@ -3,7 +3,7 @@ import type { WjxCredentials, WjxApiResponse, RequestOverrides } from "wjx-api-s
 import { applyProfileCredentials, applyProfileDefaults, getCredentials, getProfileApiUrl } from "../auth.js";
 import { ensureApiSuccess, handleError } from "../errors.js";
 import { formatOutput } from "../output.js";
-import { createCapturingFetch, getMerged } from "../command-helpers.js";
+import { createCapturingFetch, getMerged, redactCapturedRequest } from "../command-helpers.js";
 import { normalizeInput } from "./input.js";
 import { renderDryRun } from "./dry-run.js";
 import type { RequestPlan } from "./types.js";
@@ -170,7 +170,7 @@ export async function executeRuntimeAction(
       formatOutput({
         ...(preview ?? {}),
         kind: "dry-run",
-        plans: request ? [request] : [],
+        plans: request ? [redactCapturedRequest(request)] : [],
       }, globalOpts);
       return;
     }

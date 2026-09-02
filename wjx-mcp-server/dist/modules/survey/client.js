@@ -1,2 +1,2 @@
-export { createSurveyByJson, getSurvey, listSurveys, updateSurveyStatus, getSurveySettings, updateSurveySettings, deleteSurvey, getQuestionTags, getTagDetails, clearRecycleBin, uploadFile, surveyToText, extractJsonlMetadata, normalizeJsonl, MAX_JSONL_SIZE, } from "wjx-api-sdk";
+export { createSurveyByJson, CREATABLE_SURVEY_ATYPES, getSurvey, listSurveys, updateSurveyStatus, getSurveySettings, updateSurveySettings, deleteSurvey, getQuestionTags, getTagDetails, clearRecycleBin, uploadFile, surveyToText, extractJsonlMetadata, normalizeJsonl, MAX_JSONL_SIZE, } from "wjx-api-sdk";
 //# sourceMappingURL=client.js.map

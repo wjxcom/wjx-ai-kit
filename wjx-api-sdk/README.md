@@ -40,12 +40,12 @@ const result = await createSurveyByJson({
   jsonl: [
     { qtype: "问卷基础信息", title: "示例问卷" },
     { qtype: "单选", title: "选择一个", select: ["A", "B"] },
-  ].map(JSON.stringify).join("\\n"),
+  ].map(JSON.stringify).join("\n"),
 });
 console.log(result.data);
 ```
 
-函数统一接受 `(input, credentials?, fetchImpl?, requestOptions?)`（仅支持请求覆盖的函数接受第四参数）。显式凭据优先于凭据提供者，再回退到环境变量。业务失败返回 `result: false`，网络/超时错误可能抛出异常。
+远程 API 函数统一接受 `(input, credentials?, fetchImpl?, requestOptions?)`（仅支持请求覆盖的函数接受第四参数）。本地辅助函数有各自的纯函数签名，不需要凭据，也不发起网络请求。显式凭据优先于凭据提供者，再回退到环境变量。业务失败返回 `result: false`，网络/超时错误可能抛出异常。
 
 ### 私有化与多租户路由
 
@@ -63,7 +63,7 @@ await listSurveys(
 
 需要服务端识别调用方版本时，可在第四参数传入 `clientName` 和 `clientVersion`。SDK 会发送 `X-WJX-Client` 与 `X-WJX-Client-Version` 请求头；CLI 的 `survey create` 已自动发送 `wjx-cli` 与自身版本。
 
-创建问卷统一使用 `createSurveyByJson`。`surveyToText` 保留用于把已读取的问卷转换为可读 DSL 文本；当前 SDK 不提供 `createSurvey`、`createSurveyByText` 或 `textToSurvey` 创建接口。旧 DSL 只能在外部转换为 JSONL。
+创建问卷统一使用 `createSurveyByJson`。答卷模板可用 `buildSubmitTemplate` 根据 `getSurvey` 题目结构在本地生成；它不会发起网络请求，并保留服务端原始 `q_index`。推送数据可用 `decodePushPayload` 在本地解密并可选验签，同样不会发起网络请求。`surveyToText` 保留用于把已读取的问卷转换为可读 DSL 文本；当前 SDK 不提供 `createSurvey`、`createSurveyByText` 或 `textToSurvey` 创建接口。旧 DSL 只能在外部转换为 JSONL。
 
 完整说明见 [SDK 快速开始](../wjx-docs/start/sdk.md) 和 [SDK API 参考](../wjx-docs/reference/sdk.md)。
 

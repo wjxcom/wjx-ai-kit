@@ -40,6 +40,7 @@ export {
 // Survey module
 export {
   createSurveyByJson,
+  CREATABLE_SURVEY_ATYPES,
   getSurvey,
   listSurveys,
   updateSurveyStatus,
@@ -109,6 +110,12 @@ export {
   clearResponses,
 } from "./modules/response/client.js";
 export { normalizeSubmitdata } from "./modules/response/submitdata.js";
+export { buildSubmitTemplate } from "./modules/response/submit-template.js";
+export type {
+  SubmitTemplateQuestion,
+  SubmitTemplateOutputQuestion,
+  SubmitTemplateResult,
+} from "./modules/response/submit-template.js";
 export type {
   QueryResponsesInput,
   QueryResponsesRealtimeInput,

@@ -218,11 +218,22 @@
 | `vid` | number | 二选一 | 问卷编号；仅在确实没有 sid 时使用 |
 | `source` | string | 否 | 来源追踪标识 |
 
-返回问卷的预览/填写 URL。面向答卷人展示时必须优先传 `sid`；禁止自行用数字 `vid` 拼接 `/m/<vid>.aspx`、`/vm/<vid>.aspx` 或 `/jq/<vid>.aspx`。
+返回问卷的预览/填写 URL。面向答卷人展示时必须优先传 `sid`；只有没有 sid 时才传 `vid` 作为兼容后备，返回链接可能暴露内部编号。无论哪种情况都不要自行拼接 URL。
 
 ---
 
-## 分析计算（5 tools，纯本地计算，无需 API Key）
+## 分析计算（6 tools，纯本地计算，无需 API Key）
+
+### decode_push_payload — 解密推送载荷
+
+解密问卷星 AES-128-CBC 推送数据，可选校验 `SHA1(raw_body + app_key)` 签名。
+
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| `encrypted_data` | string | 是 | Base64 加密载荷 |
+| `app_key` | string | 是 | 应用密钥 |
+| `signature` | string | 否 | 签名 |
+| `raw_body` | string | 否 | 原始请求体 |
 
 ### decode_responses — 解码 submitdata 格式
 

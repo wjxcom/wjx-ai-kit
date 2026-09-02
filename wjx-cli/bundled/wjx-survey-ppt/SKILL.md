@@ -38,12 +38,12 @@ wjx-cli 拉数据  →  AI 填槽生成 SVG  →  ppt-master-survey 渲染 PPTX
 
 收到诸如「把问卷 X 做成 PPT」的请求，**一次性**完成：拉数据 → 生成 SVG → 渲染 PPTX → 给文件路径。中途不要让用户做选择题，除非：
 - 数据量异常（< 5 份答卷 / > 100 万份答卷）
-- 题型有 skill 不支持的（如签名题、文件题，需告知会跳过）
+- 题型有 skill 不支持的（如签名题、文件题，需告知会跳过，并在最终报告列出跳过题目）
 - 问卷未发布或答卷为空（必须先告知，不要硬出空 PPT）
 
 ### 规则 2：故事线固定，不要改写结构
 
-Phase 1 MVP 只支持**一种**叙事结构（10 页通用业务报告）：
+Phase 1 MVP 只支持**一种**叙事结构：固定页面骨架，按实际题型和数据动态增加或跳过分项页（每类分项页最多 5 页），因此最终页数不保证固定为 10 页：
 
 ```
 P01 封面（问卷标题 + 时间窗口 + 样本量）
@@ -58,11 +58,11 @@ P09 关键洞察（AI 综合分析）
 P10 附录（问卷链接 + 数据导出说明）
 ```
 
-**不要**根据用户描述临时改变页数、删页或加页。需要不同结构的请求就告知"目前固定结构，自定义模板在 Phase 2"。
+以上是固定骨架的页面类型和顺序；单选、多选、矩阵和 NPS 分组等分项页会按数据动态增减（每类最多 5 页），所以最终页数可能少于或多于 10 页。用户可以在 `outline.json` 中用 `include=false` 显式跳过页面。需要完全不同结构的请求就告知"目前使用固定骨架，自定义模板在 Phase 2"。
 
 ### 规则 3：SVG 用填槽模板，不要现写
 
-`templates/slide_layouts/` 下提供了每页的 SVG 模板，AI 的工作是**读取模板里的 `{{占位符}}` → 用数据替换 → 写到 project 目录**。**不要**自己从零写 SVG 元素树，原因：
+`templates/themes/<theme>/` 下提供了每页的 SVG 模板，AI 的工作是**读取模板里的 `{{占位符}}` → 用数据替换 → 写到 project 目录**。**不要**自己从零写 SVG 元素树，原因：
 - 现写 SVG 容易出 viewBox/尺寸错误，渲染翻车
 - 现写没法保证视觉一致（字体/颜色/间距）
 - ppt-master 对 SVG 有严格要求（`<text>` 必须 flatten tspan、`<use>` 必须 expand），模板已处理
@@ -83,7 +83,7 @@ P10 附录（问卷链接 + 数据导出说明）
 - 页数 + 文件大小
 - 如有跳过的页/题，明确列出
 
-正确：「报告已生成，10 页，1.2MB：`D:/.../survey-report-2026-05-06.pptx`」
+正确：「报告已生成，12 页，1.2MB：`D:/.../survey-report-2026-05-06.pptx`；跳过题目：q8 文件上传（当前模板不支持）」
 错误：「报告已生成」（缺路径）
 
 ### 规则 6：失败要给可操作的下一步
@@ -173,7 +173,7 @@ skill 内置 **8 套**视觉主题，通过 `--theme <name>` 切换，默认 `bu
 
 用户只给问卷 ID。skill 自动：
 
-1. `wjx survey get --vid X --format json` → 读取 `data` 下的题目结构与 `answer_valid`；**PPT 样本量以 `answer_valid` 为权威有效答卷数**
+1. `wjx survey get --vid X` → 读取结构化 JSON 中 `data` 下的题目结构与 `answer_valid`；**PPT 样本量以 `answer_valid` 为权威有效答卷数**
 2. `wjx response count --vid X --format json` → 仅作诊断对照；`data.total_count/data.join_times` 不得直接当 PPT 样本量
 3. `wjx response report --vid X --format json` → 读取 `data` 下的默认聚合数据（单选/多选/量表/矩阵的分布）
 4. 若默认报告分布总数与 `answer_valid` 不一致 → 自动回退 `wjx response query` 分页明细聚合，避免把失败/废卷计入 PPT

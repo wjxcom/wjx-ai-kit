@@ -22,14 +22,15 @@ wjx doctor
 wjx survey list --format table
 ```
 
-要求 Node.js 20+。私有化部署追加 `--base-url https://你的域名`。多租户场景使用 `--profile <name>`，profile 的地址会按请求传给 SDK，不会与其他并发请求串用。API Key 请勿提交到仓库、日志或公共对话。
+要求 Node.js 20+。私有化部署在初始化时追加 `--base-url`，例如 `wjx init --api-key "你的问卷星 API Key" --base-url "https://你的域名"`。多租户场景使用 `--profile <name>`，profile 的地址会按请求传给 SDK，不会与其他并发请求串用。API Key 请勿提交到仓库、日志或公共对话。
 
 ## 常用命令
 
 ```bash
 wjx survey jsonl-template --raw > survey.jsonl
 wjx survey create --file survey.jsonl
-wjx response query --vid 12345 --page_size 100
+wjx survey preview-url --sid <sid>
+wjx response query --vid 12345 --page_size 50
 wjx response download --vid 12345 --suffix 0
 wjx analytics nps --scores "[9,10,8,6,3]"
 ```

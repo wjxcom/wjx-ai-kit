@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { createSurveyByJson, getSurvey, listSurveys, updateSurveyStatus, getSurveySettings, updateSurveySettings, deleteSurvey, getQuestionTags, getTagDetails, clearRecycleBin, uploadFile, surveyToText, MAX_JSONL_SIZE, } from "./client.js";
+import { createSurveyByJson, CREATABLE_SURVEY_ATYPES, getSurvey, listSurveys, updateSurveyStatus, getSurveySettings, updateSurveySettings, deleteSurvey, getQuestionTags, getTagDetails, clearRecycleBin, uploadFile, surveyToText, MAX_JSONL_SIZE, } from "./client.js";
 import { toolResult, toolError } from "../../helpers.js";
 import { QUESTION_TYPES } from "../../resources/survey-reference.js";
 export function registerSurveyTools(server) {
@@ -111,7 +111,7 @@ export function registerSurveyTools(server) {
                 .number()
                 .int()
                 .optional()
-                .describe("问卷类型筛选：1=调查, 2=测评, 3=投票, 4=360度评估, 5=360评估无测评关系, 6=考试, 7=表单, 8=用户体系, 9=教学评估, 11=民主评议"),
+                .describe("问卷类型筛选：1=调查, 2=测评, 3=投票, 4=360度评估, 5=360评估无测评关系, 6=考试, 7=表单, 8=用户体系, 9=教学评估, 10=量表, 11=民主评议"),
             name_like: z
                 .string()
                 .max(10)
@@ -450,9 +450,9 @@ export function registerSurveyTools(server) {
             "【考试题型】支持 correctselect（正确答案）、quizscore（分值）、answeranalysis（答案解析）。" +
             "【关联逻辑】支持 relation（显示条件）、referselect（引用前题选项）。" +
             "【硬性校验 — 不满足会被 SDK 拒绝】1) 标题不得为空、占位符（??? / 无标题 / TODO / xxx 等）或少于 2 字；2) JSONL 必须包含至少 1 道真实题目（_meta/分页栏/段落说明/知情同意书不计入）。" +
-            "【多项填空必看】多项填空 qtype='多项填空'，子填空位数量由 title 中的 {_} 占位符数量决定，例如 title='电话 {_}，邮箱 {_}，微信 {_}' 会生成 3 个空位；**禁止用 rowtitle 数组**（多项填空不支持该字段，服务端会忽略并只生成 1 个空位）。考试多项填空/考试完形填空同理。" +
+            "【多项填空必看】多项填空 qtype='多项填空'，子填空位数量由 title 中的 {_} 占位符数量决定，例如 title='电话 {_}，邮箱 {_}，微信 {_}' 会生成 3 个空位；**禁止用 rowtitle 数组**（多项填空不支持该字段，服务端会忽略并只生成 1 个空位）。考试多项填空同理；考试完形填空不在当前 JSONL 创建支持集合中。" +
             "【表格类题型 706-710】生成 JSONL 时必须优先使用标准格式：" +
-            "表格数值/表格填空使用 rowtitle；表格下拉框使用 rowtitle+selects；表格组合使用 rowtitle+types+selects；自增表格使用 rowtitle+selects（一行模板）+minvalue/maxvalue。" +
+            "表格数值/表格填空使用 rowtitle；表格下拉框使用 rowtitle+selects；表格组合使用 rowtitle+types+selects；自增表格使用 rowtitle+columntitle+selects（一行模板），可选 min_rows/max_rows 设置行数边界，不要用 minvalue/maxvalue 代替。" +
             "多项文件题(711) rowtitle 列出每个上传项；" +
             "多项简答题(712) rowtitle 列出每个简答子题。" +
             "【投票题】投票单选/投票多选使用 qtype='投票单选'/'投票多选' + select，并在调用工具时显式传 atype=3。" +
@@ -464,7 +464,7 @@ export function registerSurveyTools(server) {
             '{"qtype":"表格数值","title":"活动参与与体能数据","rowtitle":["计划参与人数","每周打球次数","可接受人均费用(元)"],"minvalue":"0","maxvalue":"999"}\n' +
             '{"qtype":"表格下拉框","title":"个人水平与装备情况","rowtitle":["羽毛球水平","是否自带球拍","是否需要拼车"],"selects":[["新手","初级","中级","高级","校队/专业"],["是","否"],["是","否"]]}\n' +
             '{"qtype":"表格组合","title":"活动时间与场地偏好","rowtitle":["可参加时段","偏好场地类型","备注"],"types":["多选","下拉","文本"],"selects":[["工作日晚上","周末上午","周末下午","周末晚上"],["木地板","塑胶地","不限"],[]]}\n' +
-            '{"qtype":"自增表格","title":"可参加日期清单","rowtitle":["可参加日期","可参加时段","是否可候补"],"selects":[["","工作日晚上|周末上午|周末下午|周末晚上","可以|不可以"]],"minvalue":"1","maxvalue":"5"}\n' +
+            '{"qtype":"自增表格","title":"可参加日期清单","rowtitle":["可参加日期","可参加时段","是否可候补"],"columntitle":["日期","时段","是否可候补"],"selects":[["","工作日晚上|周末上午|周末下午|周末晚上","可以|不可以"]],"min_rows":1,"max_rows":5}\n' +
             '{"qtype":"投票单选","title":"你最喜欢哪个网站","select":["淘宝网","开心网","百度","腾讯","人人网"]}\n' +
             '{"qtype":"投票多选","title":"哪些网站是你经常使用的","select":["淘宝网","开心网","百度","腾讯","人人网"]}\n' +
             '{"qtype":"量表题","title":"满意度评分","select":["1","2","3","4","5"],"minvaluetext":"非常不满意","maxvaluetext":"非常满意"}',
@@ -483,7 +483,7 @@ export function registerSurveyTools(server) {
                 .int()
                 .optional()
                 .describe("问卷类型（**调用方应主动判断并显式传入**，不要依赖兜底）：" +
-                "1=调查（默认）, 2=测评, 3=投票, 6=考试, 7=表单, 10=量表, 11=民主评议。" +
+                "1=调查（默认）, 2=测评, 3=投票, 4=360度评估, 5=360评估无测评关系, 6=考试, 7=表单, 9=教学评估, 10=量表, 11=民主评议。" +
                 "硬性规则：投票（含投票单选/投票多选） → 必传 atype=3；表单 → 必传 atype=7；考试 → 必传 atype=6；测评 → 必传 atype=2。" +
                 "兜底（仅用于调用方遗漏时挽救，不应作为正常路径）：含考试题型→6；含投票题型或标题含「投票/评选」→3；含「表单/报名表/登记表/申请表」→7；含「测评」→2；其余 1。" +
                 "显式传值始终优先于兜底推断。"),
@@ -498,6 +498,9 @@ export function registerSurveyTools(server) {
         },
     }, async (args) => {
         try {
+            if (args.atype !== undefined && !CREATABLE_SURVEY_ATYPES.has(args.atype)) {
+                throw new Error("当前接口不支持创建该 atype。可创建类型：1、2、3、4、5、6、7、9、10、11；8=用户体系不支持新建。");
+            }
             const result = await createSurveyByJson({
                 jsonl: args.jsonl,
                 title: args.title,

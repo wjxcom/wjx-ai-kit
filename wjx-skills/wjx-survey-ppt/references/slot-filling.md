@@ -1,6 +1,6 @@
 # SVG 模板填槽语法
 
-模板放在 `templates/slide_layouts/*.svg`，文件名对应页面（如 `P01_Cover.svg`）。
+模板放在 `templates/themes/<theme>/*.svg`，文件名对应页面（如 `templates/themes/business/P01_Cover.svg`）。
 渲染引擎在 `scripts/build_project.py` 的 `_render_svg`，是简化版 Mustache。
 
 ## 三种语法

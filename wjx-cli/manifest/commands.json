@@ -1476,6 +1476,34 @@
       }
     },
     {
+      "id": "survey.preview-url",
+      "command": "survey.preview-url",
+      "service": "default",
+      "action": "shortcut:survey.preview-url",
+      "input": {
+        "type": "object",
+        "properties": {}
+      },
+      "risk": "read",
+      "identities": [
+        "user",
+        "bot"
+      ],
+      "source": "shortcut",
+      "metadata": {
+        "path": "survey.preview-url",
+        "risk": "read",
+        "identities": [
+          "user",
+          "bot"
+        ],
+        "targetFields": [
+          "sid",
+          "vid"
+        ]
+      }
+    },
+    {
       "id": "survey.settings",
       "command": "survey.settings",
       "service": "default",

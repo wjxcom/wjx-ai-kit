@@ -1,18 +1,18 @@
 # MCP 工具参考
 
-当前版本提供 56 个 Tool、8 个 Resource 和 15 个 Prompt。输入 schema 和描述以运行时能力发现结果为最终契约。
+当前版本提供 59 个 Tool、8 个 Resource 和 15 个 Prompt。输入 schema 和描述以运行时能力发现结果为最终契约；MCP 只保证 CLI 的核心业务子集，工作站能力和有意不暴露的通用 API 见仓库 capability matrix。
 
 ## Tool 模块
 
 | 模块 | 工具（完整清单） | 说明 |
 | --- | --- | --- |
 | survey（11） | `create_survey_by_json`, `get_survey`, `list_surveys`, `update_survey_status`, `get_survey_settings`, `update_survey_settings`, `delete_survey`, `get_question_tags`, `get_tag_details`, `upload_file`, `clear_recycle_bin` | 问卷创建、查询、设置和生命周期；新问卷统一使用 `create_survey_by_json` |
-| response（9） | `query_responses`, `query_responses_realtime`, `download_responses`, `get_report`, `submit_response`, `get_winners`, `modify_response`, `get_360_report`, `clear_responses` | 答卷、报告和数据清理 |
+| response（11） | `query_responses`, `count_responses`, `query_responses_realtime`, `download_responses`, `get_report`, `submit_response`, `build_submit_template`, `get_winners`, `modify_response`, `get_360_report`, `clear_responses` | 答卷、规模计数、模板、报告和数据清理 |
 | contacts（14） | `query_contacts`, `add_contacts`, `delete_contacts`, `add_admin`, `delete_admin`, `restore_admin`, `list_departments`, `add_department`, `modify_department`, `delete_department`, `list_tags`, `add_tag`, `modify_tag`, `delete_tag` | 通讯录、部门、标签和管理员 |
 | user-system（6，兼容/已过时） | `add_participants`, `modify_participants`, `delete_participants`, `bind_activity`, `query_survey_binding`, `query_user_surveys` | 仅用于已有用户体系的兼容操作；不能通过创建接口新建 `atype=8` 用户体系问卷 |
 | multi-user（5） | `add_sub_account`, `modify_sub_account`, `delete_sub_account`, `restore_sub_account`, `query_sub_accounts` | 子账号管理 |
 | sso（5） | `sso_subaccount_url`, `sso_user_system_url`, `sso_partner_url`, `build_survey_url`, `build_preview_url` | 生成登录、编辑和填写链接；用户系统 SSO 仅配合已有系统使用 |
-| analytics（5） | `decode_responses`, `calculate_nps`, `calculate_csat`, `detect_anomalies`, `compare_metrics` | 本地数据解码和指标计算 |
+| analytics（6） | `decode_responses`, `decode_push_payload`, `calculate_nps`, `calculate_csat`, `detect_anomalies`, `compare_metrics` | 本地数据解码、推送解密和指标计算 |
 | server（1） | `get_config` | 查看脱敏配置与运行环境 |
 
 问卷创建的唯一入口是 `create_survey_by_json`。当前 Server 不注册 `create_survey` 或 `create_survey_by_text`；`get_survey` 返回的 DSL 或 Resource 中的 DSL 语法仍可用于读取、审阅和迁移，转换后必须回到 JSONL 创建。
@@ -28,7 +28,7 @@
 | URI | 内容 |
 | --- | --- |
 | `wjx://reference/dsl-syntax` | DSL 文本语法（仅读取、审阅和离线迁移） |
-| `wjx://reference/question-types` | JSONL 题型和 `q_type/q_subtype` 映射 |
+| `wjx://reference/question-types` | `get_survey` 读取结果的 `q_type/q_subtype` 映射；JSONL 创建白名单以 SDK 和 `create_survey_by_json` 校验为准 |
 | `wjx://reference/survey-types` | 问卷类型编码和创建限制 |
 | `wjx://reference/survey-statuses` | 问卷状态码和合法转换 |
 | `wjx://reference/response-format` | `submitdata` 编码格式 |

@@ -247,6 +247,19 @@ def _do_final(data: dict, workdir: Path, theme: str, output_arg: str | None, pla
     project_dir = workdir / "project"
     pages = build_svg_project(data, project_dir, theme=theme)
     print(f"[SVG] 已生成 {len(pages)} 页（主题 {theme}）→ {project_dir / 'svg_final'}")
+    skipped_questions = data.get("skipped_questions") or []
+    if skipped_questions:
+        print(f"跳过题目: {len(skipped_questions)} 道")
+        for question in skipped_questions:
+            print(
+                f"  · q{question.get('qid', '?')} {question.get('title', '')}"
+                f"（{question.get('reason', '当前模板不支持')}）"
+            )
+    skipped_pages = (data.get("_outline_filter") or {}).get("skipped_names") or []
+    if skipped_pages:
+        print(f"跳过页面: {len(skipped_pages)} 页")
+        for page_name in skipped_pages:
+            print(f"  · {page_name}")
     if plan_only:
         return 0
     output = Path(output_arg).resolve() if output_arg else workdir / "output.pptx"

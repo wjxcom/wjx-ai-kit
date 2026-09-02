@@ -13,7 +13,7 @@ wjx analytics nps --scores "[9,10,8,6,3]"
 
 ## MCP 流程
 
-让 AI 依次调用 `get_survey`、`get_report`、`query_responses`，再根据目标选择本地分析 Tool，例如 `calculate_nps`、`calculate_csat`、`detect_anomalies` 或 `compare_metrics`。
+让 AI 先调用 `get_survey` 确认问卷结构，再调用 `count_responses` 获取规模；根据总量决定是否分页读取 `query_responses`，然后调用 `get_report` 和本地分析 Tool，例如 `calculate_nps`、`calculate_csat`、`detect_anomalies` 或 `compare_metrics`。这样可以避免在只需要汇总时把全量答卷拉入上下文。
 
 ## 结果说明
 

@@ -2,7 +2,7 @@
 
 > **全参数访问**: CLI 的显式 flags 是常用参数的子集。要使用 SDK 支持的全部参数，可通过 `--stdin` 传入 JSON：
 > ```bash
-> echo '{"vid":12345,"get_questions":true,"get_items":true,"format":"dsl"}' | wjx survey get --stdin
+> echo '{"vid":12345,"get_questions":true,"get_items":true}' | wjx survey get --stdin
 > ```
 
 ## wjx survey create
@@ -23,7 +23,7 @@ wjx survey create --file survey.jsonl --dry-run    # 预览解析结果
 | `--jsonl <s>` | 与 `--file` 二选一 | 直接传入 JSONL 字符串 |
 | `--stdin` | 与上述来源二选一 | 全局选项；从 stdin 读取一个包含 `jsonl` 字段的 JSON 参数对象 |
 | `--title <s>` | 否 | 覆盖 JSONL 中的问卷标题 |
-| `--type <n>` | 否 | 1=调查, 2=测评, 3=投票, 6=考试, 7=表单, 10=量表, 11=民主测评（默认 1） |
+| `--type <n>` | 否 | 1=调查, 2=测评, 3=投票, 4=360度评估, 5=360评估无测评关系, 6=考试, 7=表单, 9=教学评估, 10=量表, 11=民主评议（默认 1；8 用户体系不能新建） |
 | `--optional_titles <json>` | 否 | 允许设为选填的题目标题 JSON 数组 |
 | `--publish` | 否 | 显式要求创建后立即发布；未传时普通题型默认发布，纯框架题型默认保持草稿 |
 | `--creater <s>` | 否 | 创建者子账号 |
@@ -106,7 +106,7 @@ wjx survey list --name_like "满意度" --status 1
 | `--page <n>` | 页码（默认 1） |
 | `--page_size <n>` | 每页数量（默认 10） |
 | `--status <n>` | 状态筛选：0=未发布, 1=已发布, 2=已暂停, 3=已删除, 5=被审核 |
-| `--atype <n>` | 类型筛选：1=调查, 2=测评, 3=投票, 6=考试, 7=表单 |
+| `--atype <n>` | 类型筛选：1=调查, 2=测评, 3=投票, 4=360度评估, 5=360评估无测评关系, 6=考试, 7=表单, 8=用户体系, 9=教学评估, 10=量表, 11=民主评议 |
 | `--name_like <s>` | 名称模糊搜索（最多 10 字符） |
 
 **--stdin 可用的额外参数**: `sort`(0-5 排序), `creater`(子账号筛选), `folder`(文件夹), `is_xingbiao`(星标), `query_all`(包含子账号问卷，仍然分页), `verify_status`(审核状态), `time_type`(0=不按时间查询（默认）/1=按问卷开始时间/2=按问卷创建时间), `begin_time`/`end_time`(毫秒时间戳)
@@ -152,15 +152,15 @@ wjx survey list --name_like "满意度" --status 1
 
 ```bash
 wjx survey get --vid 12345
-# 获取 DSL 文本格式（通过 --stdin）
-echo '{"vid":12345,"format":"dsl"}' | wjx survey get --stdin
+# 获取 DSL 文本请使用独立的导出命令
+wjx survey export-text --vid 12345 --raw
 ```
 
 | Flag | 必填 | 说明 |
 |------|------|------|
 | `--vid <n>` | 是 | 问卷编号 |
 
-**--stdin 可用的额外参数**: `format`("json"/"dsl"/"both"), `get_questions`(获取题目), `get_items`(获取选项), `get_exts`(获取问答选项), `get_setting`(获取题目设置), `get_page_cut`(获取分页信息), `get_tags`(获取标签), `showtitle`(返回标题)
+**--stdin 可用的额外参数**: `get_questions`(获取题目), `get_items`(获取选项), `get_exts`(获取问答选项), `get_setting`(获取题目设置), `get_page_cut`(获取分页信息), `get_tags`(获取标签), `showtitle`(返回标题)。`survey get` 只返回结构化 JSON；需要旧 DSL 文本时使用 `survey export-text --vid <vid> --raw`。
 
 `survey get` 用于读取问卷内容、设置或题目详情，不是获取填写地址的必经步骤。填写地址应先使用创建响应或列表记录中的 `fill_url`/`activity_domain`/`pc_path`/`mobile_path`。
 
@@ -280,6 +280,17 @@ wjx survey url --mode edit --activity 12345
 | 填写地址 | 创建/列表响应的 `fill_url`，或 `activity_domain` + `pc_path`/`mobile_path` | 答卷人 |
 | 编辑地址 | `wjx survey url --mode edit --activity <vid>` | 问卷管理员 |
 | 创建地址 | `wjx survey url --mode create --name <name>` | 创建问卷的管理页面 |
+
+## wjx survey preview-url
+
+生成答卷人使用的填写/预览链接。优先传 API 返回的 `sid`；只有没有 `sid` 时才传正整数 `vid`，同时传入两者时以 `sid` 为准。
+
+```bash
+wjx survey preview-url --sid <sid>
+wjx survey preview-url --vid 12345
+```
+
+该命令不是后台编辑链接；编辑问卷请使用 `wjx survey url --mode edit --activity <vid>`。不要自行用数字 `vid` 拼接 `/m/`、`/vm/` 或 `/jq/` 路径。
 
 ## 其他 Survey 命令
 

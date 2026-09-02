@@ -123,7 +123,7 @@ const LEAF_COMMANDS = [
   "reference", "response.count", "response.query", "response.realtime", "response.download", "response.submit", "response.modify", "response.clear", "response.report", "response.winners", "response.submit-template", "response.360-report",
   "schema", "skill.install", "skill.update", "skill.install-ppt", "skill.update-ppt",
   "sso.subaccount-url", "sso.user-system-url", "sso.partner-url",
-  "survey.list", "survey.get", "survey.create", "survey.delete", "survey.status", "survey.settings", "survey.update-settings", "survey.tags", "survey.tag-details", "survey.clear-bin", "survey.upload", "survey.export-text", "survey.jsonl-template", "survey.url",
+  "survey.list", "survey.get", "survey.create", "survey.delete", "survey.status", "survey.settings", "survey.update-settings", "survey.tags", "survey.tag-details", "survey.clear-bin", "survey.upload", "survey.export-text", "survey.jsonl-template", "survey.url", "survey.preview-url",
   "tag.list", "tag.add", "tag.modify", "tag.delete",
   "update", "user-system.add-participants", "user-system.modify-participants", "user-system.delete-participants", "user-system.bind", "user-system.query-binding", "user-system.query-surveys", "whoami",
 ].sort();
@@ -153,6 +153,7 @@ const LOCAL_DRY_RUN_CASES = [
   { id: "sso.partner-url", args: ["sso", "partner-url", "--username", "partner-1"] },
   { id: "survey.jsonl-template", args: ["survey", "jsonl-template", "--type", "1"] },
   { id: "survey.url", args: ["survey", "url", "--mode", "create", "--name", "dry-run survey"] },
+  { id: "survey.preview-url", args: ["survey", "preview-url", "--sid", "short-code", "--source", "matrix"] },
   { id: "update", args: ["update", "--silent"] },
   { id: "whoami", args: ["whoami"] },
 ];
@@ -453,7 +454,7 @@ describe("complete CLI command contract matrix", () => {
 
   test("leaf command inventory is exhaustive and every leaf is discoverable", async () => {
     assert.equal(new Set(LEAF_COMMANDS).size, LEAF_COMMANDS.length);
-    assert.equal(LEAF_COMMANDS.length, 74);
+    assert.equal(LEAF_COMMANDS.length, 75);
     for (const command of LEAF_COMMANDS) {
       const result = await runCli([...command.split("."), "--help"]);
       assert.equal(result.exitCode, 0, `${command}: ${result.stderr}`);
@@ -1344,7 +1345,7 @@ describe("complete CLI command contract matrix", () => {
         `option matrix did not execute every command-local option (covered ${covered.size}, expected ${expectedLocalOptions.size})`);
       // This is the current command-local occurrence denominator. Keep it
       // explicit so a help/parser drift cannot silently shrink the matrix.
-      assert.equal(expectedLocalOptions.size, 251,
+      assert.equal(expectedLocalOptions.size, 254,
         "update the command-local option denominator only when the public surface intentionally changes");
     } finally {
       await rm(tempDir, { recursive: true, force: true });

@@ -31,7 +31,7 @@ JSONL 使用中文 qtype、title、select、rowtitle、columntitle 等字段；�
   --jsonl <s>      JSONL 字符串内容
   --file <path>    从文件读取 JSONL
   --title <s>      覆盖 JSONL 中的问卷标题
-  --type <n>       问卷类型：1=调查, 2=测评, 3=投票, 6=考试, 7=表单, 10=量表, 11=民主测评
+  --type <n>       问卷类型：1=调查, 2=测评, 3=投票, 4=360度评估, 5=360评估无测评关系, 6=考试, 7=表单, 9=教学评估, 10=量表, 11=民主评议
   --optional_titles <json> 允许设为选填的题目标题 JSON 数组
   --publish        显式要求创建后立即发布（纯框架题型默认不发布）
   --creater <s>    创建者子账号

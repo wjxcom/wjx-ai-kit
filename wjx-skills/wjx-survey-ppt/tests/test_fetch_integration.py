@@ -111,6 +111,41 @@ print(json.dumps({"ok": True, "data": data}, ensure_ascii=False))
 
 
 class FetchSurveyIntegrationTests(unittest.TestCase):
+    def test_unknown_question_types_are_marked_unsupported_and_reported(self):
+        survey = {
+            "title": "未知题型",
+            "atype": 1,
+            "answer_valid": 0,
+            "questions": [
+                {"q_index": 8, "q_type": 8, "q_subtype": 801, "q_title": "绘图"},
+                {"q_index": 9, "q_type": 3, "q_subtype": 304, "q_title": "情景"},
+            ],
+        }
+
+        def fake_run_wjx(args):
+            command = tuple(args[:2])
+            if command == ("survey", "get"):
+                return survey
+            if command == ("response", "count"):
+                return {"total_count": 0}
+            if command == ("response", "report"):
+                return {"answer_report": {}}
+            if command == ("response", "360-report"):
+                return {}
+            raise AssertionError(f"unexpected wjx call: {args}")
+
+        with patch.object(fetch_survey, "_run_wjx", side_effect=fake_run_wjx):
+            data = fetch_survey.fetch_from_vid("unsupported-1", Path("."))
+
+        self.assertEqual([q["type"] for q in data["questions"]], ["unsupported", "unsupported"])
+        self.assertEqual(
+            data["skipped_questions"],
+            [
+                {"qid": "8", "title": "绘图", "reason": "unsupported question type q_type=8 q_subtype=801"},
+                {"qid": "9", "title": "情景", "reason": "unsupported question type q_type=3 q_subtype=304"},
+            ],
+        )
+
     def test_fetch_from_vid_runs_complete_cli_chain_and_aggregates_data(self):
         with tempfile.TemporaryDirectory() as raw:
             root = Path(raw)

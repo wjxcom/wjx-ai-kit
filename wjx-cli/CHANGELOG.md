@@ -5,6 +5,7 @@
 ## [0.4.1] - Unreleased
 
 - 工作树版本更新为 `0.4.1`；`0.4.0` 已废弃，尚未执行本版本 npm 发布。
+- 新增 `survey preview-url`，按 `sid` 优先、正整数 `vid` 后备生成答卷人填写/预览链接。
 
 ### Breaking
 

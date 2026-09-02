@@ -89,6 +89,23 @@ class FetchSurveyAccuracyTests(unittest.TestCase):
 
 
 class FinalStageFreshnessTests(unittest.TestCase):
+    def test_final_output_lists_pages_skipped_by_outline(self):
+        data = {
+            "survey": {"vid": "123", "title": "跳页"},
+            "response": {"total": 0, "completed": 0, "avg_time": None},
+            "questions": [],
+            "analytics": {},
+            "nps_cross_tab": {},
+            "_outline_filter": {"skipped_names": ["P07_Matrix"]},
+        }
+        with tempfile.TemporaryDirectory() as tmp:
+            with patch.object(cli, "build_svg_project", return_value=["P01_Cover.svg"]):
+                output = io.StringIO()
+                with redirect_stdout(output):
+                    self.assertEqual(cli._do_final(data, Path(tmp), "business", None, True), 0)
+            self.assertIn("跳过页面: 1 页", output.getvalue())
+            self.assertIn("P07_Matrix", output.getvalue())
+
     def test_final_stage_refreshes_data_from_vid_before_rendering(self):
         with tempfile.TemporaryDirectory() as tmp:
             workdir = Path(tmp)

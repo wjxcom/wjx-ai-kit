@@ -1,5 +1,6 @@
 export {
   createSurveyByJson,
+  CREATABLE_SURVEY_ATYPES,
   getSurvey,
   listSurveys,
   updateSurveyStatus,

@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 
 export const PROTOCOL_CONSUMERS = [
   "wjx-skills/wjx-cli-use/SKILL.md",
+  "skills/wjx-cli-use/SKILL.md",
   "wjx-skills/wjx-cli-use/references/response-commands.md",
   "wjx-skills/wjx-cli-use/references/survey-commands.md",
   "wjx-skills/wjx-survey-ppt/SKILL.md",

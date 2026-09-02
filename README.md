@@ -1,6 +1,6 @@
 # wjx-ai-kit
 
-问卷星官方开源 AI 工具包：CLI、TypeScript SDK 和 MCP Server，共享同一套 API 能力。
+问卷星官方开源 AI 工具包：SDK 提供共享业务基础层，CLI 是完整的主入口，MCP Server 提供面向原生 MCP 客户端的核心业务子集。
 
 ## 从这里开始
 
@@ -12,7 +12,7 @@
 | 直接按目标完成工作 | [文档总览](wjx-docs/index.md) |
 | 需要一个浏览器可打开的单页 | [wjx-kit.html](wjx-docs/wjx-kit.html) |
 
-CLI 是默认入口：它不要求客户端支持 MCP，适合 AI Agent、自动化脚本和人工终端操作。MCP 是原生 MCP 客户端的可选增强；SDK 用于程序化集成。Agent/Skill 只是工作流层，不是并列产品。
+CLI 是默认入口：它不要求客户端支持 MCP，适合 AI Agent、自动化脚本和人工终端操作。MCP 处于 secondary / maintenance-mode 定位，只覆盖核心业务子集；初始化、诊断、profile、补全、参考/schema、更新和 Skill 安装保持 CLI-only。SDK 用于程序化集成；Agent/Skill 只是工作流层，不是独立 API 层。完整差异见 [能力矩阵](capabilities/capability-matrix.json)。
 
 ## 安装
 
@@ -35,7 +35,7 @@ wjx init --api-key "你的问卷星 API Key"
 wjx doctor
 ```
 
-API Key 请从问卷星后台获取，不要提交到仓库、日志或公共对话。私有化部署追加 `--base-url https://你的域名`。
+API Key 请从问卷星后台获取，不要提交到仓库、日志或公共对话。私有化部署在初始化时追加 `--base-url`：`wjx init --api-key "你的问卷星 API Key" --base-url "https://你的域名"`。
 
 ## 创建和分析
 
@@ -43,7 +43,7 @@ API Key 请从问卷星后台获取，不要提交到仓库、日志或公共对
 wjx survey jsonl-template --raw > survey.jsonl
 wjx survey create --file survey.jsonl
 wjx response report --vid 12345
-wjx response query --vid 12345 --page_size 100
+wjx response query --vid 12345 --page_size 50
 ```
 
 新项目只使用 JSONL 创建问卷；DSL 仅用于读取和离线迁移，见 [DSL 兼容](wjx-docs/legacy/dsl.md)。

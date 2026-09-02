@@ -18,7 +18,9 @@
   ],
   "scripts": {
     "docs:build": "node .claude/scripts/build-docs-html.js",
-    "docs:check": "node .claude/scripts/check-docs.js"
+    "docs:check": "node .claude/scripts/check-docs.js",
+    "capability:check": "node scripts/check-capability-matrix.mjs",
+    "documentation:check": "node scripts/check-documentation-contract.mjs"
   },
   "devDependencies": {
     "marked": "^18.0.2"

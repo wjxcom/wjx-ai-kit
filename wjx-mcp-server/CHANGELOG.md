@@ -7,6 +7,7 @@
 ## [0.4.1] - Unreleased
 
 - 工作树版本更新为 `0.4.1`；`0.4.0` 已废弃，尚未执行本版本 npm 发布。
+- 增加 `count_responses`、`build_submit_template` 和 `decode_push_payload`；MCP 明确定位为 CLI 主入口之外的核心业务子集（secondary / maintenance-mode）。
 
 ## [0.4.0] - 2026-08-30
 

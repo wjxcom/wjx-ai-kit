@@ -90,14 +90,17 @@ export function createCapturingFetch(): {
     const headers: Record<string, string> = {};
     if (init?.headers) {
       for (const [k, v] of Object.entries(init.headers as Record<string, string>)) {
-        headers[k] = k.toLowerCase() === "authorization" ? maskAuthHeader(String(v)) : String(v);
+        headers[k] = String(v);
       }
     }
     captured = {
       method: init?.method ?? "GET",
       url: String(url),
       headers,
-      body: redactJson(init?.body ? String(init.body) : ""),
+      // Keep the transport snapshot lossless. Dry-run redaction belongs at
+      // the output boundary so a captured request can never be reused as a
+      // sanitized execution payload.
+      body: init?.body ? String(init.body) : "",
     };
     return new Response(JSON.stringify({ result: true, data: {} }), {
       status: 200,
@@ -108,10 +111,20 @@ export function createCapturingFetch(): {
   return { fetchImpl, getCapturedRequest: () => captured };
 }
 
+/** Convert a captured transport request into a safe dry-run rendering. */
+export function redactCapturedRequest(request: CapturedRequest): CapturedRequest {
+  const headers = Object.fromEntries(Object.entries(request.headers).map(([key, value]) => [
+    key,
+    key.toLowerCase() === "authorization" ? maskAuthHeader(value) : value,
+  ]));
+  return { ...request, headers, body: redactJson(request.body) };
+}
+
 export function printDryRunPreview(request: CapturedRequest | null, opts: { format?: "json" | "pretty" | "table" | "ndjson" | "csv" } = {}): void {
+  const renderedRequest = request ? redactCapturedRequest(request) : null;
   formatOutput({
     kind: "dry-run",
-    plans: request ? [request] : [],
+    plans: renderedRequest ? [renderedRequest] : [],
   }, opts);
 }
 

@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-wjx-mcp-server is a Model Context Protocol (MCP) server wrapping the Wenjuanxing (问卷星) OpenAPI. It exposes 58 tools, 8 resources, and 22 prompts to AI clients (Claude, Cursor, etc.). Pure TypeScript, ESM-only, minimal dependencies (`@modelcontextprotocol/sdk` + `zod`).
+wjx-mcp-server is a Model Context Protocol (MCP) server wrapping the Wenjuanxing (问卷星) OpenAPI. It exposes 59 tools, 8 resources, and 15 prompts to AI clients (Claude, Cursor, etc.). It is secondary/maintenance-mode and intentionally covers the CLI's core business subset; workstation features remain CLI-only. Pure TypeScript, ESM-only, minimal dependencies (`@modelcontextprotocol/sdk` + `zod`).
 
 ## Commands
 
@@ -38,7 +38,7 @@ Each of the 7 modules (survey, response, contacts, sso, user-system, multi-user,
 
 ### Resources & Prompts
 - `src/resources/` — 8 resources registered via `wjx://reference/<name>` URI scheme
-- `src/prompts/` — 22 prompts (6 general/operational, 6 analysis, 7 text-survey generation, and 3 JSON-survey generation)
+- `src/prompts/` — 15 prompts (6 general/operational, 6 analysis, and 3 JSON-survey generation)
 
 ### Backward Compat Barrel Files
 Root-level `src/wjx-client.ts`, `src/prompts.ts`, and `src/resources.ts` are re-exports from modular locations. Don't add new code here.

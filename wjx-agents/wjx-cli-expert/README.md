@@ -77,7 +77,7 @@ claude --agent wjx-cli-expert "创建一份英语考试问卷，包含单选、�
 ## 典型场景
 
 **创建考试问卷：**
-子 Agent 读取 `references/question-types.md` 学习 JSONL 的中文 `qtype` 和字段 → `wjx survey create --dry-run` 预览 → 创建 → 返回编辑链接
+子 Agent 读取 `references/question-types.md` 学习 JSONL 的中文 `qtype` 和字段 → `wjx survey create --file survey.jsonl --dry-run` 预览 → 创建 → 返回编辑链接
 
 **分析问卷数据：**
 `response report` 概览 → `response query` 明细 → `analytics nps/csat` 计算 → `analytics anomalies` 检测异常

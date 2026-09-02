@@ -1,9 +1,33 @@
 import { z } from "zod";
-import { queryResponses, queryResponsesRealtime, downloadResponses, getReport, submitResponse, getWinners, modifyResponse, get360Report, clearResponses, } from "./client.js";
+import { queryResponses, queryResponsesRealtime, downloadResponses, getReport, submitResponse, getWinners, modifyResponse, get360Report, clearResponses, buildSubmitTemplate, } from "./client.js";
 import { getSurvey, normalizeSubmitdata } from "wjx-api-sdk";
-import { wrapToolHandler, assertJson } from "../../helpers.js";
+import { wrapToolHandler, assertJson, toolResult, toolError } from "../../helpers.js";
 /** 规范化 submitdata 中的题号、矩阵题和排序题答案格式。 */
 export function registerResponseTools(server) {
+    // ─── count_responses ─────────────────────────────────────────────
+    server.registerTool("count_responses", {
+        title: "答卷计数",
+        description: "获取问卷答卷总数和参与次数。仅请求一条答卷记录，适合 Agent 在不拉取全量数据时快速获取规模指标。",
+        inputSchema: {
+            vid: z.number().int().positive().describe("问卷编号"),
+        },
+        annotations: {
+            destructiveHint: false,
+            idempotentHint: true,
+            openWorldHint: true,
+            title: "答卷计数",
+        },
+    }, wrapToolHandler(async (args) => {
+        const response = await queryResponses({ vid: args.vid, page_size: 1 });
+        if (response.result === false)
+            return response;
+        const data = response.data;
+        return {
+            result: response.result,
+            total_count: data?.total_count ?? 0,
+            join_times: data?.join_times ?? 0,
+        };
+    }));
     // ─── query_responses ──────────────────────────────────────────────
     server.registerTool("query_responses", {
         title: "答卷查询",
@@ -165,7 +189,7 @@ export function registerResponseTools(server) {
             "默认会先 getSurvey 取最新 version 自动注入 jpmversion，避免『问卷已被修改请刷新』错误。",
         inputSchema: {
             vid: z.number().int().positive().describe("问卷编号"),
-            inputcosttime: z.number().int().min(2).describe("填写时间（秒），��>1秒否则视为机器提交"),
+            inputcosttime: z.number().int().min(2).describe("填写时间（秒），需 >1 秒，否则视为机器提交"),
             submitdata: z.string().min(1).describe("答卷内容字符串，格式：题号$答案}题号$答案。单选：题号$选项序号；多选/排序题：题号$选项1|选项2（竖线分隔，排序题按排名顺序列出所有选项序号）；填空：题号$文本"),
             udsid: z.number().int().optional().describe("自定义来源编号"),
             sojumpparm: z.string().optional().describe("自定义链接参数"),
@@ -220,6 +244,36 @@ export function registerResponseTools(server) {
             jpmversion,
         });
     }));
+    // ─── build_submit_template ───────────────────────────────────────
+    server.registerTool("build_submit_template", {
+        title: "生成答卷模板",
+        description: "根据 get_survey 返回的题目结构生成可填充的 submitdata 模板。跳过分页栏/段落说明并保留服务端原始题号；纯本地计算，不调用 API。",
+        inputSchema: {
+            questions: z.array(z.object({
+                q_index: z.number().int().positive(),
+                q_type: z.number().int(),
+                q_subtype: z.number().int().optional(),
+                q_title: z.string().optional(),
+                items: z.array(z.object({ item_index: z.number().int(), item_title: z.string().optional() })).optional(),
+                col_items: z.array(z.object({ item_index: z.number().int(), item_title: z.string().optional() })).optional(),
+                item_rows: z.array(z.object({ item_index: z.number().int(), item_title: z.string().optional() })).optional(),
+                gap_count: z.number().int().positive().optional(),
+            }).passthrough()).describe("get_survey 返回的题目数组"),
+        },
+        annotations: {
+            destructiveHint: false,
+            idempotentHint: true,
+            openWorldHint: false,
+            title: "生成答卷模板",
+        },
+    }, async (args) => {
+        try {
+            return toolResult(buildSubmitTemplate(args.questions), false);
+        }
+        catch (error) {
+            return toolError(error);
+        }
+    });
     // ─── get_file_links (已移除 — 仅限混合云/私有化场景，公有云不可用) ──
     // ─── get_winners ──────────────────────────────────────────────────
     server.registerTool("get_winners", {

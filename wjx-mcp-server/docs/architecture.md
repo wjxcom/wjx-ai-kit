@@ -7,11 +7,11 @@
 
 ## 1. 概述
 
-`wjx-mcp-server` 是一个围绕问卷星 OpenAPI 构建的 MCP Server。它把问卷管理、答卷查询、通讯录/用户体系管理、SSO 快速集成，以及本地分析能力统一暴露为 MCP 的三类原语：
+`wjx-mcp-server` 是一个围绕问卷星 OpenAPI 构建的 MCP Server。它处于 secondary / maintenance-mode，面向原生 MCP 客户端提供问卷星核心业务子集；CLI 仍是完整的主入口。它把问卷管理、答卷查询、通讯录/用户体系管理、SSO 快速集成，以及本地分析能力统一暴露为 MCP 的三类原语：
 
 - Tools、Resources、Prompts：以源码注册数为准
 
-整体设计遵循“入口层选择传输、MCP Server 统一注册能力、模块层封装业务、核心层处理认证/重试/超时”的分层思路。各模块数量以注册源码为准；`survey`/`response`/`contacts`/`user-system`/`multi-user` 主要访问问卷星远程接口，`sso` 与 `analytics` 则以内存计算和 URL 组装为主，不依赖远程 OpenAPI。
+整体设计遵循“入口层选择传输、MCP Server 统一注册能力、模块层封装业务、核心层处理认证/重试/超时”的分层思路。各模块数量以注册源码为准；`survey`/`response`/`contacts`/`user-system`/`multi-user` 主要访问问卷星远程接口，`sso` 与 `analytics` 则以内存计算和 URL 组装为主，不依赖远程 OpenAPI。CLI-only 的初始化、诊断、profile、补全、reference/schema、更新和 Skill 安装不迁入 MCP；通用 `call_api` 也不暴露给 LLM，以免绕过 Tool schema、风险标注和 action 约束。完整差异以仓库 `capabilities/capability-matrix.json` 为准。
 
 ## 2. 整体架构
 
@@ -29,7 +29,7 @@ flowchart TD
     F --> G[McpServer]
     G --> H[Resources 8]
     G --> I[Prompts 15]
-    G --> J[Tools 56]
+    G --> J[Tools 59]
 
     J --> M1[survey]
     J --> M2[response]
@@ -76,7 +76,7 @@ flowchart TD
 
 ## 4. MCP Server 层
 
-`src/server.ts` 是能力装配中心。`createServer()` 创建一个带完整 capabilities 的 `McpServer`：
+`src/server.ts` 是能力装配中心。`createServer()` 创建一个面向 MCP 核心业务子集的 `McpServer`：
 
 - `tools`
 - `resources`
@@ -97,15 +97,15 @@ flowchart TD
 | 模块 | Tool 数量 | 主要职责 | 核心 API / 入口 |
 | --- | ---: | --- | --- |
 | `survey` | 11 | 问卷 JSONL 创建、DSL 读取、设置读写、标签、回收站和文件上传 | `createSurveyByJson()`、`getSurvey()`、`updateSurveySettings()`、`clearRecycleBin()` |
-| `response` | 9 | 答卷查询、下载、报告、提交、修改、清空 | `queryResponses()`、`downloadResponses()`、`getReport()`、`submitResponse()` |
+| `response` | 11 | 答卷查询、计数、下载、报告、提交、模板、修改、清空 | `queryResponses()`、`downloadResponses()`、`getReport()`、`submitResponse()`、`buildSubmitTemplate()` |
 | `contacts` | 14 | 通讯录成员、管理员、部门、标签管理 | `queryContacts()`、`addContacts()`、`listDepartments()`、`listTags()` |
 | `sso` | 5 | 子账号 SSO、用户体系 SSO、代理商 SSO、问卷创建/编辑/预览链接 | `buildSsoSubaccountUrl()`、`buildSsoUserSystemUrl()`、`buildSsoPartnerUrl()`、`buildSurveyUrl()`、`buildPreviewUrl()` |
 | `user-system` | 6 | 参与者管理、活动绑定、问卷绑定查询、用户关联问卷查询 | `addParticipants()`、`bindActivity()`、`querySurveyBinding()`、`queryUserSurveys()` |
 | `multi-user` | 5 | 子账号创建、修改、删除、恢复、查询 | `addSubAccount()`、`modifySubAccount()`、`querySubAccounts()` |
-| `analytics` | 5 | 答卷解码、NPS/CSAT、本地异常检测、指标对比 | `decodeResponses()`、`calculateNps()`、`calculateCsat()`、`detectAnomalies()`、`compareMetrics()` |
+| `analytics` | 6 | 答卷解码、推送解密、NPS/CSAT、本地异常检测、指标对比 | `decodeResponses()`、`decodePushPayload()`、`calculateNps()`、`calculateCsat()`、`detectAnomalies()`、`compareMetrics()` |
 | `server`（诊断） | 1 | 配置与运行环境诊断 | `get_config` |
 
-业务模块中的 Tool 数量直接对应各 `src/modules/*/tools.ts` 中 `server.registerTool()` 的出现次数，共 55 个；`src/server.ts` 另注册 1 个 `get_config` 诊断工具，总计 56 个。
+业务模块中的 Tool 数量直接对应各 `src/modules/*/tools.ts` 中 `server.registerTool()` 的出现次数，共 58 个；`src/server.ts` 另注册 1 个 `get_config` 诊断工具，总计 59 个。
 
 ### 5.2 survey 模块
 
@@ -136,10 +136,12 @@ flowchart TD
 `response` 模块覆盖数据回收与报表：
 
 - `query_responses`
+- `count_responses`
 - `query_responses_realtime`
 - `download_responses`
 - `get_report`
 - `submit_response`
+- `build_submit_template`
 - `get_winners`
 - `modify_response`
 - `get_360_report`
@@ -204,6 +206,7 @@ flowchart TD
 `analytics` 模块完全本地执行，不依赖远程 API：
 
 - `decode_responses`
+- `decode_push_payload`
 - `calculate_nps`
 - `calculate_csat`
 - `detect_anomalies`

@@ -13,11 +13,12 @@
 
 - `qtype` 必须是 SDK 支持的中文题型名。不要把旧 API 的 `q_type`、`q_subtype`、`q_title`、`items` 直接复制到 JSONL。
 - `title` 是题目标题；选择题通常使用 `select`，矩阵题使用 `rowtitle` 和 `select`。
+- 表格/自增表格使用 `rowtitle` 和 `columntitle` 描述行列；自增表格的 `selects` 只有一行模板，行数边界使用 `min_rows` / `max_rows`。
 - 题目默认必答；需要选填时使用 `requir:false`，并在调用参数中声明 `optionalTitles`（MCP 字段为 `optional_titles`，CLI 选项为 `--optional_titles`）。
 - 每行都必须是合法 JSON；空行会被忽略。JSONL 总大小上限为 1 MB。
-- `问卷基础信息` 行可设置 `title`、`introduction`、`endpageinformation`、`language` 和 `atype`。显式调用参数的 `atype` 优先级更高。
+- `问卷基础信息` 行可设置 `title`、`introduction`、`endpageinformation`、`language` 和 `atype`。显式调用参数的 `atype` 优先级更高。创建接口支持 `1/2/3/4/5/6/7/9/10/11`，`8` 用户体系不能新建。
 
-生成模板可运行 `wjx survey jsonl-template`，MCP 客户端也可以读取 `wjx://reference/question-types`。
+生成模板可运行 `wjx survey jsonl-template`。MCP 客户端的 `wjx://reference/question-types` 只提供 `get_survey` 读取结果的 `q_type/q_subtype` 映射，不是 JSONL 创建白名单；创建时以 SDK `JSONL_SUPPORTED_QTYPES` 与服务端校验为准。
 
 ## 基础题型
 
@@ -50,7 +51,7 @@
 | `表格填空` | 707 | `rowtitle`、`columntype` | 文本表格 |
 | `表格下拉框` | 708 | `rowtitle`、`selects` | 每列独立选项 |
 | `表格组合` | 709 | `rowtitle`、`types`、`selects` | 混合输入列 |
-| `自增表格` | 710 | `rowtitle`、`selects`、`min_rows`、`max_rows` | 可增加行 |
+| `自增表格` | 710 | `rowtitle`、`columntitle`、`selects`、`min_rows`、`max_rows` | `columntitle` 定义列；`selects` 只有一行模板；可选行数边界 |
 | `多项文件题` | 711 | `rowtitle` | 每行文件上传 |
 | `多项简答题` | 712 | `rowtitle` | 每行文本输入 |
 
@@ -85,4 +86,4 @@
 
 ## 运行时来源
 
-本文解释常用字段。完整 canonical 列表和 `q_type/q_subtype` 映射可通过 MCP Resource `wjx://reference/question-types` 查看；程序化集成请以 SDK 的 `JSONL_SUPPORTED_QTYPES` 为准。
+本文解释常用字段。`q_type/q_subtype` 读取编码映射可通过 MCP Resource `wjx://reference/question-types` 查看；完整 JSONL canonical 列表和创建校验请以 SDK 的 `JSONL_SUPPORTED_QTYPES` 为准。

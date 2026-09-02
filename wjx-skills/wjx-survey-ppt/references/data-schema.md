@@ -9,6 +9,7 @@
   "survey":     { ... },     // 问卷元信息
   "response":   { ... },     // 回收量统计
   "questions":  [ ... ],     // 题目数组（含分布数据）
+  "skipped_questions": [ ... ], // 当前模板不支持而跳过的题目
   "analytics":  { ... },     // 算出来的指标（NPS/CSAT 等）
   "ai_findings": [ ... ],    // 可选，AI 注入的执行摘要
   "ai_insights": [ ... ]     // 可选，AI 注入的关键洞察
@@ -21,7 +22,7 @@
 |---|---|---|
 | `title` | string | 问卷标题 |
 | `vid` | string | 问卷 ID |
-| `type` | int | 1=调查 / 3=投票 / 6=考试 / 7=表单 |
+| `type` | int | 1=调查 / 2=测评 / 3=投票 / 4=360度评估 / 5=360评估无测评关系 / 6=考试 / 7=表单 / 9=教学评估 / 10=量表 / 11=民主评议 |
 | `url` | string? | 问卷填写链接 |
 
 ## response
@@ -45,6 +46,8 @@
 | `distribution` | array? | `[{label, count}, ...]`，非选择题为 null |
 | `options` | array? | `[{label, value}, ...]` 选项列表 |
 | `open_answers` | array? | 文本题原文（前 N 条） |
+
+`type` 为 `unsupported` 的题目不会进入图表页；它们同时出现在顶层 `skipped_questions`，每项包含 `qid`、`title` 和 `reason`，最终输出必须向用户列出这些跳过项。
 
 ## analytics
 
