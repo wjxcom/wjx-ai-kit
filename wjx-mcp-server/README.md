@@ -2,9 +2,12 @@
 
 问卷星 MCP Server，供 Claude Desktop、Claude Code、Cursor 等原生 MCP 客户端直接调用。CLI 是默认入口；MCP 只在客户端明确支持协议时使用。
 
-## 发布状态
+## 安装与发布
 
-当前 MCP Server 通过 GitHub 源码安装和运行：
+当前工作树对应下一发布版本 `0.4.1`，尚未发布到 npm。npm registry 的
+`latest` 仍是 `wjx-mcp-server@0.3.1`；需要本次源码能力时，请从 GitHub
+克隆并构建 `wjx-api-sdk` 与 `wjx-mcp-server`。发布前不要把 `@0.4.1`
+作为可安装版本。
 
 ```bash
 git clone https://github.com/wjxcom/wjx-ai-kit.git

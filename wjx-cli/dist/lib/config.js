@@ -1,4 +1,4 @@
-import { readFileSync, writeFileSync } from "node:fs";
+import { chmodSync, readFileSync, renameSync, unlinkSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { homedir } from "node:os";
 /**
@@ -21,14 +21,26 @@ export function loadConfig() {
     }
 }
 export function saveConfig(config) {
-    writeFileSync(CONFIG_PATH, JSON.stringify(config, null, 2) + "\n", {
-        encoding: "utf8",
-        mode: 0o600,
-    });
+    const temporaryPath = `${CONFIG_PATH}.${process.pid}.${Date.now()}.tmp`;
+    try {
+        writeFileSync(temporaryPath, JSON.stringify(config, null, 2) + "\n", { encoding: "utf8", mode: 0o600 });
+        renameSync(temporaryPath, CONFIG_PATH);
+        chmodSync(CONFIG_PATH, 0o600);
+    }
+    catch (error) {
+        try {
+            unlinkSync(temporaryPath);
+        }
+        catch { /* preserve original error */ }
+        throw error;
+    }
 }
 /**
- * Apply config values to process.env where env vars are not already set.
- * This makes SDK layer (which reads process.env) automatically use config values.
+ * Apply the legacy config's credential fallback to process.env.
+ *
+ * Routing values stay in the resolved profile so an explicitly selected
+ * profile cannot be overwritten by values copied from `.wjxrc`. The SDK and
+ * CLI pass the selected base URL per request instead of mutating global state.
  */
 export function applyConfigToEnv() {
     const config = loadConfig();
@@ -36,12 +48,6 @@ export function applyConfigToEnv() {
         return;
     if (!process.env.WJX_API_KEY && config.apiKey) {
         process.env.WJX_API_KEY = config.apiKey;
-    }
-    if (!process.env.WJX_BASE_URL && config.baseUrl) {
-        process.env.WJX_BASE_URL = config.baseUrl;
-    }
-    if (!process.env.WJX_CORP_ID && config.corpId) {
-        process.env.WJX_CORP_ID = config.corpId;
     }
 }
 //# sourceMappingURL=config.js.map

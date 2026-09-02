@@ -178,6 +178,12 @@ test("startup baseline keeps runner entries under the versioned document", () =>
   assert.ok(selectedBaseline, "baseline must provide an exact runner entry or default fallback");
 });
 
+test("version bootstrap does not statically load command modules", () => {
+  const source = readFileSync(resolve(PACKAGE_ROOT, "src", "index.ts"), "utf8");
+  assert.doesNotMatch(source, /from [\"']\.\/commands\//);
+  assert.match(source, /import\([\"']\.\/cli\.js[\"']\)/);
+});
+
 test("runtime commands expose one structured success result protocol", () => {
   const output = execFileSync(process.execPath, [resolve(PACKAGE_ROOT, "dist", "index.js"), "survey", "url"], {
     cwd: PACKAGE_ROOT, encoding: "utf8", env: { ...process.env, WJX_CONFIG_PATH: resolve(PACKAGE_ROOT, "__missing__") },

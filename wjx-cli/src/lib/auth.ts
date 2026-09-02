@@ -1,15 +1,62 @@
-import type { WjxCredentials } from "wjx-api-sdk";
+import { getWjxApiUrl, type WjxCredentials } from "wjx-api-sdk";
 import { CliError } from "./errors.js";
 import { resolveProfile } from "./profiles.js";
 import { getCredentialProvider } from "./credential-provider.js";
 
+function profileString(profile: { readonly baseUrl?: unknown }, key: "baseUrl"): string | undefined {
+  const value = profile[key];
+  if (typeof value !== "string" || !value.trim()) return undefined;
+  const trimmed = value.trim().replace(/\/+$/, "");
+  // Profiles are documented as deployment hosts. Be forgiving if a caller
+  // copied an OpenAPI endpoint into the field, avoiding a duplicated path.
+  try {
+    const parsed = new URL(trimmed);
+    if (/^\/openapi\/[^/]+\.aspx$/i.test(parsed.pathname)) return parsed.origin;
+  } catch {
+    // The SDK will surface a useful URL/fetch error for malformed values.
+  }
+  return trimmed;
+}
+
+export function getProfileApiUrl(profile: { readonly baseUrl?: unknown }): string | undefined {
+  const baseUrl = profileString(profile, "baseUrl");
+  return baseUrl ? getWjxApiUrl(baseUrl) : undefined;
+}
+
+export function getProfileBaseUrl(profile: { readonly baseUrl?: unknown }): string | undefined {
+  return profileString(profile, "baseUrl");
+}
+
+/** Add profile-only routing defaults without mutating process-wide state. */
+export function applyProfileDefaults<T extends Record<string, unknown>>(
+  input: T,
+  profile: { readonly corpId?: unknown },
+): T {
+  const corpId = profile.corpId;
+  if (Object.prototype.hasOwnProperty.call(input, "corpid") && input.corpid === undefined && typeof corpId === "string" && corpId.trim()) {
+    return { ...input, corpid: corpId.trim() } as T;
+  }
+  return input;
+}
+
+export function applyProfileCredentials(
+  credentials: WjxCredentials,
+  profile: { readonly baseUrl?: unknown; readonly corpId?: unknown },
+): WjxCredentials {
+  const baseUrl = profileString(profile, "baseUrl");
+  const corpId = typeof profile.corpId === "string" && profile.corpId.trim() ? profile.corpId.trim() : undefined;
+  return {
+    ...credentials,
+    ...(baseUrl ? { baseUrl } : {}),
+    ...(corpId ? { corpId } : {}),
+  };
+}
+
 export function getCredentials(globalOpts: { apiKey?: string; profile?: string }): WjxCredentials {
   try {
     const profile = resolveProfile({ profile: globalOpts.profile });
-    if (profile.baseUrl && !process.env.WJX_BASE_URL) process.env.WJX_BASE_URL = profile.baseUrl;
-    if (profile.corpId && !process.env.WJX_CORP_ID) process.env.WJX_CORP_ID = profile.corpId;
-    if (globalOpts.apiKey) return { apiKey: globalOpts.apiKey };
-    return getCredentialProvider().get(profile, "user");
+    const credentials = globalOpts.apiKey ? { apiKey: globalOpts.apiKey } : getCredentialProvider().get(profile, "user");
+    return applyProfileCredentials(credentials, profile);
   } catch (error) {
     if (error instanceof CliError) throw error;
     throw new CliError(

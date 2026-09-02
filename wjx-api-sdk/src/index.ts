@@ -39,10 +39,7 @@ export {
 
 // Survey module
 export {
-  createSurvey,
-  createSurveyByText,
   createSurveyByJson,
-  validateQuestionsJson,
   getSurvey,
   listSurveys,
   updateSurveyStatus,
@@ -55,16 +52,12 @@ export {
   uploadFile,
 } from "./modules/survey/client.js";
 export { surveyToText, typeToLabel, stripHtml } from "./modules/survey/survey-to-text.js";
-export { textToSurvey, parsedQuestionsToWire, LABEL_TO_TYPE, TYPE_MAP } from "./modules/survey/text-to-survey.js";
-export type { WireQuestion, WireConversionResult } from "./modules/survey/text-to-survey.js";
 export {
   extractJsonlMetadata,
   normalizeJsonl,
   MAX_JSONL_SIZE,
   parseJsonl,
   jsonToSurvey,
-  jsonQuestionsToWire,
-  QTYPE_MAP,
   EXAM_QTYPES,
   preprocessExamJsonl,
   hasVoteJsonlQtype,
@@ -74,17 +67,18 @@ export {
   validateSurveyTitle,
   validateSurveyHasQuestions,
   NON_QUESTION_QTYPE_SET,
+  JSONL_SUPPORTED_QTYPES,
+  FRAMEWORK_ONLY_JSONL_QTYPES,
+  hasFrameworkOnlyJsonlQtype,
+  resolveJsonlPublish,
   preflightJsonl,
 } from "./modules/survey/json-to-survey.js";
 export type {
   JsonSurveyMetadata,
   JsonSurveyQuestion,
   JsonParsedSurvey,
-  JsonWireConversionResult,
 } from "./modules/survey/json-to-survey.js";
 export type {
-  CreateSurveyInput,
-  CreateSurveyByTextInput,
   CreateSurveyByJsonInput,
   GetSurveyInput,
   ListSurveysInput,
@@ -99,8 +93,6 @@ export type {
   SurveyQuestionItem,
   SurveyQuestion,
   SurveyDetail,
-  ParsedQuestion,
-  ParsedSurvey,
 } from "./modules/survey/types.js";
 
 // Response module

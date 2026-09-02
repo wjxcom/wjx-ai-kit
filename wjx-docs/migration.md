@@ -6,13 +6,13 @@
 
 ## 从 MCP npm 安装迁移
 
-停止使用 `npx -y wjx-mcp-server@latest` 和 `npm install -g wjx-mcp-server`。从 GitHub 克隆、构建 `wjx-api-sdk` 与 `wjx-mcp-server`，然后在客户端配置 `node /absolute/path/wjx-mcp-server/dist/index.js`。
+旧版源码安装方式仍可用。本次工作树的下一发布版本统一为 `0.4.1`，目前尚未发布到 npm；registry 的 `latest` 仍指向旧版（CLI `0.3.5`、SDK/MCP `0.3.1`）。发布前请从 GitHub 克隆并构建源码，正式发布仍按 SDK → MCP Server → CLI 顺序进行。
 
 ## 从旧 CLI 参数迁移
 
-### CLI 1.0 输出协议
+### CLI 0.4 输出协议
 
-成功结果读取 `ok/data/meta`，失败结果读取 `ok/error`。不再读取顶层 `result`；`data` 内业务字段保持原语义。机器调用使用 `--format json`，分页或流式消费可使用 `ndjson`/`csv`。`--json`、`--table` 仍可运行但只在帮助中标记 deprecated，不会向 stderr 输出警告。
+成功结果读取 `ok/data/meta`，失败结果读取 `ok/error`。不再读取顶层 `result`；`data` 内业务字段保持原语义。机器调用使用 `--format json`，分页或流式消费可使用 `ndjson`/`csv`。旧的 `--json`、`--table` 别名已移除，必须升级到 `wjx-cli >= 0.4.1` 并使用 `--format`。
 
 高风险删除、清空和修改命令在非交互环境必须追加 `--yes`；`--dry-run` 始终优先且不会发出 HTTP 请求。dry-run 成功结果同样写入 stdout，读取 `ok/data`，其中 `data.kind` 为 `dry-run`、`data.plans` 是脱敏后的请求计划；stderr 只保留诊断信息。
 
@@ -26,4 +26,4 @@
 
 ## 从 DSL 迁移
 
-参阅 [DSL 兼容](legacy/dsl.md)，将文本转成 JSONL 后使用 `create-by-json`。
+参阅 [DSL 兼容](legacy/dsl.md)，将文本转成 JSONL 后使用 `create`。

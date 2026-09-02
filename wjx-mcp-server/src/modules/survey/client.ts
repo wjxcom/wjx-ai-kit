@@ -1,6 +1,4 @@
 export {
-  createSurvey,
-  createSurveyByText,
   createSurveyByJson,
   getSurvey,
   listSurveys,
@@ -13,10 +11,8 @@ export {
   clearRecycleBin,
   uploadFile,
   surveyToText,
-  textToSurvey,
-  parsedQuestionsToWire,
   extractJsonlMetadata,
   normalizeJsonl,
   MAX_JSONL_SIZE,
 } from "wjx-api-sdk";
-export type { SurveyDetail, ParsedSurvey, ParsedQuestion } from "wjx-api-sdk";
+export type { SurveyDetail } from "wjx-api-sdk";

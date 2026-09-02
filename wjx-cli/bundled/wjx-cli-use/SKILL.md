@@ -7,21 +7,23 @@ description: "Guide for using wjx-cli (Wenjuanxing CLI) to create surveys, query
 
 wjx-cli 是问卷星 OpenAPI 的命令行工具。命令格式：`wjx <模块> <操作> [选项]`。
 
-全局选项：`--api-key <key>` 覆盖凭据，`--table` 表格输出，`--dry-run` 预览请求不发送，`--stdin` 从管道读 JSON 参数。
+全局选项：`--api-key <key>` 覆盖凭据，`--format table` 表格输出，`--dry-run` 预览请求不发送，`--stdin` 从管道读 JSON 参数。低于 `0.4.1` 的 CLI 必须先升级。
+
+如果 `survey create` 返回顶层 `ok:false` 且 `error.code` 为 `UPGRADE_REQUIRED`，停止重试并提示用户先升级到 `error.min_client_version`（默认 `0.4.1`）；优先使用 `error.upgrade_command`，不要把它当作问卷内容或普通 API 失败处理。
 
 ## AI Agent 行为准则（必读）
 
-### 规则 0：创建问卷只用 `create-by-json`（强制）
+### 规则 0：创建问卷只用 `survey create`（强制）
 
-创建任何新问卷都只使用 `wjx survey create-by-json --file <path>.jsonl`。不要使用已弃用的 `create-by-text`，也不要使用兼容命令 `create --questions`。
+创建任何新问卷的唯一入口是 `wjx survey create --file <path>.jsonl`。当前 CLI 不提供 `create-by-text`、`create-by-json` 或 `create --questions`；历史 DSL/旧 JSON 必须先在 CLI 外部转换为 JSONL。
 
 先运行 `wjx survey jsonl-template --type <问卷类型> --raw` 获取当前 CLI 可接受的骨架，再编辑 JSONL。每个非空行必须是一个完整 JSON 对象；首行必须是 `{"qtype":"问卷基础信息","title":"...","atype":1}`，后续题目使用中文字符串字段 `qtype` 以及 `title`、`select`、`rowtitle` 等字段。
 
-不要把旧接口的 `_meta`、`q_type`、`q_subtype`、`q_title`、`items` 结构传给 `create-by-json`；CLI 会将其判为输入错误。
+不要把旧接口的 `_meta`、`q_type`、`q_subtype`、`q_title`、`items` 结构传给 `create`；CLI 会将其判为输入错误。
 
 ### 规则 1：一个需求 = 一个问卷
 
-无论用户要求多少种题型，**必须在一次 `create-by-json` 调用中包含所有题目**。一个问卷可包含任意数量、任意类型的题目。
+无论用户要求多少种题型，**必须在一次 `create` 调用中包含所有题目**。一个问卷可包含任意数量、任意类型的题目。
 
 ### 规则 2：问卷类型 ≠ 题目类型
 
@@ -30,6 +32,10 @@ wjx-cli 是问卷星 OpenAPI 的命令行工具。命令格式：`wjx <模块> <
 ### 规则 3：不支持的题型要明确告知
 
 只使用 [references/question-types.md](references/question-types.md) 列出的 JSONL `qtype`，不要自行发明题型名。地区题使用 `qtype:"多级下拉"` 并提供 `leveldata`。若当前 JSONL 格式确实无法表达用户要求，明确说明限制和替代方案，继续创建其余题目，**不要**反复尝试或拆分多个问卷。
+
+### 规则 3.2：纯框架题型默认保持草稿
+
+普通题型未指定发布选项时默认发布；但 `折叠栏目`、`轮播图`、`AI追问`、`AI处理`、`AI访谈`、`图片OCR`、`VlookUp问卷关联`、`分页计时器` 仅凭 JSONL 骨架无法完善。问卷包含任一上述题型时，创建接口默认保持草稿。先获取详情和编辑入口，指导用户补充素材/配置；只有用户明确要求发布时才显式传 `--publish` 或执行发布状态操作。
 
 ### 规则 3.1：用户体系只允许兼容维护
 
@@ -76,7 +82,7 @@ https://www.wjx.cn/weixinlogin.aspx?redirecturl=%2Fnewwjx%2Fmanage%2Fuserinfo.as
 
 ### 规则 7：批量 submit 必须逐次确认成功/失败（强制）
 
-**反例**：用户说"模拟 10 份答卷"，AI 顺序跑 10 次 `wjx response submit`，**只有 1 次返回 `result:true`**，但 AI 仍然报告"已提交 10 份"——这是欺骗用户，下游基于错误事实做决策（如生成 PPT 报告），导致总数与实际入库数不一致，**问题非常致命**。
+**反例**：用户说"模拟 10 份答卷"，AI 顺序跑 10 次 `wjx response submit`，**只有 1 次返回顶层 `ok:true`**，但 AI 仍然报告"已提交 10 份"——这是欺骗用户，下游基于错误事实做决策（如生成 PPT 报告），导致总数与实际入库数不一致，**问题非常致命**。
 
 **正确做法**：
 
@@ -84,8 +90,8 @@ https://www.wjx.cn/weixinlogin.aspx?redirecturl=%2Fnewwjx%2Fmanage%2Fuserinfo.as
 计划提交 N 条
   ├─ for i in 1..N:
   │   ├─ wjx response submit ...  → 拿 stdout JSON
-  │   ├─ 检查 result === true 才算成功
-  │   ├─ result === false 时记 errormsg（IP 限制/重复提交/校验失败/问卷未发布）
+  │   ├─ 检查顶层 ok === true 才算成功（业务字段在 data）
+  │   ├─ ok === false 时记录 error.message/code（IP 限制/重复提交/校验失败/问卷未发布）
   │   └─ 累加 succeeded / failed
   └─ 报告："计划 N，成功 M，失败 N-M"。
      失败 ≥ 10% 时主动列出 errormsg 分布 + 建议（换 IP / 调"重复提交"设置）。
@@ -114,12 +120,12 @@ https://www.wjx.cn/weixinlogin.aspx?redirecturl=%2Fnewwjx%2Fmanage%2Fuserinfo.as
 
 ### 规则 9：问卷列表必须报告总数和分页范围（强制）
 
-- 调用 `wjx survey list` 时保留默认 JSON 输出，读取 `data.page_index`、`data.page_size`、`data.total_count` 和 `data.activitys`。**不要使用 `--table`**，表格输出会隐藏总数和分页元数据。
+- 调用 `wjx survey list` 时保留默认 JSON 输出，读取 `data.page_index`、`data.page_size`、`data.total_count` 和 `data.activitys`。**不要使用 `--format table`**，表格输出会隐藏总数和分页元数据。
 - 必须用 JSON 解析器读取响应对象；不要用 `head` 截断 JSON，也不要用 `grep` 搜索字段。为刚创建的问卷找链接时，优先按创建响应中的 `vid`/`sid` 定位；列表 fallback 才按页读取目标记录。
 - 用户只要求“查看问卷列表”时可以先展示一页，但必须同时说明匹配问卷总数、当前页和本页数量，例如：「共 N 份问卷，当前展示第 X/Y 页的 M 份。」不得把单页结果表述为全部问卷。
 - 用户要求“全部问卷”或任务需要完整集合时，保持筛选和排序条件不变，根据 `total_count` 逐页查询，直到实际收集数量与总数一致；未取完前不得声称已列出全部。
 - `--query_all` 只表示查询范围包含子账号问卷，**不会**自动获取全部分页。
-- `--table` 只展示部分问卷行，可能隐藏填写路径、链接以及 `total_count`、`page_index`、`page_size` 等元数据，不可用于机器解析或链接查找。
+- `--format table` 只展示部分问卷行，可能隐藏填写路径、链接以及 `total_count`、`page_index`、`page_size` 等元数据，不可用于机器解析或链接查找。
 - 如果响应缺少 `total_count`，不要口述未核实的总数；逐页查询到空页后计算实际数量，或明确说明当前无法确认总数。详细响应结构见 [references/survey-commands.md](references/survey-commands.md)。
 
 ### 规则 10：答卷查询必须报告总数并按需取全（强制）
@@ -134,10 +140,10 @@ https://www.wjx.cn/weixinlogin.aspx?redirecturl=%2Fnewwjx%2Fmanage%2Fuserinfo.as
 
 | 用户意图 | 命令 |
 |---------|------|
-| 做调查/问卷 | `wjx survey create-by-json --file survey.jsonl` |
-| 做考试/测验 | `wjx survey create-by-json --file exam.jsonl --type 6` |
-| 做投票 | `wjx survey create-by-json --file vote.jsonl --type 3` |
-| 做表单/报名表 | `wjx survey create-by-json --file form.jsonl --type 7` |
+| 做调查/问卷 | `wjx survey create --file survey.jsonl` |
+| 做考试/测验 | `wjx survey create --file exam.jsonl --type 6` |
+| 做投票 | `wjx survey create --file vote.jsonl --type 3` |
+| 做表单/报名表 | `wjx survey create --file form.jsonl --type 7` |
 | 看问卷结果 | 先 `wjx survey list` 找 vid，再 `wjx response report --vid <vid>` |
 | 导出答卷数据 | `wjx response download --vid <vid>` |
 | 分析 NPS | `wjx analytics nps --scores "[9,10,7,3]"` |
@@ -157,7 +163,18 @@ node --version
 
 如果 Node.js 未安装或版本 < 20，需要先安装。参见 [references/install-nodejs.md](references/install-nodejs.md)，根据操作系统选择安装方式。
 
-Node.js 就绪后：
+Node.js 就绪后，先确认要使用的 CLI 至少为 `0.4.1`。当前工作树的 `0.4.1` 尚未发布到 npm；如果 `npm view wjx-cli version` 返回低于 `0.4.1`，不要安装旧版，改为从源码构建并链接 CLI：
+
+```bash
+git clone https://github.com/wjxcom/wjx-ai-kit.git
+cd wjx-ai-kit
+npm install
+npm run build --workspace=wjx-api-sdk
+npm run build --workspace=wjx-cli
+npm link ./wjx-cli
+```
+
+正式发布后才执行：
 
 ```bash
 npm install -g wjx-cli
@@ -214,13 +231,14 @@ wjx doctor
 
 | 模块 | 命令 | 说明 |
 |------|------|------|
-| `survey` | list, get, create-by-json, jsonl-template, delete, status, settings, update-settings, upload, export-text, url | 问卷增删改查与配置 |
-| `response` | query, realtime, download, submit, modify, clear, report, count | 答卷数据操作 |
+| `survey` | list, get, create, jsonl-template, delete, status, settings, update-settings, tags, tag-details, clear-bin, upload, export-text, url | 问卷增删改查与配置 |
+| `response` | query, realtime, download, submit-template, submit, modify, clear, report, count, winners, 360-report | 答卷数据操作 |
 | `contacts` | query, add, delete | 联系人管理（需 WJX_CORP_ID） |
 | `department` | list, add, modify, delete | 部门管理 |
 | `admin` | add, delete, restore | 管理员管理 |
 | `tag` | list, add, modify, delete | 标签管理 |
 | `account` | list, add, modify, delete, restore | 子账号管理 |
+| `user-system` | add-participants, modify-participants, delete-participants, bind, query-binding, query-surveys | 已过时的用户体系兼容维护 |
 | `sso` | subaccount-url, user-system-url（兼容/已过时）, partner-url | SSO 链接生成 |
 | `analytics` | decode, nps, csat, anomalies, compare, decode-push | 本地分析（无需 API Key） |
 | `init` / `doctor` / `whoami` | — | 配置 / 诊断 / 验证 |
@@ -229,12 +247,12 @@ wjx doctor
 
 ### 创建问卷（统一使用 JSONL 格式）
 
-> **重要**：必须执行 `wjx survey create-by-json` 命令来创建问卷。只生成 JSONL 文本而不执行命令，问卷不会被创建到问卷星平台上。
+> **重要**：必须执行 `wjx survey create` 命令来创建问卷。只生成 JSONL 文本而不执行命令，问卷不会被创建到问卷星平台上。
 
 ```bash
 wjx survey jsonl-template --type 1 --raw > survey.jsonl
 # 编辑 survey.jsonl 后执行
-wjx survey create-by-json --file survey.jsonl
+wjx survey create --file survey.jsonl
 ```
 
 JSONL 每个非空行放一个 JSON 对象，且首行必须是问卷基础信息。例如：
@@ -278,6 +296,6 @@ JSONL 每个非空行放一个 JSON 对象，且首行必须是问卷基础信�
 - [答卷命令](references/response-commands.md) — 查询筛选、submitdata 格式、下载选项
 - [通讯录命令](references/contacts-commands.md) — 联系人、部门、管理员、标签、子账号、SSO
 - [分析命令](references/analytics-commands.md) — NPS/CSAT/CES 公式、异常检测、数据解码
-- [JSONL 题型](references/question-types.md) — `create-by-json` 的字段格式、中文 `qtype` 与示例
+- [JSONL 题型](references/question-types.md) — `create` 的字段格式、中文 `qtype` 与示例
 - [计算公式](references/formula-helper.md) — 问卷星计算公式与Excel函数功能指南，帮助AI在问卷中正确编写计算公式。涵盖题目引用、数组写法、赋值判断逻辑、各题型的推送数据格式、函数参考（日期时间/数学计算/文本合并/条件判断/逻辑/查找统计）及实战案例。
 - [安装 Node.js](references/install-nodejs.md) — 各平台 Node.js 安装方式

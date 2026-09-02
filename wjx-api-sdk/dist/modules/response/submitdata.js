@@ -84,7 +84,7 @@ function buildQuestionLookup(submitdata, questions) {
 function resolveQuestion(questionIndex, lookup) {
     if (lookup.mode === "raw") {
         return {
-            normalizedIndex: lookup.rawToAnswerable.get(questionIndex) ?? questionIndex,
+            normalizedIndex: questionIndex,
             question: lookup.rawQuestions.get(questionIndex) ?? lookup.answerableQuestions.get(questionIndex),
         };
     }

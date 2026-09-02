@@ -3,6 +3,15 @@ import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/
 import { isInitializeRequest } from "@modelcontextprotocol/sdk/types.js";
 import { randomUUID, timingSafeEqual } from "node:crypto";
 import { credentialStore } from "../core/context.js";
+export const DEFAULT_MAX_BODY_BYTES = 10 * 1024 * 1024;
+class RequestBodyTooLargeError extends Error {
+    maxBytes;
+    constructor(maxBytes) {
+        super(`Request body exceeds maximum size of ${maxBytes} bytes`);
+        this.maxBytes = maxBytes;
+        this.name = "RequestBodyTooLargeError";
+    }
+}
 /**
  * Extract Bearer token from Authorization header.
  * Returns the raw token string, or `undefined` when not present.
@@ -31,12 +40,43 @@ function getClientIp(req) {
     }
     return req.socket.remoteAddress;
 }
-/** Read the full request body as a string, then JSON.parse it. */
-function readBody(req) {
+/** Read a bounded request body as a string, then JSON.parse it. */
+function readBody(req, maxBytes) {
     return new Promise((resolve, reject) => {
         const chunks = [];
-        req.on("data", (chunk) => chunks.push(chunk));
+        let totalBytes = 0;
+        let settled = false;
+        const fail = (error) => {
+            if (settled)
+                return;
+            settled = true;
+            // Continue consuming the request without retaining data so an oversized
+            // client cannot leave the connection in a half-read state.
+            req.resume();
+            reject(error);
+        };
+        const contentLengthHeader = req.headers["content-length"];
+        const contentLength = Array.isArray(contentLengthHeader)
+            ? Number(contentLengthHeader[0])
+            : Number(contentLengthHeader);
+        if (Number.isFinite(contentLength) && contentLength > maxBytes) {
+            fail(new RequestBodyTooLargeError(maxBytes));
+            return;
+        }
+        req.on("data", (chunk) => {
+            if (settled)
+                return;
+            totalBytes += chunk.byteLength;
+            if (totalBytes > maxBytes) {
+                fail(new RequestBodyTooLargeError(maxBytes));
+                return;
+            }
+            chunks.push(Buffer.from(chunk));
+        });
         req.on("end", () => {
+            if (settled)
+                return;
+            settled = true;
             try {
                 resolve(JSON.parse(Buffer.concat(chunks).toString("utf-8")));
             }
@@ -44,13 +84,17 @@ function readBody(req) {
                 reject(e);
             }
         });
-        req.on("error", reject);
+        req.on("error", fail);
     });
 }
 export async function startHttpTransport(_mcpServer, options, 
 /** Factory that creates a fresh McpServer for each session. */
 serverFactory) {
     const enableSessions = options.stateful !== false;
+    const maxBodyBytes = options.maxBodyBytes ?? DEFAULT_MAX_BODY_BYTES;
+    if (!Number.isSafeInteger(maxBodyBytes) || maxBodyBytes < 1) {
+        throw new RangeError("maxBodyBytes must be a positive safe integer");
+    }
     // Session map: sessionId → { transport, server, credentials }
     const sessions = new Map();
     const httpServer = createHttpServer(async (req, res) => {
@@ -91,15 +135,21 @@ serverFactory) {
                 // Parse body BEFORE deciding transport routing
                 let body;
                 try {
-                    body = await readBody(req);
+                    body = await readBody(req, maxBodyBytes);
                 }
-                catch {
-                    res.writeHead(400, { "Content-Type": "application/json" });
-                    res.end(JSON.stringify({
-                        jsonrpc: "2.0",
-                        error: { code: -32700, message: "Parse error: Invalid JSON" },
-                        id: null,
-                    }));
+                catch (error) {
+                    if (error instanceof RequestBodyTooLargeError) {
+                        res.writeHead(413, { "Content-Type": "application/json" });
+                        res.end(JSON.stringify({ error: error.message }));
+                    }
+                    else {
+                        res.writeHead(400, { "Content-Type": "application/json" });
+                        res.end(JSON.stringify({
+                            jsonrpc: "2.0",
+                            error: { code: -32700, message: "Parse error: Invalid JSON" },
+                            id: null,
+                        }));
+                    }
                     return;
                 }
                 let transport;

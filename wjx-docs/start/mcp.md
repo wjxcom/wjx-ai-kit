@@ -8,7 +8,9 @@ MCP 适用于原生支持 Model Context Protocol 的客户端。若客户端只�
 - 问卷星 OpenAPI API Key
 - Claude Desktop、Claude Code、Cursor 等 MCP 客户端
 
-当前 MCP Server 通过 GitHub 源码安装和运行：
+当前工作树对应下一发布版本 `0.4.1`，尚未发布到 npm。npm registry 的
+`latest` 仍是 `wjx-mcp-server@0.3.1`；发布前请从源码构建本版本，不要
+把 `@0.4.1` 作为可安装版本。
 
 ```bash
 git clone https://github.com/wjxcom/wjx-ai-kit.git
@@ -21,14 +23,14 @@ npm run build --workspace=wjx-mcp-server
 本地 stdio 启动命令：
 
 ```bash
-WJX_API_KEY="你的 API Key" npm start --workspace=wjx-mcp-server
+WJX_API_KEY="你的 API Key" npx wjx-mcp-server
 ```
 
-客户端配置中的 `command` 应指向构建后的 `wjx-mcp-server` 启动入口；不同客户端的示例见 [配置 AI 客户端](../tasks/configure-client.md)。配置后完全重启客户端，并让 AI 调用 `list_surveys` 验证。
+客户端配置中的 `command` 应指向 `wjx-mcp-server` 启动入口；不同客户端的示例见 [配置 AI 客户端](../tasks/configure-client.md)。配置后完全重启客户端，并让 AI 调用 `list_surveys` 验证。需要源码开发时，可按仓库 README 构建。
 
 ## 能力发现
 
-当前版本提供 58 个 Tool、8 个 Resource、22 个 Prompt。完整名称和模块见 [MCP 工具参考](../reference/mcp-tools.md)。
+当前版本提供 56 个 Tool、8 个 Resource、15 个 Prompt。完整名称和模块见 [MCP 工具参考](../reference/mcp-tools.md)。
 
 ## 凭据安全
 

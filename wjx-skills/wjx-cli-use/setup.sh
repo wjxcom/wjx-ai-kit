@@ -15,12 +15,39 @@ NC='\033[0m'
 
 # 脚本所在目录
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+MIN_WJX_CLI_VERSION="0.4.1"
 
 # 打印函数
 print_info()    { echo -e "${BLUE}[INFO]${NC} $1"; }
 print_success() { echo -e "${GREEN}[OK]${NC} $1"; }
 print_warning() { echo -e "${YELLOW}[WARNING]${NC} $1"; }
 print_error()   { echo -e "${RED}[ERROR]${NC} $1"; }
+
+# Compare semantic versions without relying on GNU sort (the script also runs on macOS).
+version_at_least() {
+    node -e 'const [actual, minimum] = process.argv.slice(1); const parse = value => value.replace(/^v/, "").split(".").map(part => Number.parseInt(part, 10) || 0); const a = parse(actual); const b = parse(minimum); process.exit(a[0] > b[0] || (a[0] === b[0] && (a[1] > b[1] || (a[1] === b[1] && a[2] >= b[2]))) ? 0 : 1);' "$1" "$2"
+}
+
+print_cli_source_guide() {
+    echo "当前工作树的 wjx-cli ${MIN_WJX_CLI_VERSION} 尚未发布到 npm，registry latest 仍是旧版。"
+    echo "发布前请从源码构建并链接："
+    echo "  git clone https://github.com/wjxcom/wjx-ai-kit.git"
+    echo "  cd wjx-ai-kit && npm install"
+    echo "  npm run build --workspace=wjx-api-sdk"
+    echo "  npm run build --workspace=wjx-cli"
+    echo "  npm link ./wjx-cli"
+}
+
+check_cli_version() {
+    WJX_VERSION=$(wjx --version 2>/dev/null | head -n 1 || true)
+    if [ -z "$WJX_VERSION" ] || ! version_at_least "$WJX_VERSION" "$MIN_WJX_CLI_VERSION"; then
+        print_error "wjx-cli 版本过低: ${WJX_VERSION:-unknown}（需要 ${MIN_WJX_CLI_VERSION}+）"
+        print_cli_source_guide
+        return 1
+    fi
+    print_success "wjx-cli ${WJX_VERSION}"
+    return 0
+}
 
 # 检测操作系统
 detect_os() {
@@ -80,17 +107,19 @@ install_cli() {
     print_info "Step 2/5: 安装 wjx-cli..."
 
     if command -v wjx &> /dev/null; then
-        WJX_VERSION=$(wjx --version 2>/dev/null || echo "unknown")
-        print_success "wjx-cli 已安装 ($WJX_VERSION)"
-        return 0
+        check_cli_version
+        return $?
     fi
 
     print_info "正在全局安装 wjx-cli..."
     NPM_ERR=$(mktemp)
     if npm install -g wjx-cli 2>"$NPM_ERR"; then
         rm -f "$NPM_ERR"
-        print_success "wjx-cli 安装成功"
-        return 0
+        if check_cli_version; then
+            print_success "wjx-cli 安装成功"
+            return 0
+        fi
+        return 1
     else
         print_warning "全局安装失败，错误信息："
         cat "$NPM_ERR" 2>/dev/null
@@ -98,18 +127,23 @@ install_cli() {
         print_info "尝试 sudo..."
         if command -v sudo &> /dev/null; then
             if sudo npm install -g wjx-cli; then
-                print_success "wjx-cli 安装成功（sudo）"
-                return 0
+                if check_cli_version; then
+                    print_success "wjx-cli 安装成功（sudo）"
+                    return 0
+                fi
+                return 1
             fi
         fi
         echo ""
         print_error "wjx-cli 安装失败"
         echo ""
-        echo "请手动安装："
+        echo "请在 ${MIN_WJX_CLI_VERSION} 发布后手动安装："
         echo "  sudo npm install -g wjx-cli"
         echo ""
         echo "或使用 npx 免安装运行："
-        echo "  npx wjx-cli survey list"
+        echo "  npx wjx-cli@${MIN_WJX_CLI_VERSION} survey list"
+        echo ""
+        print_cli_source_guide
         echo ""
         return 1
     fi
@@ -190,9 +224,9 @@ check_only() {
 
     # wjx-cli
     if command -v wjx &> /dev/null; then
-        print_success "wjx-cli $(wjx --version 2>/dev/null || echo 'installed')"
+        check_cli_version || PASS=0
     else
-        print_warning "wjx-cli 未安装（运行 npm install -g wjx-cli）"
+        print_warning "wjx-cli 未安装或版本低于 ${MIN_WJX_CLI_VERSION}（请按上面的源码构建说明处理）"
         PASS=0
     fi
 
@@ -224,7 +258,7 @@ verify_only() {
     check_node || exit 1
 
     if command -v wjx &> /dev/null; then
-        print_success "wjx-cli $(wjx --version 2>/dev/null || echo 'installed')"
+        check_cli_version || exit 1
     else
         print_error "wjx-cli 未安装"
         exit 1
@@ -255,7 +289,7 @@ show_help() {
 
 安装流程:
     1. 检测 Node.js 20+
-    2. 安装 wjx-cli（npm install -g wjx-cli）
+    2. 安装并验证 wjx-cli >= ${MIN_WJX_CLI_VERSION}（${MIN_WJX_CLI_VERSION} 发布前从源码构建）
     3. 打开浏览器获取 API Key（微信扫码登录）
     4. 配置 wjx init（粘贴 API Key）
     5. 验证连接 wjx doctor
@@ -346,7 +380,7 @@ main() {
     echo "  或命令行直接用："
     echo "  wjx survey list                    # 查看问卷列表"
     echo "  wjx survey jsonl-template --raw    # 生成 JSONL 问卷模板"
-    echo "  wjx survey create-by-json --file survey.jsonl # 用 JSONL 创建问卷"
+    echo "  wjx survey create --file survey.jsonl # 用 JSONL 创建问卷"
     echo "  wjx response report --vid 12345    # 查看问卷报告"
     echo ""
 }

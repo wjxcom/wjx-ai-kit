@@ -16,6 +16,11 @@ print_info()    { echo -e "${BLUE}[INFO]${NC} $1"; }
 print_success() { echo -e "${GREEN}[OK]${NC} $1"; }
 print_warning() { echo -e "${YELLOW}[WARNING]${NC} $1"; }
 print_error()   { echo -e "${RED}[ERROR]${NC} $1"; }
+MIN_WJX_CLI_VERSION="0.4.1"
+
+version_at_least() {
+    node -e 'const [actual, minimum] = process.argv.slice(1); const parse = value => value.replace(/^v/, "").split(".").map(part => Number.parseInt(part, 10) || 0); const a = parse(actual); const b = parse(minimum); process.exit(a[0] > b[0] || (a[0] === b[0] && (a[1] > b[1] || (a[1] === b[1] && a[2] >= b[2]))) ? 0 : 1);' "$1" "$2"
+}
 
 # 选定 python 命令（优先 python3，回退到 python）
 detect_python() {
@@ -91,6 +96,16 @@ install_renderer() {
 check_wjx_cli() {
     if command -v wjx &>/dev/null; then
         WJX_VER=$(wjx --version 2>/dev/null || echo "unknown")
+        if ! version_at_least "$WJX_VER" "$MIN_WJX_CLI_VERSION"; then
+            print_error "wjx-cli 版本过低: $WJX_VER（需要 ${MIN_WJX_CLI_VERSION}+）"
+            echo "当前 ${MIN_WJX_CLI_VERSION} 尚未发布到 npm；请从源码构建并链接 wjx-cli。"
+            echo "  git clone https://github.com/wjxcom/wjx-ai-kit.git"
+            echo "  cd wjx-ai-kit && npm install"
+            echo "  npm run build --workspace=wjx-api-sdk"
+            echo "  npm run build --workspace=wjx-cli"
+            echo "  npm link ./wjx-cli"
+            return 1
+        fi
         print_success "wjx-cli $WJX_VER"
         if [ -f "$HOME/.wjxrc" ]; then
             print_success "~/.wjxrc 已配置"
@@ -101,7 +116,7 @@ check_wjx_cli() {
     fi
     print_warning "未检测到 wjx-cli"
     echo "  本 skill 需配合 wjx-cli 使用，请先安装："
-    echo "    npm install -g wjx-cli"
+    echo "    wjx-cli >= ${MIN_WJX_CLI_VERSION}（${MIN_WJX_CLI_VERSION} 发布前请从源码构建）"
     echo "  详见 wjx-cli-use skill。"
     return 1
 }

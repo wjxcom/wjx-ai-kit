@@ -1,10 +1,11 @@
 import { createRequire } from "node:module";
 import { listSurveys } from "wjx-api-sdk";
-import { getCredentials } from "../lib/auth.js";
-import { formatOutput } from "../lib/output.js";
-import { handleError } from "../lib/errors.js";
-import { loadConfig, CONFIG_PATH } from "../lib/config.js";
+import { applyProfileCredentials } from "../lib/auth.js";
 import { maskApiKey } from "../lib/mask.js";
+import { loadConfig, CONFIG_PATH } from "../lib/config.js";
+import { resolveProfile } from "../lib/profiles.js";
+import { getCredentialProvider } from "../lib/credential-provider.js";
+import { executeRuntimeAction, executeRuntimeLocal } from "../lib/runtime/executor.js";
 const require = createRequire(import.meta.url);
 const sdkPkg = require("wjx-api-sdk/package.json");
 export function registerDiagnosticCommands(program) {
@@ -12,33 +13,28 @@ export function registerDiagnosticCommands(program) {
     program
         .command("whoami")
         .description("验证 ApiKey 并显示账号信息")
-        .action(async () => {
-        try {
-            const creds = getCredentials(program.opts());
-            const result = await listSurveys({ page_index: 1, page_size: 1 }, creds);
-            if (result.result === false) {
-                // API Key invalid or API error
-                formatOutput({ authenticated: false, error: result.errormsg || "ApiKey 无效" }, program.opts());
-                process.exit(1);
-            }
-            // Extract useful info from the response
-            const data = result;
-            formatOutput({
-                authenticated: true,
-                total_surveys: data.total ?? data.Total ?? null,
-            }, program.opts());
-        }
-        catch (e) {
-            handleError(e);
-        }
+        .action(async (_opts, cmd) => {
+        await executeRuntimeAction(program, cmd, listSurveys, () => ({ page_index: 1, page_size: 1 }), {
+            dryRunNoRequest: true,
+            transformResult: (result) => {
+                const data = result;
+                const payload = result.data;
+                return {
+                    authenticated: true,
+                    total_surveys: data.total ?? data.Total ?? payload?.total_count ?? null,
+                };
+            },
+        });
     });
     // --- doctor ---
     program
         .command("doctor")
         .description("环境诊断（ApiKey、网络、SDK 版本）")
-        .action(async () => {
-        try {
+        .action(async (_opts, cmd) => {
+        await executeRuntimeLocal(program, cmd, async () => {
+            const profile = resolveProfile({ profile: program.opts().profile });
             const checks = [];
+            checks.push({ check: "profile", status: "ok", detail: profile.name });
             // 0. Config file
             const config = loadConfig();
             checks.push({
@@ -55,21 +51,27 @@ export function registerDiagnosticCommands(program) {
                 detail: `${nodeVersion}${major < 20 ? " (建议 >= 20)" : ""}`,
             });
             // 2. WJX_API_KEY set?
-            const apiKey = program.opts().apiKey || process.env.WJX_API_KEY || config?.apiKey;
+            let apiKey = program.opts().apiKey || process.env.WJX_API_KEY || config?.apiKey;
+            if (!apiKey) {
+                try {
+                    apiKey = getCredentialProvider().get(profile, "user").apiKey;
+                }
+                catch { /* reported as fail below */ }
+            }
             checks.push({
                 check: "WJX_API_KEY",
                 status: apiKey ? "ok" : "fail",
                 detail: apiKey ? `已设置 (${maskApiKey(apiKey)})` : "未设置",
             });
             // 3. WJX_CORP_ID
-            const corpId = process.env.WJX_CORP_ID || config?.corpId;
+            const corpId = process.env.WJX_CORP_ID || profile.corpId || config?.corpId;
             checks.push({
                 check: "WJX_CORP_ID",
                 status: corpId ? "ok" : "info",
                 detail: corpId ? `已设置 (${corpId})` : "未设置（通讯录功能需要）",
             });
             // 4. WJX_BASE_URL
-            const baseUrl = process.env.WJX_BASE_URL || config?.baseUrl || "https://www.wjx.cn";
+            const baseUrl = process.env.WJX_BASE_URL || profile.baseUrl || config?.baseUrl || "https://www.wjx.cn";
             checks.push({
                 check: "WJX_BASE_URL",
                 status: "ok",
@@ -78,7 +80,7 @@ export function registerDiagnosticCommands(program) {
             // 5. API connectivity
             if (apiKey) {
                 try {
-                    const creds = { apiKey };
+                    const creds = applyProfileCredentials({ apiKey }, profile);
                     const result = await listSurveys({ page_index: 1, page_size: 1 }, creds);
                     if (result.result === false) {
                         checks.push({
@@ -117,13 +119,11 @@ export function registerDiagnosticCommands(program) {
                 detail: `v${sdkPkg.version}`,
             });
             const allOk = checks.every((c) => c.status === "ok" || c.status === "skip" || c.status === "info");
-            formatOutput({ ok: allOk, checks }, program.opts());
-            if (!allOk)
-                process.exit(1);
-        }
-        catch (e) {
-            handleError(e);
-        }
+            return { ok: allOk, data: { checks } };
+        }, {
+            dryRun: () => ({ command: "doctor", note: "doctor dry-run 不执行 API 连接检查" }),
+            exitCode: (result) => result && typeof result === "object" && "ok" in result && result.ok === false ? 1 : undefined,
+        });
     });
 }
 //# sourceMappingURL=diagnostics.js.map

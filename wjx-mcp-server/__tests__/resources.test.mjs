@@ -15,6 +15,7 @@ test("SURVEY_TYPES", async (t) => {
     assert.equal(SURVEY_TYPES[3], "投票");
     assert.equal(SURVEY_TYPES[6], "考试");
     assert.equal(SURVEY_TYPES[7], "表单");
+    assert.equal(SURVEY_TYPES[10], "量表");
   });
 
   await t.test("should have at least 10 types", () => {

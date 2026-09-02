@@ -1,4 +1,3 @@
-import type { WireQuestion } from "./text-to-survey.js";
 /** JSONL 首行 "问卷基础信息" 解析结果（轻量，只含元数据） */
 export interface JsonSurveyMetadata {
     title: string;
@@ -41,13 +40,13 @@ export interface JsonSurveyQuestion {
     uploadlimit?: string;
     uploadcutimgsize?: string;
     /** 考试字段 */
-    correctselect?: string[];
+    correctselect?: string | string[];
     quizscore?: string;
     answeranalysis?: string;
     isquiz?: string;
     include?: boolean;
     answerlists?: Array<{
-        correctselect?: string[];
+        correctselect?: string | string[];
         quizscore?: string;
         include?: boolean;
     }>;
@@ -88,7 +87,7 @@ export interface JsonSurveyQuestion {
     /** 企业信息模糊查询 */
     fuzzyquery?: string;
     /** 多级下拉 */
-    leveldata?: string;
+    leveldata?: string | string[];
     /** 分页栏 */
     mintime?: number;
     maxtime?: number;
@@ -100,6 +99,10 @@ export interface JsonSurveyQuestion {
     /** PSM 模型 */
     steps?: string;
     /** 矩阵滑动条 — 用 minvalue/maxvalue + rowtitle */
+    stores?: string[];
+    heatbg?: string;
+    hidetxt?: string | boolean;
+    answer?: string;
     [key: string]: unknown;
 }
 /** Parsed survey structure from JSONL input. */
@@ -109,14 +112,6 @@ export interface JsonParsedSurvey {
     endpageinformation: string;
     language: string;
     questions: JsonSurveyQuestion[];
-}
-export interface JsonWireConversionResult {
-    questions: WireQuestion[];
-    /** 无法映射的题型（跳过但不报错） */
-    skippedTypes: Array<{
-        qtype: string;
-        title: string;
-    }>;
 }
 /** createSurveyByJson 的 JSONL 大小上限（1 MB） */
 export declare const MAX_JSONL_SIZE = 1000000;
@@ -142,7 +137,7 @@ export declare const EXAM_QTYPES: Set<string>;
 /**
  * 扫描 JSONL 文本，若发现考试题型：
  * - `hasExam=true`
- * - 为每道考试题自动注入 `isquiz="1"`（用户已显式设置则保留原值）
+ * - 为每道考试题自动注入 `isquiz="1"`（显式设置为其他值会被拒绝，避免考试题降级）
  *
  * 非考试题、_meta 行、空行、无法解析的行保持原样。
  */
@@ -211,11 +206,18 @@ export declare const NON_QUESTION_QTYPE_SET: ReadonlySet<string>;
  * 零题目通常源于上层 LLM 生成失败（只吐出 _meta 行），应在客户端拦截，避免服务端创建空问卷。
  */
 export declare function validateSurveyHasQuestions(jsonl: string): void;
-/** qtype 中文名 → API wire format { q_type, q_subtype } 映射表 */
-export declare const QTYPE_MAP: Record<string, {
-    q_type: number;
-    q_subtype: number;
-}>;
+export declare const JSONL_SUPPORTED_QTYPES: ReadonlySet<string>;
+/**
+ * qtypes whose minimal JSONL representation is only a shell. They need
+ * assets, AI/relationship configuration, or page timing to become a usable
+ * survey in the editor, so an omitted `publish` must leave the survey as a
+ * draft. Explicit `publish: true` remains an intentional user override.
+ */
+export declare const FRAMEWORK_ONLY_JSONL_QTYPES: ReadonlySet<string>;
+/** Return whether a JSONL document contains a known shell-only qtype. */
+export declare function hasFrameworkOnlyJsonlQtype(jsonlText: string): boolean;
+/** Resolve the wire publish flag while preserving an explicit caller choice. */
+export declare function resolveJsonlPublish(jsonlText: string, requested?: boolean): boolean;
 /**
  * Parse JSONL text (one JSON object per line) into an array of question objects.
  * 抛出带行号的错误信息以便定位。
@@ -230,7 +232,7 @@ export declare function parseJsonl(jsonlText: string): JsonSurveyQuestion[];
  * 2. 行用了 `q_type`/`type` 字段但缺 `qtype` → 提示用中文 qtype（字符串）
  * 3. `qtype` 是数字（误把 q_type 数字塞过来）→ 列出常见中文映射
  * 4a. `qtype` 是英文（radio/checkbox/rating 等）→ 给出精确的中文替换
- * 4b. `qtype` 字符串但不在 QTYPE_MAP → 给出"你是不是想写 X"
+ * 4b. `qtype` 字符串但不在 JSONL_SUPPORTED_QTYPES → 给出"你是不是想写 X"
  */
 export declare function preflightJsonl(jsonlText: string): void;
 /**
@@ -238,9 +240,3 @@ export declare function preflightJsonl(jsonlText: string): void;
  * remaining entries become the questions array.
  */
 export declare function jsonToSurvey(jsonlText: string): JsonParsedSurvey;
-/**
- * Convert an array of JsonSurveyQuestion to API wire format (question JSON for createSurvey).
- * Unknown qtype entries are collected as `skippedTypes` rather than throwing —
- * 调用方若需要严格校验，可在拿到结果后自行检查 `skippedTypes.length === 0`。
- */
-export declare function jsonQuestionsToWire(questions: JsonSurveyQuestion[]): JsonWireConversionResult;

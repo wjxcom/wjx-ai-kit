@@ -24,10 +24,8 @@ test("default structured output is an ok/data envelope", async () => {
   assert.ok(parsed.data.url);
 });
 
-test("format aliases and record formats preserve data", async () => {
+test("format options and record formats preserve data", async () => {
   const json = JSON.parse((await run(["survey", "url", "--format", "json"])).stdout);
-  const alias = JSON.parse((await run(["survey", "url", "--json"])).stdout);
-  assert.deepEqual(alias.data, json.data);
   const ndjson = (await run(["survey", "url", "--format", "ndjson"])).stdout.trim().split("\n");
   assert.equal(JSON.parse(ndjson[0]).url, json.data.url);
 });
@@ -55,6 +53,94 @@ test("API response failures never become successful stdout envelopes", async () 
     assert.equal(problem.error.code, "API_ERROR");
     assert.equal(problem.error.errorcode, 40102);
     assert.equal(problem.error.traceid, "trace-whoami");
+  } finally {
+    await fixture.close();
+  }
+});
+
+test("survey create reports a structured upgrade requirement from the backend", async () => {
+  const fixture = await startFixture({
+    response: {
+      result: false,
+      errorcode: "CLIENT_VERSION_TOO_OLD",
+      errormsg: "客户端版本过低",
+      data: {
+        min_client_version: "0.4.1",
+        upgrade_command: "npm install -g wjx-cli@latest",
+      },
+      traceid: "trace-upgrade",
+    },
+    env: { WJX_API_KEY: "test-key" },
+  });
+  try {
+    const jsonl = [
+      { qtype: "问卷基础信息", title: "版本升级测试" },
+      { qtype: "单选", title: "选择一个", select: ["A", "B"] },
+    ].map(JSON.stringify).join("\n");
+    const result = await fixture.run(["survey", "create", "--jsonl", jsonl]);
+    assert.equal(result.exitCode, 1);
+    assert.equal(result.stdout, "");
+    const problem = JSON.parse(result.stderr);
+    assert.equal(problem.ok, false);
+    assert.equal(problem.error.code, "UPGRADE_REQUIRED");
+    assert.equal(problem.error.type, "upgrade");
+    assert.equal(problem.error.min_client_version, "0.4.1");
+    assert.equal(problem.error.upgrade_command, "npm install -g wjx-cli@latest");
+    assert.match(problem.error.hint, /0\.4\.1/);
+    assert.match(problem.error.hint, /npm install -g wjx-cli@latest/);
+    const request = fixture.requests()[0];
+    assert.equal(request.headers["x-wjx-client"], "wjx-cli");
+    assert.equal(request.headers["x-wjx-client-version"], "0.4.1");
+  } finally {
+    await fixture.close();
+  }
+});
+
+test("survey create supplies a default upgrade hint when backend omits optional details", async () => {
+  const fixture = await startFixture({
+    response: {
+      result: false,
+      errorcode: "CLIENT_VERSION_TOO_OLD",
+      errormsg: "客户端版本过低，请升级后重试",
+    },
+    env: { WJX_API_KEY: "test-key" },
+  });
+  try {
+    const jsonl = [
+      { qtype: "问卷基础信息", title: "版本升级默认提示" },
+      { qtype: "单选", title: "选择一个", select: ["A", "B"] },
+    ].map(JSON.stringify).join("\n");
+    const result = await fixture.run(["survey", "create", "--jsonl", jsonl]);
+    assert.equal(result.exitCode, 1);
+    const problem = JSON.parse(result.stderr);
+    assert.equal(problem.error.code, "UPGRADE_REQUIRED");
+    assert.equal(problem.error.min_client_version, "0.4.1");
+    assert.equal(problem.error.upgrade_command, "npm install -g wjx-cli@latest");
+    assert.match(problem.error.hint, /请升级 wjx-cli 至 0\.4\.1/);
+  } finally {
+    await fixture.close();
+  }
+});
+
+test("survey create recognizes a numeric backend code when its message requires an upgrade", async () => {
+  const fixture = await startFixture({
+    response: {
+      result: false,
+      errorcode: 42601,
+      errormsg: "客户端版本过低，请升级后重试",
+    },
+    env: { WJX_API_KEY: "test-key" },
+  });
+  try {
+    const jsonl = [
+      { qtype: "问卷基础信息", title: "版本升级数字错误码" },
+      { qtype: "单选", title: "选择一个", select: ["A", "B"] },
+    ].map(JSON.stringify).join("\n");
+    const result = await fixture.run(["survey", "create", "--jsonl", jsonl]);
+    assert.equal(result.exitCode, 1);
+    const problem = JSON.parse(result.stderr);
+    assert.equal(problem.error.code, "UPGRADE_REQUIRED");
+    assert.equal(problem.error.errorcode, 42601);
   } finally {
     await fixture.close();
   }

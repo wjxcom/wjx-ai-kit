@@ -236,7 +236,6 @@ export function updatePptSkill(
 
   if (!existsSync(skillDest)) {
     const msg = "wjx-survey-ppt 技能尚未安装，请先运行 wjx skill install-ppt";
-    if (!silent) stderr.write(`${msg}\n`);
     return {
       status: "error",
       version: getSkillVersion(getBundledSkillDir()),

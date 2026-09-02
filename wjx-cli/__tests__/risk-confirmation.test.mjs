@@ -78,7 +78,10 @@ test("read and ordinary write commands are not blocked by the high-risk gate", a
     assert.equal(read.exitCode, 0);
     assert.equal(fixture.requests().length, 1);
 
-    const write = await fixture.run(["survey", "create", "--title", "ordinary write"]);
+    const write = await fixture.run([
+      "survey", "create", "--jsonl",
+      '{"qtype":"问卷基础信息","title":"ordinary write"}\n{"qtype":"单选","title":"Q","select":["A","B"]}',
+    ]);
     assert.equal(write.exitCode, 0);
     assert.equal(fixture.requests().length, 2);
   } finally {
@@ -94,11 +97,11 @@ test("all declared destructive shortcuts require confirmation", async () => {
     ["response", "modify", "--vid", "7", "--jid", "8", "--answers", "ok"],
     ["response", "clear", "--username", "alice", "--vid", "7"],
     ["contacts", "delete", "--uids", "u1"],
-    ["department", "delete", "--type", "1", "--depts", "[]"],
+    ["department", "delete", "--type", "1", "--depts", "[\"dept-1\"]"],
     ["admin", "delete", "--uids", "u1"],
     ["account", "delete", "--subuser", "alice"],
-    ["tag", "delete", "--type", "1", "--tags", "[]"],
-    ["user-system", "delete-participants", "--uids", "[]", "--sysid", "7"],
+    ["tag", "delete", "--type", "1", "--tags", "[\"tag-1\"]"],
+    ["user-system", "delete-participants", "--uids", "[\"u-1\"]", "--sysid", "7"],
   ];
 
   const fixture = await startFixture({ env });

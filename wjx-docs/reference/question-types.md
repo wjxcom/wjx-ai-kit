@@ -56,6 +56,10 @@
 
 题型名称后缀为“题”的别名（例如 `表格组合题`、`表格填空题`）仍被 SDK 接受，但新文档和新代码优先使用不带后缀的 canonical 名称。
 
+## 纯框架题型（默认不发布）
+
+以下题型可以通过 `create` 建立骨架，但仅凭 JSONL 示例不能完成素材、AI 参数、关联关系或页面时序配置：`折叠栏目`、`轮播图`、`AI追问`、`AI处理`、`AI访谈`、`图片OCR`、`VlookUp问卷关联`、`分页计时器`。包含这些题型时，未显式指定发布选项会创建为草稿；创建后应先在编辑页完善，再由用户明确要求发布。
+
 ## 评分、模型与预设
 
 - 评分：`量表题`、`NPS量表`、`评分单选`、`评分多选`、`评价题`。
@@ -81,4 +85,4 @@
 
 ## 运行时来源
 
-本文解释常用字段。完整 canonical 列表和 `q_type/q_subtype` 映射可通过 MCP Resource `wjx://reference/question-types` 查看；程序化集成请以 SDK 的 `QTYPE_MAP` 为准。
+本文解释常用字段。完整 canonical 列表和 `q_type/q_subtype` 映射可通过 MCP Resource `wjx://reference/question-types` 查看；程序化集成请以 SDK 的 `JSONL_SUPPORTED_QTYPES` 为准。

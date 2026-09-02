@@ -1,28 +1,3 @@
-export interface CreateSurveyInput {
-    title: string;
-    type: number;
-    description: string;
-    publish?: boolean;
-    questions: string;
-    /** 允许显式设为非必答的题目标题列表；未列入时，is_requir=false 会被拒绝 */
-    optionalTitles?: string[];
-    creater?: string;
-    source_vid?: string;
-    compress_img?: boolean;
-    is_string?: boolean;
-}
-export interface CreateSurveyByTextInput {
-    /** DSL 格式的问卷文本内容，传给 API 的 survey_data 参数 */
-    text: string;
-    /** 问卷标题（可选，不传则从 DSL 文本第一行提取） */
-    title?: string;
-    /** 问卷类型：1=调查, 2=测评, 3=投票, 6=考试, 7=表单, 10=量表, 11=民主评议 */
-    atype?: number;
-    /** 是否立即发布 */
-    publish?: boolean;
-    /** 创建者子账号用户名 */
-    creater?: string;
-}
 export interface CreateSurveyByJsonInput {
     /** JSONL 格式的问卷内容（每行一个 JSON 对象，首行为问卷基础信息） */
     jsonl: string;
@@ -32,7 +7,7 @@ export interface CreateSurveyByJsonInput {
     atype?: number;
     /** 允许显式设为非必答的题目标题列表；未列入时，requir=false 会被拒绝 */
     optionalTitles?: string[];
-    /** 是否立即发布 */
+    /** 是否立即发布；未指定时普通题型默认 true，纯框架题型默认 false */
     publish?: boolean;
     /** 创建者子账号用户名 */
     creater?: string;
@@ -97,35 +72,6 @@ export interface GetTagDetailsInput {
 export interface ClearRecycleBinInput {
     username: string;
     vid?: number;
-}
-/** A parsed question from DSL text. */
-export interface ParsedQuestion {
-    /** Question title (plain text, HTML stripped). */
-    title: string;
-    /**
-     * Question type identifier.
-     * Skeleton types: "single-choice" | "multi-choice" | "fill-in" | "scale" | "matrix" | "paragraph"
-     */
-    type: string;
-    /** Whether the question is required (default true). */
-    required: boolean;
-    /** Options/items for choice-type questions. */
-    options?: string[];
-    /** Scale range for scale-type questions [min, max]. */
-    scaleRange?: [string, string];
-    /** Matrix row labels. */
-    matrixRows?: string[];
-    /** Matrix column labels (e.g. rating headers like "很不满意 不满意 一般 满意 很满意"). */
-    matrixColumns?: string[];
-}
-/** Parsed survey structure from DSL text. */
-export interface ParsedSurvey {
-    /** Survey title. */
-    title: string;
-    /** Survey description (may be empty). */
-    description: string;
-    /** Parsed questions in order. */
-    questions: ParsedQuestion[];
 }
 /** A single option/item within a question. */
 export interface SurveyQuestionItem {

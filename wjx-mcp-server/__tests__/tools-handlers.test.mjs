@@ -291,65 +291,15 @@ describe("survey tools validation via MCP", () => {
     ({ client } = await createTestClient());
   });
 
-  describe("create_survey", () => {
-    it("rejects empty arguments", async () => {
-      const result = await client.callTool({
-        name: "create_survey",
-        arguments: {},
-      });
-      assert.equal(result.isError, true);
-    });
-
-    it("rejects missing title", async () => {
-      const result = await client.callTool({
-        name: "create_survey",
-        arguments: { atype: 1, desc: "desc", questions: '[{"q_index":1,"q_type":3}]' },
-      });
-      assert.equal(result.isError, true);
-    });
-
-    it("rejects missing atype", async () => {
-      const result = await client.callTool({
-        name: "create_survey",
-        arguments: { title: "Test", desc: "desc", questions: '[{"q_index":1,"q_type":3}]' },
-      });
-      assert.equal(result.isError, true);
-    });
-
-    it("rejects missing desc", async () => {
-      const result = await client.callTool({
-        name: "create_survey",
-        arguments: { title: "Test", atype: 1, questions: '[{"q_index":1,"q_type":3}]' },
-      });
-      assert.equal(result.isError, true);
-    });
-
-    it("rejects missing questions", async () => {
-      const result = await client.callTool({
-        name: "create_survey",
-        arguments: { title: "Test", atype: 1, desc: "desc" },
-      });
-      assert.equal(result.isError, true);
-    });
-
-    it("rejects empty title", async () => {
-      const result = await client.callTool({
-        name: "create_survey",
-        arguments: { title: "", atype: 1, desc: "desc", questions: '[{"q_index":1}]' },
-      });
-      assert.equal(result.isError, true);
-    });
-
-    it("rejects questions too short", async () => {
-      const result = await client.callTool({
-        name: "create_survey",
-        arguments: { title: "Test", atype: 1, desc: "desc", questions: "x" },
-      });
-      assert.equal(result.isError, true);
-    });
-  });
-
   describe("create_survey_by_json", () => {
+    it("describes the required qtype metadata row instead of the removed _meta row", async () => {
+      const listed = await client.listTools();
+      const tool = listed.tools.find((entry) => entry.name === "create_survey_by_json");
+      assert.ok(tool);
+      assert.match(tool.inputSchema.properties.jsonl.description, /首行.*qtype.*问卷基础信息/);
+      assert.doesNotMatch(tool.inputSchema.properties.jsonl.description, /首行 _meta/);
+    });
+
     it("rejects empty jsonl", async () => {
       const result = await client.callTool({
         name: "create_survey_by_json",

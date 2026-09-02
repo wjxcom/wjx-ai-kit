@@ -23,7 +23,7 @@ tools:
 - **`skills/wjx-mcp-use/SKILL.md`** — 工具总览、核心工作流、MCP 资源、Prompt 模板、常用枚举值
 - **`skills/wjx-mcp-use/references/`** — 按需查阅的详细参考：
   - `dsl-and-types.md` — DSL 文本语法、题型映射表、问卷/状态编码
-  - `tools-survey.md` — 13 个问卷管理工具的完整参数
+  - `tools-survey.md` — 11 个问卷管理工具的完整参数
   - `tools-response.md` — 9 个答卷数据工具的完整参数
   - `tools-other.md` — 通讯录、子账号、SSO、分析、推送、用户体系工具参数
 
@@ -42,10 +42,12 @@ tools:
 
 ### 创建问卷
 
-1. **强制要求**：所有新问卷一律用 `create_survey_by_json`（覆盖 70+ 题型；传入 `jsonl` 字符串，字段参考 `wjx://reference/question-types` 和 `references/tools-survey.md`）
-2. **绝不使用** `create_survey_by_text` / `create_survey`，除非用户明确说"DSL"、"文本格式"、"老接口"
+1. **强制要求**：所有问卷一律用当前唯一入口 `create_survey_by_json`（覆盖 70+ 题型；传入 `jsonl` 字符串，字段参考 `wjx://reference/question-types` 和 `references/tools-survey.md`）
+2. 当前 MCP Server 不提供 `create_survey_by_text` / `create_survey`；历史 DSL/旧 JSON 必须先在 MCP 外部转换为 JSONL
 3. 创建后调用 `get_survey` 验证问卷内容
 4. 主动使用 `build_preview_url` 提供预览链接，使用 `build_survey_url` 提供编辑链接
+
+读取或审阅旧 DSL 时，优先调用 `get_survey` 的 `format: "dsl"`；迁移完成后回到 `create_survey_by_json`，不要把 DSL 作为新建入口。
 
 ### 用户体系兼容边界
 

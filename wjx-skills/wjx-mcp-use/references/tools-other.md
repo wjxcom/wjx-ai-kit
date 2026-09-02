@@ -264,7 +264,7 @@
 
 ## 用户体系（6 tools，兼容/已过时）
 
-> 这 6 个工具仍注册在 MCP Server 中，仅用于维护已有用户体系。源码已将它们标记为 Deprecated；`atype=8` 用户体系问卷不能通过 `create_survey` 或 `create_survey_by_json` 新建。新项目不要采用此模块，只有在用户明确提供已有 `usid`/`sysid` 并要求维护历史系统时才调用。
+> 这 6 个工具仍注册在 MCP Server 中，仅用于维护已有用户体系。源码已将它们标记为 Deprecated；`atype=8` 用户体系问卷不能通过 `create_survey_by_json` 新建。新项目不要采用此模块，只有在用户明确提供已有 `usid`/`sysid` 并要求维护历史系统时才调用。
 
 ### add_participants — 批量添加参与者
 

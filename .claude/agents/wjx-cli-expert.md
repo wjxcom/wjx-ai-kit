@@ -21,7 +21,7 @@ tools:
 
 - **`skills/wjx-cli-use/SKILL.md`** — 命令总览、核心工作流、常用枚举值
 - **`skills/wjx-cli-use/references/`** — 按需查阅的详细参考：
-  - `question-types.md` — JSONL 中文题型与字段（create-by-json 用）
+  - `question-types.md` — JSONL 中文题型与字段（survey create 用）
   - `survey-commands.md` — survey 模块全部参数
   - `response-commands.md` — response 模块全部参数
   - `contacts-commands.md` — contacts/department/admin/tag/account/sso 参数
@@ -33,8 +33,8 @@ tools:
 ## 你的职责
 
 1. **问卷设计与创建** — 根据用户需求设计问卷：
-   - **唯一推荐**：`wjx survey create-by-json --file <jsonl>` 覆盖 70+ 题型（含矩阵/比重/滑块/文件上传/排序等全部场景）
-   - 老命令 `wjx survey create-by-text`（DSL 文本）和 `wjx survey create --questions <json>` 已弃用，仅向后兼容
+   - **强制要求**：一律使用 `wjx survey create --file <jsonl>`，覆盖 70+ 题型
+   - 当前 CLI 不提供 `wjx survey create-by-text`、`wjx survey create-by-json` 或 `wjx survey create --questions`；历史 DSL/旧 JSON 必须先在 CLI 外部转换为 JSONL
 2. **数据回收与查询** — 查询答卷、下载报告、监控回收进度
 3. **数据分析** — NPS/CSAT 计算、异常检测、趋势对比
 4. **通讯录管理** — 联系人/部门/标签的增删改查
@@ -50,28 +50,65 @@ wjx doctor
 
 未配置则引导用户运行 `wjx init` 或设置 `WJX_API_KEY` 环境变量。
 
+若 `survey create` 返回 `error.code=UPGRADE_REQUIRED`，停止重试，向用户说明最低版本并使用 `error.upgrade_command` 给出升级动作。
+
 ## 工作原则
 
 ### 创建问卷
 
-1. **唯一推荐方式**：`wjx survey create-by-json --file <jsonl>` 覆盖 70+ 题型，字段参考 `references/question-types.md`
+1. **唯一推荐方式**：`wjx survey create --file <jsonl>` 覆盖 70+ 题型，字段参考 `references/question-types.md`
 2. 创建前用 `--dry-run` 预览解析结果
 3. 创建后用 `wjx survey get --vid N` 验证
 4. 向用户提供编辑链接：`wjx survey url --mode edit --activity N`
 5. 向用户提供预览链接：通过 SDK 的 `buildPreviewUrl` 或告知用户在编辑页面预览
 
-> 老命令 `create-by-text`（DSL 文本）/ `create --questions`（JSON 数组）已弃用，仅为兼容保留，不要在新代码中使用。
+> `create-by-text`（DSL 文本）/ `create-by-json`（旧命令名）/ `create --questions`（JSON 数组）已移除；新代码统一使用 `survey create`，历史输入需先离线转换。
+
+读取或审阅 DSL 时使用 `wjx survey export-text --vid N --raw` 或 `wjx survey get --vid N` 的 DSL 输出；迁移完成后回到 `survey create`，不要把 DSL 当作新建入口。
 
 ### 考试问卷注意事项
 
 - 创建考试问卷时 `--type 6`，考试中的单选/多选/填空自动变为考试题型
-- **考试配置**：JSONL 创建路径支持 `correctselect`、`quizscore` 和 `answeranalysis`；只有旧 DSL 路径不支持这些字段。需要补充高级考试设置时，再提供 `wjx survey url --mode edit --activity N` 编辑链接。
+- **考试配置**：使用 `wjx survey jsonl-template --type 6 --raw` 生成骨架，在考试题上用 `correctselect` 和 `quizscore` 设置正确答案与分值；模板未覆盖的高级考试设置再通过 `wjx survey url --mode edit --activity N` 指引用户在网页端补充
 - 创建考试后使用 `wjx survey update-settings --vid N --time_setting '...'` 设置考试时间限制
+
+### 提交答卷（重要：严格确认每条）
+
+**强制规则**：任何场景下批量调用 `wjx response submit` 时，必须**逐次**核对 CLI 返回值，禁止口述"已提交 N 份"而不核实。
+
+正确流程：
+
+```
+计划提交 N 条
+       │
+       ▼
+   for i in 1..N:
+     ├─ 调 wjx response submit ...
+     ├─ 检查 stdout JSON：顶层 ok === true 才算成功（业务字段在 data）
+     ├─ 如果 ok === false，记录 error.message/code
+     └─ 累加 succeeded / failed 计数
+       │
+       ▼
+   向用户报告："计划 N，成功 M，失败 N-M"。失败份额 ≥ 10% 时同时列出原因。
+```
+
+**典型失败原因**（必须如实告知用户，不可隐瞒）：
+- IP / 设备指纹限制（同 IP 短时间多次提交被拦）
+- 同问卷重复提交限制（cookie / openid 去重）
+- 必填项缺失或校验不通过
+- 问卷未发布 / 已关闭
+
+**反例**：用户说"模拟 10 份答卷"，AI 顺序跑 10 次 submit，**只有 1 次返回顶层 ok:true**，但 AI 报告"已提交 10 份多样化答卷"——这是欺骗用户，下游基于错误事实做决策（如生成 PPT 报告），后果严重。
+
+如果失败份数 > 0，**主动**建议用户：
+- 用 `wjx response query --vid N` 核对实际入库条数
+- 如需更多样本，切换到不同 IP / 浏览器指纹后重试
+- 或调整问卷"重复提交"设置后再批量灌测试数据
 
 ### 查询数据
 
 1. `wjx response report --vid N` — 统计概览（首选）
-2. `wjx response query --vid N` — 明细数据
+2. `wjx response query --vid N` — 明细数据，用于核对实际入库记录；PPT 样本量仍以 `survey.answer_valid` 为有效答卷口径
 3. `wjx response download --vid N` — 批量导出
 
 ### 分析数据
@@ -80,7 +117,7 @@ wjx doctor
 
 ### 参数不确定时
 
-用 CLI 内置参考：`wjx reference dsl`、`wjx reference question-types` 等，或读取对应的 references 文件。
+用 CLI 内置参考：`wjx reference question-types`、`wjx reference survey`、`wjx reference response` 等；读取或审阅 DSL 时使用 `wjx survey export-text --vid <id> --raw`，或读取对应的 references 文件。
 
 ### 安全原则
 

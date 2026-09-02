@@ -65,26 +65,6 @@ function parseDryRunPlan(result) {
   return data.plans[0];
 }
 
-function parseCreateByTextDryRun(result) {
-  assert.equal(result.stderr.trim(), "", `dry-run diagnostics should be empty: ${result.stderr}`);
-  const data = parseDryRunData(result.stdout);
-  assert.equal(data.plans.length, 1, `create-by-text expects exactly 1 plan, got ${data.plans.length}`);
-  const plan = data.plans[0];
-  const body = JSON.parse(plan.body);
-  const wireQuestions = JSON.parse(body.questions);
-  return {
-    ...body,
-    // preview 字段后展开，确保 parsed_* / question_count / skipped_paragraphs
-    // 始终来自 dryRunPreview 回调而非请求体派生值——否则该回调退化时测试无感知。
-    ...data,
-    wire_questions: wireQuestions,
-    // 请求体派生值放在独立键下，供需要断言实际请求内容的用例使用。
-    body_title: body.title,
-    body_description: body.desc,
-    wire_question_count: wireQuestions.length,
-  };
-}
-
 function parseProblem(serialized) {
   const envelope = JSON.parse(serialized);
   assert.equal(envelope.ok, false, `expected ProblemEnvelope, got: ${serialized}`);
@@ -121,7 +101,7 @@ describe("wjx CLI", () => {
 
   it("survey --help lists all subcommands", () => {
     const out = run(["survey", "--help"]);
-    for (const cmd of ["list", "get", "create", "create-by-json", "jsonl-template", "delete", "status", "settings", "update-settings", "tags", "tag-details", "clear-bin", "upload", "url"]) {
+    for (const cmd of ["list", "get", "create", "jsonl-template", "delete", "status", "settings", "update-settings", "tags", "tag-details", "clear-bin", "upload", "url"]) {
       assert.match(out, new RegExp(cmd), `missing subcommand: ${cmd}`);
     }
   });
@@ -142,8 +122,8 @@ describe("wjx CLI", () => {
 });
 
 describe("output formatting", () => {
-  it("survey url --table outputs plain text", () => {
-    const out = run(["survey", "url", "--mode", "create", "--table"]);
+  it("survey url --format table outputs plain text", () => {
+    const out = run(["survey", "url", "--mode", "create", "--format", "table"]);
     assert.doesNotMatch(out, /^\{/);
     assert.match(out, /sojump|wjx/);
   });
@@ -314,14 +294,6 @@ describe("required field validation (post-merge)", () => {
     assert.equal(sentBody.vid, 123);
   });
 
-  it("survey create without --title → INPUT_ERROR exit 2", async () => {
-    const result = await runFull(["survey", "create"]);
-    assert.equal(result.exitCode, 2);
-    const err = parseProblem(result.stderr);
-    assert.equal(err.code, "INPUT_ERROR");
-    assert.ok(err.message.includes("title"));
-  });
-
   it("--stdin can satisfy required fields", async () => {
     // survey get requires --vid, provide it via stdin
     // This will fail with API_ERROR (bad vid) or AUTH_ERROR, but NOT INPUT_ERROR
@@ -363,6 +335,23 @@ describe("contract: error output schema", () => {
     assert.ok(envelope.error.message.length > 0);
     assert.ok(["API_ERROR", "INPUT_ERROR", "AUTH_ERROR"].includes(envelope.error.code));
     assert.ok([1, 2].includes(envelope.exitCode));
+  });
+
+  it("malformed upstream response without result → API_ERROR exit 1", async () => {
+    const fixture = await startFixture({
+      response: { data: { rows: [] } },
+      env: { WJX_API_KEY: "malformed-response-key" },
+    });
+    try {
+      const result = await fixture.run(["survey", "list"]);
+      assert.equal(result.exitCode, 1);
+      assert.equal(result.stdout.trim(), "");
+      const err = parseProblem(result.stderr);
+      assert.equal(err.code, "API_ERROR");
+      assert.match(err.message, /result/);
+    } finally {
+      await fixture.close();
+    }
   });
 });
 
@@ -428,9 +417,9 @@ describe("doctor", () => {
     const parsed = JSON.parse(result.stdout.trim());
     assert.equal(parsed.ok, false);
     // Should have checks array
-    assert.ok(Array.isArray(parsed.checks));
+    assert.ok(Array.isArray(parsed.data.checks));
     // WJX_API_KEY check should be fail
-    const tokenCheck = parsed.checks.find((c) => c.check === "WJX_API_KEY");
+    const tokenCheck = parsed.data.checks.find((c) => c.check === "WJX_API_KEY");
     assert.equal(tokenCheck.status, "fail");
   });
 
@@ -517,6 +506,35 @@ describe("response subcommands", () => {
     assert.equal(result.exitCode, 2);
     const err = parseProblem(result.stderr);
     assert.equal(err.code, "INPUT_ERROR");
+  });
+
+  it("response query defaults valid=true and forwards --valid to the API", async () => {
+    const fixture = await startFixture({
+      response: {
+        result: true,
+        data: { valid: true, page_index: 1, page_size: 50, total_count: 0, answers: {} },
+      },
+      env: { WJX_API_KEY: "query-fixture-key" },
+    });
+    try {
+      const defaultResult = await fixture.run(["response", "query", "--vid", "42"]);
+      assert.equal(defaultResult.exitCode, 0, defaultResult.stderr);
+      assert.equal(JSON.parse(defaultResult.stdout).ok, true);
+      const explicitResult = await fixture.run(["response", "query", "--vid", "42", "--valid"]);
+      assert.equal(explicitResult.exitCode, 0, explicitResult.stderr);
+      assert.equal(JSON.parse(explicitResult.stdout).ok, true);
+
+      const requests = fixture.requests();
+      assert.equal(requests.length, 2);
+      for (const request of requests) {
+        const requestUrl = new URL(request.path, fixture.baseUrl);
+        assert.equal(requestUrl.searchParams.get("action"), "1001002");
+        const body = JSON.parse(request.body);
+        assert.equal(body.valid, true);
+      }
+    } finally {
+      await fixture.close();
+    }
   });
 
   it("response submit without required fields → INPUT_ERROR exit 2", async () => {
@@ -972,6 +990,32 @@ describe("analytics", () => {
     assert.equal(parsed.count, 2);
   });
 
+  it("analytics decode rejects malformed non-empty segments", async () => {
+    const result = await runFull(["analytics", "decode", "--submitdata", "1$2}malformed}2$ok"]);
+    assert.equal(result.exitCode, 2);
+    assert.equal(result.stdout, "");
+    const err = parseProblem(result.stderr);
+    assert.equal(err.code, "INPUT_ERROR");
+    assert.match(err.message, /第 2 段|题序\$答案/);
+  });
+
+  it("analytics decode rejects non-positive question indexes", async () => {
+    for (const submitdata of ["0$1", "-1$1"]) {
+      const result = await runFull(["analytics", "decode", "--submitdata", submitdata]);
+      assert.equal(result.exitCode, 2, submitdata);
+      assert.equal(result.stdout, "", submitdata);
+      const err = parseProblem(result.stderr);
+      assert.equal(err.code, "INPUT_ERROR", submitdata);
+    }
+  });
+
+  it("analytics decode rejects empty submitdata", async () => {
+    const result = await runFull(["analytics", "decode", "--submitdata", ""]);
+    assert.equal(result.exitCode, 2);
+    assert.equal(result.stdout, "");
+    assert.equal(parseProblem(result.stderr).code, "INPUT_ERROR");
+  });
+
   it("analytics nps with --scores returns NPS result", () => {
     const out = run(["analytics", "nps", "--scores", "[9,10,7,3,8,10,9]"]);
     const parsed = parseResultData(out);
@@ -1034,148 +1078,77 @@ describe("analytics", () => {
 });
 
 // ═══════════════════════════════════════
-// survey create-by-text
+// survey create
 // ═══════════════════════════════════════
 
-describe("survey create-by-text", () => {
-  it("survey --help lists create-by-text", () => {
+describe("survey create", () => {
+  it("survey --help lists create", () => {
     const out = run(["survey", "--help"]);
-    assert.match(out, /create-by-text/);
+    assert.match(out, /create/);
   });
 
-  it("create-by-text without --text or --file → INPUT_ERROR exit 2", async () => {
-    const result = await runFull(["survey", "create-by-text"]);
-    assert.equal(result.exitCode, 2);
-    const err = parseProblem(result.stderr);
-    assert.equal(err.code, "INPUT_ERROR");
-    assert.ok(err.message.includes("--text") || err.message.includes("--file"));
-  });
-
-  it("create-by-text --file with nonexistent file → INPUT_ERROR exit 2", async () => {
-    const result = await runFull(["survey", "create-by-text", "--file", "/tmp/__no_such_file_12345.txt"]);
-    assert.equal(result.exitCode, 2);
-    const err = parseProblem(result.stderr);
-    assert.equal(err.code, "INPUT_ERROR");
-    assert.ok(err.message.includes("无法读取"));
-  });
-
-  it("create-by-text --dry-run parses DSL and shows preview", async () => {
-    const dsl = "测试问卷\n\n1. 你喜欢什么颜色？[单选题]\nA. 红色\nB. 蓝色\nC. 绿色";
-    const result = await runFull(
-      ["survey", "create-by-text", "--text", dsl, "--dry-run"],
-      { env: { WJX_API_KEY: "fake-key-1234567890", ...NO_CONFIG } },
-    );
-    assert.equal(result.exitCode, 0);
-    const preview = parseCreateByTextDryRun(result);
-    assert.equal(preview.parsed_title, "测试问卷");
-    assert.equal(preview.question_count, 1);
-    assert.ok(Array.isArray(preview.wire_questions));
-    assert.equal(preview.wire_questions.length, 1);
-  });
-
-  it("create-by-text --dry-run with multi-question DSL", async () => {
-    const dsl = [
-      "英语考试",
-      "",
-      "1. What is the capital of France?[单选题]",
-      "A. London",
-      "B. Paris",
-      "C. Berlin",
-      "",
-      "2. Select all prime numbers[多选题]",
-      "A. 2",
-      "B. 4",
-      "C. 7",
-      "",
-      "3. Fill in: The sun is a {_}[填空题]",
-    ].join("\n");
-    const result = await runFull(
-      ["survey", "create-by-text", "--text", dsl, "--type", "6", "--dry-run"],
-      { env: { WJX_API_KEY: "fake-key-1234567890", ...NO_CONFIG } },
-    );
-    assert.equal(result.exitCode, 0);
-    const preview = parseCreateByTextDryRun(result);
-    assert.equal(preview.question_count, 3);
-    assert.equal(preview.parsed_title, "英语考试");
-  });
-
-  it("create-by-text without api-key → AUTH_ERROR exit 1", async () => {
-    const dsl = "标题\n\n1. Q1[单选题]\nA. a\nB. b";
-    const result = await runFull(
-      ["survey", "create-by-text", "--text", dsl],
-      { env: { WJX_API_KEY: "", PATH: process.env.PATH, ...NO_CONFIG } },
-    );
-    assert.equal(result.exitCode, 1);
-    const err = parseProblem(result.stderr);
-    assert.equal(err.code, "AUTH_ERROR");
-  });
-
-  it("create-by-text real execution prints a deprecation warning", async () => {
-    const fixture = await startFixture();
-    try {
-      const result = await fixture.run(
-        ["survey", "create-by-text", "--text", "标题\n\n1. Q[单选题]\nA. a\nB. b", "--yes"],
-        { env: { WJX_API_KEY: "fake-key-1234567890" } },
-      );
-      assert.equal(result.exitCode, 0);
-      assert.match(result.stderr, /create-by-text 已弃用/);
-      assert.equal(fixture.requests().length, 1);
-    } finally {
-      await fixture.close();
-    }
-  });
-
-  it("create-by-text API failure keeps stderr as a ProblemEnvelope", async () => {
-    const fixture = await startFixture({
-      response: { result: false, errormsg: "invalid survey" },
-    });
-    try {
-      const result = await fixture.run(
-        ["survey", "create-by-text", "--text", "标题\n\n1. Q[单选题]\nA. a\nB. b", "--yes"],
-        { env: { WJX_API_KEY: "fake-key-1234567890" } },
-      );
-      assert.equal(result.exitCode, 1);
-      const error = parseProblem(result.stderr);
-      assert.equal(error.code, "API_ERROR");
-      assert.doesNotMatch(result.stderr, /create-by-text 已弃用/);
-    } finally {
-      await fixture.close();
-    }
-  });
-});
-
-// ═══════════════════════════════════════
-// survey create-by-json
-// ═══════════════════════════════════════
-
-describe("survey create-by-json", () => {
-  it("survey --help lists create-by-json", () => {
-    const out = run(["survey", "--help"]);
-    assert.match(out, /create-by-json/);
-  });
-
-  it("create-by-json without --jsonl or --file → INPUT_ERROR exit 2", async () => {
-    const result = await runFull(["survey", "create-by-json"]);
+  it("create without --jsonl or --file → INPUT_ERROR exit 2", async () => {
+    const result = await runFull(["survey", "create"]);
     assert.equal(result.exitCode, 2);
     const err = parseProblem(result.stderr);
     assert.equal(err.code, "INPUT_ERROR");
     assert.ok(err.message.includes("--jsonl") || err.message.includes("--file"));
   });
 
-  it("create-by-json --file with nonexistent file → INPUT_ERROR exit 2", async () => {
-    const result = await runFull(["survey", "create-by-json", "--file", "/tmp/__no_such_json_12345.jsonl"]);
+  it("create --file with nonexistent file → INPUT_ERROR exit 2", async () => {
+    const result = await runFull(["survey", "create", "--file", "/tmp/__no_such_json_12345.jsonl"]);
     assert.equal(result.exitCode, 2);
     const err = parseProblem(result.stderr);
     assert.equal(err.code, "INPUT_ERROR");
   });
 
-  it("create-by-json --dry-run captures real POST body with atype injected into JSONL", async () => {
+  it("普通题型默认发布，所有纯框架题型默认草稿", async () => {
+    const fixture = await startFixture({ env: { WJX_API_KEY: "publish-default-key" } });
+    try {
+      const ordinary = [
+        { qtype: "问卷基础信息", title: "普通题型发布测试" },
+        { qtype: "单选", title: "选择题", select: ["是", "否"] },
+      ].map(JSON.stringify).join("\n");
+      const ordinaryResult = await fixture.run(["--yes", "survey", "create", "--jsonl", ordinary]);
+      assert.equal(ordinaryResult.exitCode, 0, ordinaryResult.stderr);
+      assert.equal(JSON.parse(fixture.requests().at(-1).body).publish, true);
+
+      for (const qtype of ["折叠栏目", "轮播图", "AI追问", "AI处理", "AI访谈", "图片OCR", "VlookUp问卷关联", "分页计时器"]) {
+        const framework = [
+          { qtype: "问卷基础信息", title: `纯框架题草稿测试-${qtype}` },
+          { qtype, title: "待编辑的题型" },
+        ].map(JSON.stringify).join("\n");
+        const frameworkResult = await fixture.run(["--yes", "survey", "create", "--jsonl", framework]);
+        assert.equal(frameworkResult.exitCode, 0, `${qtype}: ${frameworkResult.stderr}`);
+        assert.equal(JSON.parse(fixture.requests().at(-1).body).publish, false, `${qtype} should default to draft`);
+      }
+    } finally {
+      await fixture.close();
+    }
+  });
+
+  it("纯框架题型显式 --publish 时允许发布", async () => {
+    const fixture = await startFixture({ env: { WJX_API_KEY: "publish-explicit-key" } });
+    try {
+      const jsonl = [
+        { qtype: "问卷基础信息", title: "显式发布测试" },
+        { qtype: "轮播图", title: "已准备素材的轮播" },
+      ].map(JSON.stringify).join("\n");
+      const result = await fixture.run(["--yes", "survey", "create", "--jsonl", jsonl, "--publish"]);
+      assert.equal(result.exitCode, 0, result.stderr);
+      assert.equal(JSON.parse(fixture.requests().at(-1).body).publish, true);
+    } finally {
+      await fixture.close();
+    }
+  });
+
+  it("create --dry-run captures real POST body with atype injected into JSONL", async () => {
     const jsonl = [
       '{"qtype":"问卷基础信息","title":"活动报名表","introduction":"请填写"}',
       '{"qtype":"单选","title":"性别","select":["男","女"]}',
     ].join("\n");
     const result = await runFull(
-      ["survey", "create-by-json", "--jsonl", jsonl, "--type", "7", "--dry-run"],
+      ["survey", "create", "--jsonl", jsonl, "--type", "7", "--dry-run"],
       { env: { WJX_API_KEY: "fake-key-1234567890", ...NO_CONFIG } },
     );
     assert.equal(result.exitCode, 0);
@@ -1190,15 +1163,39 @@ describe("survey create-by-json", () => {
     assert.equal(metaLine.atype, 7, "JSONL 内首行也必须含 atype=7（服务端实际读取的位置）");
   });
 
-  it("create-by-json without api-key → AUTH_ERROR exit 1", async () => {
+  it("create without api-key → AUTH_ERROR exit 1", async () => {
     const jsonl = '{"qtype":"问卷基础信息","title":"T"}\n{"qtype":"单选","title":"Q","select":["a"]}';
     const result = await runFull(
-      ["survey", "create-by-json", "--jsonl", jsonl],
+      ["survey", "create", "--jsonl", jsonl],
       { env: { WJX_API_KEY: "", PATH: process.env.PATH, ...NO_CONFIG } },
     );
     assert.equal(result.exitCode, 1);
     const err = parseProblem(result.stderr);
     assert.equal(err.code, "AUTH_ERROR");
+  });
+
+  it("blank JSONL is a validation error, not an API error", async () => {
+    const result = await runFull(["--dry-run", "survey", "create", "--jsonl", " "], { env: NO_CONFIG });
+    assert.equal(result.exitCode, 2);
+    assert.equal(result.stdout, "");
+    const problem = parseProblem(result.stderr);
+    assert.equal(problem.code, "INPUT_ERROR");
+  });
+
+  it("oversized valid JSONL is rejected before authentication", async () => {
+    const jsonl = JSON.stringify({
+      qtype: "问卷基础信息",
+      title: "超大问卷",
+      introduction: "测".repeat(600_000),
+    });
+    const result = await runFull(["--stdin", "survey", "create"], {
+      env: { ...NO_CONFIG, WJX_API_KEY: "" },
+      input: JSON.stringify({ jsonl }),
+    });
+    assert.equal(result.exitCode, 2);
+    const problem = parseProblem(result.stderr);
+    assert.equal(problem.code, "INPUT_ERROR");
+    assert.match(problem.message, /超过上限/);
   });
 });
 
@@ -1248,6 +1245,14 @@ describe("survey jsonl-template", () => {
     }
   });
 
+  it("--type 11 输出民主测评骨架", () => {
+    const out = run(["survey", "jsonl-template", "--type", "11", "--raw"]);
+    const lines = out.trim().split("\n").map((line) => JSON.parse(line));
+    assert.equal(lines[0].atype, 11);
+    assert.equal(lines[0].qtype, "问卷基础信息");
+    assert.ok(lines.some((question) => question.qtype === "矩阵单选"));
+  });
+
   it("--type 99（无效值）→ INPUT_ERROR exit 2", async () => {
     const result = await runFull(["survey", "jsonl-template", "--type", "99"]);
     assert.equal(result.exitCode, 2);
@@ -1256,10 +1261,10 @@ describe("survey jsonl-template", () => {
     assert.match(err.message, /--type|可选值/);
   });
 
-  it("骨架可直接通过 preflight（配合 create-by-json --dry-run）", async () => {
+  it("骨架可直接通过 preflight（配合 create --dry-run）", async () => {
     const tmpl = run(["survey", "jsonl-template", "--type", "6", "--raw"]);
     const result = await runFull(
-      ["survey", "create-by-json", "--jsonl", tmpl, "--dry-run"],
+      ["survey", "create", "--jsonl", tmpl, "--dry-run"],
       { env: { WJX_API_KEY: "fake-key-1234567890", ...NO_CONFIG } },
     );
     assert.equal(result.exitCode, 0, `dry-run 应成功，stderr=${result.stderr}`);
@@ -1293,24 +1298,23 @@ describe("reference", () => {
 
   it("reference without topic lists available topics", () => {
     const out = run(["reference"]);
-    assert.match(out, /dsl/);
     assert.match(out, /question-types/);
     assert.match(out, /survey/);
     assert.match(out, /response/);
     assert.match(out, /analytics/);
   });
 
-  it("reference dsl outputs DSL syntax guide", () => {
-    const out = run(["reference", "dsl"]);
-    assert.match(out, /DSL/);
-    assert.match(out, /单选题/);
-    assert.match(out, /create-by-text/);
+  it("reference dsl is rejected after legacy creation removal", async () => {
+    const result = await runFull(["reference", "dsl"]);
+    assert.equal(result.exitCode, 2);
+    assert.match(result.stderr, /未知主题/);
   });
 
   it("reference question-types outputs type mapping", () => {
     const out = run(["reference", "question-types"]);
-    assert.match(out, /q_type/);
-    assert.match(out, /atype/);
+    assert.match(out, /action 1000106/);
+    assert.match(out, /qtype/);
+    assert.match(out, /不要填写旧接口的 q_type/);
     assert.match(out, /考试/);
   });
 
@@ -1318,7 +1322,8 @@ describe("reference", () => {
     const out = run(["reference", "survey"]);
     assert.match(out, /survey list/);
     assert.match(out, /survey create/);
-    assert.match(out, /--vid/);
+    assert.match(out, /--jsonl/);
+    assert.match(out, /--file/);
   });
 
   it("reference unknown-topic → exit 2", async () => {
@@ -1395,13 +1400,15 @@ describe("init", () => {
     }
   });
 
-  it("init without --api-key in non-TTY hints parameter mode", async () => {
+  it("init without --api-key in non-TTY returns a structured auth error", async () => {
     const { exitCode, stderr } = await runFull(
       ["init"],
       { env: NO_CONFIG, input: "" },
     );
     assert.strictEqual(exitCode, 1);
-    assert.match(stderr, /--api-key/);
+    const err = parseProblem(stderr);
+    assert.equal(err.code, "AUTH_ERROR");
+    assert.match(err.message, /--api-key/);
   });
 });
 
@@ -1525,519 +1532,6 @@ describe("completion", () => {
   });
 });
 
-// ═══════════════════════════════════════
-// survey create-by-text — use case tests
-// ═══════════════════════════════════════
-
-describe("create-by-text use cases", () => {
-  const DRY_ENV = { WJX_API_KEY: "fake-key-1234567890", ...NO_CONFIG };
-
-  // ── UC1: 员工满意度调查（混合题型：段落说明 + 量表 + 矩阵量表 + 填空）──
-  it("UC1: 员工满意度调查 — 段落说明 + 量表题 + 矩阵量表题 + 填空题", async () => {
-    const dsl = [
-      "员工满意度调查",
-      "请根据您的真实感受作答",
-      "",
-      "1. 薪酬福利[段落说明]",
-      "",
-      "2. 您对目前薪酬水平的满意程度？[量表题]",
-      "非常不满意",
-      "不满意",
-      "一般",
-      "满意",
-      "非常满意",
-      "",
-      "3. 请对以下方面评分[矩阵量表题]",
-      "非常不满意 不满意 一般 满意 非常满意",
-      "办公环境",
-      "团队氛围",
-      "职业发展",
-      "",
-      "4. 您还有其他建议吗？[填空题]",
-    ].join("\n");
-    const result = await runFull(
-      ["survey", "create-by-text", "--text", dsl, "--dry-run"],
-      { env: DRY_ENV },
-    );
-    assert.equal(result.exitCode, 0);
-    const p = parseCreateByTextDryRun(result);
-    assert.equal(p.parsed_title, "员工满意度调查");
-    assert.equal(p.parsed_description, "请根据您的真实感受作答");
-    assert.equal(p.question_count, 3);
-    assert.deepEqual(p.skipped_paragraphs, ["薪酬福利"]);
-
-    // 段落说明被过滤（API 不支持 q_type=2），不会进入请求题目
-    assert.ok(!p.wire_questions.some((question) => question.q_type === 2));
-
-    // 量表题 → q_type=3, q_subtype=302, 5 个选项
-    assert.equal(p.wire_questions[0].q_type, 3);
-    assert.equal(p.wire_questions[0].q_subtype, 302);
-    assert.equal(p.wire_questions[0].items.length, 5);
-
-    // 矩阵量表题 → q_type=7, q_subtype=701, 3 行 + 5 列
-    const matrixQ = p.wire_questions[1];
-    assert.equal(matrixQ.q_type, 7);
-    assert.equal(matrixQ.q_subtype, 701);
-    assert.equal(matrixQ.items.length, 3);      // 3 行标题
-    assert.equal(matrixQ.col_items.length, 5);   // 5 列头
-
-    // 填空题 → q_type=5
-    assert.equal(p.wire_questions[2].q_type, 5);
-  });
-
-  // ── UC2: 考试问卷（单选 + 多选 + 判断 + 填空）──
-  it("UC2: 考试问卷 — 单选 + 多选 + 判断 + 填空 + --type 6", async () => {
-    const dsl = [
-      "期末考试",
-      "",
-      "1. 中国的首都是？[单选题]",
-      "A 北京",
-      "B 上海",
-      "C 广州",
-      "",
-      "2. 以下哪些是哺乳动物？[多选题]",
-      "A 猫",
-      "B 蛇",
-      "C 狗",
-      "D 鲨鱼",
-      "",
-      "3. 地球绕太阳公转一周约365天[判断题]",
-      "A 正确",
-      "B 错误",
-      "",
-      "4. 中国最长的河流是____[填空题]",
-    ].join("\n");
-    const result = await runFull(
-      ["survey", "create-by-text", "--text", dsl, "--type", "6", "--dry-run"],
-      { env: DRY_ENV },
-    );
-    assert.equal(result.exitCode, 0);
-    const p = parseCreateByTextDryRun(result);
-    assert.equal(p.parsed_title, "期末考试");
-    assert.equal(p.question_count, 4);
-
-    // 单选题 → q_type=3, q_subtype=3
-    assert.equal(p.wire_questions[0].q_type, 3);
-    assert.equal(p.wire_questions[0].q_subtype, 3);
-    assert.equal(p.wire_questions[0].items.length, 3);
-
-    // 多选题 → q_type=4, q_subtype=4
-    assert.equal(p.wire_questions[1].q_type, 4);
-    assert.equal(p.wire_questions[1].q_subtype, 4);
-    assert.equal(p.wire_questions[1].items.length, 4);
-
-    // 判断题 → q_type=3, q_subtype=305
-    assert.equal(p.wire_questions[2].q_type, 3);
-    assert.equal(p.wire_questions[2].q_subtype, 305);
-    assert.equal(p.wire_questions[2].items.length, 2);
-
-    // 填空题 → q_type=5
-    assert.equal(p.wire_questions[3].q_type, 5);
-  });
-
-  // ── UC3: NPS 调查（量表 0-10 + 排序题 + 多项填空题）──
-  it("UC3: NPS 调查 — 量表11项 + 排序题 + 多项填空题", async () => {
-    const dsl = [
-      "NPS 客户调研",
-      "",
-      "1. 您有多大可能向朋友推荐我们？[量表题]",
-      "0",
-      "1",
-      "2",
-      "3",
-      "4",
-      "5",
-      "6",
-      "7",
-      "8",
-      "9",
-      "10",
-      "",
-      "2. 请对以下因素按重要性排序[排序题]",
-      "A 产品质量",
-      "B 售后服务",
-      "C 价格",
-      "D 品牌",
-      "",
-      "3. 请填写您的联系方式：姓名{_}，电话{_}[多项填空题]",
-    ].join("\n");
-    const result = await runFull(
-      ["survey", "create-by-text", "--text", dsl, "--dry-run"],
-      { env: DRY_ENV },
-    );
-    assert.equal(result.exitCode, 0);
-    const p = parseCreateByTextDryRun(result);
-    assert.equal(p.question_count, 3);
-
-    // 量表题 11 项
-    assert.equal(p.wire_questions[0].q_subtype, 302);
-    assert.equal(p.wire_questions[0].items.length, 11);
-
-    // 排序题 → q_type=4, q_subtype=402
-    assert.equal(p.wire_questions[1].q_type, 4);
-    assert.equal(p.wire_questions[1].q_subtype, 402);
-
-    // 多项填空题 → q_type=6
-    assert.equal(p.wire_questions[2].q_type, 6);
-  });
-
-  // ── UC4: 矩阵题家族（矩阵单选 + 矩阵多选 + 矩阵填空）──
-  it("UC4: 矩阵题家族 — 矩阵单选 + 矩阵多选 + 矩阵填空", async () => {
-    const dsl = [
-      "课程评估",
-      "",
-      "1. 以下课程的教学质量如何？[矩阵单选题]",
-      "很差 一般 良好 优秀",
-      "数学",
-      "英语",
-      "物理",
-      "",
-      "2. 以下课程中您觉得需改进的方面？[矩阵多选题]",
-      "教材 课件 作业 考试",
-      "数学",
-      "英语",
-      "",
-      "3. 请填写各科成绩[矩阵填空题]",
-      "期中 期末 补考",
-      "数学",
-      "英语",
-    ].join("\n");
-    const result = await runFull(
-      ["survey", "create-by-text", "--text", dsl, "--dry-run"],
-      { env: DRY_ENV },
-    );
-    assert.equal(result.exitCode, 0);
-    const p = parseCreateByTextDryRun(result);
-    assert.equal(p.question_count, 3);
-
-    // 矩阵单选 → q_type=7, q_subtype=702, 3 行 4 列
-    assert.equal(p.wire_questions[0].q_subtype, 702);
-    assert.equal(p.wire_questions[0].items.length, 3);
-    assert.equal(p.wire_questions[0].col_items.length, 4);
-
-    // 矩阵多选 → q_subtype=703, 2 行 4 列
-    assert.equal(p.wire_questions[1].q_subtype, 703);
-    assert.equal(p.wire_questions[1].items.length, 2);
-    assert.equal(p.wire_questions[1].col_items.length, 4);
-
-    // 矩阵填空 → q_subtype=704, 2 行 3 列
-    assert.equal(p.wire_questions[2].q_subtype, 704);
-    assert.equal(p.wire_questions[2].items.length, 2);
-    assert.equal(p.wire_questions[2].col_items.length, 3);
-  });
-
-  // ── UC5: stdin 管道输入 ──
-  it("UC5: stdin 管道输入 DSL 文本", async () => {
-    const dsl = JSON.stringify({
-      text: "调研问卷\n\n1. 您的年龄段？[单选题]\nA 18岁以下\nB 18-25\nC 26-35\nD 36岁以上",
-    });
-    const result = await runFull(
-      ["survey", "create-by-text", "--stdin", "--dry-run"],
-      { env: DRY_ENV, input: dsl },
-    );
-    assert.equal(result.exitCode, 0);
-    const p = parseCreateByTextDryRun(result);
-    assert.equal(p.parsed_title, "调研问卷");
-    assert.equal(p.question_count, 1);
-    assert.equal(p.wire_questions[0].items.length, 4);
-  });
-
-  // ── UC6: 从文件读取 DSL ──
-  it("UC6: --file 从临时文件读取 DSL", async () => {
-    const { writeFileSync, unlinkSync } = await import("node:fs");
-    const { tmpdir } = await import("node:os");
-    const { join } = await import("node:path");
-    const tmpFile = join(tmpdir(), `wjx-test-dsl-${Date.now()}.txt`);
-    const dsl = "文件测试问卷\n\n1. 测试题[单选题]\nA 选项一\nB 选项二";
-    writeFileSync(tmpFile, dsl, "utf8");
-    try {
-      const result = await runFull(
-        ["survey", "create-by-text", "--file", tmpFile, "--dry-run"],
-        { env: DRY_ENV },
-      );
-      assert.equal(result.exitCode, 0);
-      const p = parseCreateByTextDryRun(result);
-      assert.equal(p.parsed_title, "文件测试问卷");
-      assert.equal(p.question_count, 1);
-    } finally {
-      unlinkSync(tmpFile);
-    }
-  });
-
-  // ── UC7: --text 优先于 stdin ──
-  it("UC7: --text 优先于 stdin 输入", async () => {
-    const stdinJson = JSON.stringify({ text: "stdin标题\n\n1. Q[单选题]\nA a\nB b" });
-    const result = await runFull(
-      ["survey", "create-by-text", "--stdin", "--text", "CLI标题\n\n1. Q[单选题]\nA x\nB y\nC z", "--dry-run"],
-      { env: DRY_ENV, input: stdinJson },
-    );
-    assert.equal(result.exitCode, 0);
-    const p = parseCreateByTextDryRun(result);
-    assert.equal(p.parsed_title, "CLI标题");
-    assert.equal(p.wire_questions[0].items.length, 3); // CLI 的 3 个选项
-  });
-
-  // ── UC8: 选填标记 ──
-  it("UC8: （选填）标记使题目 is_requir=false", async () => {
-    const dsl = [
-      "标记测试",
-      "",
-      "1. 必填题[单选题]",
-      "A 是",
-      "B 否",
-      "",
-      "2. 选填题[填空题]（选填）",
-    ].join("\n");
-    const result = await runFull(
-      ["survey", "create-by-text", "--text", dsl, "--dry-run"],
-      { env: DRY_ENV },
-    );
-    assert.equal(result.exitCode, 0);
-    const p = parseCreateByTextDryRun(result);
-    assert.equal(p.wire_questions[0].is_requir, true);
-    assert.equal(p.wire_questions[1].is_requir, false);
-  });
-
-  // ── UC9: wire_questions 的 q_index 连续编号 ──
-  it("UC9: wire_questions q_index 从1开始连续编号", async () => {
-    const dsl = [
-      "编号测试",
-      "",
-      "1. Q1[单选题]",
-      "A a",
-      "B b",
-      "",
-      "2. Q2[多选题]",
-      "A x",
-      "B y",
-      "",
-      "3. Q3[填空题]",
-      "",
-      "4. Q4[量表题]",
-      "差",
-      "一般",
-      "好",
-    ].join("\n");
-    const result = await runFull(
-      ["survey", "create-by-text", "--text", dsl, "--dry-run"],
-      { env: DRY_ENV },
-    );
-    assert.equal(result.exitCode, 0);
-    const p = parseCreateByTextDryRun(result);
-    assert.equal(p.question_count, 4);
-    for (let i = 0; i < 4; i++) {
-      assert.equal(p.wire_questions[i].q_index, i + 1);
-    }
-  });
-
-  // ── UC10: --publish 标志传递 ──
-  it("UC10: 无 api-key 但 --publish 标志被接受（AUTH_ERROR 在 publish 之前）", async () => {
-    const dsl = "标题\n\n1. Q[单选题]\nA a\nB b";
-    const result = await runFull(
-      ["survey", "create-by-text", "--text", dsl, "--publish"],
-      { env: { WJX_API_KEY: "", PATH: process.env.PATH, ...NO_CONFIG } },
-    );
-    // --publish 语法正确，但因没有 API key 而报 AUTH_ERROR
-    assert.equal(result.exitCode, 1);
-    const err = parseProblem(result.stderr);
-    assert.equal(err.code, "AUTH_ERROR");
-  });
-
-  // ── UC11: 下拉框 + 比重题 + 文件上传 ──
-  it("UC11: 下拉框 + 比重题 + 文件上传", async () => {
-    const dsl = [
-      "特殊题型测试",
-      "",
-      "1. 请选择省份[下拉框]",
-      "北京",
-      "上海",
-      "广东",
-      "",
-      "2. 请分配预算比重[比重题]",
-      "研发",
-      "市场",
-      "运营",
-      "",
-      "3. 请上传简历[文件上传]",
-    ].join("\n");
-    const result = await runFull(
-      ["survey", "create-by-text", "--text", dsl, "--dry-run"],
-      { env: DRY_ENV },
-    );
-    assert.equal(result.exitCode, 0);
-    const p = parseCreateByTextDryRun(result);
-    assert.equal(p.question_count, 3);
-
-    // 下拉框 → q_type=3, q_subtype=301
-    assert.equal(p.wire_questions[0].q_subtype, 301);
-    assert.equal(p.wire_questions[0].items.length, 3);
-
-    // 比重题 → q_type=9
-    assert.equal(p.wire_questions[1].q_type, 9);
-    assert.equal(p.wire_questions[1].items.length, 3);
-
-    // 文件上传 → q_type=8
-    assert.equal(p.wire_questions[2].q_type, 8);
-  });
-
-  // ── UC12: 大型综合问卷（AI 生成典型输出）──
-  it("UC12: 大型综合问卷 — 15 题混合（模拟 AI 生成输出）", async () => {
-    const dsl = [
-      "水果消费习惯调研",
-      "了解消费者的水果购买与食用习惯",
-      "",
-      "1. 您的性别？[单选题]",
-      "A 男",
-      "B 女",
-      "",
-      "2. 您的年龄段？[单选题]",
-      "A 18岁以下",
-      "B 18-25岁",
-      "C 26-35岁",
-      "D 36-45岁",
-      "E 46岁以上",
-      "",
-      "3. 您购买水果的频率？[单选题]",
-      "A 每天",
-      "B 每周2-3次",
-      "C 每周1次",
-      "D 偶尔",
-      "",
-      "4. 您偏好的水果类型？[多选题]",
-      "A 苹果",
-      "B 香蕉",
-      "C 葡萄",
-      "D 草莓",
-      "E 西瓜",
-      "",
-      "5. 影响您购买水果的因素？[多选题]",
-      "A 价格",
-      "B 新鲜度",
-      "C 品牌",
-      "D 产地",
-      "E 包装",
-      "",
-      "6. 您对水果品质的整体满意度[量表题]",
-      "非常不满意",
-      "不满意",
-      "一般",
-      "满意",
-      "非常满意",
-      "",
-      "7. 请评价以下水果购买渠道[矩阵单选题]",
-      "从不 偶尔 经常 总是",
-      "超市",
-      "菜市场",
-      "线上电商",
-      "",
-      "8. 请对以下方面评分[矩阵量表题]",
-      "很差 较差 一般 较好 很好",
-      "新鲜度",
-      "价格",
-      "种类丰富度",
-      "",
-      "9. 请对以下水果按喜好排序[排序题]",
-      "A 苹果",
-      "B 香蕉",
-      "C 葡萄",
-      "",
-      "10. 您最常在什么时候吃水果？[单选题]",
-      "A 早餐后",
-      "B 午餐后",
-      "C 晚餐后",
-      "D 随时",
-      "",
-      "11. 您更倾向于购买哪种包装？[单选题]",
-      "A 散装",
-      "B 预包装",
-      "C 礼盒装",
-      "",
-      "12. 您希望增加哪些水果品种？[多选题]",
-      "A 进口热带水果",
-      "B 有机水果",
-      "C 本地特色水果",
-      "D 无所谓",
-      "",
-      "13. 您每月水果消费大约多少？[单选题]",
-      "A 50元以下",
-      "B 50-100元",
-      "C 100-200元",
-      "D 200元以上",
-      "",
-      "14. 您会推荐常去的水果店吗？[量表题]",
-      "完全不会",
-      "不太会",
-      "一般",
-      "比较会",
-      "非常会",
-      "",
-      "15. 您对水果消费有什么建议？[填空题]（选填）",
-    ].join("\n");
-    const result = await runFull(
-      ["survey", "create-by-text", "--text", dsl, "--dry-run"],
-      { env: DRY_ENV },
-    );
-    assert.equal(result.exitCode, 0);
-    const p = parseCreateByTextDryRun(result);
-    assert.equal(p.parsed_title, "水果消费习惯调研");
-    assert.equal(p.parsed_description, "了解消费者的水果购买与食用习惯");
-    assert.equal(p.question_count, 15);
-    assert.equal(p.wire_questions.length, 15);
-
-    // 验证题型分布
-    const typeCount = {};
-    for (const wq of p.wire_questions) {
-      const key = `${wq.q_type}-${wq.q_subtype}`;
-      typeCount[key] = (typeCount[key] || 0) + 1;
-    }
-    assert.equal(typeCount["3-3"], 6);    // 6 道单选题
-    assert.equal(typeCount["4-4"], 3);    // 3 道多选题
-    assert.equal(typeCount["3-302"], 2);  // 2 道量表题
-    assert.equal(typeCount["7-702"], 1);  // 1 道矩阵单选
-    assert.equal(typeCount["7-701"], 1);  // 1 道矩阵量表
-    assert.equal(typeCount["4-402"], 1);  // 1 道排序题
-    assert.equal(typeCount["5-5"], 1);    // 1 道填空题
-
-    // 最后一题选填
-    assert.equal(p.wire_questions[14].is_requir, false);
-  });
-
-  // ── UC13: 空文本应报错 ──
-  it("UC13: 空字符串 --text 报 INPUT_ERROR", async () => {
-    const result = await runFull(
-      ["survey", "create-by-text", "--text", ""],
-      { env: DRY_ENV },
-    );
-    assert.equal(result.exitCode, 2);
-    const err = parseProblem(result.stderr);
-    assert.equal(err.code, "INPUT_ERROR");
-  });
-
-  // ── UC14: stdin 优先级 — --file 优先于 stdin ──
-  it("UC14: --file 优先于 stdin", async () => {
-    const { writeFileSync, unlinkSync } = await import("node:fs");
-    const { tmpdir } = await import("node:os");
-    const { join } = await import("node:path");
-    const tmpFile = join(tmpdir(), `wjx-test-priority-${Date.now()}.txt`);
-    writeFileSync(tmpFile, "文件标题\n\n1. FQ[单选题]\nA a\nB b", "utf8");
-    const stdinJson = JSON.stringify({ text: "stdin标题\n\n1. SQ[单选题]\nA x\nB y" });
-    try {
-      const result = await runFull(
-        ["survey", "create-by-text", "--stdin", "--file", tmpFile, "--dry-run"],
-        { env: DRY_ENV, input: stdinJson },
-      );
-      assert.equal(result.exitCode, 0);
-      const p = parseCreateByTextDryRun(result);
-      // --file 读取的文本存入 merged.file → 被 readFileSync 读取 → dslText = 文件内容
-      // 但由于 --text 最优先，实际上 stdin 的 text 字段和 --file 都能设置
-      // 这里 --file 提供文件路径，stdin 提供 text 字段，text 优先
-      // merged 中同时有 file 和 text（来自 stdin），text 优先
-      assert.equal(p.parsed_title, "stdin标题");
-    } finally {
-      unlinkSync(tmpFile);
-    }
-  });
-});
 
 // ═══════════════════════════════════════
 // skill command

@@ -1,6 +1,6 @@
 # DSL 语法与题型参考
 
-## DSL 文本语法（create_survey_by_text 用）
+## DSL 文本语法（仅历史读取/迁移兼容）
 
 > 本页只服务于已弃用的 DSL 兼容入口。新问卷请使用 JSONL；用户体系（`atype=8`）同样不能通过创建接口新建。
 
@@ -120,7 +120,7 @@ DSL 是问卷的「可读摘要」，以下高级设置不在 DSL 中表示：
 运营团队
 ```
 
-调用：`create_survey_by_text({ text: "<上述文本>", atype: 3 })`
+当前 MCP Server 不提供 DSL 创建工具。历史 DSL 需要在 MCP 外部转换为 JSONL，再调用 `create_survey_by_json`；不要把 DSL 文本直接传给 MCP。
 
 **注意**：投票问卷的题目就是普通 `[单选题]`/`[多选题]`，不存在 `[投票单选题]` 标签。`atype: 3` 控制问卷展示为投票样式，题型本身不变。
 

@@ -7,7 +7,7 @@ import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
 
 import {
-  createSurvey,
+  createSurveyByJson,
   getWjxApiUrl,
   Action,
 } from "../dist/wjx-client.js";
@@ -18,16 +18,18 @@ const serverEntry = path.join(projectDir, "dist", "index.js");
 
 const credentials = { apiKey: "test-token" };
 
-test("createSurvey sends a JSON POST with Bearer auth to WJX", async () => {
+test("createSurveyByJson sends JSONL to action 1000106 with Bearer auth", async () => {
   let capturedUrl;
   let capturedInit;
 
-  const response = await createSurvey(
+  const response = await createSurveyByJson(
     {
       title: "产品调研",
-      type: 2,
-      description: "调研问卷",
-      questions: "[]",
+      atype: 1,
+      jsonl: [
+        { qtype: "问卷基础信息", title: "产品调研" },
+        { qtype: "单选", title: "满意度", select: ["满意", "不满意"] },
+      ].map(JSON.stringify).join("\n"),
     },
     credentials,
     async (input, init) => {
@@ -49,14 +51,19 @@ test("createSurvey sends a JSON POST with Bearer auth to WJX", async () => {
   assert.deepEqual(response, { result: true, data: { surveyId: 123 } });
 
   const parsedBody = JSON.parse(capturedInit.body);
-  assert.equal(parsedBody.action, "1000101");
+  assert.equal(parsedBody.action, "1000106");
+  const jsonl = parsedBody.surveydatajson.split(/\r?\n/).filter(Boolean).map(JSON.parse);
+  assert.deepEqual(jsonl, [
+    { qtype: "问卷基础信息", title: "产品调研", atype: 1 },
+    { qtype: "单选", title: "满意度", select: ["满意", "不满意"], requir: true },
+  ]);
   assert.equal("sign" in parsedBody, false, "sign should not be in body");
   assert.equal("appid" in parsedBody, false, "appid should not be in body");
   assert.equal("ts" in parsedBody, false, "ts should not be in body");
   assert.equal("traceid" in parsedBody, false, "traceid should not be in POST body");
 });
 
-test("server exposes all 58 tools, 8 resources, and 22 prompts over stdio", async () => {
+test("server exposes all 56 tools, 8 resources, and 15 prompts over stdio", async () => {
   const transport = new StdioClientTransport({
     command: "node",
     args: [serverEntry],
@@ -95,9 +102,7 @@ test("server exposes all 58 tools, 8 resources, and 22 prompts over stdio", asyn
       "clear_recycle_bin",
       "clear_responses",
       "compare_metrics",
-      "create_survey",
       "create_survey_by_json",
-      "create_survey_by_text",
       "decode_responses",
       "delete_admin",
       "delete_contacts",
@@ -141,11 +146,9 @@ test("server exposes all 58 tools, 8 resources, and 22 prompts over stdio", asyn
       "upload_file",
     ]);
 
-    const createTool = toolsResult.tools.find((t) => t.name === "create_survey");
-    assert.ok(createTool, `create_survey not found. stderr: ${stderr.join("")}`);
-    assert.deepEqual(createTool.inputSchema.required?.slice().sort(), [
-      "title",
-    ]);
+    const createTool = toolsResult.tools.find((t) => t.name === "create_survey_by_json");
+    assert.ok(createTool, `create_survey_by_json not found. stderr: ${stderr.join("")}`);
+    assert.ok(createTool.inputSchema.required?.includes("jsonl"));
 
     const getTool = toolsResult.tools.find((t) => t.name === "get_survey");
     assert.ok(getTool);
@@ -217,15 +220,8 @@ test("server exposes all 58 tools, 8 resources, and 22 prompts over stdio", asyn
       "cross-tabulation",
       "csat-analysis",
       "design-survey",
-      "generate-360-evaluation",
-      "generate-engagement-survey",
-      "generate-exam-from-document",
-      "generate-exam-from-knowledge",
       "generate-exam-json",
       "generate-form-json",
-      "generate-nps-survey",
-      "generate-satisfaction-survey",
-      "generate-survey",
       "generate-survey-json",
       "nps-analysis",
       "sentiment-analysis",

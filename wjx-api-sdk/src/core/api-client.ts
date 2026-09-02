@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { createRequire } from "node:module";
 import {
   getWjxApiUrl,
   getWjxUserSystemApiUrl,
@@ -15,6 +16,13 @@ import type {
   Logger,
   RequestOptions,
 } from "./types.js";
+
+const require = createRequire(import.meta.url);
+const packageJson = require("../../package.json") as { version?: unknown };
+const SDK_CLIENT_NAME = "wjx-api-sdk";
+const SDK_CLIENT_VERSION = typeof packageJson.version === "string" && packageJson.version.trim()
+  ? packageJson.version.trim()
+  : "0.4.1";
 
 /** Pluggable credential provider for per-request credentials (e.g. multi-tenant). */
 let _credentialProvider: (() => WjxCredentials | undefined) | undefined;
@@ -56,6 +64,27 @@ function isRetryable(status: number): boolean {
   return status === 429 || status >= 500;
 }
 
+const MAX_RETRY_BUDGET = 10_000;
+const MAX_TIMEOUT_MS = 2_147_483_647;
+const MAX_RETRY_DELAY_MS = 30_000;
+
+function normalizeRetryBudget(opts: RequestOptions): number {
+  const value = opts.retryBudget ?? opts.maxRetries ?? DEFAULT_MAX_RETRIES;
+  if (!Number.isSafeInteger(value) || value < 0 || value > MAX_RETRY_BUDGET) {
+    const name = opts.retryBudget !== undefined ? "retryBudget" : "maxRetries";
+    throw new TypeError(`${name} must be a finite safe integer between 0 and ${MAX_RETRY_BUDGET}`);
+  }
+  return value;
+}
+
+function normalizeTimeoutMs(value: number | undefined): number {
+  const timeoutMs = value ?? DEFAULT_TIMEOUT_MS;
+  if (!Number.isSafeInteger(timeoutMs) || timeoutMs < 1 || timeoutMs > MAX_TIMEOUT_MS) {
+    throw new TypeError(`timeoutMs must be a finite positive safe integer between 1 and ${MAX_TIMEOUT_MS}`);
+  }
+  return timeoutMs;
+}
+
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
@@ -67,8 +96,8 @@ async function _callApi<T = unknown>(
 ): Promise<WjxApiResponse<T>> {
   const credentials = opts.credentials ?? getWjxCredentials();
   const fetchImpl = opts.fetchImpl ?? fetch;
-  const timeoutMs = opts.timeoutMs ?? DEFAULT_TIMEOUT_MS;
-  const maxRetries = opts.retryBudget ?? opts.maxRetries ?? DEFAULT_MAX_RETRIES;
+  const timeoutMs = normalizeTimeoutMs(opts.timeoutMs);
+  const maxRetries = normalizeRetryBudget(opts);
   const logger = opts.logger;
 
   const traceId = opts.traceId ?? generateTraceId();
@@ -80,7 +109,10 @@ async function _callApi<T = unknown>(
 
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
     if (attempt > 0) {
-      const delay = RETRY_DELAY_MS * Math.pow(2, attempt - 1) * (0.5 + Math.random() * 0.5);
+      const delay = Math.min(
+        MAX_RETRY_DELAY_MS,
+        RETRY_DELAY_MS * Math.pow(2, attempt - 1) * (0.5 + Math.random() * 0.5),
+      );
       logger?.warn(
         `[wjx] retry ${attempt}/${maxRetries} for action=${action} traceid=${traceId} after ${delay}ms`,
       );
@@ -97,6 +129,18 @@ async function _callApi<T = unknown>(
           "Content-Type": "application/json",
           "Authorization": `Bearer ${credentials.apiKey}`,
         };
+        const clientName = opts.clientName === undefined
+          ? SDK_CLIENT_NAME
+          : typeof opts.clientName === "string" ? opts.clientName.trim() : "";
+        const clientVersion = opts.clientVersion === undefined
+          ? SDK_CLIENT_VERSION
+          : typeof opts.clientVersion === "string" ? opts.clientVersion.trim() : "";
+        if (clientName) {
+          headers["X-WJX-Client"] = clientName;
+        }
+        if (clientVersion) {
+          headers["X-WJX-Client-Version"] = clientVersion;
+        }
         if (credentials.clientIp) {
           headers["X-Forwarded-For"] = credentials.clientIp;
         }
@@ -153,7 +197,7 @@ async function _callApi<T = unknown>(
       const isNetworkError =
         error instanceof TypeError &&
         typeof error.message === "string" &&
-        /fetch|network|connect|ECONNR|ETIMEDOUT|EAI_AGAIN/i.test(error.message);
+        /fetch|network|connect|ECONN|ETIMEDOUT|EAI_AGAIN/i.test(error.message);
       if (isNetworkError && attempt < maxRetries) {
         lastError = error as Error;
         continue;
@@ -170,28 +214,28 @@ export async function callWjxApi<T = unknown>(
   params: Record<string, unknown>,
   opts: RequestOptions = {},
 ): Promise<WjxApiResponse<T>> {
-  return _callApi<T>(getWjxApiUrl(), params, opts);
+  return _callApi<T>(getWjxApiUrl(opts.baseUrl ?? opts.credentials?.baseUrl), params, opts);
 }
 
 export async function callWjxUserSystemApi<T = unknown>(
   params: Record<string, unknown>,
   opts: RequestOptions = {},
 ): Promise<WjxApiResponse<T>> {
-  return _callApi<T>(getWjxUserSystemApiUrl(), params, opts);
+  return _callApi<T>(getWjxUserSystemApiUrl(opts.baseUrl ?? opts.credentials?.baseUrl), params, opts);
 }
 
 export async function callWjxSubuserApi<T = unknown>(
   params: Record<string, unknown>,
   opts: RequestOptions = {},
 ): Promise<WjxApiResponse<T>> {
-  return _callApi<T>(getWjxSubuserApiUrl(), params, opts);
+  return _callApi<T>(getWjxSubuserApiUrl(opts.baseUrl ?? opts.credentials?.baseUrl), params, opts);
 }
 
 export async function callWjxContactsApi<T = unknown>(
   params: Record<string, unknown>,
   opts: RequestOptions = {},
 ): Promise<WjxApiResponse<T>> {
-  return _callApi<T>(getWjxContactsApiUrl(), params, opts);
+  return _callApi<T>(getWjxContactsApiUrl(opts.baseUrl ?? opts.credentials?.baseUrl), params, opts);
 }
 
 export function getCorpId(env: NodeJS.ProcessEnv = process.env): string | undefined {

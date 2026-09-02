@@ -28,8 +28,8 @@ flowchart TD
 
     F --> G[McpServer]
     G --> H[Resources 8]
-    G --> I[Prompts 22]
-    G --> J[Tools 58]
+    G --> I[Prompts 15]
+    G --> J[Tools 56]
 
     J --> M1[survey]
     J --> M2[response]
@@ -96,7 +96,7 @@ flowchart TD
 
 | 模块 | Tool 数量 | 主要职责 | 核心 API / 入口 |
 | --- | ---: | --- | --- |
-| `survey` | 13 | 问卷 CRUD、设置读写、标签、回收站、文本创建、文件上传 | `createSurvey()`、`createSurveyByText()`、`getSurvey()`、`updateSurveySettings()`、`clearRecycleBin()` |
+| `survey` | 11 | 问卷 JSONL 创建、DSL 读取、设置读写、标签、回收站和文件上传 | `createSurveyByJson()`、`getSurvey()`、`updateSurveySettings()`、`clearRecycleBin()` |
 | `response` | 9 | 答卷查询、下载、报告、提交、修改、清空 | `queryResponses()`、`downloadResponses()`、`getReport()`、`submitResponse()` |
 | `contacts` | 14 | 通讯录成员、管理员、部门、标签管理 | `queryContacts()`、`addContacts()`、`listDepartments()`、`listTags()` |
 | `sso` | 5 | 子账号 SSO、用户体系 SSO、代理商 SSO、问卷创建/编辑/预览链接 | `buildSsoSubaccountUrl()`、`buildSsoUserSystemUrl()`、`buildSsoPartnerUrl()`、`buildSurveyUrl()`、`buildPreviewUrl()` |
@@ -105,13 +105,12 @@ flowchart TD
 | `analytics` | 5 | 答卷解码、NPS/CSAT、本地异常检测、指标对比 | `decodeResponses()`、`calculateNps()`、`calculateCsat()`、`detectAnomalies()`、`compareMetrics()` |
 | `server`（诊断） | 1 | 配置与运行环境诊断 | `get_config` |
 
-业务模块中的 Tool 数量直接对应各 `src/modules/*/tools.ts` 中 `server.registerTool()` 的出现次数，共 57 个；`src/server.ts` 另注册 1 个 `get_config` 诊断工具，总计 58 个。
+业务模块中的 Tool 数量直接对应各 `src/modules/*/tools.ts` 中 `server.registerTool()` 的出现次数，共 55 个；`src/server.ts` 另注册 1 个 `get_config` 诊断工具，总计 56 个。
 
 ### 5.2 survey 模块
 
 `survey` 模块覆盖问卷生命周期管理：
 
-- `create_survey`
 - `get_survey`
 - `list_surveys`
 - `update_survey_status`
@@ -122,13 +121,14 @@ flowchart TD
 - `get_tag_details`
 - `upload_file`
 - `clear_recycle_bin`
-- `create_survey_by_text`（兼容）
-- `create_survey_by_json`（推荐）
+- `create_survey_by_json`（唯一当前创建入口）
+
+当前 Server 不注册 `create_survey` 和 `create_survey_by_text`。`get_survey` 的 `format=dsl` 仍保留用于读取和审阅；历史 JSON/DSL 必须在 Server 外部转换为 JSONL，再调用 `create_survey_by_json`。
 
 特点：
 
-- `createSurvey()` 在调用前校验 `questions` 是否为合法 JSON 数组。
-- `buildCreateSurveyParams()` 作为测试辅助函数，可验证请求参数结构。
+- `createSurveyByJson()` 在调用前校验 JSONL 元数据、题目行和题型字段。
+- `surveyToText()` 为读取路径提供可读 DSL 输出；DSL 文本只用于审阅和历史迁移，不作为新问卷创建入口。
 - 设置更新工具要求至少传入一个设置块，避免空写请求。
 
 ### 5.3 response 模块
@@ -312,11 +312,11 @@ server.registerTool("tool_name", { inputSchema }, async (args) => {
 
 ### 8.2 Prompts
 
-当前注册的 prompts 分为通用、分析和问卷生成三组，数量以 `src/prompts/**/*.ts` 为准：
+当前注册的 prompts 分为通用、分析和 JSONL 生成三组，数量以 `src/prompts/**/*.ts` 为准：
 
 - 通用/运维 prompts（6）：`design-survey`、`analyze-results`、`create-nps-survey`、`configure-webhook`、`anomaly-detection`、`user-system-workflow`
 - 分析型 prompts（6）：`nps-analysis`、`csat-analysis`、`cross-tabulation`、`sentiment-analysis`、`survey-health-check`、`comparative-analysis`
-- 问卷生成 prompts（10）：以上 7 个旧文本生成模板，以及 `generate-survey-json`、`generate-exam-json`、`generate-form-json` 三个 JSONL 模板
+- JSONL 生成 prompts（3）：`generate-survey-json`、`generate-exam-json`、`generate-form-json`
 
 这些 prompts 本质上是”最佳实践工作流模板”，把工具调用顺序、分页要求、分析口径提前固化。
 
@@ -381,6 +381,7 @@ HTTP 模式基于 `StreamableHTTPServerTransport`，提供：
 
 - `/mcp`：MCP 主入口
 - `/health`：健康检查
+- 请求体默认限制为 10 MiB；超限请求在 JSON 解析前返回 HTTP 413。嵌入式调用可通过 `startHttpTransport()` 的 `maxBodyBytes` 调整该上限。
 - Bearer 认证
 - 可选 session 模式
 - 未命中路由时统一返回 `404` JSON

@@ -73,7 +73,7 @@ export async function querySubAccounts<T = unknown>(
   const params: Record<string, unknown> = {
     action: Action.QUERY_SUB_ACCOUNTS,
   };
-  assignDefined(params, input, ["subuser", "name_like", "role", "group", "status", "mobile"]);
+  assignDefined(params, input, ["subuser", "name_like", "role", "group", "status", "mobile", "page_index", "page_size"]);
 
   return callWjxSubuserApi<T>(params, { credentials, fetchImpl });
 }

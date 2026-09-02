@@ -1,8 +1,14 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { chmodSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { execFile } from "node:child_process";
+import { promisify } from "node:util";
 import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { startFixture } from "./fixtures/http-fixture.mjs";
+
+const execFileAsync = promisify(execFile);
+const CLI = fileURLToPath(new URL("../dist/index.js", import.meta.url));
 
 import {
   resolveProfile,
@@ -111,6 +117,98 @@ test("selected profile supplies credentials to requests and diagnostics are mask
     assert.match(doctor.stdout, /alt/);
     assert.match(doctor.stdout, /alt-corp/);
     assert.doesNotMatch(`${doctor.stdout}\n${doctor.stderr}`, /profile-secret-key|Authorization/);
+  } finally {
+    await fixture.close();
+  }
+});
+
+test("selected profile supplies base URL and corp id to credential-free dry-run previews", async () => {
+  const profilesPath = join(process.cwd(), "__profile-dry-run-test.json");
+  writeFileSync(profilesPath, JSON.stringify({
+    version: 1,
+    profiles: {
+      alt: { baseUrl: "https://profile.example.test", corpId: "profile-corp" },
+    },
+  }), "utf8");
+  try {
+    const env = { ...process.env };
+    delete env.WJX_BASE_URL;
+    delete env.WJX_API_URL;
+    delete env.WJX_API_KEY;
+    env.WJX_CONFIG_PATH = join(process.cwd(), "__profile-dry-run-no-config__");
+    env.WJX_PROFILES_PATH = profilesPath;
+
+    const list = await execFileAsync(process.execPath, [
+      CLI, "--profile", "alt", "--dry-run", "survey", "list",
+    ], { cwd: process.cwd(), env, encoding: "utf8" });
+    const listEnvelope = JSON.parse(list.stdout);
+    assert.equal(listEnvelope.data.plans[0].url, "https://profile.example.test/openapi/default.aspx?action=1000002");
+
+    const contacts = await execFileAsync(process.execPath, [
+      CLI, "--profile", "alt", "--dry-run", "contacts", "query", "--uid", "u-1",
+    ], { cwd: process.cwd(), env, encoding: "utf8" });
+    const contactsEnvelope = JSON.parse(contacts.stdout);
+    assert.equal(JSON.parse(contactsEnvelope.data.plans[0].body).corpid, "profile-corp");
+  } finally {
+    rmSync(profilesPath, { force: true });
+  }
+});
+
+test("explicit profile routing wins over legacy config defaults", async () => {
+  const configFixture = await startFixture({ env: { WJX_API_KEY: "" } });
+  const profileFixture = await startFixture({ env: { WJX_API_KEY: "" } });
+  const profilesPath = join(configFixture.tempDir, "profiles.json");
+  writeFileSync(join(configFixture.tempDir, ".wjxrc"), JSON.stringify({
+    apiKey: "legacy-config-key",
+    baseUrl: configFixture.baseUrl,
+    corpId: "legacy-corp",
+  }), "utf8");
+  writeFileSync(profilesPath, JSON.stringify({
+    version: 1,
+    profiles: {
+      alt: { baseUrl: profileFixture.baseUrl, credentialRef: "ALT", corpId: "alt-corp" },
+    },
+  }), "utf8");
+
+  try {
+    const result = await configFixture.run(["--profile", "alt", "survey", "list"], {
+      env: {
+        WJX_BASE_URL: "",
+        WJX_API_URL: "",
+        WJX_PROFILES_PATH: profilesPath,
+        WJX_CREDENTIAL_ALT: "profile-key",
+      },
+    });
+    assert.equal(result.exitCode, 0);
+    assert.equal(configFixture.requests().length, 0);
+    assert.equal(profileFixture.requests().length, 1);
+    assert.equal(profileFixture.requests()[0].headers.authorization, "Bearer profile-key");
+  } finally {
+    await Promise.all([configFixture.close(), profileFixture.close()]);
+  }
+});
+
+test("profile base URL is used by local URL builders", async () => {
+  const fixture = await startFixture();
+  const profilesPath = join(fixture.tempDir, "profiles.json");
+  writeFileSync(profilesPath, JSON.stringify({
+    version: 1,
+    profiles: { alt: { baseUrl: "https://profile.example.test" } },
+  }), "utf8");
+  const env = {
+    WJX_BASE_URL: "",
+    WJX_API_URL: "",
+    WJX_CONFIG_PATH: join(fixture.tempDir, "missing.wjxrc"),
+    WJX_PROFILES_PATH: profilesPath,
+  };
+  try {
+    const sso = await fixture.run(["--profile", "alt", "sso", "subaccount-url", "--subuser", "u-1"], { env });
+    assert.equal(sso.exitCode, 0);
+    assert.equal(JSON.parse(sso.stdout).data, "https://profile.example.test/zunxiang/login.aspx?subuser=u-1");
+
+    const survey = await fixture.run(["--profile", "alt", "survey", "url", "--mode", "create"], { env });
+    assert.equal(survey.exitCode, 0);
+    assert.equal(JSON.parse(survey.stdout).data.url, "https://profile.example.test/newwjx/mysojump/createblankNew.aspx");
   } finally {
     await fixture.close();
   }

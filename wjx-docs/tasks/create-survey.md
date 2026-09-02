@@ -14,8 +14,10 @@ JSONL 每行一个对象，首行是问卷元数据，后续各行是一道题�
 保存为 `survey.jsonl` 后运行：
 
 ```bash
-wjx survey create-by-json --file survey.jsonl --publish
+wjx survey create --file survey.jsonl --publish
 ```
+
+普通题型未传 `--publish` 时默认立即发布。若 JSONL 包含纯框架题型（`折叠栏目`、`轮播图`、`AI追问`、`AI处理`、`AI访谈`、`图片OCR`、`VlookUp问卷关联`、`分页计时器`），则默认创建为草稿，因为这些题型还需要在编辑页补充素材或配置。完成二次编辑并获得用户明确授权后，再显式发布。
 
 先生成可编辑骨架：
 

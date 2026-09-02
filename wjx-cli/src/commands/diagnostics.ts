@@ -1,13 +1,13 @@
 import { Command } from "commander";
 import { createRequire } from "node:module";
 import { listSurveys } from "wjx-api-sdk";
-import { getCredentials } from "../lib/auth.js";
-import { formatOutput } from "../lib/output.js";
-import { ensureApiSuccess, handleError } from "../lib/errors.js";
-import { loadConfig, CONFIG_PATH } from "../lib/config.js";
+import { applyProfileCredentials } from "../lib/auth.js";
 import { maskApiKey } from "../lib/mask.js";
+import { CliError } from "../lib/errors.js";
+import { loadConfig, CONFIG_PATH } from "../lib/config.js";
 import { resolveProfile } from "../lib/profiles.js";
 import { getCredentialProvider } from "../lib/credential-provider.js";
+import { executeRuntimeAction, executeRuntimeLocal } from "../lib/runtime/executor.js";
 
 const require = createRequire(import.meta.url);
 const sdkPkg = require("wjx-api-sdk/package.json") as { version: string };
@@ -17,33 +17,26 @@ export function registerDiagnosticCommands(program: Command): void {
   program
     .command("whoami")
     .description("验证 ApiKey 并显示账号信息")
-    .action(async () => {
-      try {
-        const creds = getCredentials(program.opts());
-        const result = await listSurveys(
-          { page_index: 1, page_size: 1 },
-          creds,
-        );
-
-        ensureApiSuccess(result);
-
-        // Extract useful info from the response
-        const data = result as unknown as Record<string, unknown>;
-        formatOutput({
-          authenticated: true,
-          total_surveys: data.total ?? data.Total ?? null,
-        }, program.opts());
-      } catch (e) {
-        handleError(e);
-      }
+    .action(async (_opts, cmd) => {
+      await executeRuntimeAction(program, cmd, listSurveys, () => ({ page_index: 1, page_size: 1 }), {
+        dryRunNoRequest: true,
+        transformResult: (result) => {
+          const data = result as unknown as Record<string, unknown>;
+          const payload = result.data as Record<string, unknown> | undefined;
+          return {
+            authenticated: true,
+            total_surveys: data.total ?? data.Total ?? payload?.total_count ?? null,
+          };
+        },
+      });
     });
 
   // --- doctor ---
   program
     .command("doctor")
     .description("环境诊断（ApiKey、网络、SDK 版本）")
-    .action(async () => {
-      try {
+    .action(async (_opts, cmd) => {
+      await executeRuntimeLocal(program, cmd, async () => {
         const profile = resolveProfile({ profile: program.opts().profile });
         const checks: Array<{ check: string; status: string; detail: string }> = [];
 
@@ -96,7 +89,7 @@ export function registerDiagnosticCommands(program: Command): void {
         // 5. API connectivity
         if (apiKey) {
           try {
-            const creds = { apiKey };
+            const creds = applyProfileCredentials({ apiKey }, profile);
             const result = await listSurveys({ page_index: 1, page_size: 1 }, creds);
             if (result.result === false) {
               checks.push({
@@ -134,11 +127,10 @@ export function registerDiagnosticCommands(program: Command): void {
         });
 
         const allOk = checks.every((c) => c.status === "ok" || c.status === "skip" || c.status === "info");
-        formatOutput({ ok: allOk, checks }, program.opts());
-
-        if (!allOk) process.exit(1);
-      } catch (e) {
-        handleError(e);
-      }
+        return { ok: allOk, data: { checks } };
+      }, {
+        dryRun: () => ({ command: "doctor", note: "doctor dry-run 不执行 API 连接检查" }),
+        exitCode: (result) => result && typeof result === "object" && "ok" in result && (result as { ok: boolean }).ok === false ? 1 : undefined,
+      });
     });
 }

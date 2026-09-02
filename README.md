@@ -16,6 +16,19 @@ CLI 是默认入口：它不要求客户端支持 MCP，适合 AI Agent、自动
 
 ## 安装
 
+当前工作树版本为 `0.4.1`，尚未发布到 npm；registry 的 `latest` 仍是旧版。要使用当前源码，请先构建工作区：
+
+```bash
+git clone https://github.com/wjxcom/wjx-ai-kit.git
+cd wjx-ai-kit
+npm install
+npm run build --workspace=wjx-api-sdk
+npm run build --workspace=wjx-cli
+npm link ./wjx-cli
+```
+
+`0.4.1` 正式发布后，才使用下面的全局安装命令：
+
 ```bash
 npm install -g wjx-cli
 wjx init --api-key "你的问卷星 API Key"
@@ -28,12 +41,12 @@ API Key 请从问卷星后台获取，不要提交到仓库、日志或公共对
 
 ```bash
 wjx survey jsonl-template --raw > survey.jsonl
-wjx survey create-by-json --file survey.jsonl
+wjx survey create --file survey.jsonl
 wjx response report --vid 12345
 wjx response query --vid 12345 --page_size 100
 ```
 
-新项目使用 JSONL/JSON 创建问卷；DSL 仅为兼容路径，见 [DSL 兼容](wjx-docs/legacy/dsl.md)。
+新项目只使用 JSONL 创建问卷；DSL 仅用于读取和离线迁移，见 [DSL 兼容](wjx-docs/legacy/dsl.md)。
 
 ## 开发
 

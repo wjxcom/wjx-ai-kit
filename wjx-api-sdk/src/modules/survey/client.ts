@@ -1,8 +1,6 @@
 import type { WjxApiResponse, WjxCredentials, FetchLike, RequestOverrides } from "../../core/types.js";
 import { Action, LONG_TIMEOUT_MS } from "../../core/constants.js";
 import { callWjxApi, getWjxCredentials, assignDefined } from "../../core/api-client.js";
-export { textToSurvey, parsedQuestionsToWire } from "./text-to-survey.js";
-import { textToSurvey, parsedQuestionsToWire } from "./text-to-survey.js";
 export { extractJsonlMetadata, normalizeJsonl } from "./json-to-survey.js";
 import {
   extractJsonlMetadata,
@@ -17,10 +15,10 @@ import {
   validateSurveyHasQuestions,
   validateExplicitOptionalQuestionsInJsonl,
   preflightJsonl,
+  parseJsonl,
+  resolveJsonlPublish,
 } from "./json-to-survey.js";
 import type {
-  CreateSurveyInput,
-  CreateSurveyByTextInput,
   CreateSurveyByJsonInput,
   GetSurveyInput,
   ListSurveysInput,
@@ -34,7 +32,9 @@ import type {
   UploadFileInput,
 } from "./types.js";
 
-const DISABLED_CREATE_SURVEY_ATYPES = new Set<number>();
+// User-system surveys are a legacy maintenance boundary and cannot be
+// created through the JSONL create API.
+const DISABLED_CREATE_SURVEY_ATYPES = new Set<number>([8]);
 
 function assertCreatableSurveyAtype(atype: number): void {
   if (DISABLED_CREATE_SURVEY_ATYPES.has(atype)) {
@@ -42,119 +42,6 @@ function assertCreatableSurveyAtype(atype: number): void {
   }
 }
 
-function parseQuestionsJsonArray(questions: string): Record<string, unknown>[] {
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(questions);
-  } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    throw new Error(`questions must be valid JSON: ${message}`);
-  }
-  if (!Array.isArray(parsed)) {
-    throw new Error("questions must be a JSON array");
-  }
-  const questionList = parsed as Record<string, unknown>[];
-  for (const [i, q] of questionList.entries()) {
-    if (typeof q.q_index !== "number") {
-      throw new Error(`questions[${i}] missing required field "q_index" (number)`);
-    }
-    if (typeof q.q_type !== "number") {
-      throw new Error(`questions[${i}] missing required field "q_type" (number)`);
-    }
-  }
-  return questionList;
-}
-
-function buildOptionalTitleSet(optionalTitles: string[] = []): Set<string> {
-  return new Set(
-    optionalTitles
-      .map((title) => title.trim())
-      .filter((title) => title.length > 0),
-  );
-}
-
-function validateExplicitOptionalQuestions(
-  questionList: Record<string, unknown>[],
-  optionalTitles: string[] = [],
-): void {
-  const allowedTitles = buildOptionalTitleSet(optionalTitles);
-
-  for (const [i, question] of questionList.entries()) {
-    if (question.is_requir !== false) {
-      continue;
-    }
-
-    const title = typeof question.q_title === "string" ? question.q_title.trim() : "";
-    if (!title) {
-      throw new Error(
-        `questions[${i}] 显式设置了 is_requir=false，但缺少可匹配的 q_title。默认所有题目必答；如需设为选填，请提供明确标题并把它加入 optionalTitles。`,
-      );
-    }
-    if (!allowedTitles.has(title)) {
-      throw new Error(
-        `题目「${title}」显式设置了 is_requir=false，但未在 optionalTitles 中声明。默认所有题目必答；如需设为选填，请把该标题加入 optionalTitles。`,
-      );
-    }
-  }
-}
-
-function normalizeQuestionsForCreate(
-  questions: string,
-  atype: number,
-  optionalTitles: string[] = [],
-): string {
-  const questionList = parseQuestionsJsonArray(questions);
-  validateExplicitOptionalQuestions(questionList, optionalTitles);
-  let modified = false;
-
-  for (const question of questionList) {
-    if (question.is_requir === undefined) {
-      question.is_requir = true;
-      modified = true;
-    }
-  }
-
-  return modified ? JSON.stringify(questionList) : questions;
-}
-
-function validateJsonlQuestionTypesForCreate(jsonl: string, atype: number): void {
-  void jsonl;
-  void atype;
-}
-
-export function validateQuestionsJson(questions: string): void {
-  parseQuestionsJsonArray(questions);
-}
-
-export async function createSurvey<T = unknown>(
-  input: CreateSurveyInput,
-  credentials: WjxCredentials = getWjxCredentials(),
-  fetchImpl: FetchLike = fetch,
-): Promise<WjxApiResponse<T>> {
-  const params: Record<string, unknown> = {
-    action: Action.CREATE_SURVEY,
-    title: input.title,
-  };
-  if (input.source_vid !== undefined) {
-    params.source_vid = input.source_vid;
-  } else {
-    assertCreatableSurveyAtype(input.type);
-    params.atype = input.type;
-    params.desc = input.description;
-    params.questions = normalizeQuestionsForCreate(input.questions, input.type, input.optionalTitles);
-  }
-  params.publish = input.publish ?? false;
-  if (input.creater !== undefined) params.creater = input.creater;
-  if (input.compress_img !== undefined) params.compress_img = input.compress_img;
-  if (input.is_string !== undefined) params.is_string = input.is_string;
-
-  return callWjxApi<T>(params, {
-    credentials,
-    fetchImpl,
-    maxRetries: 0,
-    timeoutMs: LONG_TIMEOUT_MS,
-  });
-}
 
 export async function getSurvey<T = unknown>(
   input: GetSurveyInput,
@@ -304,59 +191,36 @@ export async function clearRecycleBin<T = unknown>(
 }
 
 /**
- * 通过 DSL 文本创建问卷（客户端解析 DSL 后调用 createSurvey API）。
- * 段落说明题会被自动过滤（API 不支持 q_type=2）。
- */
-export async function createSurveyByText<T = unknown>(
-  input: CreateSurveyByTextInput,
-  credentials: WjxCredentials = getWjxCredentials(),
-  fetchImpl: FetchLike = fetch,
-): Promise<WjxApiResponse<T>> {
-  // 解析 DSL 文本为结构化数据，然后通过 createSurvey API 创建
-  const parsed = textToSurvey(input.text);
-  const { questions: wireQuestions } = parsedQuestionsToWire(parsed.questions);
-  const optionalTitles = wireQuestions
-    .filter((question) => question.is_requir === false && typeof question.q_title === "string")
-    .map((question) => question.q_title);
-  const title = input.title ?? parsed.title;
-  const description = parsed.description ?? "";
-
-  return createSurvey<T>(
-    {
-      title,
-      type: input.atype ?? 1,
-      description,
-      questions: JSON.stringify(wireQuestions),
-      optionalTitles,
-      publish: input.publish,
-      creater: input.creater,
-    },
-    credentials,
-    fetchImpl,
-  );
-}
-
-/**
  * 通过 JSONL 格式创建问卷（纯透传到服务端 action 1000106）。
- * 客户端仅做基本校验（非空、大小限制、BOM/CRLF 标准化），
- * 服务端自行解析 JSONL 并创建问卷。
+ * 客户端负责输入边界和 JSONL 语法校验，服务端负责最终题型落库。
  */
 export async function createSurveyByJson<T = unknown>(
   input: CreateSurveyByJsonInput,
-  credentials: WjxCredentials = getWjxCredentials(),
+  credentials?: WjxCredentials,
   fetchImpl: FetchLike = fetch,
+  requestOptions?: RequestOverrides,
 ): Promise<WjxApiResponse<T>> {
+  if (!input || typeof input.jsonl !== "string") {
+    throw new TypeError("jsonl must be a string");
+  }
+  if (input.title !== undefined && typeof input.title !== "string") {
+    throw new TypeError("title must be a string");
+  }
   const jsonl = normalizeJsonl(input.jsonl.trim());
   if (!jsonl) {
     throw new Error("jsonl must not be empty");
   }
-  if (jsonl.length > MAX_JSONL_SIZE) {
-    throw new Error(`jsonl exceeds maximum size of ${MAX_JSONL_SIZE} bytes (${jsonl.length})`);
+  const inputByteLength = Buffer.byteLength(jsonl, "utf8");
+  if (inputByteLength > MAX_JSONL_SIZE) {
+    throw new Error(`jsonl exceeds maximum size of ${MAX_JSONL_SIZE} bytes (${inputByteLength})`);
   }
 
   // 预检：拦截英文/拼错/错字段名的 qtype，给出精确的中文修复建议
   // 必须在 preprocessExamJsonl 等预处理之前跑，这样错误信息里的行号与用户输入一致
   preflightJsonl(jsonl);
+  // 预检会跳过无法解析的行以便继续提供 qtype 诊断；创建前必须严格拒绝这些行，
+  // 防止坏数据原样进入服务端。
+  parseJsonl(jsonl);
 
   // 考试题型预处理：注入 isquiz="1"，并在用户未指定 atype 时推断为 6（考试）
   const { jsonl: examProcessed, hasExam } = preprocessExamJsonl(jsonl);
@@ -382,11 +246,17 @@ export async function createSurveyByJson<T = unknown>(
     (hasExam ? 6 : hasVote ? 3 : inferAtypeFromTitle(title) ?? 1);
 
   assertCreatableSurveyAtype(atype);
-  validateJsonlQuestionTypesForCreate(requirInjected, atype);
 
   // 关键修复：服务端 action 1000106 实际只读 JSONL 内的 atype，忽略顶层字段。
   // 必须把最终 atype 注入「问卷基础信息」行，否则页面落库会一律变成 atype=1。
   const processedJsonl = injectAtypeIntoJsonl(requirInjected, atype);
+  const processedByteLength = Buffer.byteLength(processedJsonl, "utf8");
+  if (processedByteLength > MAX_JSONL_SIZE) {
+    throw new Error(`jsonl exceeds maximum size of ${MAX_JSONL_SIZE} bytes after preprocessing (${processedByteLength})`);
+  }
+  // Resolve credentials only after all local validation so malformed input is
+  // reported consistently even when the caller has not configured an API key.
+  const resolvedCredentials = credentials ?? getWjxCredentials();
 
   return callWjxApi<T>(
     {
@@ -395,12 +265,14 @@ export async function createSurveyByJson<T = unknown>(
       atype,
       desc: description,
       surveydatajson: processedJsonl,
-      publish: input.publish ?? false,
+      publish: resolveJsonlPublish(processedJsonl, input.publish),
       ...(input.creater !== undefined ? { creater: input.creater } : {}),
     },
     {
-      credentials,
+      ...requestOptions,
+      credentials: resolvedCredentials,
       fetchImpl,
+      retryBudget: 0,
       maxRetries: 0,
       timeoutMs: LONG_TIMEOUT_MS,
     },

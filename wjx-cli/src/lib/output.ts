@@ -1,7 +1,17 @@
+import { CliError } from "./errors.js";
+
 export interface OutputOpts {
-  json?: boolean;
-  table?: boolean;
   format?: "json" | "pretty" | "table" | "ndjson" | "csv";
+}
+
+const OUTPUT_FORMATS = new Set(["json", "pretty", "table", "ndjson", "csv"]);
+
+/** Validate the user-facing format before any command can perform I/O. */
+export function validateOutputFormat(opts: Pick<OutputOpts, "format">): void {
+  const format = opts.format ?? "json";
+  if (!OUTPUT_FORMATS.has(format)) {
+    throw new CliError("INPUT_ERROR", `不支持的输出格式：${String(format)}。可选值：json、pretty、table、ndjson、csv`);
+  }
 }
 
 function getHttpOrigin(value: string): string | undefined {
@@ -26,6 +36,22 @@ function pathExposesVid(pathname: string, vid: string): boolean {
   });
 }
 
+function validateApiFillUrl(value: unknown, expectedOrigin: string | undefined, vid: string): string | undefined {
+  if (typeof value !== "string" || !value.trim()) return undefined;
+  try {
+    const url = new URL(value.trim());
+    if ((url.protocol !== "http:" && url.protocol !== "https:") || (expectedOrigin && url.origin !== expectedOrigin)) {
+      return undefined;
+    }
+    if (!/^\/(?:m|vm|jq)(?:\/|$)/.test(url.pathname) || pathExposesVid(url.pathname, vid)) {
+      return undefined;
+    }
+    return url.href;
+  } catch {
+    return undefined;
+  }
+}
+
 /** Add respondent-facing URLs without ever exposing a numeric vid as the path. */
 export function enrichSurveyListOutput(data: unknown): unknown {
   if (!data || typeof data !== "object") return data;
@@ -48,16 +74,24 @@ export function enrichSurveyListOutput(data: unknown): unknown {
     const origin = typeof item.activity_domain === "string"
       ? getHttpOrigin(item.activity_domain)
       : undefined;
+    const pcPath = typeof item.pc_path === "string" ? item.pc_path.trim() : "";
     const mobilePath = typeof item.mobile_path === "string" ? item.mobile_path.trim() : "";
-    const sid = typeof item.sid === "string" ? item.sid.trim() : "";
     const vid = item.vid === undefined ? "" : String(item.vid).trim();
     const safeItem = { ...item };
     delete safeItem.fill_url;
 
-    let fillUrl: string | undefined;
-    if (origin && sid) {
-      const sidPath = `/vm/${encodeURIComponent(sid)}.aspx`;
-      if (!pathExposesVid(sidPath, vid)) fillUrl = new URL(sidPath, origin).href;
+    let fillUrl = validateApiFillUrl(item.fill_url, origin, vid);
+    if (!fillUrl && origin) {
+      for (const serverPath of [pcPath, mobilePath]) {
+        if (!serverPath) continue;
+        try {
+          const candidate = new URL(serverPath, `${origin}/`);
+          fillUrl = validateApiFillUrl(candidate.href, origin, vid);
+        } catch {
+          fillUrl = undefined;
+        }
+        if (fillUrl) break;
+      }
     }
     if (!fillUrl && origin && mobilePath) {
       try {
@@ -84,7 +118,8 @@ export function enrichSurveyListOutput(data: unknown): unknown {
 
 export function formatOutput(data: unknown, opts: OutputOpts): void {
   const envelope = toResultEnvelope(data);
-  const format = opts.format ?? (opts.table ? "table" : "json");
+  const format = opts.format ?? "json";
+  validateOutputFormat(opts);
   if (format === "json") process.stdout.write(`${JSON.stringify(envelope, null, 2)}\n`);
   else if (format === "pretty") printPretty(envelope);
   else if (format === "table") printTable(envelope);
@@ -116,10 +151,31 @@ function printNdjson(envelope: Record<string, unknown>): void {
 
 function printCsv(envelope: Record<string, unknown>): void {
   const payload = envelope.ok === true ? envelope.data : envelope;
-  const records = (Array.isArray(payload) ? payload : [payload]).filter((v) => v && typeof v === "object") as Record<string, unknown>[];
-  if (records.length === 0) return;
+  let values: unknown[];
+  if (Array.isArray(payload)) values = payload;
+  else if (payload && typeof payload === "object") {
+    const object = payload as Record<string, unknown>;
+    const listKey = ["rows", "answers", "items", "list", "survey_list"].find((key) => Array.isArray(object[key]));
+    if (listKey) values = object[listKey] as unknown[];
+    else {
+      const mapKey = ["activitys", "activities"].find((key) => object[key] && typeof object[key] === "object" && !Array.isArray(object[key]));
+      values = mapKey ? Object.values(object[mapKey] as Record<string, unknown>) : [payload];
+    }
+  } else values = [payload];
+  const records = values.filter((v) => v && typeof v === "object") as Record<string, unknown>[];
+  if (records.length === 0) {
+    const quote = (value: unknown) => {
+      const scalar = value && typeof value === "object" ? JSON.stringify(value) : String(value ?? "");
+      return `"${scalar.replaceAll("\"", "\"\"")}"`;
+    };
+    process.stdout.write(`value\n${quote(values[0])}\n`);
+    return;
+  }
   const columns = [...new Set(records.flatMap((record) => Object.keys(record)))];
-  const quote = (value: unknown) => `"${String(value ?? "").replaceAll("\"", "\"\"")}"`;
+  const quote = (value: unknown) => {
+    const scalar = value && typeof value === "object" ? JSON.stringify(value) : String(value ?? "");
+    return `"${scalar.replaceAll("\"", "\"\"")}"`;
+  };
   process.stdout.write(`${columns.map(quote).join(",")}\n`);
   for (const record of records) process.stdout.write(`${columns.map((key) => quote(record[key])).join(",")}\n`);
 }

@@ -4,6 +4,8 @@
 
 ## CLI 配置
 
+当前工作树的 `0.4.1` 尚未发布到 npm；发布前请按 [CLI 快速开始](../start/cli.md) 从源码构建并链接。`0.4.1` 发布后再执行：
+
 ```bash
 npm install -g wjx-cli
 wjx init --api-key "你的 API Key"
@@ -12,7 +14,7 @@ wjx doctor
 
 ## MCP 配置形状
 
-MCP 客户端配置通常包含以下结构。`command` 和 `args` 应替换为本机源码构建后的启动命令；不要在新配置中使用已经冻结发布链的 `wjx-mcp-server@latest`。
+MCP 客户端配置通常包含以下结构。下一发布版本为 `0.4.1`，当前尚未发布到 npm；发布前请使用本机构建后的启动命令，不要配置 `wjx-mcp-server@0.4.1`。
 
 ```json
 {

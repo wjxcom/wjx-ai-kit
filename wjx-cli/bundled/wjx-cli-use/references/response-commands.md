@@ -59,7 +59,7 @@ wjx response query --vid 12345 --page_size 50 --sort 1 --begin_time 170000000000
 - 普通查询可以只展示当前页，但必须报告总数和页码：总页数为 `Math.ceil(total_count / page_size)`。
 - 用户要求全部结果或任务需要完整明细时，使用不超过 50 的 `page_size`，保持 `valid`、时间、条件、答卷 ID、自定义参数、去重和排序参数不变，查询第 1 页到总页数，并核对累计数量等于 `total_count`。
 - `response count` 只接受 `vid`，适合无额外筛选时快速查看计数。带任何筛选或去重条件时，以当前 `response query` 的 `total_count` 为准，不要用 `response count` 覆盖它。
-- 使用默认 JSON 输出解析分页和答卷；不要依赖 `--table` 进行完整性判断。
+- 使用默认 JSON 输出解析分页和答卷；不要依赖 `--format table` 进行完整性判断。
 
 ### submitdata 编码格式
 

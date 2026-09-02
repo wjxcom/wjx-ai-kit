@@ -1,7 +1,8 @@
 import { homedir } from "node:os";
 import { writeFileSync, readFileSync, existsSync } from "node:fs";
 import { join } from "node:path";
-import { CliError, handleError } from "../lib/errors.js";
+import { CliError } from "../lib/errors.js";
+import { executeRuntimeLocal } from "../lib/runtime/executor.js";
 const BASH_SCRIPT = `
 _wjx_completions() {
   local cur_word="\${COMP_WORDS[COMP_CWORD]}"
@@ -63,26 +64,26 @@ export function registerCompletionCommands(program) {
     completion
         .command("bash")
         .description("输出 Bash 补全脚本")
-        .action(() => {
-        console.log(BASH_SCRIPT);
+        .action(async (_opts, cmd) => {
+        await executeRuntimeLocal(program, cmd, () => BASH_SCRIPT, { rawOutput: true });
     });
     completion
         .command("zsh")
         .description("输出 Zsh 补全脚本")
-        .action(() => {
-        console.log(ZSH_SCRIPT);
+        .action(async (_opts, cmd) => {
+        await executeRuntimeLocal(program, cmd, () => ZSH_SCRIPT, { rawOutput: true });
     });
     completion
         .command("fish")
         .description("输出 Fish 补全脚本")
-        .action(() => {
-        console.log(FISH_SCRIPT);
+        .action(async (_opts, cmd) => {
+        await executeRuntimeLocal(program, cmd, () => FISH_SCRIPT, { rawOutput: true });
     });
     completion
         .command("install")
         .description("自动安装补全脚本到 Shell 配置文件")
-        .action(() => {
-        try {
+        .action(async (_opts, cmd) => {
+        await executeRuntimeLocal(program, cmd, () => {
             const shell = detectShell();
             if (!shell) {
                 throw new CliError("INPUT_ERROR", "无法检测 Shell 类型。请手动运行:\n" +
@@ -99,7 +100,7 @@ export function registerCompletionCommands(program) {
                     const content = readFileSync(profilePath, "utf8");
                     if (content.includes(evalLine) || content.includes("wjx completion")) {
                         process.stderr.write(`补全脚本已安装在 ${profilePath}\n`);
-                        return;
+                        return { status: "skipped", reason: "already-installed", profilePath };
                     }
                 }
             }
@@ -114,10 +115,8 @@ export function registerCompletionCommands(program) {
             }
             process.stderr.write(`已添加到 ${profilePath}\n`);
             process.stderr.write(`运行以下命令立即生效:\n  source ${profilePath}\n`);
-        }
-        catch (e) {
-            handleError(e);
-        }
+            return { status: "installed", profilePath, shell };
+        }, { dryRun: () => ({ command: "completion.install" }) });
     });
 }
 //# sourceMappingURL=completion.js.map

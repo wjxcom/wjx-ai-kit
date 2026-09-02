@@ -1,6 +1,6 @@
 import { Command } from "commander";
 import { callWjxApi } from "wjx-api-sdk";
-import { getCredentials } from "../lib/auth.js";
+import { applyProfileCredentials, applyProfileDefaults, getCredentials, getProfileApiUrl } from "../lib/auth.js";
 import { formatOutput } from "../lib/output.js";
 import { handleError, CliError, ensureApiSuccess } from "../lib/errors.js";
 import { findCatalogEntry } from "../catalog/catalog.js";
@@ -24,26 +24,35 @@ function parseJson(value: unknown, field: string): Record<string, unknown> {
 
 export function registerApiCommands(program: Command): void {
   program.command("api").description("通过静态 Catalog 调用 WJX action")
-    .requiredOption("--service <service>", "服务名")
-    .requiredOption("--action <action>", "Catalog action id")
+    .option("--service <service>", "服务名")
+    .option("--action <action>", "Catalog action id")
     .option("--params <json>", "参数 JSON、@file")
     .option("--body <json>", "请求体 JSON、@file")
     .action(async (_opts, actionCommand) => {
       try {
         const opts = getMerged(actionCommand);
+        if (opts.service === undefined || opts.service === null || opts.service === "") {
+          throw new CliError("INPUT_ERROR", "Missing required option: --service");
+        }
+        if (opts.action === undefined || opts.action === null || opts.action === "") {
+          throw new CliError("INPUT_ERROR", "Missing required option: --action");
+        }
         const found = findCatalogEntry(String(opts.action ?? ""));
         const service = String(opts.service ?? "");
         const action = String(opts.action ?? "");
-        if (!found || found.service !== service) throw new CliError("INPUT_ERROR", `未知或不允许的 action: ${service}/${action}`);
+        if (!found || found.source !== "api" || found.service !== service) {
+          throw new CliError("INPUT_ERROR", `未知或不允许的 action: ${service}/${action}`);
+        }
         const commandPath = found.command ?? found.id;
         const body = { ...parseJson(opts.params, "params"), ...parseJson(opts.body, "body"), action: found.action };
         const context = createRuntimeContext({
           profile: { ...resolveProfile({ profile: program.opts().profile }) },
         });
+        const routedBody = applyProfileDefaults(body, context.profile);
         await ensureConfirmation({
           command: commandPath,
           metadata: getCommandMetadata(commandPath),
-          input: body,
+          input: routedBody,
           options: {
             yes: program.opts().yes === true,
             nonInteractive: program.opts().nonInteractive === true,
@@ -54,14 +63,17 @@ export function registerApiCommands(program: Command): void {
           outputStream: context.streams.stderr,
         });
         if (program.opts().dryRun) {
-          formatOutput({
-            kind: "dry-run",
-            plans: [buildRequestPlan({ service: found.service, action: found.action, body })],
-          }, program.opts());
+          const plan = buildRequestPlan({
+            service: found.service,
+            action: found.action,
+            url: getProfileApiUrl(context.profile),
+            body: routedBody,
+          });
+          formatOutput({ kind: "dry-run", plans: [plan] }, program.opts());
           return;
         }
-        const credentials = getCredentials(program.opts());
-        const result = await callWjxApi(body, { credentials });
+        const credentials = applyProfileCredentials(getCredentials(program.opts()), context.profile);
+        const result = await callWjxApi(routedBody, { credentials });
         ensureApiSuccess(result);
         formatOutput(result, program.opts());
       } catch (error) { handleError(error); }

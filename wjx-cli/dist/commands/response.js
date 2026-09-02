@@ -1,10 +1,13 @@
 import { readFileSync } from "node:fs";
-import { queryResponses, queryResponsesRealtime, downloadResponses, getReport, submitResponse, getWinners, modifyResponse, get360Report, clearResponses, getSurvey, normalizeSubmitdata, } from "wjx-api-sdk";
-import { CliError } from "../lib/errors.js";
-import { executeCommand, strictInt, requireField, ensureJsonString, getMerged, createCapturingFetch, printDryRunPreview } from "../lib/command-helpers.js";
-import { getCredentials } from "../lib/auth.js";
+import { queryResponses, queryResponsesRealtime, downloadResponses, getReport, submitResponse, getWinners, modifyResponse, get360Report, clearResponses, getSurvey, normalizeSubmitdata, Action, } from "wjx-api-sdk";
+import { CliError, ensureApiSuccess } from "../lib/errors.js";
+import { strictInt, requireField, requirePositiveInt, requireEnum, requireIntRange, ensureJsonArray, getMerged, createCapturingFetch, printDryRunPreview } from "../lib/command-helpers.js";
+import { applyProfileCredentials, getCredentials } from "../lib/auth.js";
+import { resolveProfile } from "../lib/profiles.js";
 import { handleError } from "../lib/errors.js";
 import { formatOutput } from "../lib/output.js";
+import { executeRuntimeAction, executeRuntimeCommand } from "../lib/runtime/executor.js";
+import { buildRequestPlan } from "../lib/runtime/request-plan.js";
 /** 规范化 submitdata 中的题号、矩阵题和排序题答案格式 */
 export function registerResponseCommands(program) {
     const response = program.command("response").description("答卷管理");
@@ -14,18 +17,15 @@ export function registerResponseCommands(program) {
         .description("获取问卷答卷总数")
         .option("--vid <n>", "问卷ID", strictInt)
         .action(async (_opts, cmd) => {
-        await executeCommand(program, cmd, queryResponses, (m) => {
+        await executeRuntimeAction(program, cmd, queryResponses, (m) => {
             requireField(m, "vid");
             return { vid: m.vid, page_size: 1 };
         }, {
             transformResult: (result) => {
                 const data = result.data;
                 return {
-                    result: true,
-                    data: {
-                        total_count: data?.total_count ?? 0,
-                        join_times: data?.join_times ?? 0,
-                    },
+                    total_count: data?.total_count ?? 0,
+                    join_times: data?.join_times ?? 0,
                 };
             },
         });
@@ -45,13 +45,22 @@ export function registerResponseCommands(program) {
         .option("--begin_time <n>", "开始时间", strictInt)
         .option("--end_time <n>", "结束时间", strictInt)
         .option("--file_view_expires <n>", "文件链接有效期", strictInt)
+        .option("--valid", "查询有效答卷（默认true）")
         .option("--query_note", "查询备注")
         .option("--distinct_user", "去重用户")
         .option("--distinct_sojumpparm", "去重参数")
         .option("--conds <json>", "查询条件JSON，格式：[{\"q_index\":10000,\"opt\":\"in\",\"val\":\"1,2\"}]，q_index=题序×10000，最多2个条件")
         .action(async (_opts, cmd) => {
-        await executeCommand(program, cmd, queryResponses, (m) => {
+        await executeRuntimeAction(program, cmd, queryResponses, (m) => {
             requireField(m, "vid");
+            if (m.page_index !== undefined)
+                requirePositiveInt(m, "page_index");
+            if (m.page_size !== undefined)
+                requireIntRange(m, "page_size", 1, 50);
+            if (m.sort !== undefined)
+                requireEnum(m, "sort", [0, 1]);
+            if (m.file_view_expires !== undefined)
+                requirePositiveInt(m, "file_view_expires");
             return {
                 vid: m.vid,
                 page_index: m.page_index,
@@ -64,10 +73,11 @@ export function registerResponseCommands(program) {
                 begin_time: m.begin_time,
                 end_time: m.end_time,
                 file_view_expires: m.file_view_expires,
+                valid: m.valid ?? true,
                 query_note: m.query_note,
                 distinct_user: m.distinct_user,
                 distinct_sojumpparm: m.distinct_sojumpparm,
-                conds: ensureJsonString(m.conds, "conds"),
+                conds: ensureJsonArray(m.conds, "conds"),
             };
         });
     });
@@ -78,8 +88,10 @@ export function registerResponseCommands(program) {
         .option("--vid <n>", "问卷ID", strictInt)
         .option("--count <n>", "数量", strictInt)
         .action(async (_opts, cmd) => {
-        await executeCommand(program, cmd, queryResponsesRealtime, (m) => {
+        await executeRuntimeAction(program, cmd, queryResponsesRealtime, (m) => {
             requireField(m, "vid");
+            if (m.count !== undefined)
+                requirePositiveInt(m, "count");
             return { vid: m.vid, count: m.count };
         });
     });
@@ -99,8 +111,16 @@ export function registerResponseCommands(program) {
         .option("--suffix <n>", "导出格式: 0=CSV, 1=SAV, 2=Word", strictInt)
         .option("--query_record", "查询记录")
         .action(async (_opts, cmd) => {
-        await executeCommand(program, cmd, downloadResponses, (m) => {
+        await executeRuntimeAction(program, cmd, downloadResponses, (m) => {
             requireField(m, "vid");
+            if (m.query_count !== undefined)
+                requirePositiveInt(m, "query_count");
+            if (m.sort !== undefined)
+                requireEnum(m, "sort", [0, 1]);
+            if (m.query_type !== undefined)
+                requireEnum(m, "query_type", [0, 1, 2]);
+            if (m.suffix !== undefined)
+                requireEnum(m, "suffix", [0, 1, 2]);
             return {
                 vid: m.vid,
                 taskid: m.taskid,
@@ -130,56 +150,78 @@ export function registerResponseCommands(program) {
         .option("--jpmversion <n>", "问卷版本号；不传时默认自动从 getSurvey 取", strictInt)
         .option("--no-auto-version", "关闭自动获取 jpmversion（适用于显式传入或不需要校验场景）")
         .action(async (_opts, cmd) => {
-        await executeCommand(program, cmd, submitResponse, (m) => {
-            requireField(m, "vid");
-            requireField(m, "inputcosttime");
-            // 解析 submitdata：--submitdata-file 优先（commander 把 --submitdata-file 解析成 submitdataFile）
-            let submitdata = m.submitdata;
-            const fileOpt = m.submitdataFile ?? m["submitdata-file"];
-            if (typeof fileOpt === "string" && fileOpt) {
-                try {
-                    submitdata = readFileSync(fileOpt, "utf8").replace(/^﻿/, "").trimEnd();
+        await executeRuntimeCommand(program, cmd, {
+            normalize: ({ values }) => {
+                requireField(values, "vid");
+                requireField(values, "inputcosttime");
+                if (typeof values.inputcosttime !== "number" ||
+                    !Number.isInteger(values.inputcosttime) || values.inputcosttime < 2) {
+                    throw new CliError("INPUT_ERROR", "--inputcosttime 必须是大于 1 的整数");
                 }
-                catch {
-                    throw new CliError("INPUT_ERROR", `无法读取 --submitdata-file 指向的文件: ${fileOpt}`);
+                let submitdata = values.submitdata;
+                const fileOpt = values.submitdataFile ?? values["submitdata-file"];
+                if (typeof fileOpt === "string" && fileOpt) {
+                    try {
+                        submitdata = readFileSync(fileOpt, "utf8").replace(/^﻿/, "").trimEnd();
+                    }
+                    catch {
+                        throw new CliError("INPUT_ERROR", `无法读取 --submitdata-file 指向的文件: ${fileOpt}`);
+                    }
                 }
-            }
-            if (!submitdata) {
-                throw new CliError("INPUT_ERROR", "Missing required option: --submitdata 或 --submitdata-file");
-            }
-            // sanity check：submitdata 里一个 $ 都没有，大概率是 shell 吞掉了 $1/$2/$3。
-            // 提前拦截并给出可操作的修复建议，避免服务端返回"数据格式错误"这类晦涩错误。
-            if (!submitdata.includes("$")) {
-                throw new CliError("INPUT_ERROR", `submitdata 中未检测到任何 "$" 分隔符。问卷星答卷协议使用 "题序$答案" 格式（如 "1$男|2$跑步|3$5"），缺失 $ 几乎必然是 shell 转义问题。` +
-                    `修复建议：① Windows PowerShell 请用单引号 '...' 包裹；② 或改用 --submitdata-file <path>，从文件读取，彻底绕开 shell 转义；③ 运行 \`wjx response submit-template --vid <问卷ID>\` 获取可直接填充的模板。`);
-            }
-            return {
-                vid: m.vid,
-                inputcosttime: m.inputcosttime,
-                submitdata,
-                udsid: m.udsid,
-                sojumpparm: m.sojumpparm,
-                submittime: m.submittime,
-                jpmversion: m.jpmversion,
-                // commander 把 --no-auto-version 解析成 autoVersion=false
-                autoVersion: m.autoVersion !== false,
-            };
-        }, {
-            transformInput: async (input, creds) => {
+                if (!submitdata) {
+                    throw new CliError("INPUT_ERROR", "Missing required option: --submitdata 或 --submitdata-file");
+                }
+                if (!submitdata.includes("$")) {
+                    throw new CliError("INPUT_ERROR", `submitdata 中未检测到任何 "$" 分隔符。问卷星答卷协议使用 "题序$答案" 格式（如 "1$男|2$跑步|3$5"），缺失 $ 几乎必然是 shell 转义问题。` +
+                        `修复建议：① Windows PowerShell 请用单引号 '...' 包裹；② 或改用 --submitdata-file <path>，从文件读取，彻底绕开 shell 转义；③ 运行 \`wjx response submit-template --vid <问卷ID>\` 获取可直接填充的模板。`);
+                }
+                return {
+                    vid: values.vid,
+                    inputcosttime: values.inputcosttime,
+                    submitdata,
+                    udsid: values.udsid,
+                    sojumpparm: values.sojumpparm,
+                    submittime: values.submittime,
+                    jpmversion: values.jpmversion,
+                    autoVersion: values.autoVersion !== false,
+                };
+            },
+            buildPlans: (input, context) => [buildRequestPlan({
+                    service: "default",
+                    action: Action.SUBMIT_RESPONSE,
+                    url: context?.apiUrl,
+                    body: {
+                        action: Action.SUBMIT_RESPONSE,
+                        vid: input.vid,
+                        inputcosttime: input.inputcosttime,
+                        submitdata: input.submitdata,
+                        udsid: input.udsid,
+                        sojumpparm: input.sojumpparm,
+                        submittime: input.submittime,
+                        jpmversion: input.jpmversion,
+                    },
+                    unresolved: input.autoVersion && input.jpmversion === undefined ? ["jpmversion"] : undefined,
+                })],
+            prepareExecute: async (input, creds, requestOptions) => {
                 const explicitVersion = input.jpmversion;
                 const autoVersion = input.autoVersion !== false;
                 // 仅在未显式传 jpmversion 且未关闭自动注入时才请求 getSurvey
                 // 同时复用 getSurvey 结果做 submitdata 规范化
                 let survey = null;
-                if (autoVersion || typeof input.submitdata === "string") {
-                    try {
-                        survey = await getSurvey({ vid: input.vid }, creds);
-                    }
-                    catch {
-                        // 拿不到结构不阻塞提交
-                    }
+                // An explicit version is already caller-verified, so it must not
+                // trigger a metadata prefetch. Submitdata normalization depends on
+                // that same metadata and is intentionally skipped in this mode.
+                if (explicitVersion === undefined && autoVersion) {
+                    survey = await getSurvey({ vid: input.vid }, creds, undefined, requestOptions);
+                    // Automatic version lookup is part of the submit safety contract.
+                    // Never fall through to a potentially stale or unverifiable submit.
+                    ensureApiSuccess(survey);
                 }
                 const data = survey?.data;
+                if (explicitVersion === undefined && autoVersion &&
+                    (!Number.isSafeInteger(data?.version) || data?.version <= 0)) {
+                    throw new CliError("API_ERROR", "自动获取问卷版本失败：API 响应缺少有效的正整数 version");
+                }
                 const result = { ...input };
                 // 不要把内部 autoVersion 透到 SDK
                 delete result.autoVersion;
@@ -192,6 +234,11 @@ export function registerResponseCommands(program) {
                 }
                 return result;
             },
+            execute: (input, credentials, requestOptions) => {
+                const finalInput = { ...input };
+                delete finalInput.autoVersion;
+                return submitResponse(finalInput, credentials, undefined, requestOptions);
+            },
         });
     });
     // --- modify ---
@@ -202,7 +249,7 @@ export function registerResponseCommands(program) {
         .option("--jid <n>", "答卷ID", strictInt)
         .option("--answers <s>", "答案数据")
         .action(async (_opts, cmd) => {
-        await executeCommand(program, cmd, modifyResponse, (m) => {
+        await executeRuntimeAction(program, cmd, modifyResponse, (m) => {
             requireField(m, "vid");
             requireField(m, "jid");
             requireField(m, "answers");
@@ -217,7 +264,7 @@ export function registerResponseCommands(program) {
         .option("--vid <n>", "问卷ID", strictInt)
         .option("--reset_to_zero", "重置序号")
         .action(async (_opts, cmd) => {
-        await executeCommand(program, cmd, clearResponses, (m) => {
+        await executeRuntimeAction(program, cmd, clearResponses, (m) => {
             requireField(m, "username");
             requireField(m, "vid");
             return {
@@ -242,7 +289,7 @@ export function registerResponseCommands(program) {
         .option("--distinct_sojumpparm", "去重参数")
         .option("--conds <json>", "查询条件JSON，格式：[{\"q_index\":10000,\"opt\":\"in\",\"val\":\"1,2\"}]，q_index=题序×10000")
         .action(async (_opts, cmd) => {
-        await executeCommand(program, cmd, getReport, (m) => {
+        await executeRuntimeAction(program, cmd, getReport, (m) => {
             requireField(m, "vid");
             return {
                 vid: m.vid,
@@ -254,7 +301,7 @@ export function registerResponseCommands(program) {
                 end_time: m.end_time,
                 distinct_user: m.distinct_user,
                 distinct_sojumpparm: m.distinct_sojumpparm,
-                conds: ensureJsonString(m.conds, "conds"),
+                conds: ensureJsonArray(m.conds, "conds"),
             };
         });
     });
@@ -269,8 +316,16 @@ export function registerResponseCommands(program) {
         .option("--page_index <n>", "页码", strictInt)
         .option("--page_size <n>", "每页数量", strictInt)
         .action(async (_opts, cmd) => {
-        await executeCommand(program, cmd, getWinners, (m) => {
+        await executeRuntimeAction(program, cmd, getWinners, (m) => {
             requireField(m, "vid");
+            if (m.page_index !== undefined)
+                requirePositiveInt(m, "page_index");
+            if (m.page_size !== undefined)
+                requirePositiveInt(m, "page_size");
+            if (m.atype !== undefined)
+                requireEnum(m, "atype", [-1, 0, 1]);
+            if (m.awardstatus !== undefined)
+                requireEnum(m, "awardstatus", [-1, 0, 1]);
             return {
                 vid: m.vid,
                 atype: m.atype,
@@ -283,7 +338,7 @@ export function registerResponseCommands(program) {
     // --- submit-template ---
     response
         .command("submit-template")
-        .description("根据问卷结构生成 submitdata 模板：列出每题 1-based placeholder，AI 改成真实答案后即可调 submit")
+        .description("根据问卷结构生成 submitdata 模板：列出每题 1-based placeholder，AI 改成真实答案后即可调 submit；默认输出 ResultEnvelope")
         .option("--vid <n>", "问卷ID", strictInt)
         .option("--raw", "直接输出 submitdata 字符串（不包裹 JSON），便于重定向到文件")
         .action(async (_opts, cmd) => {
@@ -291,20 +346,19 @@ export function registerResponseCommands(program) {
             const merged = getMerged(cmd);
             requireField(merged, "vid");
             const globalOpts = program.opts();
-            const creds = getCredentials(globalOpts);
             if (globalOpts.dryRun) {
                 const { fetchImpl, getCapturedRequest } = createCapturingFetch();
-                await getSurvey({ vid: merged.vid, get_questions: true, get_items: true }, creds, fetchImpl);
-                printDryRunPreview(getCapturedRequest());
+                const profile = resolveProfile({ profile: globalOpts.profile });
+                await getSurvey({ vid: merged.vid, get_questions: true, get_items: true }, applyProfileCredentials({ apiKey: "dry-run" }, profile), fetchImpl);
+                printDryRunPreview(getCapturedRequest(), globalOpts);
                 return;
             }
+            const creds = getCredentials(globalOpts);
             const survey = await getSurvey({ vid: merged.vid, get_questions: true, get_items: true }, creds);
-            if (survey.result === false) {
-                throw new CliError("API_ERROR", survey.errormsg || "获取问卷结构失败");
-            }
+            ensureApiSuccess(survey);
             const surveyData = survey.data;
             const template = buildSubmitTemplate(surveyData?.questions ?? []);
-            if (merged.raw || globalOpts.table) {
+            if (merged.raw || globalOpts.format === "table") {
                 process.stdout.write(template.submitdata);
                 if (!template.submitdata.endsWith("\n"))
                     process.stdout.write("\n");
@@ -330,7 +384,7 @@ export function registerResponseCommands(program) {
         .option("--vid <n>", "问卷ID", strictInt)
         .option("--taskid <s>", "任务ID")
         .action(async (_opts, cmd) => {
-        await executeCommand(program, cmd, get360Report, (m) => {
+        await executeRuntimeAction(program, cmd, get360Report, (m) => {
             requireField(m, "vid");
             return { vid: m.vid, taskid: m.taskid };
         });

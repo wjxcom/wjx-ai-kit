@@ -12,7 +12,7 @@ import {
 import { buildRequestPlan } from "../dist/lib/runtime/request-plan.js";
 import { renderDryRun } from "../dist/lib/runtime/dry-run.js";
 import { Command } from "commander";
-import { executeCommand } from "../dist/lib/command-helpers.js";
+import { executeRuntimeAction } from "../dist/lib/runtime/executor.js";
 import { executeRuntimeCommand } from "../dist/lib/runtime/executor.js";
 import { createRuntimeContext } from "../dist/lib/runtime/context.js";
 
@@ -112,7 +112,7 @@ test("single-request create shortcuts share credential-free dry-run", async () =
       JSON.stringify({ qtype: "问卷基础信息", title: "测试问卷" }),
       JSON.stringify({ qtype: "单选", title: "性别", select: ["男", "女"] }),
     ].join("\n");
-    const result = await fixture.run(["survey", "create-by-json", "--jsonl", jsonl, "--dry-run"]);
+    const result = await fixture.run(["survey", "create", "--jsonl", jsonl, "--dry-run"]);
     assert.equal(result.exitCode, 0);
     const envelope = JSON.parse(result.stdout);
     assert.equal(envelope.ok, true);
@@ -124,7 +124,7 @@ test("single-request create shortcuts share credential-free dry-run", async () =
   }
 });
 
-test("legacy dry-run does not require credentials", async () => {
+test("runtime action dry-run does not require credentials", async () => {
   const fixture = await startFixture();
   try {
     const result = await fixture.run(["survey", "get", "--vid", "7", "--dry-run"]);
@@ -139,7 +139,7 @@ test("legacy dry-run does not require credentials", async () => {
   }
 });
 
-test("legacy executor skips execution-only input transforms during dry-run", async () => {
+test("runtime action skips execution-only input transforms during dry-run", async () => {
   const program = new Command("wjx");
   program.option("--dry-run").option("--api-key <apiKey>");
   program.setOptionValue("dryRun", true);
@@ -148,7 +148,7 @@ test("legacy executor skips execution-only input transforms during dry-run", asy
   command.setOptionValue("value", "original");
   let transformCalled = false;
 
-  await executeCommand(
+  await executeRuntimeAction(
     program,
     command,
     async (input) => ({ result: true, data: input }),
@@ -181,6 +181,62 @@ test("runtime context forwards transport options only to execute", async () => {
   });
 
   assert.deepEqual(received, { retryBudget: 0, timeoutMs: 1234 });
+});
+
+test("runtime context credentials override ambient credential lookup", async () => {
+  const program = new Command("wjx");
+  const command = program.command("probe");
+  let received;
+  const previousApiKey = process.env.WJX_API_KEY;
+  process.env.WJX_API_KEY = "ambient-key";
+
+  try {
+    await executeRuntimeCommand(program, command, {
+      buildPlans: () => [],
+      execute: async (_input, credentials) => {
+        received = credentials;
+        return { result: true, data: { ok: true } };
+      },
+      context: createRuntimeContext({ credentials: { apiKey: "context-key" } }),
+    });
+  } finally {
+    if (previousApiKey === undefined) delete process.env.WJX_API_KEY;
+    else process.env.WJX_API_KEY = previousApiKey;
+  }
+
+  assert.deepEqual(received, { apiKey: "context-key" });
+});
+
+test("runtime action forwards context credentials and transport options to SDK functions that support them", async () => {
+  const program = new Command("wjx");
+  program.option("--api-key <apiKey>");
+  const command = program.command("probe");
+  let received;
+  const previousApiKey = process.env.WJX_API_KEY;
+  process.env.WJX_API_KEY = "ambient-key";
+  const context = createRuntimeContext({
+    credentials: { apiKey: "context-key" },
+    requestOptions: { retryBudget: 0, timeoutMs: 1234 },
+  });
+
+  try {
+    await executeRuntimeAction(
+      program,
+      command,
+      async (...args) => {
+        received = args;
+        return { result: true, data: { ok: true } };
+      },
+      () => ({}),
+      { context },
+    );
+  } finally {
+    if (previousApiKey === undefined) delete process.env.WJX_API_KEY;
+    else process.env.WJX_API_KEY = previousApiKey;
+  }
+
+  assert.deepEqual(received[1], { apiKey: "context-key" });
+  assert.deepEqual(received[3], { retryBudget: 0, timeoutMs: 1234 });
 });
 
 test("dry-run renderer keeps plans separate from diagnostics", () => {

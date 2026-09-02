@@ -1,8 +1,6 @@
 import { readFileSync } from "node:fs";
 import { Command } from "commander";
 import {
-  createSurvey,
-  createSurveyByText,
   createSurveyByJson,
   getSurvey,
   listSurveys,
@@ -16,17 +14,19 @@ import {
   uploadFile,
   buildSurveyUrl,
   surveyToText,
-  textToSurvey,
-  parsedQuestionsToWire,
   MAX_JSONL_SIZE,
+  preflightJsonl,
+  parseJsonl,
   Action,
 } from "wjx-api-sdk";
 import { enrichSurveyListOutput, formatOutput } from "../lib/output.js";
 import { CliError, ensureApiSuccess, handleError } from "../lib/errors.js";
-import { getCredentials } from "../lib/auth.js";
-import { executeCommand, strictInt, requireField, getMerged, createCapturingFetch, printDryRunPreview, ensureJsonString, ensureStringArray } from "../lib/command-helpers.js";
-import { executeRuntimeCommand } from "../lib/runtime/executor.js";
+import { applyProfileCredentials, getCredentials, getProfileBaseUrl } from "../lib/auth.js";
+import { resolveProfile } from "../lib/profiles.js";
+import { strictInt, requireField, requirePositiveInt, requireEnum, getMerged, createCapturingFetch, printDryRunPreview, ensureNonEmptyJsonArray, ensureJsonObject, ensureStringArray } from "../lib/command-helpers.js";
+import { executeRuntimeAction, executeRuntimeCommand } from "../lib/runtime/executor.js";
 import { buildRequestPlan } from "../lib/runtime/request-plan.js";
+import { CLI_CLIENT_NAME, CLI_CLIENT_VERSION } from "../lib/client-info.js";
 
 export function registerSurveyCommands(program: Command): void {
   const survey = program.command("survey").description("问卷管理");
@@ -51,25 +51,34 @@ export function registerSurveyCommands(program: Command): void {
     .option("--end_time <n>", "结束时间（毫秒时间戳）", strictInt)
     .action(async (_opts, cmd) => {
       await executeRuntimeCommand(program, cmd, {
-        normalize: ({ values }) => ({
-          page_index: values.page,
-          page_size: values.page_size,
-          status: values.status,
-          atype: values.atype,
-          name_like: values.name_like,
-          sort: values.sort,
-          creater: values.creater,
-          folder: values.folder,
-          is_xingbiao: values.is_xingbiao,
-          query_all: values.query_all,
-          verify_status: values.verify_status,
-          time_type: values.time_type,
-          begin_time: values.begin_time,
-          end_time: values.end_time,
-        }),
-        buildPlans: (input) => [buildRequestPlan({
+        normalize: ({ values }) => {
+          if (values.page !== undefined) requirePositiveInt(values, "page");
+          if (values.page_size !== undefined) requirePositiveInt(values, "page_size");
+          if (values.status !== undefined) requireEnum(values, "status", [0, 1, 2, 3, 5]);
+          if (values.atype !== undefined) requireEnum(values, "atype", [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]);
+          if (values.sort !== undefined) requireEnum(values, "sort", [0, 1, 2, 3, 4, 5]);
+          if (values.time_type !== undefined) requireEnum(values, "time_type", [0, 1, 2]);
+          return {
+            page_index: values.page,
+            page_size: values.page_size,
+            status: values.status,
+            atype: values.atype,
+            name_like: values.name_like,
+            sort: values.sort,
+            creater: values.creater,
+            folder: values.folder,
+            is_xingbiao: values.is_xingbiao,
+            query_all: values.query_all,
+            verify_status: values.verify_status,
+            time_type: values.time_type,
+            begin_time: values.begin_time,
+            end_time: values.end_time,
+          };
+        },
+        buildPlans: (input, context) => [buildRequestPlan({
           service: "default",
           action: Action.LIST_SURVEYS,
+          url: context?.apiUrl,
           body: {
             action: Action.LIST_SURVEYS,
             page_index: input.page_index ?? 1,
@@ -95,7 +104,7 @@ export function registerSurveyCommands(program: Command): void {
     .option("--get_tags", "返回标签信息")
     .option("--showtitle", "显示标题")
     .action(async (_opts, cmd) => {
-      await executeCommand(program, cmd, getSurvey, (m) => {
+      await executeRuntimeAction(program, cmd, getSurvey, (m) => {
         requireField(m, "vid");
         return {
           vid: m.vid,
@@ -113,86 +122,16 @@ export function registerSurveyCommands(program: Command): void {
   // --- create ---
   survey
     .command("create")
-    .description("创建问卷")
-    .option("--title <s>", "问卷标题")
-    .option("--type <n>", "问卷类型", strictInt)
-    .option("--description <s>", "问卷描述")
-    .option("--questions <json>", "题目JSON数组")
-    .option("--optional_titles <json>", "允许设为选填的题目标题 JSON 数组")
-    .option("--source_vid <s>", "复制源问卷ID")
-    .option("--publish", "创建后发布")
-    .action(async (_opts, cmd) => {
-      await executeCommand(program, cmd, createSurvey, (m) => {
-        requireField(m, "title");
-        return {
-          title: m.title,
-          type: m.type ?? 0,
-          description: m.description ?? "",
-          questions: ensureJsonString(m.questions, "questions") ?? "[]",
-          optionalTitles: ensureStringArray(m.optional_titles, "optional_titles"),
-          source_vid: m.source_vid,
-          publish: m.publish,
-        };
-      });
-    });
-
-  // --- create-by-text ---
-  survey
-    .command("create-by-text")
-    .description("⚠️ 已弃用：用 DSL 文本创建问卷，仅作向后兼容保留。请使用 create-by-json（支持 70+ 题型，无 DSL 转义陷阱）")
-    .option("--text <s>", "DSL 格式问卷文本")
-    .option("--file <path>", "从文件读取 DSL 文本")
-    .option("--type <n>", "问卷类型：1=调查, 2=测评, 3=投票, 6=考试, 7=表单, 10=量表, 11=民主测评", strictInt)
-    .option("--publish", "创建后发布")
-    .option("--creater <s>", "创建者子账号")
-    .action(async (_opts, cmd) => {
-      await executeCommand(program, cmd, createSurveyByText, (merged) => {
-        // Resolve DSL text: --text > --file > stdin.text
-        let dslText: string | undefined;
-        if (typeof merged.text === "string" && merged.text) {
-          dslText = merged.text;
-        } else if (typeof merged.file === "string" && merged.file) {
-          try {
-            dslText = readFileSync(merged.file as string, "utf8");
-          } catch {
-            throw new CliError("INPUT_ERROR", `无法读取文件: ${merged.file}`);
-          }
-        }
-        if (!dslText) throw new CliError("INPUT_ERROR", "必须提供 --text 或 --file 参数");
-        return {
-          text: dslText,
-          atype: merged.type as number | undefined,
-          publish: merged.publish as boolean | undefined,
-          creater: merged.creater as string | undefined,
-        };
-      }, {
-        deprecationWarning: "[wjx] ⚠️ create-by-text 已弃用，建议改用 create-by-json： wjx survey create-by-json --file <path>.jsonl",
-        dryRunPreview: (input) => {
-          const parsed = textToSurvey(String(input.text));
-          const { questions, skippedParagraphs } = parsedQuestionsToWire(parsed.questions);
-          return {
-            parsed_title: parsed.title,
-            parsed_description: parsed.description,
-            question_count: questions.length,
-            skipped_paragraphs: skippedParagraphs.map((question) => question.title),
-          };
-        },
-      });
-    });
-
-  // --- create-by-json ---
-  survey
-    .command("create-by-json")
     .description("用 JSONL 格式创建问卷（支持 70+ 题型，推荐 AI Agent 使用）")
     .option("--jsonl <s>", "JSONL 格式问卷文本")
     .option("--file <path>", "从文件读取 JSONL 文本")
     .option("--title <s>", "覆盖 JSONL 中的问卷标题")
     .option("--type <n>", "问卷类型：1=调查, 2=测评, 3=投票, 6=考试, 7=表单, 10=量表, 11=民主测评", strictInt)
     .option("--optional_titles <json>", "允许设为选填的题目标题 JSON 数组")
-    .option("--publish", "创建后发布")
+    .option("--publish", "显式要求创建后发布；普通题型默认发布，纯框架题型默认保持草稿")
     .option("--creater <s>", "创建者子账号")
     .action(async (_opts, cmd) => {
-      await executeCommand(program, cmd, createSurveyByJson, (merged) => {
+      await executeRuntimeAction(program, cmd, createSurveyByJson, (merged) => {
         // Resolve JSONL text: --jsonl > --file > stdin.jsonl
         let jsonlText: string | undefined;
         if (typeof merged.jsonl === "string" && merged.jsonl) {
@@ -200,8 +139,9 @@ export function registerSurveyCommands(program: Command): void {
         } else if (typeof merged.file === "string" && merged.file) {
           try {
             const raw = readFileSync(merged.file as string, "utf8");
-            if (raw.length > MAX_JSONL_SIZE) {
-              throw new CliError("INPUT_ERROR", `文件大小 ${raw.length} 字节超过上限 ${MAX_JSONL_SIZE}`);
+            const byteLength = Buffer.byteLength(raw, "utf8");
+            if (byteLength > MAX_JSONL_SIZE) {
+              throw new CliError("INPUT_ERROR", `文件大小 ${byteLength} 字节超过上限 ${MAX_JSONL_SIZE}`);
             }
             jsonlText = raw;
           } catch (e) {
@@ -209,7 +149,15 @@ export function registerSurveyCommands(program: Command): void {
             throw new CliError("INPUT_ERROR", `无法读取文件: ${merged.file}`);
           }
         }
-        if (!jsonlText) throw new CliError("INPUT_ERROR", "必须提供 --jsonl 或 --file 参数");
+        if (!jsonlText || !jsonlText.trim()) throw new CliError("INPUT_ERROR", "必须提供 --jsonl 或 --file 参数");
+        const inputByteLength = Buffer.byteLength(jsonlText.trim(), "utf8");
+        if (inputByteLength > MAX_JSONL_SIZE) {
+          throw new CliError("INPUT_ERROR", `JSONL 大小 ${inputByteLength} 字节超过上限 ${MAX_JSONL_SIZE}`);
+        }
+        // Validate the local JSONL shape before authentication or transport so
+        // malformed agent input is always reported as INPUT_ERROR.
+        parseJsonl(jsonlText);
+        preflightJsonl(jsonlText);
         return {
           jsonl: jsonlText,
           title: merged.title as string | undefined,
@@ -218,6 +166,11 @@ export function registerSurveyCommands(program: Command): void {
           publish: merged.publish as boolean | undefined,
           creater: merged.creater as string | undefined,
         };
+      }, {
+        requestOptions: {
+          clientName: CLI_CLIENT_NAME,
+          clientVersion: CLI_CLIENT_VERSION,
+        },
       });
     });
 
@@ -229,7 +182,7 @@ export function registerSurveyCommands(program: Command): void {
     .option("--username <s>", "用户名")
     .option("--completely", "彻底删除")
     .action(async (_opts, cmd) => {
-      await executeCommand(program, cmd, deleteSurvey, (m) => {
+      await executeRuntimeAction(program, cmd, deleteSurvey, (m) => {
         requireField(m, "vid");
         requireField(m, "username");
         return {
@@ -248,13 +201,14 @@ export function registerSurveyCommands(program: Command): void {
     .option("--state <n>", "目标状态", strictInt)
     .option("--status <n>", "目标状态（--state 的别名，兼容直觉命名）", strictInt)
     .action(async (_opts, cmd) => {
-      await executeCommand(program, cmd, updateSurveyStatus, (m) => {
+      await executeRuntimeAction(program, cmd, updateSurveyStatus, (m) => {
         requireField(m, "vid");
         // 接受 --state 或 --status，任一即可
         const state = m.state ?? m.status;
         if (state === undefined || state === null) {
           throw new CliError("INPUT_ERROR", "Missing required option: --state（或 --status）");
         }
+        requireEnum({ state }, "state", [1, 2, 3]);
         return { vid: m.vid, state };
       });
     });
@@ -265,7 +219,7 @@ export function registerSurveyCommands(program: Command): void {
     .description("获取问卷设置")
     .option("--vid <n>", "问卷ID", strictInt)
     .action(async (_opts, cmd) => {
-      await executeCommand(program, cmd, getSurveySettings, (m) => {
+      await executeRuntimeAction(program, cmd, getSurveySettings, (m) => {
         requireField(m, "vid");
         return { vid: m.vid };
       });
@@ -282,15 +236,15 @@ export function registerSurveyCommands(program: Command): void {
     .option("--sojumpparm_setting <json>", "参数设置JSON")
     .option("--time_setting <json>", "时间设置JSON")
     .action(async (_opts, cmd) => {
-      await executeCommand(program, cmd, updateSurveySettings, (m) => {
+      await executeRuntimeAction(program, cmd, updateSurveySettings, (m) => {
         requireField(m, "vid");
         return {
           vid: m.vid,
-          api_setting: ensureJsonString(m.api_setting, "api_setting"),
-          after_submit_setting: ensureJsonString(m.after_submit_setting, "after_submit_setting"),
-          msg_setting: ensureJsonString(m.msg_setting, "msg_setting"),
-          sojumpparm_setting: ensureJsonString(m.sojumpparm_setting, "sojumpparm_setting"),
-          time_setting: ensureJsonString(m.time_setting, "time_setting"),
+          api_setting: ensureJsonObject(m.api_setting, "api_setting"),
+          after_submit_setting: ensureJsonObject(m.after_submit_setting, "after_submit_setting"),
+          msg_setting: ensureJsonObject(m.msg_setting, "msg_setting"),
+          sojumpparm_setting: ensureJsonObject(m.sojumpparm_setting, "sojumpparm_setting"),
+          time_setting: ensureJsonObject(m.time_setting, "time_setting"),
         };
       });
     });
@@ -301,7 +255,7 @@ export function registerSurveyCommands(program: Command): void {
     .description("获取题目标签")
     .option("--username <s>", "用户名")
     .action(async (_opts, cmd) => {
-      await executeCommand(program, cmd, getQuestionTags, (m) => {
+      await executeRuntimeAction(program, cmd, getQuestionTags, (m) => {
         requireField(m, "username");
         return { username: m.username };
       });
@@ -313,7 +267,7 @@ export function registerSurveyCommands(program: Command): void {
     .description("获取标签详情")
     .option("--tag_id <n>", "标签ID", strictInt)
     .action(async (_opts, cmd) => {
-      await executeCommand(program, cmd, getTagDetails, (m) => {
+      await executeRuntimeAction(program, cmd, getTagDetails, (m) => {
         requireField(m, "tag_id", "tag_id");
         return { tag_id: m.tag_id };
       });
@@ -326,7 +280,7 @@ export function registerSurveyCommands(program: Command): void {
     .option("--username <s>", "用户名")
     .option("--vid <n>", "指定问卷ID", strictInt)
     .action(async (_opts, cmd) => {
-      await executeCommand(program, cmd, clearRecycleBin, (m) => {
+      await executeRuntimeAction(program, cmd, clearRecycleBin, (m) => {
         requireField(m, "username");
         return { username: m.username, vid: m.vid };
       });
@@ -339,7 +293,7 @@ export function registerSurveyCommands(program: Command): void {
     .option("--file_name <s>", "文件名")
     .option("--file <s>", "文件Base64内容")
     .action(async (_opts, cmd) => {
-      await executeCommand(program, cmd, uploadFile, (m) => {
+      await executeRuntimeAction(program, cmd, uploadFile, (m) => {
         requireField(m, "file_name");
         requireField(m, "file");
         return { file_name: m.file_name, file: m.file };
@@ -360,7 +314,12 @@ export function registerSurveyCommands(program: Command): void {
 
         if (program.opts().dryRun) {
           const { fetchImpl, getCapturedRequest } = createCapturingFetch();
-          await getSurvey({ vid: merged.vid as number }, { apiKey: "dry-run" }, fetchImpl);
+          const profile = resolveProfile({ profile: program.opts().profile });
+          await getSurvey(
+            { vid: merged.vid as number },
+            applyProfileCredentials({ apiKey: "dry-run" }, profile),
+            fetchImpl,
+          );
           printDryRunPreview(getCapturedRequest(), program.opts());
           return;
         }
@@ -372,13 +331,13 @@ export function registerSurveyCommands(program: Command): void {
         ensureApiSuccess(result);
 
         const data = (result as unknown as Record<string, unknown>).data;
-        if (!data) {
-          throw new CliError("API_ERROR", "API 返回数据为空");
+        if (!data || typeof data !== "object" || !Array.isArray((data as Record<string, unknown>).questions)) {
+          throw new CliError("API_ERROR", "API 返回问卷数据缺少 questions 数组");
         }
         const text = surveyToText(data as Parameters<typeof surveyToText>[0]);
         const globalOpts = program.opts();
 
-        if (merged.raw || globalOpts.table) {
+        if (merged.raw || globalOpts.format === "table") {
           console.log(text);
         } else {
           formatOutput({ vid: merged.vid, text }, globalOpts);
@@ -391,7 +350,7 @@ export function registerSurveyCommands(program: Command): void {
   // --- jsonl-template ---
   survey
     .command("jsonl-template")
-    .description("输出 create-by-json 可直接使用的 JSONL 骨架（按 --type 切换调查/投票/考试/表单等）")
+    .description("输出 create 可直接使用的 JSONL 骨架（按 --type 切换调查/投票/考试/表单等）")
     .option("--type <n>", "问卷类型：1=调查（默认）, 2=测评, 3=投票, 6=考试, 7=表单, 10=量表", strictInt)
     .option("--raw", "直接输出 JSONL 文本（不包裹 JSON），便于重定向到文件")
     .action(async (_opts, cmd) => {
@@ -400,7 +359,7 @@ export function registerSurveyCommands(program: Command): void {
         const atype = (merged.type as number | undefined) ?? 1;
         const jsonl = buildJsonlTemplate(atype);
         const globalOpts = program.opts();
-        if (merged.raw || globalOpts.table) {
+        if (merged.raw || globalOpts.format === "table") {
           process.stdout.write(jsonl);
           if (!jsonl.endsWith("\n")) process.stdout.write("\n");
         } else {
@@ -428,11 +387,17 @@ export function registerSurveyCommands(program: Command): void {
           throw new CliError("INPUT_ERROR", `无效的 mode: "${mode}"，可选值: ${validModes.join(", ")}`);
         }
 
+        if (mode === "edit" &&
+          (typeof merged.activity !== "number" || !Number.isInteger(merged.activity) || merged.activity <= 0)) {
+          throw new CliError("INPUT_ERROR", "edit 模式的 --activity 必须是正整数");
+        }
+
+        const profile = resolveProfile({ profile: program.opts().profile });
         const url = buildSurveyUrl({
           mode: mode as "create" | "edit",
           name: merged.name as string | undefined,
           activity: merged.activity as number | undefined,
-        });
+        }, getProfileBaseUrl(profile));
         const globalOpts = program.opts();
         formatOutput({ url }, globalOpts);
       } catch (e) {
@@ -474,6 +439,10 @@ const TEMPLATE_QUESTIONS_BY_ATYPE: Record<number, Array<Record<string, unknown>>
     { qtype: "矩阵量表", title: "请按以下维度打分（1-7 分）", rowtitle: ["条目 1", "条目 2", "条目 3"], select: ["1", "2", "3", "4", "5", "6", "7"] },
     { qtype: "量表题", title: "总体感受（1-7 分）", select: ["1", "2", "3", "4", "5", "6", "7"] },
   ],
+  11: [
+    { qtype: "矩阵单选", title: "请对以下维度进行民主测评", rowtitle: ["工作表现", "协作能力", "责任意识"], select: ["优秀", "良好", "一般", "待改进"] },
+    { qtype: "单选", title: "综合评价", select: ["优秀", "良好", "一般", "待改进"] },
+  ],
 };
 
 const TEMPLATE_TITLE_BY_ATYPE: Record<number, string> = {
@@ -483,14 +452,15 @@ const TEMPLATE_TITLE_BY_ATYPE: Record<number, string> = {
   6: "示例考试（请改成你的标题）",
   7: "示例表单（请改成你的标题）",
   10: "示例量表（请改成你的标题）",
+  11: "示例民主测评（请改成你的标题）",
 };
 
 function buildJsonlTemplate(atype: number): string {
-  const validAtypes = new Set([1, 2, 3, 6, 7, 10]);
+  const validAtypes = new Set([1, 2, 3, 6, 7, 10, 11]);
   if (!validAtypes.has(atype)) {
     throw new CliError(
       "INPUT_ERROR",
-      `无效的 --type "${atype}"，可选值：1=调查, 2=测评, 3=投票, 6=考试, 7=表单, 10=量表`,
+      `无效的 --type "${atype}"，可选值：1=调查, 2=测评, 3=投票, 6=考试, 7=表单, 10=量表, 11=民主测评`,
     );
   }
   const meta: Record<string, unknown> = {

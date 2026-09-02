@@ -1,962 +1,273 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-
 import {
-  createSurvey,
-  createSurveyByText,
+  createSurveyByJson,
   getSurvey,
   listSurveys,
+  submitResponse,
   updateSurveyStatus,
   uploadFile,
-  submitResponse,
-  bindActivity,
-  querySurveyBinding,
-  querySubAccounts,
-  getWjxCredentials,
-  validateQuestionsJson,
   getWjxApiUrl,
-  Action,
+  callWjxApi,
 } from "../dist/index.js";
 
 const credentials = { apiKey: "test-token" };
-const validInput = {
-  title: "测试问卷",
-  type: 0,
-  description: "描述",
-  questions: '[{"q_index":1,"q_type":3,"q_title":"题目"}]',
-};
 
 function mockFetch(responseBody, status = 200) {
-  let capturedUrl, capturedInit;
-  const fn = async (input, init) => {
-    capturedUrl = input;
-    capturedInit = init;
+  let captured;
+  const fetch = async (input, init) => {
+    captured = { url: String(input), init };
     return new Response(JSON.stringify(responseBody), {
       status,
       statusText: status === 200 ? "OK" : "Error",
       headers: { "Content-Type": "application/json" },
     });
   };
-  fn.captured = () => ({ url: capturedUrl, init: capturedInit });
-  return fn;
+  fetch.captured = () => captured;
+  return fetch;
 }
 
-/** Assert Bearer auth header and absence of old sign/appid/ts fields. */
-function assertBearerAuth(init, body) {
-  assert.equal(init.headers["Authorization"], "Bearer test-token");
-  assert.equal("sign" in body, false, "sign should not be in body");
-  assert.equal("appid" in body, false, "appid should not be in body");
-  assert.equal("ts" in body, false, "ts should not be in body");
-}
-
-// ─── validateQuestionsJson ──────────────────────────────────────────
-
-describe("validateQuestionsJson", () => {
-  it("should accept valid JSON array with q_index and q_type", () => {
-    assert.doesNotThrow(() => validateQuestionsJson('[{"q_index":1,"q_type":3}]'));
-  });
-
-  it("should accept empty JSON array", () => {
-    assert.doesNotThrow(() => validateQuestionsJson("[]"));
-  });
-
-  it("should reject valid JSON object (not an array)", () => {
-    assert.throws(
-      () => validateQuestionsJson('{"key":"value"}'),
-      /must be a JSON array/,
-    );
-  });
-
-  it("should throw on invalid JSON", () => {
-    assert.throws(
-      () => validateQuestionsJson("not json"),
-      /questions must be valid JSON/,
-    );
-  });
-
-  it("should throw on malformed JSON", () => {
-    assert.throws(
-      () => validateQuestionsJson("[{incomplete"),
-      /questions must be valid JSON/,
-    );
-  });
-
-  it("should reject question missing q_index", () => {
-    assert.throws(
-      () => validateQuestionsJson('[{"q_type":3}]'),
-      /questions\[0\] missing required field "q_index"/,
-    );
-  });
-
-  it("should reject question missing q_type", () => {
-    assert.throws(
-      () => validateQuestionsJson('[{"q_index":1}]'),
-      /questions\[0\] missing required field "q_type"/,
-    );
-  });
-
-  it("should reject question with string q_index", () => {
-    assert.throws(
-      () => validateQuestionsJson('[{"q_index":"1","q_type":3}]'),
-      /questions\[0\] missing required field "q_index"/,
-    );
-  });
-
-  it("should validate all questions in the array", () => {
-    assert.throws(
-      () => validateQuestionsJson('[{"q_index":1,"q_type":3},{"q_index":2}]'),
-      /questions\[1\] missing required field "q_type"/,
-    );
-  });
-});
-
-// ─── getWjxCredentials ──────────────────────────────────────────────
-
-describe("getWjxCredentials", () => {
-  it("should return credentials when WJX_API_KEY is set", () => {
-    const env = { WJX_API_KEY: "my-token" };
-    const result = getWjxCredentials(env);
-    assert.equal(result.apiKey, "my-token");
-  });
-
-  it("should throw when WJX_API_KEY is missing", () => {
-    assert.throws(
-      () => getWjxCredentials({}),
-      /WJX_API_KEY must be set/,
-    );
-  });
-
-  it("should throw when WJX_API_KEY is empty string", () => {
-    assert.throws(
-      () => getWjxCredentials({ WJX_API_KEY: "" }),
-      /WJX_API_KEY must be set/,
-    );
-  });
-});
-
-// ─── createSurvey ───────────────────────────────────────────────────
-
-describe("createSurvey", () => {
-  it("should POST to WJX API URL with Bearer auth", async () => {
-    const fetch = mockFetch({ result: true, data: {} });
-    await createSurvey(validInput, credentials, fetch);
-
+describe("createSurveyByJson", () => {
+  it("posts JSONL to action 1000106 without changing question fields", async () => {
+    const jsonl = [
+      { qtype: "问卷基础信息", title: "客户满意度" },
+      { qtype: "签名题", title: "请签名", issignature: "1" },
+    ].map(JSON.stringify).join("\n");
+    const fetch = mockFetch({ result: true, data: { vid: 123 } });
+    const result = await createSurveyByJson({ jsonl }, credentials, fetch);
     const { url, init } = fetch.captured();
-    assert.ok(url.startsWith(getWjxApiUrl()), `URL should start with ${getWjxApiUrl()}`);
-    assert.equal(init.method, "POST");
-    assert.equal(init.headers["Content-Type"], "application/json");
-    assert.equal(init.headers["Authorization"], "Bearer test-token");
+    const body = JSON.parse(init.body);
+
+    assert.equal(result.data.vid, 123);
+    assert.ok(url.startsWith(getWjxApiUrl()));
+    assert.equal(body.action, "1000106");
+    assert.equal(body.title, "客户满意度");
+    assert.match(body.surveydatajson, /"qtype":"签名题"/);
+    assert.match(body.surveydatajson, /"issignature":"1"/);
   });
 
-  it("should use Bearer auth and not include sign/appid/ts in body", async () => {
-    const fetch = mockFetch({ result: true, data: {} });
-    await createSurvey(validInput, credentials, fetch);
-
-    const body = JSON.parse(fetch.captured().init.body);
-    assertBearerAuth(fetch.captured().init, body);
-    assert.equal(body.action, "1000101");
+  it("rejects an empty JSONL document before transport", async () => {
+    let calls = 0;
+    const fetch = async () => { calls += 1; return new Response("{}"); };
+    await assert.rejects(() => createSurveyByJson({ jsonl: "\ufeff\n" }, credentials, fetch), /jsonl must not be empty/);
+    assert.equal(calls, 0);
   });
 
-  it("should return parsed API success response", async () => {
-    const mockResponse = { result: true, data: { surveyId: 999 } };
-    const result = await createSurvey(validInput, credentials, mockFetch(mockResponse));
-    assert.deepEqual(result, mockResponse);
-  });
-
-  it("should return parsed API error response", async () => {
-    const mockResponse = { result: false, errormsg: "参数错误" };
-    const result = await createSurvey(validInput, credentials, mockFetch(mockResponse));
-    assert.deepEqual(result, mockResponse);
-  });
-
-  it("should throw on HTTP error status", async () => {
+  it("rejects JSONL over the UTF-8 byte limit before transport", async () => {
+    let calls = 0;
+    const fetch = async () => { calls += 1; return new Response("{}"); };
+    const jsonl = "测".repeat(400_000);
+    assert.ok(jsonl.length < 1_000_000);
+    assert.ok(Buffer.byteLength(jsonl, "utf8") > 1_000_000);
     await assert.rejects(
-      () => createSurvey(validInput, credentials, mockFetch("Internal Error", 500)),
-      /WJX API request failed with 500/,
+      () => createSurveyByJson({ jsonl }, credentials, fetch),
+      /exceeds maximum size/,
     );
+    assert.equal(calls, 0);
   });
 
-  it("should throw on 404 status", async () => {
-    await assert.rejects(
-      () => createSurvey(validInput, credentials, mockFetch("Not Found", 404)),
-      /WJX API request failed with 404/,
-    );
-  });
+  it("sends an explicit client identity when provided by the caller", async () => {
+    const jsonl = [
+      { qtype: "问卷基础信息", title: "版本识别测试" },
+      { qtype: "单选", title: "选择一个", select: ["A", "B"] },
+    ].map(JSON.stringify).join("\n");
+    const fetch = mockFetch({ result: true, data: { vid: 456 } });
 
-  it("should pass optional creater when provided", async () => {
-    const fetch = mockFetch({ result: true, data: {} });
-    await createSurvey(
-      { ...validInput, creater: "sub_user1" },
-      credentials, fetch,
-    );
-
-    const body = JSON.parse(fetch.captured().init.body);
-    assert.equal(body.creater, "sub_user1");
-  });
-
-  it("should not include creater when not provided", async () => {
-    const fetch = mockFetch({ result: true, data: {} });
-    await createSurvey(validInput, credentials, fetch);
-
-    const body = JSON.parse(fetch.captured().init.body);
-    assert.equal("creater" in body, false);
-  });
-});
-
-// ─── getSurvey ──────────────────────────────────────────────────────
-
-describe("getSurvey", () => {
-  it("should POST with action 1000001 and vid", async () => {
-    const fetch = mockFetch({ result: true, data: { vid: 12345 } });
-    await getSurvey({ vid: 12345 }, credentials, fetch);
-
-    const body = JSON.parse(fetch.captured().init.body);
-    assert.equal(body.action, "1000001");
-    assert.equal(body.vid, 12345);
-    assertBearerAuth(fetch.captured().init, body);
-  });
-
-  it("should default get_questions and get_items to true", async () => {
-    const fetch = mockFetch({ result: true, data: {} });
-    await getSurvey({ vid: 1 }, credentials, fetch);
-
-    const body = JSON.parse(fetch.captured().init.body);
-    assert.equal(body.get_questions, true);
-    assert.equal(body.get_items, true);
-  });
-
-  it("should allow disabling get_questions and get_items", async () => {
-    const fetch = mockFetch({ result: true, data: {} });
-    await getSurvey(
-      { vid: 1, get_questions: false, get_items: false },
+    await createSurveyByJson(
+      { jsonl },
       credentials,
       fetch,
+      { clientName: "wjx-cli", clientVersion: "0.4.1" },
     );
 
-    const body = JSON.parse(fetch.captured().init.body);
-    assert.equal(body.get_questions, false);
-    assert.equal(body.get_items, false);
+    assert.equal(fetch.captured().init.headers["X-WJX-Client"], "wjx-cli");
+    assert.equal(fetch.captured().init.headers["X-WJX-Client-Version"], "0.4.1");
   });
 
-  it("should return parsed response", async () => {
-    const mockResponse = { result: true, data: { vid: 123, title: "测试" } };
-    const result = await getSurvey({ vid: 123 }, credentials, mockFetch(mockResponse));
-    assert.deepEqual(result, mockResponse);
-  });
+  it("sends the SDK identity by default for server-side version gates", async () => {
+    const jsonl = [
+      { qtype: "问卷基础信息", title: "SDK 默认身份测试" },
+      { qtype: "单选", title: "选择一个", select: ["A", "B"] },
+    ].map(JSON.stringify).join("\n");
+    const fetch = mockFetch({ result: true, data: { vid: 789 } });
 
-  it("should throw on HTTP error", async () => {
-    await assert.rejects(
-      () => getSurvey({ vid: 1 }, credentials, mockFetch("err", 500)),
-      /WJX API request failed with 500/,
-    );
-  });
+    await createSurveyByJson({ jsonl }, credentials, fetch);
 
-  it("should pass optional get_exts, get_setting, get_page_cut, get_tags, showtitle", async () => {
-    const fetch = mockFetch({ result: true, data: {} });
-    await getSurvey(
-      { vid: 1, get_exts: true, get_setting: true, get_page_cut: true, get_tags: true, showtitle: true },
-      credentials, fetch,
-    );
-
-    const body = JSON.parse(fetch.captured().init.body);
-    assert.equal(body.get_exts, true);
-    assert.equal(body.get_setting, true);
-    assert.equal(body.get_page_cut, true);
-    assert.equal(body.get_tags, true);
-    assert.equal(body.showtitle, true);
-  });
-
-  it("should not include optional get_survey params when not provided", async () => {
-    const fetch = mockFetch({ result: true, data: {} });
-    await getSurvey({ vid: 1 }, credentials, fetch);
-
-    const body = JSON.parse(fetch.captured().init.body);
-    assert.equal("get_exts" in body, false);
-    assert.equal("get_setting" in body, false);
-    assert.equal("get_page_cut" in body, false);
-    assert.equal("get_tags" in body, false);
-    assert.equal("showtitle" in body, false);
+    assert.equal(fetch.captured().init.headers["X-WJX-Client"], "wjx-api-sdk");
+    assert.equal(fetch.captured().init.headers["X-WJX-Client-Version"], "0.4.1");
   });
 });
 
-// ─── listSurveys ────────────────────────────────────────────────────
+describe("survey read and lifecycle clients", () => {
+  it("gets a survey with default question and item flags", async () => {
+    const fetch = mockFetch({ result: true, data: { vid: 9 } });
+    await getSurvey({ vid: 9 }, credentials, fetch);
+    const body = JSON.parse(fetch.captured().init.body);
+    assert.deepEqual({ action: body.action, vid: body.vid, get_questions: body.get_questions, get_items: body.get_items }, {
+      action: "1000001", vid: 9, get_questions: true, get_items: true,
+    });
+  });
 
-describe("listSurveys", () => {
-  it("should POST with action 1000002 and Bearer auth", async () => {
-    const fetch = mockFetch({ result: true, data: { total_count: 0, activitys: {} } });
-    await listSurveys({}, credentials, fetch);
-
+  it("lists surveys with paging filters", async () => {
+    const fetch = mockFetch({ result: true, data: {} });
+    await listSurveys({ page_index: 2, page_size: 50, status: 1, name_like: "客户" }, credentials, fetch);
     const body = JSON.parse(fetch.captured().init.body);
     assert.equal(body.action, "1000002");
-    assertBearerAuth(fetch.captured().init, body);
-  });
-
-  it("should default page_index=1 and page_size=10", async () => {
-    const fetch = mockFetch({ result: true, data: {} });
-    await listSurveys({}, credentials, fetch);
-
-    const body = JSON.parse(fetch.captured().init.body);
-    assert.equal(body.page_index, 1);
-    assert.equal(body.page_size, 10);
-  });
-
-  it("should pass optional filters", async () => {
-    const fetch = mockFetch({ result: true, data: {} });
-    await listSurveys(
-      { status: 1, atype: 3, name_like: "test", sort: 2 },
-      credentials,
-      fetch,
-    );
-
-    const body = JSON.parse(fetch.captured().init.body);
+    assert.equal(body.page_index, 2);
+    assert.equal(body.page_size, 50);
     assert.equal(body.status, 1);
-    assert.equal(body.atype, 3);
-    assert.equal(body.name_like, "test");
-    assert.equal(body.sort, 2);
+    assert.equal(body.name_like, "客户");
   });
 
-  it("should not include undefined optional fields in body", async () => {
-    const fetch = mockFetch({ result: true, data: {} });
-    await listSurveys({}, credentials, fetch);
+  it("updates status and uploads files without retries", async () => {
+    const statusFetch = mockFetch({ result: true, data: {} });
+    await updateSurveyStatus({ vid: 9, state: 1 }, credentials, statusFetch);
+    assert.equal(JSON.parse(statusFetch.captured().init.body).action, "1000102");
 
-    const body = JSON.parse(fetch.captured().init.body);
-    assert.equal("status" in body, false);
-    assert.equal("atype" in body, false);
-    assert.equal("name_like" in body, false);
-    assert.equal("sort" in body, false);
-  });
-
-  it("should pass new optional filters (creater, folder, verify_status, etc.)", async () => {
-    const fetch = mockFetch({ result: true, data: {} });
-    await listSurveys(
-      { creater: "sub1", folder: "测试", is_xingbiao: true, query_all: true, verify_status: 1, time_type: 0, begin_time: 1700000000000, end_time: 1700100000000 },
-      credentials, fetch,
-    );
-
-    const body = JSON.parse(fetch.captured().init.body);
-    assert.equal(body.creater, "sub1");
-    assert.equal(body.folder, "测试");
-    assert.equal(body.is_xingbiao, true);
-    assert.equal(body.query_all, true);
-    assert.equal(body.verify_status, 1);
-    assert.equal(body.time_type, 0);
-    assert.equal(body.begin_time, 1700000000000);
-    assert.equal(body.end_time, 1700100000000);
-  });
-
-  it("should not include new optional fields when not provided", async () => {
-    const fetch = mockFetch({ result: true, data: {} });
-    await listSurveys({}, credentials, fetch);
-
-    const body = JSON.parse(fetch.captured().init.body);
-    assert.equal("creater" in body, false);
-    assert.equal("folder" in body, false);
-    assert.equal("is_xingbiao" in body, false);
-    assert.equal("query_all" in body, false);
-    assert.equal("verify_status" in body, false);
-    assert.equal("time_type" in body, false);
-    assert.equal("begin_time" in body, false);
-    assert.equal("end_time" in body, false);
+    const uploadFetch = mockFetch({ result: true, data: {} });
+    await uploadFile({ file_name: "proof.png", file: "aGVsbG8=" }, credentials, uploadFetch);
+    const body = JSON.parse(uploadFetch.captured().init.body);
+    assert.equal(body.action, "1000104");
+    assert.equal(body.file_name, "proof.png");
   });
 });
 
-// ─── updateSurveyStatus ─────────────────────────────────────────────
-
-describe("updateSurveyStatus", () => {
-  it("should POST with action 1000102 and Bearer auth", async () => {
-    const fetch = mockFetch({ result: true, data: { vid: "123", state: 1 } });
-    await updateSurveyStatus({ vid: 123, state: 1 }, credentials, fetch);
-
-    const body = JSON.parse(fetch.captured().init.body);
-    assert.equal(body.action, "1000102");
-    assert.equal(body.vid, 123);
-    assert.equal(body.state, 1);
-    assertBearerAuth(fetch.captured().init, body);
-  });
-
-  it("should support state=2 (pause)", async () => {
-    const fetch = mockFetch({ result: true, data: { vid: "1", state: 2 } });
-    const result = await updateSurveyStatus({ vid: 1, state: 2 }, credentials, fetch);
-    assert.deepEqual(result, { result: true, data: { vid: "1", state: 2 } });
-  });
-
-  it("should support state=3 (delete)", async () => {
-    const fetch = mockFetch({ result: true, data: { vid: "1", state: 3 } });
-    const result = await updateSurveyStatus({ vid: 1, state: 3 }, credentials, fetch);
-    assert.deepEqual(result, { result: true, data: { vid: "1", state: 3 } });
-  });
-
-  it("should throw on HTTP error", async () => {
-    await assert.rejects(
-      () => updateSurveyStatus({ vid: 1, state: 1 }, credentials, mockFetch("err", 500)),
-      /WJX API request failed with 500/,
-    );
-  });
-});
-
-// ─── traceid handling ────────────────────────────────────────────────
-
-describe("traceid handling", () => {
-  it("createSurvey should NOT include traceid in POST body", async () => {
-    const fetch = mockFetch({ result: true, data: {} });
-    await createSurvey(validInput, credentials, fetch);
-
-    const body = JSON.parse(fetch.captured().init.body);
-    assert.equal("traceid" in body, false, "traceid must not appear in POST body");
-  });
-
-  it("createSurvey should include traceid in URL query string", async () => {
-    const fetch = mockFetch({ result: true, data: {} });
-    await createSurvey(validInput, credentials, fetch);
-
-    const url = fetch.captured().url;
-    assert.ok(url.includes("traceid="), "URL should contain traceid query param");
-  });
-
-  it("getSurvey should NOT include traceid in POST body", async () => {
-    const fetch = mockFetch({ result: true, data: {} });
-    await getSurvey({ vid: 1 }, credentials, fetch);
-
-    const body = JSON.parse(fetch.captured().init.body);
-    assert.equal("traceid" in body, false, "traceid must not appear in POST body");
-  });
-
-  it("getSurvey should include traceid in URL query string", async () => {
-    const fetch = mockFetch({ result: true, data: {} });
-    await getSurvey({ vid: 1 }, credentials, fetch);
-
-    const url = fetch.captured().url;
-    assert.ok(url.includes("traceid="), "URL should contain traceid query param");
-  });
-
-  it("listSurveys should NOT include traceid in POST body", async () => {
-    const fetch = mockFetch({ result: true, data: {} });
-    await listSurveys({}, credentials, fetch);
-
-    const body = JSON.parse(fetch.captured().init.body);
-    assert.equal("traceid" in body, false, "traceid must not appear in POST body");
-  });
-
-  it("updateSurveyStatus should NOT include traceid in POST body", async () => {
-    const fetch = mockFetch({ result: true, data: {} });
-    await updateSurveyStatus({ vid: 1, state: 1 }, credentials, fetch);
-
-    const body = JSON.parse(fetch.captured().init.body);
-    assert.equal("traceid" in body, false, "traceid must not appear in POST body");
-  });
-});
-
-// ─── retry behavior ─────────────────────────────────────────────────
-
-describe("retry behavior", () => {
-  it("submitResponse should not retry even when caller provides retryBudget", async () => {
-    let callCount = 0;
+describe("submitResponse retry safety", () => {
+  it("never retries a response submission even when retryBudget is provided", async () => {
+    let calls = 0;
     const fetch = async () => {
-      callCount++;
-      return new Response("err", { status: 500, statusText: "Error" });
+      calls += 1;
+      return new Response(JSON.stringify({ result: true, data: {} }), {
+        status: 500,
+        statusText: "Server Error",
+        headers: { "Content-Type": "application/json" },
+      });
     };
 
     await assert.rejects(
       () => submitResponse(
-        { vid: 1, inputcosttime: 1, submitdata: "1$1" },
+        { vid: 42, inputcosttime: 30, submitdata: "1$1" },
         credentials,
         fetch,
-        { retryBudget: 2 },
+        { retryBudget: 3 },
       ),
-      /WJX API request failed with 500/,
+      /500 Server Error/,
     );
-    assert.equal(callCount, 1, "submitResponse must never retry a write");
+    assert.equal(calls, 1);
   });
+});
 
-  it("createSurvey should NOT retry on 500 (maxRetries=0)", async () => {
-    let callCount = 0;
-    const fetch = async (input, init) => {
-      callCount++;
-      return new Response(JSON.stringify("Server Error"), {
-        status: 500,
-        statusText: "Internal Server Error",
-      });
-    };
-
-    await assert.rejects(
-      () => createSurvey(validInput, credentials, fetch),
-      /WJX API request failed with 500/,
-    );
-    assert.equal(callCount, 1, "createSurvey should make exactly 1 request (no retries)");
-  });
-
-  it("updateSurveyStatus should NOT retry on 500 (maxRetries=0)", async () => {
-    let callCount = 0;
-    const fetch = async () => {
-      callCount++;
-      return new Response(JSON.stringify("err"), { status: 500, statusText: "Error" });
-    };
-
-    await assert.rejects(
-      () => updateSurveyStatus({ vid: 1, state: 1 }, credentials, fetch),
-      /WJX API request failed with 500/,
-    );
-    assert.equal(callCount, 1, "updateSurveyStatus should make exactly 1 request (no retries)");
-  });
-
-  it("getSurvey should retry on 500 (default maxRetries=2)", async () => {
-    let callCount = 0;
-    const fetch = async () => {
-      callCount++;
-      if (callCount < 3) {
-        return new Response("err", { status: 500, statusText: "Error" });
-      }
-      return new Response(JSON.stringify({ result: true, data: { vid: 1 } }), {
-        status: 200,
-        headers: { "Content-Type": "application/json" },
-      });
-    };
-
-    const result = await getSurvey({ vid: 1 }, credentials, fetch);
-    assert.equal(callCount, 3, "should have retried twice before succeeding");
-    assert.deepEqual(result, { result: true, data: { vid: 1 } });
-  });
-
-  it("getSurvey should retry on 429 status", async () => {
-    let callCount = 0;
-    const fetch = async () => {
-      callCount++;
-      if (callCount === 1) {
-        return new Response("Rate limited", { status: 429, statusText: "Too Many Requests" });
-      }
+describe("transport option boundaries", () => {
+  it("routes concurrent requests through their own base URLs", async () => {
+    const seen = [];
+    const fetchFor = (delay) => async (input) => {
+      await new Promise((resolve) => setTimeout(resolve, delay));
+      seen.push(String(input));
       return new Response(JSON.stringify({ result: true, data: {} }), {
         status: 200,
         headers: { "Content-Type": "application/json" },
       });
     };
 
-    const result = await getSurvey({ vid: 1 }, credentials, fetch);
-    assert.equal(callCount, 2, "should have retried once after 429");
-    assert.deepEqual(result, { result: true, data: {} });
+    await Promise.all([
+      callWjxApi({ action: "1000001" }, {
+        credentials: { apiKey: "a", baseUrl: "https://profile-a.test" },
+        fetchImpl: fetchFor(20),
+      }),
+      callWjxApi({ action: "1000001" }, {
+        credentials: { apiKey: "b", baseUrl: "https://profile-b.test" },
+        fetchImpl: fetchFor(5),
+      }),
+    ]);
+
+    assert.equal(seen.filter((url) => url.startsWith("https://profile-a.test/")).length, 1);
+    assert.equal(seen.filter((url) => url.startsWith("https://profile-b.test/")).length, 1);
+    assert.match(seen.find((url) => url.startsWith("https://profile-a.test/")), /\/openapi\/default\.aspx\?traceid=.*&action=1000001/);
+    assert.match(seen.find((url) => url.startsWith("https://profile-b.test/")), /\/openapi\/default\.aspx\?traceid=.*&action=1000001/);
   });
 
-  it("createSurvey should throw on 404 without retry", async () => {
-    let callCount = 0;
-    const fetch = async () => {
-      callCount++;
-      return new Response("Not Found", { status: 404, statusText: "Not Found" });
-    };
-
-    await assert.rejects(
-      () => createSurvey(validInput, credentials, fetch),
-      /WJX API request failed with 404/,
+  it("accepts an OpenAPI endpoint in baseUrl without duplicating its path", async () => {
+    const fetch = mockFetch({ result: true, data: {} });
+    await callWjxApi(
+      { action: "1000001" },
+      { credentials: { apiKey: "test", baseUrl: "https://profile.test/openapi/default.aspx" }, fetchImpl: fetch },
     );
-    assert.equal(callCount, 1, "should not retry on 404");
+    assert.match(fetch.captured().url, /^https:\/\/profile\.test\/openapi\/default\.aspx\?/);
   });
 
-  it("listSurveys should retry on network error (TypeError)", async () => {
-    let callCount = 0;
-    const fetch = async () => {
-      callCount++;
-      if (callCount === 1) {
-        throw new TypeError("fetch failed");
-      }
-      return new Response(JSON.stringify({ result: true, data: {} }), {
-        status: 200,
-        headers: { "Content-Type": "application/json" },
-      });
-    };
+  it("rejects non-finite, negative, fractional, and excessive retry budgets before transport", async () => {
+    for (const retryBudget of [Number.NaN, -1, 1.5, Number.POSITIVE_INFINITY, 10_001]) {
+      let calls = 0;
+      const fetch = async () => {
+        calls += 1;
+        return new Response(JSON.stringify({ result: true, data: {} }));
+      };
+      await assert.rejects(
+        () => listSurveys({}, credentials, fetch, { retryBudget }),
+        /retryBudget.*(?:integer|finite|between|0)/i,
+      );
+      assert.equal(calls, 0, `invalid retryBudget=${retryBudget} must not call fetch`);
+    }
+  });
 
-    const result = await listSurveys({}, credentials, fetch);
-    assert.equal(callCount, 2, "should have retried after network error");
-    assert.deepEqual(result, { result: true, data: {} });
+  it("rejects invalid timeout values before transport", async () => {
+    for (const timeoutMs of [Number.NaN, -1, 0, 1.5, Number.POSITIVE_INFINITY]) {
+      let calls = 0;
+      const fetch = async () => {
+        calls += 1;
+        return new Response(JSON.stringify({ result: true, data: {} }));
+      };
+      await assert.rejects(
+        () => listSurveys({}, credentials, fetch, { timeoutMs }),
+        /timeoutMs.*(?:integer|finite|positive|between)/i,
+      );
+      assert.equal(calls, 0, `invalid timeoutMs=${timeoutMs} must not call fetch`);
+    }
+  });
+
+  it("retries common ECONN errors", async () => {
+    for (const message of ["ECONNRESET", "ECONNREFUSED", "ECONNABORTED"]) {
+      let calls = 0;
+      const fetch = async () => {
+        calls += 1;
+        throw new TypeError(message);
+      };
+      await assert.rejects(
+        () => listSurveys({}, credentials, fetch, { retryBudget: 1 }),
+        new RegExp(message),
+      );
+      assert.equal(calls, 2, `${message} should be retried once`);
+    }
+  });
+
+  it("keeps exponential retry delays finite for large retry budgets", async () => {
+    const originalSetTimeout = globalThis.setTimeout;
+    const delays = [];
+    globalThis.setTimeout = ((callback, delay, ...args) => {
+      delays.push(delay);
+      return originalSetTimeout(callback, 0, ...args);
+    });
+    try {
+      await assert.rejects(
+        () => listSurveys({}, credentials, async () => { throw new TypeError("ECONNRESET"); }, { retryBudget: 1_024 }),
+        /ECONNRESET/,
+      );
+    } finally {
+      globalThis.setTimeout = originalSetTimeout;
+    }
+    assert.ok(delays.length > 1);
+    assert.ok(delays.every((delay) => Number.isFinite(delay)), "retry timers must never receive Infinity");
   });
 });
 
-// ─── request body structure ─────────────────────────────────────────
-
-describe("request body structure", () => {
-  it("createSurvey body should use Bearer auth, no sign/appid/ts", async () => {
-    const fetch = mockFetch({ result: true, data: {} });
-    await createSurvey(validInput, credentials, fetch);
-
-    const body = JSON.parse(fetch.captured().init.body);
-    assertBearerAuth(fetch.captured().init, body);
-  });
-
-  it("createSurvey body should NOT include appKey", async () => {
-    const fetch = mockFetch({ result: true, data: {} });
-    await createSurvey(validInput, credentials, fetch);
-
-    const body = JSON.parse(fetch.captured().init.body);
-    assert.equal("appKey" in body, false, "appKey should never be in request body");
-    assert.equal("appkey" in body, false, "appkey should never be in request body");
-  });
-
-  it("getSurvey body should include action and vid with Bearer auth", async () => {
-    const fetch = mockFetch({ result: true, data: {} });
-    await getSurvey({ vid: 42 }, credentials, fetch);
-
-    const body = JSON.parse(fetch.captured().init.body);
-    assert.equal(body.action, "1000001");
-    assert.equal(body.vid, 42);
-    assertBearerAuth(fetch.captured().init, body);
-  });
-
-  it("listSurveys URL should include action in query string", async () => {
-    const fetch = mockFetch({ result: true, data: {} });
-    await listSurveys({}, credentials, fetch);
-
-    const url = fetch.captured().url;
-    assert.ok(url.includes("action=1000002"), "URL should contain action=1000002");
-  });
-
-  it("updateSurveyStatus URL should include action in query string", async () => {
-    const fetch = mockFetch({ result: true, data: {} });
-    await updateSurveyStatus({ vid: 1, state: 2 }, credentials, fetch);
-
-    const url = fetch.captured().url;
-    assert.ok(url.includes("action=1000102"), "URL should contain action=1000102");
-  });
-});
-
-// ─── edge cases ─────────────────────────────────────────────────────
-
-describe("edge cases", () => {
-  it("createSurvey should throw on invalid questions JSON before making request", async () => {
-    let fetchCalled = false;
-    const fetch = async () => {
-      fetchCalled = true;
-      return new Response(JSON.stringify({ result: true }), { status: 200 });
-    };
-
-    await assert.rejects(
-      () => createSurvey({ ...validInput, questions: "not json{" }, credentials, fetch),
-      /questions must be valid JSON/,
-    );
-    assert.equal(fetchCalled, false, "fetch should not be called for invalid input");
-  });
-
-  it("getSurvey should pass vid as number in body", async () => {
-    const fetch = mockFetch({ result: true, data: {} });
-    await getSurvey({ vid: 99999 }, credentials, fetch);
-
-    const body = JSON.parse(fetch.captured().init.body);
-    assert.equal(typeof body.vid, "number");
-    assert.equal(body.vid, 99999);
-  });
-
-  it("listSurveys with custom page_size and page_index", async () => {
-    const fetch = mockFetch({ result: true, data: {} });
-    await listSurveys({ page_index: 3, page_size: 50 }, credentials, fetch);
-
-    const body = JSON.parse(fetch.captured().init.body);
-    assert.equal(body.page_index, 3);
-    assert.equal(body.page_size, 50);
-  });
-
-  it("listSurveys should not include name_like when empty string", async () => {
-    const fetch = mockFetch({ result: true, data: {} });
-    await listSurveys({ name_like: "" }, credentials, fetch);
-
-    const body = JSON.parse(fetch.captured().init.body);
-    assert.equal("name_like" in body, false, "empty name_like should not be in body");
-  });
-});
-
-// ─── constants ──────────────────────────────────────────────────────
-
-describe("constants", () => {
-  it("getWjxApiUrl() should return the production endpoint", () => {
-    assert.equal(getWjxApiUrl(), "https://www.wjx.cn/openapi/default.aspx");
-  });
-
-  it("should export all action codes", () => {
-    assert.equal(Action.GET_SURVEY, "1000001");
-    assert.equal(Action.LIST_SURVEYS, "1000002");
-    assert.equal(Action.CREATE_SURVEY, "1000101");
-    assert.equal(Action.UPDATE_STATUS, "1000102");
-  });
-
-  it("should export UPLOAD_FILE action code", () => {
-    assert.equal(Action.UPLOAD_FILE, "1000104");
-  });
-});
-
-// ─── uploadFile ─────────────────────────────────────────────────────
-
-describe("uploadFile", () => {
-  it("should POST with action 1000104 and file params with Bearer auth", async () => {
-    const fetch = mockFetch({ result: true, data: { url: "https://example.com/img.png" } });
-    await uploadFile({ file_name: "test.png", file: "aGVsbG8=" }, credentials, fetch);
-
-    const body = JSON.parse(fetch.captured().init.body);
-    assert.equal(body.action, "1000104");
-    assert.equal(body.file_name, "test.png");
-    assert.equal(body.file, "aGVsbG8=");
-    assertBearerAuth(fetch.captured().init, body);
-  });
-
-  it("should NOT retry on 500 (maxRetries=0)", async () => {
-    let callCount = 0;
-    const fetch = async () => {
-      callCount++;
-      return new Response("err", { status: 500, statusText: "Error" });
-    };
-
-    await assert.rejects(
-      () => uploadFile({ file_name: "a.png", file: "data" }, credentials, fetch),
-      /WJX API request failed with 500/,
-    );
-    assert.equal(callCount, 1);
-  });
-});
-
-// ─── createSurvey source_vid mode ───────────────────────────────────
-
-describe("createSurvey source_vid mode", () => {
-  it("should pass source_vid and skip atype/desc/questions", async () => {
-    const fetch = mockFetch({ result: true, data: { vid: 999 } });
-    await createSurvey(
-      { title: "复制问卷", type: 0, description: "", questions: "", source_vid: "12345" },
-      credentials, fetch,
-    );
-
-    const body = JSON.parse(fetch.captured().init.body);
-    assert.equal(body.source_vid, "12345");
-    assert.equal("atype" in body, false);
-    assert.equal("desc" in body, false);
-    assert.equal("questions" in body, false);
-  });
-
-  it("should not validate questions when source_vid is provided", async () => {
-    const fetch = mockFetch({ result: true, data: {} });
-    await assert.doesNotReject(
-      () => createSurvey(
-        { title: "copy", type: 0, description: "", questions: "invalid json", source_vid: "111" },
-        credentials, fetch,
-      ),
-    );
-  });
-
-  it("should pass compress_img and is_string when provided", async () => {
-    const fetch = mockFetch({ result: true, data: {} });
-    await createSurvey(
-      { ...validInput, compress_img: true, is_string: true },
-      credentials, fetch,
-    );
-
-    const body = JSON.parse(fetch.captured().init.body);
-    assert.equal(body.compress_img, true);
-    assert.equal(body.is_string, true);
-  });
-
-  it("should not include compress_img/is_string when not provided", async () => {
-    const fetch = mockFetch({ result: true, data: {} });
-    await createSurvey(validInput, credentials, fetch);
-
-    const body = JSON.parse(fetch.captured().init.body);
-    assert.equal("compress_img" in body, false);
-    assert.equal("is_string" in body, false);
-  });
-});
-
-// ─── submitResponse submittime ──────────────────────────────────────
-
-describe("submitResponse submittime", () => {
-  it("should pass submittime when provided", async () => {
-    const fetch = mockFetch({ result: true, data: {} });
-    await submitResponse(
-      { vid: 1, inputcosttime: 30, submitdata: "1$A", submittime: "2026-03-29 12:00:00" },
-      credentials, fetch,
-    );
-
-    const body = JSON.parse(fetch.captured().init.body);
-    assert.equal(body.submittime, "2026-03-29 12:00:00");
-  });
-
-  it("should not include submittime when not provided", async () => {
-    const fetch = mockFetch({ result: true, data: {} });
-    await submitResponse(
-      { vid: 1, inputcosttime: 30, submitdata: "1$A" },
-      credentials, fetch,
-    );
-
-    const body = JSON.parse(fetch.captured().init.body);
-    assert.equal("submittime" in body, false);
-  });
-});
-
-// ─── bindActivity ───────────────────────────────────────────────────
-
-describe("bindActivity", () => {
-  it("should POST with action BIND_ACTIVITY and required params", async () => {
-    const fetch = mockFetch({ result: true, data: {} });
-    await bindActivity(
-      { vid: 100, sysid: 1, uids: '["u1","u2"]' },
-      credentials, fetch,
-    );
-
-    const body = JSON.parse(fetch.captured().init.body);
-    assert.equal(body.action, Action.BIND_ACTIVITY);
-    assert.equal(body.vid, 100);
-    assert.equal(body.sysid, 1);
-    assert.equal(body.uids, '["u1","u2"]');
-    assertBearerAuth(fetch.captured().init, body);
-  });
-
-  it("should pass all optional params when provided", async () => {
-    const fetch = mockFetch({ result: true, data: {} });
-    await bindActivity(
-      {
-        vid: 100, sysid: 1, uids: '["u1"]',
-        answer_times: 3, can_chg_answer: true, can_view_result: false, can_hide_qlist: 1,
-      },
-      credentials, fetch,
-    );
-
-    const body = JSON.parse(fetch.captured().init.body);
-    assert.equal(body.answer_times, 3);
-    assert.equal(body.can_chg_answer, true);
-    assert.equal(body.can_view_result, false);
-    assert.equal(body.can_hide_qlist, 1);
-  });
-
-  it("should not include optional params when not provided", async () => {
-    const fetch = mockFetch({ result: true, data: {} });
-    await bindActivity(
-      { vid: 100, sysid: 1, uids: '["u1"]' },
-      credentials, fetch,
-    );
-
-    const body = JSON.parse(fetch.captured().init.body);
-    assert.equal("answer_times" in body, false);
-    assert.equal("can_chg_answer" in body, false);
-    assert.equal("can_view_result" in body, false);
-    assert.equal("can_hide_qlist" in body, false);
-  });
-});
-
-// ─── querySurveyBinding new params ──────────────────────────────────
-
-describe("querySurveyBinding new params", () => {
-  it("should pass join_status/day/week/month/force_join_times when provided", async () => {
-    const fetch = mockFetch({ result: true, data: {} });
-    await querySurveyBinding(
-      {
-        vid: 100, sysid: 1,
-        join_status: 1, day: "20260329", week: "202613", month: "202603", force_join_times: true,
-      },
-      credentials, fetch,
-    );
-
-    const body = JSON.parse(fetch.captured().init.body);
-    assert.equal(body.join_status, 1);
-    assert.equal(body.day, "20260329");
-    assert.equal(body.week, "202613");
-    assert.equal(body.month, "202603");
-    assert.equal(body.force_join_times, true);
-  });
-
-  it("should not include new params when not provided", async () => {
-    const fetch = mockFetch({ result: true, data: {} });
-    await querySurveyBinding(
-      { vid: 100, sysid: 1 },
-      credentials, fetch,
-    );
-
-    const body = JSON.parse(fetch.captured().init.body);
-    assert.equal("join_status" in body, false);
-    assert.equal("day" in body, false);
-    assert.equal("week" in body, false);
-    assert.equal("month" in body, false);
-    assert.equal("force_join_times" in body, false);
-  });
-});
-
-// ─── querySubAccounts mobile ────────────────────────────────────────
-
-describe("querySubAccounts mobile", () => {
-  it("should pass mobile when provided", async () => {
-    const fetch = mockFetch({ result: true, data: {} });
-    await querySubAccounts({ mobile: "13800138000" }, credentials, fetch);
-
-    const body = JSON.parse(fetch.captured().init.body);
-    assert.equal(body.mobile, "13800138000");
-  });
-
-  it("should not include mobile when not provided", async () => {
-    const fetch = mockFetch({ result: true, data: {} });
-    await querySubAccounts({}, credentials, fetch);
-
-    const body = JSON.parse(fetch.captured().init.body);
-    assert.equal("mobile" in body, false);
-  });
-});
-
-// ─── createSurveyByText ────────────────────────────────────────────
-
-describe("createSurveyByText", () => {
-  it("should parse DSL and POST with action 1000101 and questions JSON", async () => {
-    const fetch = mockFetch({ result: true, data: { vid: 888 } });
-    await createSurveyByText({ text: "问卷标题\n\n1. 问题[单选题]\nA\nB" }, credentials, fetch);
-
-    const body = JSON.parse(fetch.captured().init.body);
-    assert.equal(body.action, "1000101");
-    assert.equal(body.title, "问卷标题");
-    // questions should be a JSON string of wire questions
-    const questions = JSON.parse(body.questions);
-    assert.ok(Array.isArray(questions));
-    assert.equal(questions.length, 1);
-    assert.equal(questions[0].q_title, "问题");
-    assertBearerAuth(fetch.captured().init, body);
-  });
-
-  it("should default publish to false", async () => {
-    const fetch = mockFetch({ result: true, data: {} });
-    await createSurveyByText({ text: "标题" }, credentials, fetch);
-
-    const body = JSON.parse(fetch.captured().init.body);
-    assert.equal(body.publish, false);
-  });
-
-  it("should pass optional title, atype, publish, creater", async () => {
-    const fetch = mockFetch({ result: true, data: {} });
-    await createSurveyByText(
-      { text: "内容", title: "自定义标题", atype: 6, publish: true, creater: "sub1" },
-      credentials, fetch,
-    );
-
-    const body = JSON.parse(fetch.captured().init.body);
-    assert.equal(body.title, "自定义标题");
-    assert.equal(body.atype, 6);
-    assert.equal(body.publish, true);
-    assert.equal(body.creater, "sub1");
-  });
-
-  it("should not include optional fields when not provided", async () => {
-    const fetch = mockFetch({ result: true, data: {} });
-    await createSurveyByText({ text: "内容" }, credentials, fetch);
-
-    const body = JSON.parse(fetch.captured().init.body);
-    // title comes from DSL parsed title, type defaults to 1
-    assert.equal(body.title, "内容");
-    assert.equal(body.atype, 1);
-    assert.equal("creater" in body, false);
-  });
-
-  it("should NOT retry on 500 (maxRetries=0)", async () => {
-    let callCount = 0;
-    const fetch = async () => {
-      callCount++;
-      return new Response("err", { status: 500, statusText: "Error" });
-    };
-
-    await assert.rejects(
-      () => createSurveyByText({ text: "标题" }, credentials, fetch),
-      /WJX API request failed with 500/,
-    );
-    assert.equal(callCount, 1);
-  });
-
-  it("should return parsed API response", async () => {
-    const mockResponse = { result: true, data: { vid: 999, title: "测试" } };
-    const result = await createSurveyByText({ text: "内容" }, credentials, mockFetch(mockResponse));
-    assert.deepEqual(result, mockResponse);
+describe("submitdata numbering", () => {
+  it("preserves raw q_index values when metadata includes non-answerable rows", async () => {
+    const { normalizeSubmitdata } = await import("../dist/modules/response/submitdata.js");
+    const questions = [
+      { q_index: 1, q_type: 1, q_subtype: 1 },
+      { q_index: 2, q_type: 3, q_subtype: 3 },
+      { q_index: 3, q_type: 3, q_subtype: 3 },
+    ];
+    assert.equal(normalizeSubmitdata("2$A}3$B", questions), "2$A}3$B");
   });
 });

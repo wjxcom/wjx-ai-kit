@@ -5,7 +5,7 @@
 ```bash
 wjx response count --vid 12345
 wjx response report --vid 12345
-wjx response query --vid 12345 --page_size 100
+wjx response query --vid 12345 --page_size 50
 wjx analytics nps --scores "[9,10,8,6,3]"
 ```
 

@@ -37,7 +37,7 @@ export function mergeStdinWithOpts(stdinData, command) {
     const merged = { ...stdinData };
     for (const key of Object.keys(opts)) {
         // Skip internal flags
-        if (key === "stdin" || key === "apiKey" || key === "json" || key === "table" || key === "dryRun") {
+        if (key === "stdin" || key === "apiKey" || key === "dryRun") {
             continue;
         }
         const source = command.getOptionValueSource(key);
@@ -46,6 +46,42 @@ export function mergeStdinWithOpts(stdinData, command) {
             merged[key] = opts[key];
         }
     }
-    return merged;
+    return normalizeOptionValues(merged, command);
+}
+/**
+ * Apply the same Commander argument parsers to values supplied through JSON
+ * stdin. CLI arguments already pass through `parseArg`, but stdin bypasses
+ * Commander entirely unless we explicitly replay the parser here.
+ */
+function normalizeOptionValues(values, command) {
+    const normalized = { ...values };
+    for (const option of command.options) {
+        const key = option.attributeName();
+        if (!(key in normalized) || normalized[key] === undefined || normalized[key] === null)
+            continue;
+        const value = normalized[key];
+        const flags = option.flags;
+        const descriptorMatch = flags.match(/<([^>]+)>|\[([^\]]+)\]/);
+        const descriptor = descriptorMatch?.[1] ?? descriptorMatch?.[2];
+        if (option.parseArg) {
+            try {
+                normalized[key] = option.parseArg(String(value), undefined);
+            }
+            catch (error) {
+                if (error instanceof CliError)
+                    throw error;
+                throw new CliError("INPUT_ERROR", `Invalid value for --${key}: ${error instanceof Error ? error.message : String(error)}`);
+            }
+            continue;
+        }
+        // JSON options intentionally accept parsed arrays/objects from stdin;
+        // all other value-bearing Commander options are scalar strings.
+        if (descriptor === "json")
+            continue;
+        if (descriptor && typeof value !== "string") {
+            throw new CliError("INPUT_ERROR", `Invalid value for --${key}: expected a string`);
+        }
+    }
+    return normalized;
 }
 //# sourceMappingURL=stdin.js.map

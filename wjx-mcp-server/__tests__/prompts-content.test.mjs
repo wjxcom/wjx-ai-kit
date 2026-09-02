@@ -514,19 +514,25 @@ describe("prompts listing", () => {
     ({ client } = await createTestClient());
   });
 
-  it("lists all 10 prompts", async () => {
+  it("lists all 15 prompts", async () => {
     const result = await client.listPrompts();
     const names = result.prompts.map((p) => p.name).sort();
-    assert.ok(names.includes("design-survey"));
-    assert.ok(names.includes("create-nps-survey"));
-    assert.ok(names.includes("analyze-results"));
-    assert.ok(names.includes("nps-analysis"));
-    assert.ok(names.includes("csat-analysis"));
-    assert.ok(names.includes("cross-tabulation"));
-    assert.ok(names.includes("sentiment-analysis"));
-    assert.ok(names.includes("survey-health-check"));
-    assert.ok(names.includes("comparative-analysis"));
-    assert.ok(names.includes("configure-webhook"));
-    assert.ok(result.prompts.length >= 10);
+    assert.deepEqual(names, [
+      "analyze-results",
+      "anomaly-detection",
+      "comparative-analysis",
+      "configure-webhook",
+      "create-nps-survey",
+      "cross-tabulation",
+      "csat-analysis",
+      "design-survey",
+      "generate-exam-json",
+      "generate-form-json",
+      "generate-survey-json",
+      "nps-analysis",
+      "sentiment-analysis",
+      "survey-health-check",
+      "user-system-workflow",
+    ]);
   });
 });

@@ -2,7 +2,7 @@ import { getWjxBaseUrl, getWjxSsoSubaccountUrl, getWjxSsoUserSystemUrl, getWjxSs
 /**
  * Build sub-account SSO login/create URL.
  */
-export function buildSsoSubaccountUrl(input) {
+export function buildSsoSubaccountUrl(input, baseUrl) {
     const params = new URLSearchParams();
     params.set("subuser", input.subuser);
     if (input.mobile)
@@ -15,12 +15,12 @@ export function buildSsoSubaccountUrl(input) {
         params.set("url", input.url);
     if (input.admin !== undefined)
         params.set("admin", input.admin.toString());
-    return `${getWjxSsoSubaccountUrl()}?${params.toString()}`;
+    return `${getWjxSsoSubaccountUrl(baseUrl)}?${params.toString()}`;
 }
 /**
  * Build user system participant SSO URL.
  */
-export function buildSsoUserSystemUrl(input) {
+export function buildSsoUserSystemUrl(input, baseUrl) {
     const userSystem = input.user_system ?? 1;
     const params = new URLSearchParams();
     params.set("u", input.u);
@@ -41,24 +41,24 @@ export function buildSsoUserSystemUrl(input) {
         params.set("activity", input.activity.toString());
     if (input.return_url !== undefined)
         params.set("returnurl", input.return_url);
-    return `${getWjxSsoUserSystemUrl()}?${params.toString()}`;
+    return `${getWjxSsoUserSystemUrl(baseUrl)}?${params.toString()}`;
 }
 /**
  * Build partner/agent SSO login URL.
  */
-export function buildSsoPartnerUrl(input) {
+export function buildSsoPartnerUrl(input, baseUrl) {
     const params = new URLSearchParams();
     params.set("username", input.username);
     if (input.mobile)
         params.set("mobile", input.mobile);
     if (input.subuser)
         params.set("subuser", input.subuser);
-    return `${getWjxSsoPartnerUrl()}?${params.toString()}`;
+    return `${getWjxSsoPartnerUrl(baseUrl)}?${params.toString()}`;
 }
 /**
  * Build quick create/edit survey URL (no signing needed).
  */
-export function buildSurveyUrl(input) {
+export function buildSurveyUrl(input, baseUrl) {
     if (input.mode === "create") {
         const params = new URLSearchParams();
         if (input.name !== undefined)
@@ -70,7 +70,7 @@ export function buildSurveyUrl(input) {
         if (input.redirect_url !== undefined)
             params.set("redirecturl", input.redirect_url);
         const qs = params.toString();
-        const base = getWjxSurveyCreateUrl();
+        const base = getWjxSurveyCreateUrl(baseUrl);
         return qs ? `${base}?${qs}` : base;
     }
     // edit mode
@@ -85,13 +85,13 @@ export function buildSurveyUrl(input) {
         params.set("runprotect", input.runprotect.toString());
     if (input.redirect_url !== undefined)
         params.set("redirecturl", input.redirect_url);
-    return `${getWjxSurveyEditUrl()}?${params.toString()}`;
+    return `${getWjxSurveyEditUrl(baseUrl)}?${params.toString()}`;
 }
 /**
  * Build a survey preview/fill URL (the respondent-facing page).
  * Pattern: {baseUrl}/vm/{sid|vid}.aspx
  */
-export function buildPreviewUrl(input) {
+export function buildPreviewUrl(input, baseUrl) {
     const sid = input.sid?.trim();
     const vid = input.vid;
     const hasValidVid = vid !== undefined && Number.isInteger(vid) && vid > 0;
@@ -102,7 +102,7 @@ export function buildPreviewUrl(input) {
     if (!target) {
         throw new Error("buildPreviewUrl 需要提供 sid 或 vid");
     }
-    const base = `${getWjxBaseUrl()}/vm/${encodeURIComponent(target)}.aspx`;
+    const base = `${getWjxBaseUrl(baseUrl)}/vm/${encodeURIComponent(target)}.aspx`;
     if (input.source) {
         return `${base}?source=${encodeURIComponent(input.source)}`;
     }

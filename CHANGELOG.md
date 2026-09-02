@@ -10,6 +10,25 @@
 
 ---
 
+## [0.4.1] - Unreleased
+
+### 下一发布版本
+
+- 三个工作区包统一使用 `0.4.1`；本版本尚未发布到 npm，registry 的 `latest` 保持旧版本。
+- 延续 `0.4.0` 的 JSONL-only 创建接口清理和统一输出协议，不执行 registry 写操作。
+
+---
+
+## [0.4.0] - 2026-08-30
+
+### 统一发布
+
+- `wjx-api-sdk@0.4.0`、`wjx-mcp-server@0.4.0`、`wjx-cli@0.4.0` 曾按 SDK → MCP Server → CLI 顺序发布；该版本现已废弃。
+- 问卷创建统一使用 action `1000106` 的 JSONL 链路；旧 JSON 数组和 DSL 创建入口已移除。
+- CLI、SDK、MCP Server 的题型、协议和下游 Skill/Agent 文档已同步。
+
+---
+
 ## [0.1.0] - 2026-04-06
 
 ### 首次开源发布

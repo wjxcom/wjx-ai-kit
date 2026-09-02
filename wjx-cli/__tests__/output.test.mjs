@@ -4,6 +4,43 @@ import assert from "node:assert/strict";
 import { enrichSurveyListOutput } from "../dist/lib/output.js";
 
 describe("enrichSurveyListOutput", () => {
+  it("preserves a validated API fill_url when no derivation fields exist", () => {
+    const input = {
+      result: true,
+      data: {
+        activitys: {
+          survey: {
+            vid: 123,
+            fill_url: "https://www.wjx.cn/vm/short-code.aspx",
+          },
+        },
+      },
+    };
+
+    const result = enrichSurveyListOutput(input);
+
+    assert.equal(result.data.activitys.survey.fill_url, "https://www.wjx.cn/vm/short-code.aspx");
+  });
+
+  it("prefers a validated API fill_url over a sid-derived fallback", () => {
+    const input = {
+      data: {
+        activitys: {
+          survey: {
+            vid: 123,
+            sid: "short-code",
+            activity_domain: "https://www.wjx.cn",
+            fill_url: "https://www.wjx.cn/m/server-selected.aspx",
+          },
+        },
+      },
+    };
+
+    const result = enrichSurveyListOutput(input);
+
+    assert.equal(result.data.activitys.survey.fill_url, "https://www.wjx.cn/m/server-selected.aspx");
+  });
+
   it("removes an untrusted fill_url when no safe respondent URL can be derived", () => {
     const input = {
       result: true,
@@ -29,7 +66,7 @@ describe("enrichSurveyListOutput", () => {
     assert.equal(input.data.activitys["123"].fill_url, "https://www.wjx.cn/vm/123.aspx");
   });
 
-  it("derives an encoded respondent URL from a non-vid sid", () => {
+  it("does not guess a respondent URL from sid without a server path", () => {
     const input = {
       data: {
         activitys: {
@@ -45,13 +82,27 @@ describe("enrichSurveyListOutput", () => {
 
     const result = enrichSurveyListOutput(input);
 
-    assert.deepEqual(result.data.activitys.survey, {
-      vid: 123,
-      sid: "safe id",
-      activity_domain: "https://www.wjx.cn/",
-      title: "Customer survey",
-      fill_url: "https://www.wjx.cn/vm/safe%20id.aspx",
-    });
+    assert.deepEqual(result.data.activitys.survey, input.data.activitys.survey);
+  });
+
+  it("prefers the API pc_path over mobile_path and preserves its route", () => {
+    const input = {
+      data: {
+        activitys: {
+          survey: {
+            vid: 123,
+            sid: "short-code",
+            activity_domain: "https://www.wjx.cn",
+            pc_path: "/m/server-path.aspx",
+            mobile_path: "/vm/mobile-path.aspx",
+          },
+        },
+      },
+    };
+
+    const result = enrichSurveyListOutput(input);
+
+    assert.equal(result.data.activitys.survey.fill_url, "https://www.wjx.cn/m/server-path.aspx");
   });
 
   it("uses a safe server mobile path for the activities alias", () => {

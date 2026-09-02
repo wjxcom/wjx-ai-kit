@@ -1,14 +1,10 @@
 import { Command } from "commander";
-import type { WjxApiResponse, FetchLike } from "wjx-api-sdk";
-import { getCredentials } from "./auth.js";
+import type { FetchLike } from "wjx-api-sdk";
 import { formatOutput } from "./output.js";
-import { CliError, ensureApiSuccess, handleError } from "./errors.js";
+import { CliError } from "./errors.js";
 import { mergeStdinWithOpts } from "./stdin.js";
 import { maskAuthHeader } from "./mask.js";
-import { getCommandMetadata, getCommandPath } from "./command-metadata.js";
-import { ensureConfirmation } from "./runtime/confirmation.js";
-import { createRuntimeContext, type RuntimeContext } from "./runtime/context.js";
-import { resolveProfile } from "./profiles.js";
+import { redactJson } from "./mask.js";
 
 /**
  * Strict integer parser. Rejects garbage like "123abc".
@@ -28,23 +24,53 @@ export function strictInt(v: string): number {
  * Require a field in the merged input. Throws INPUT_ERROR if missing.
  */
 export function requireField(merged: Record<string, unknown>, field: string, label?: string): void {
-  if (merged[field] === undefined || merged[field] === null) {
+  const value = merged[field];
+  if (value === undefined || value === null ||
+    (typeof value === "string" && value.trim() === "") ||
+    (Array.isArray(value) && value.length === 0)) {
     throw new CliError("INPUT_ERROR", `Missing required option: --${label || field}`);
   }
 }
 
-interface ExecuteOpts {
-  noAuth?: boolean;
-  /** Print only after a successful real execution; never pollutes errors or dry-run output. */
-  deprecationWarning?: string;
-  /** Add pure local information to a dry-run result without making network requests. */
-  dryRunPreview?: (input: Record<string, unknown>) => Record<string, unknown> | undefined;
-  /** 在输出前转换 API 返回结果（用于提取/重塑数据） */
-  transformResult?: (result: WjxApiResponse<unknown>) => unknown;
-  /** 在调用 SDK 之前异步转换 input（如获取问卷结构修正 submitdata） */
-  transformInput?: (input: Record<string, unknown>, creds: unknown) => Promise<Record<string, unknown>>;
-  /** Optional runtime dependencies for tests and embedded callers. */
-  context?: RuntimeContext;
+/** Require a positive integer for identifiers such as vid/system_id. */
+export function requirePositiveInt(merged: Record<string, unknown>, field: string, label?: string): void {
+  requireField(merged, field, label);
+  const value = merged[field];
+  if (typeof value !== "number" || !Number.isInteger(value) || value <= 0) {
+    throw new CliError("INPUT_ERROR", `--${label || field} 必须是正整数`);
+  }
+}
+
+/** Require an option to use one of the values documented by the API. */
+export function requireEnum(
+  merged: Record<string, unknown>,
+  field: string,
+  allowed: readonly (string | number)[],
+  label?: string,
+): void {
+  requireField(merged, field, label);
+  const value = merged[field];
+  if (!allowed.some((candidate) => candidate === value)) {
+    throw new CliError(
+      "INPUT_ERROR",
+      `--${label || field} 必须是 ${allowed.join("、")} 之一`,
+    );
+  }
+}
+
+/** Require an integer in an inclusive range. */
+export function requireIntRange(
+  merged: Record<string, unknown>,
+  field: string,
+  min: number,
+  max: number,
+  label?: string,
+): void {
+  requireField(merged, field, label);
+  const value = merged[field];
+  if (typeof value !== "number" || !Number.isInteger(value) || value < min || value > max) {
+    throw new CliError("INPUT_ERROR", `--${label || field} 必须是 ${min}-${max} 范围内的整数`);
+  }
 }
 
 export interface CapturedRequest {
@@ -71,7 +97,7 @@ export function createCapturingFetch(): {
       method: init?.method ?? "GET",
       url: String(url),
       headers,
-      body: init?.body ? String(init.body) : "",
+      body: redactJson(init?.body ? String(init.body) : ""),
     };
     return new Response(JSON.stringify({ result: true, data: {} }), {
       status: 200,
@@ -82,17 +108,14 @@ export function createCapturingFetch(): {
   return { fetchImpl, getCapturedRequest: () => captured };
 }
 
-export function printDryRunPreview(request: CapturedRequest | null, opts: { format?: "json" | "pretty" | "table" | "ndjson" | "csv"; table?: boolean } = {}): void {
+export function printDryRunPreview(request: CapturedRequest | null, opts: { format?: "json" | "pretty" | "table" | "ndjson" | "csv" } = {}): void {
   formatOutput({
     kind: "dry-run",
     plans: request ? [request] : [],
   }, opts);
 }
 
-/**
- * Merge stdin data with CLI opts (source-aware).
- * Extracts the common pattern used in both executeCommand and manual handlers.
- */
+/** Merge stdin data with CLI opts (source-aware). */
 export function getMerged(cmd: Command): Record<string, unknown> {
   const stdinData = (cmd as unknown as Record<string, unknown>).__stdinData as Record<string, unknown> | undefined;
   if (stdinData && Object.keys(stdinData).length > 0) {
@@ -136,101 +159,34 @@ export function ensureStringArray(value: unknown, fieldName: string): string[] |
   return parsed;
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type SdkFunction = (input: any, creds: any, ...rest: any[]) => Promise<WjxApiResponse<any>>;
-
-/**
- * Central command executor.
- * - Merges stdin data with CLI opts (source-aware)
- * - Gets credentials (unless noAuth)
- * - Calls SDK function
- * - Checks result===false (P0 fix)
- * - Formats output to stdout
- * - Routes errors to stderr JSON with correct exit codes
- */
-export async function executeCommand(
-  program: Command,
-  actionCommand: Command,
-  sdkFn: SdkFunction,
-  buildInput: (merged: Record<string, unknown>) => Record<string, unknown>,
-  opts: ExecuteOpts = {},
-): Promise<void> {
-  try {
-    const merged = getMerged(actionCommand);
-
-    const input = buildInput(merged);
-    const globalOpts = program.opts();
-
-    if (opts.noAuth) {
-      if (globalOpts.dryRun) {
-        formatOutput({
-          kind: "dry-run",
-          plans: [],
-          note: "本地命令，不会发送 API 请求",
-          input,
-        }, globalOpts);
-        return;
-      }
-      // Local commands (e.g. buildSurveyUrl) — call with input only
-      const localFn = sdkFn as unknown as (input: Record<string, unknown>) => unknown;
-      const result = localFn(input);
-      formatOutput(result, globalOpts);
-      return;
-    }
-
-    const context = opts.context ?? createRuntimeContext({
-      profile: { ...resolveProfile({ profile: globalOpts.profile }) },
-    });
-
-    await ensureConfirmation({
-      command: getCommandPath(actionCommand),
-      metadata: getCommandMetadata(getCommandPath(actionCommand)),
-      input,
-      options: {
-        yes: globalOpts.yes === true,
-        nonInteractive: globalOpts.nonInteractive === true,
-        dryRun: globalOpts.dryRun === true,
-      },
-      policy: context.policy,
-      inputStream: context.streams.stdin,
-      outputStream: context.streams.stderr,
-    });
-
-    if (globalOpts.dryRun) {
-      // Dry-run is deliberately limited to the already-normalized input.  An
-      // async transform is an execution-time hook (and may perform a network
-      // prefetch), so invoking it here would violate the zero-network contract.
-      const { fetchImpl, getCapturedRequest } = createCapturingFetch();
-      // SDK request construction only needs an API key to populate headers;
-      // use a redacted placeholder so preview does not require credentials.
-      const dryRunCreds = globalOpts.apiKey ? { apiKey: globalOpts.apiKey } : { apiKey: "dry-run" };
-      await sdkFn(input, dryRunCreds, fetchImpl);
-      const request = getCapturedRequest();
-      const preview = opts.dryRunPreview?.(input);
-      formatOutput({
-        // Preview fields spread first so a command's dryRunPreview callback can
-        // never shadow the envelope's protocol keys.
-        ...(preview ?? {}),
-        kind: "dry-run",
-        plans: request ? [request] : [],
-      }, globalOpts);
-      return;
-    }
-
-    const creds = getCredentials(globalOpts);
-    const finalInput = opts.transformInput ? await opts.transformInput(input, creds) : input;
-    const result = await sdkFn(finalInput, creds);
-
-    // P0 fix: detect SDK API failure response
-    ensureApiSuccess(result);
-
-    if (opts.deprecationWarning) {
-      context.streams.stderr.write(`${opts.deprecationWarning}\n`);
-    }
-
-    const output = opts.transformResult ? opts.transformResult(result) : result;
-    formatOutput(output, globalOpts);
-  } catch (e) {
-    handleError(e);
+/** Validate a required JSON array and reject an empty collection. */
+export function ensureNonEmptyJsonArray(value: unknown, fieldName: string): string | undefined {
+  const json = ensureJsonString(value, fieldName);
+  if (json === undefined) return undefined;
+  const parsed = JSON.parse(json) as unknown;
+  if (!Array.isArray(parsed) || parsed.length === 0) {
+    throw new CliError("INPUT_ERROR", `${fieldName} 必须是非空 JSON 数组`);
   }
+  return json;
+}
+
+/** Validate a JSON array while allowing an explicitly empty optional array. */
+export function ensureJsonArray(value: unknown, fieldName: string): string | undefined {
+  const json = ensureJsonString(value, fieldName);
+  if (json === undefined) return undefined;
+  if (!Array.isArray(JSON.parse(json))) {
+    throw new CliError("INPUT_ERROR", `${fieldName} 必须是 JSON 数组`);
+  }
+  return json;
+}
+
+/** Validate a JSON object (arrays and scalar JSON values are rejected). */
+export function ensureJsonObject(value: unknown, fieldName: string): string | undefined {
+  const json = ensureJsonString(value, fieldName);
+  if (json === undefined) return undefined;
+  const parsed = JSON.parse(json) as unknown;
+  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+    throw new CliError("INPUT_ERROR", `${fieldName} 必须是 JSON 对象`);
+  }
+  return json;
 }

@@ -1,6 +1,7 @@
 import { chmodSync, readFileSync, renameSync, writeFileSync, unlinkSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { homedir } from "node:os";
+import { loadConfig } from "./config.js";
 
 export interface ProfileDefinition {
   baseUrl?: string;
@@ -55,8 +56,14 @@ export function resolveProfile(options: {
   const document = loadProfiles(options.profilesPath ?? profilesPath(env));
   const selectedName = options.profile || document?.defaultProfile || "default";
   const definition = document?.profiles[selectedName] ?? {};
+  // `.wjxrc` predates named profiles. Treat its routing fields as defaults for
+  // the implicit/default profile only; selecting another profile must be able
+  // to change tenants without inheriting the legacy host or corp id.
+  const legacyConfig = selectedName === "default" ? loadConfig() : null;
   return {
     name: selectedName,
+    ...(legacyConfig?.baseUrl ? { baseUrl: legacyConfig.baseUrl } : {}),
+    ...(legacyConfig?.corpId ? { corpId: legacyConfig.corpId } : {}),
     ...definition,
     ...(env.WJX_BASE_URL ? { baseUrl: env.WJX_BASE_URL } : {}),
     ...(env.WJX_CORP_ID ? { corpId: env.WJX_CORP_ID } : {}),

@@ -2,6 +2,20 @@
 
 本文件记录项目的所有重要变更。
 
+> 说明：以下 0.x 条目保留为历史记录。条目中出现的 `create_survey`、`create_survey_by_text` 或 DSL 创建能力已移除，不属于当前 Server，也不得据此恢复工具。当前问卷创建唯一使用 `create_survey_by_json`。
+
+## [0.4.1] - Unreleased
+
+- 工作树版本更新为 `0.4.1`；`0.4.0` 已废弃，尚未执行本版本 npm 发布。
+
+## [0.4.0] - 2026-08-30
+
+### Breaking
+
+- 移除旧的 `create_survey`、`create_survey_by_text` 和 DSL 创建工具；问卷创建唯一使用 action `1000106` 的 `create_survey_by_json` JSONL 工具。
+- 与 `wjx-api-sdk@0.4.0` 对齐，三包统一按 SDK → MCP Server → CLI 顺序发布。
+- MCP 工具、Resource、Prompt 和 HTTP 传输继续保持现有对外协议；SDK 传输选项和重试行为由 `wjx-api-sdk@0.4.0` 提供。
+
 格式基于 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
 ## [0.2.6] - 2026-04-24

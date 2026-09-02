@@ -152,6 +152,20 @@ describe("queryContacts", () => {
     }
   });
 
+  it("should fall back to credentials.corpId when input and env omit corpid", async () => {
+    const saved = process.env.WJX_CORP_ID;
+    delete process.env.WJX_CORP_ID;
+    try {
+      const fetch = mockFetch({ result: true, data: {} });
+      await queryContacts({ uid: "user1" }, { ...credentials, corpId: "credential-corp" }, fetch);
+
+      const body = JSON.parse(fetch.captured().init.body);
+      assert.equal(body.corpid, "credential-corp");
+    } finally {
+      if (saved !== undefined) process.env.WJX_CORP_ID = saved;
+    }
+  });
+
   it("should throw when corpid not provided and WJX_CORP_ID not set", async () => {
     const saved = process.env.WJX_CORP_ID;
     delete process.env.WJX_CORP_ID;

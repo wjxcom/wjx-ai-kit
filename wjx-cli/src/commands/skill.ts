@@ -3,7 +3,8 @@ import { stderr } from "node:process";
 import { installSkill, updateSkill } from "../lib/install-skill.js";
 import { installPptSkill, updatePptSkill } from "../lib/install-ppt-skill.js";
 import { resolveInstallRoot } from "../lib/install-root.js";
-import { formatOutput } from "../lib/output.js";
+import { CliError } from "../lib/errors.js";
+import { executeRuntimeLocal } from "../lib/runtime/executor.js";
 
 interface SkillCmdOpts {
   force?: boolean;
@@ -26,21 +27,23 @@ export function registerSkillCommands(program: Command): void {
     .option("--force", "强制覆盖已有文件")
     .option("--silent", "静默执行，仅输出 JSON 结果")
     .option("--target-dir <path>", TARGET_DIR_DESC)
-    .action((opts: SkillCmdOpts) => {
-      const { root, source } = resolveInstallRoot({ targetDir: opts.targetDir });
+    .action(async (_opts: SkillCmdOpts, cmd) => {
+      await executeRuntimeLocal(program, cmd, (input) => {
+      const values = input as SkillCmdOpts;
+      const { root, source } = resolveInstallRoot({ targetDir: values.targetDir });
       const result = installSkill(root, {
-        force: opts.force,
-        silent: opts.silent,
+        force: values.force,
+        silent: values.silent,
         rootSource: source,
       });
-      if (opts.silent) {
-        formatOutput(result, program.opts());
-      } else if (result.status === "error") {
-        stderr.write(`${result.message}\n`);
-      }
       if (result.status === "error") {
-        process.exitCode = 1;
+        throw new CliError("INPUT_ERROR", result.message);
       }
+      return result;
+      }, {
+        dryRun: (input) => ({ command: "skill.install", force: input.force, silent: input.silent, targetDir: input.targetDir }),
+        emit: (_result, input) => input.silent === true,
+      });
     });
 
   skill
@@ -48,20 +51,22 @@ export function registerSkillCommands(program: Command): void {
     .description("更新已安装的 wjx-cli-use 技能")
     .option("--silent", "静默执行，仅输出 JSON 结果")
     .option("--target-dir <path>", TARGET_DIR_DESC)
-    .action((opts: SkillCmdOpts) => {
-      const { root, source } = resolveInstallRoot({ targetDir: opts.targetDir });
+    .action(async (_opts: SkillCmdOpts, cmd) => {
+      await executeRuntimeLocal(program, cmd, (input) => {
+      const values = input as SkillCmdOpts;
+      const { root, source } = resolveInstallRoot({ targetDir: values.targetDir });
       const result = updateSkill(root, {
-        silent: opts.silent,
+        silent: values.silent,
         rootSource: source,
       });
-      if (opts.silent) {
-        formatOutput(result, program.opts());
-      } else if (result.status === "error") {
-        stderr.write(`${result.message}\n`);
-      }
       if (result.status === "error") {
-        process.exitCode = 1;
+        throw new CliError("INPUT_ERROR", result.message);
       }
+      return result;
+      }, {
+        dryRun: (input) => ({ command: "skill.update", silent: input.silent, targetDir: input.targetDir }),
+        emit: (_result, input) => input.silent === true,
+      });
     });
 
   skill
@@ -71,22 +76,24 @@ export function registerSkillCommands(program: Command): void {
     .option("--silent", "静默执行，仅输出 JSON 结果")
     .option("--skip-pip", "跳过 pip 安装步骤，仅复制 skill 文件")
     .option("--target-dir <path>", TARGET_DIR_DESC)
-    .action((opts: SkillCmdOpts) => {
-      const { root, source } = resolveInstallRoot({ targetDir: opts.targetDir });
+    .action(async (_opts: SkillCmdOpts, cmd) => {
+      await executeRuntimeLocal(program, cmd, (input) => {
+      const values = input as SkillCmdOpts;
+      const { root, source } = resolveInstallRoot({ targetDir: values.targetDir });
       const result = installPptSkill(root, {
-        force: opts.force,
-        silent: opts.silent,
-        skipPip: opts.skipPip,
+        force: values.force,
+        silent: values.silent,
+        skipPip: values.skipPip,
         rootSource: source,
       });
-      if (opts.silent) {
-        formatOutput(result, program.opts());
-      } else if (result.status === "error") {
-        stderr.write(`${result.message}\n`);
-      }
       if (result.status === "error") {
-        process.exitCode = 1;
+        throw new CliError("INPUT_ERROR", result.message);
       }
+      return result;
+      }, {
+        dryRun: (input) => ({ command: "skill.install-ppt", force: input.force, silent: input.silent, skipPip: input.skipPip, targetDir: input.targetDir }),
+        emit: (_result, input) => input.silent === true,
+      });
     });
 
   skill
@@ -95,20 +102,22 @@ export function registerSkillCommands(program: Command): void {
     .option("--silent", "静默执行，仅输出 JSON 结果")
     .option("--skip-pip", "跳过 pip 升级步骤")
     .option("--target-dir <path>", TARGET_DIR_DESC)
-    .action((opts: SkillCmdOpts) => {
-      const { root, source } = resolveInstallRoot({ targetDir: opts.targetDir });
+    .action(async (_opts: SkillCmdOpts, cmd) => {
+      await executeRuntimeLocal(program, cmd, (input) => {
+      const values = input as SkillCmdOpts;
+      const { root, source } = resolveInstallRoot({ targetDir: values.targetDir });
       const result = updatePptSkill(root, {
-        silent: opts.silent,
-        skipPip: opts.skipPip,
+        silent: values.silent,
+        skipPip: values.skipPip,
         rootSource: source,
       });
-      if (opts.silent) {
-        formatOutput(result, program.opts());
-      } else if (result.status === "error") {
-        stderr.write(`${result.message}\n`);
-      }
       if (result.status === "error") {
-        process.exitCode = 1;
+        throw new CliError("INPUT_ERROR", result.message);
       }
+      return result;
+      }, {
+        dryRun: (input) => ({ command: "skill.update-ppt", silent: input.silent, skipPip: input.skipPip, targetDir: input.targetDir }),
+        emit: (_result, input) => input.silent === true,
+      });
     });
 }

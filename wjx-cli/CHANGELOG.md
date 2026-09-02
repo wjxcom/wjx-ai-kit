@@ -1,13 +1,23 @@
 # 更新日志
 
-## [1.0.0] - 2026-08-27
+> 说明：以下 0.x 条目保留为历史记录。条目中出现的旧创建能力仅用于历史追溯，不属于当前 CLI，也不得据此恢复入口。当前问卷创建唯一使用 `survey create`。
+
+## [0.4.1] - Unreleased
+
+- 工作树版本更新为 `0.4.1`；`0.4.0` 已废弃，尚未执行本版本 npm 发布。
+
+## [0.4.0] - 2026-08-30
 
 ### Breaking
 
 - CLI 结构化输出统一为 `{ ok, data, meta }` / `{ ok: false, error }`，旧的顶层 `result` 不再输出。
-- `--format json|pretty|table|ndjson|csv` 统一控制投影；`--json` 和 `--table` 仅为静默 deprecated 别名。
+- `--format json|pretty|table|ndjson|csv` 统一控制投影；旧的 `--json` 和 `--table` 别名已移除。
 - 高风险写操作在非交互环境必须显式使用 `--yes`。
 - `--dry-run` 保证零网络请求，无法本地解析的字段会列入 `unresolved`。
+
+### Added
+
+- `survey create` 请求携带 `X-WJX-Client` 与 `X-WJX-Client-Version`，并将服务端 `CLIENT_VERSION_TOO_OLD` 等响应转换为结构化升级提示。
 
 本文件记录项目的所有重要变更。
 
@@ -33,7 +43,7 @@
 
 ### Added
 
-- `survey create-by-json` 支持表格类题型，命令层传参补齐必答题设置（联动 SDK 0.2.6）。
+- `survey create` 支持表格类题型，命令层传参补齐必答题设置（联动 SDK 0.2.6）。
 
 ## [0.2.4] - 2026-04-22
 

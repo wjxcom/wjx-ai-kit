@@ -1,5 +1,6 @@
+import { executeRuntimeAction } from "../lib/runtime/executor.js";
 import { listDepartments, addDepartment, modifyDepartment, deleteDepartment, } from "wjx-api-sdk";
-import { executeCommand, requireField, ensureJsonString } from "../lib/command-helpers.js";
+import { requireField, requireEnum, ensureNonEmptyJsonArray } from "../lib/command-helpers.js";
 export function registerDepartmentCommands(program) {
     const department = program.command("department").description("部门管理");
     // --- list ---
@@ -8,7 +9,7 @@ export function registerDepartmentCommands(program) {
         .description("列出部门")
         .option("--corpid <s>", "企业ID")
         .action(async (_opts, cmd) => {
-        await executeCommand(program, cmd, listDepartments, (m) => ({
+        await executeRuntimeAction(program, cmd, listDepartments, (m) => ({
             corpid: m.corpid,
         }));
     });
@@ -19,9 +20,9 @@ export function registerDepartmentCommands(program) {
         .option("--depts <json>", "部门路径JSON数组")
         .option("--corpid <s>", "企业ID")
         .action(async (_opts, cmd) => {
-        await executeCommand(program, cmd, addDepartment, (m) => {
+        await executeRuntimeAction(program, cmd, addDepartment, (m) => {
             requireField(m, "depts");
-            return { depts: ensureJsonString(m.depts, "depts"), corpid: m.corpid };
+            return { depts: ensureNonEmptyJsonArray(m.depts, "depts"), corpid: m.corpid };
         });
     });
     // --- modify ---
@@ -31,9 +32,9 @@ export function registerDepartmentCommands(program) {
         .option("--depts <json>", "部门对象JSON数组")
         .option("--corpid <s>", "企业ID")
         .action(async (_opts, cmd) => {
-        await executeCommand(program, cmd, modifyDepartment, (m) => {
+        await executeRuntimeAction(program, cmd, modifyDepartment, (m) => {
             requireField(m, "depts");
-            return { depts: ensureJsonString(m.depts, "depts"), corpid: m.corpid };
+            return { depts: ensureNonEmptyJsonArray(m.depts, "depts"), corpid: m.corpid };
         });
     });
     // --- delete ---
@@ -45,12 +46,13 @@ export function registerDepartmentCommands(program) {
         .option("--corpid <s>", "企业ID")
         .option("--del_child", "删除子部门")
         .action(async (_opts, cmd) => {
-        await executeCommand(program, cmd, deleteDepartment, (m) => {
+        await executeRuntimeAction(program, cmd, deleteDepartment, (m) => {
             requireField(m, "type");
             requireField(m, "depts");
+            requireEnum(m, "type", ["1", "2"]);
             return {
                 type: m.type,
-                depts: ensureJsonString(m.depts, "depts"),
+                depts: ensureNonEmptyJsonArray(m.depts, "depts"),
                 corpid: m.corpid,
                 del_child: m.del_child,
             };

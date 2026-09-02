@@ -1,5 +1,6 @@
+import { executeRuntimeAction } from "../lib/runtime/executor.js";
 import { listTags, addTag, modifyTag, deleteTag, } from "wjx-api-sdk";
-import { executeCommand, requireField, ensureJsonString } from "../lib/command-helpers.js";
+import { requireField, requireEnum, ensureNonEmptyJsonArray } from "../lib/command-helpers.js";
 export function registerTagCommands(program) {
     const tag = program.command("tag").description("标签管理");
     // --- list ---
@@ -8,7 +9,7 @@ export function registerTagCommands(program) {
         .description("列出标签")
         .option("--corpid <s>", "企业ID")
         .action(async (_opts, cmd) => {
-        await executeCommand(program, cmd, listTags, (m) => ({
+        await executeRuntimeAction(program, cmd, listTags, (m) => ({
             corpid: m.corpid,
         }));
     });
@@ -20,10 +21,10 @@ export function registerTagCommands(program) {
         .option("--corpid <s>", "企业ID")
         .option("--is_radio", "单选标签")
         .action(async (_opts, cmd) => {
-        await executeCommand(program, cmd, addTag, (m) => {
+        await executeRuntimeAction(program, cmd, addTag, (m) => {
             requireField(m, "child_names");
             return {
-                child_names: ensureJsonString(m.child_names, "child_names"),
+                child_names: ensureNonEmptyJsonArray(m.child_names, "child_names"),
                 corpid: m.corpid,
                 is_radio: m.is_radio,
             };
@@ -38,12 +39,12 @@ export function registerTagCommands(program) {
         .option("--child_names <json>", "标签对象JSON数组")
         .option("--corpid <s>", "企业ID")
         .action(async (_opts, cmd) => {
-        await executeCommand(program, cmd, modifyTag, (m) => {
+        await executeRuntimeAction(program, cmd, modifyTag, (m) => {
             requireField(m, "tp_id");
             return {
                 tp_id: m.tp_id,
                 tp_name: m.tp_name,
-                child_names: ensureJsonString(m.child_names, "child_names"),
+                child_names: m.child_names === undefined ? undefined : ensureNonEmptyJsonArray(m.child_names, "child_names"),
                 corpid: m.corpid,
             };
         });
@@ -56,10 +57,11 @@ export function registerTagCommands(program) {
         .option("--tags <json>", "标签标识JSON数组")
         .option("--corpid <s>", "企业ID")
         .action(async (_opts, cmd) => {
-        await executeCommand(program, cmd, deleteTag, (m) => {
+        await executeRuntimeAction(program, cmd, deleteTag, (m) => {
             requireField(m, "type");
             requireField(m, "tags");
-            return { type: m.type, tags: ensureJsonString(m.tags, "tags"), corpid: m.corpid };
+            requireEnum(m, "type", ["1", "2"]);
+            return { type: m.type, tags: ensureNonEmptyJsonArray(m.tags, "tags"), corpid: m.corpid };
         });
     });
 }

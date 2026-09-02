@@ -18,11 +18,24 @@ Agent 不重复 Skill 中的命令参数内容，而是在需要时读取对应�
 |---|---|---|
 | **交互方式** | MCP 工具调用 | `wjx` 命令行执行 |
 | **适用场景** | 支持 MCP 的 AI 客户端 | 任意终端 / CI / 通用 Agent |
-| **依赖** | wjx-mcp-server 运行中 | `npm install -g wjx-cli` |
+| **依赖** | wjx-mcp-server 运行中 | `wjx-cli >= 0.4.1` |
 
 ## 前置条件
 
 ### 一键安装（推荐）
+
+当前工作树的 `0.4.1` 尚未发布到 npm。发布前请从仓库构建并链接 CLI：
+
+```bash
+git clone https://github.com/wjxcom/wjx-ai-kit.git
+cd wjx-ai-kit
+npm install
+npm run build --workspace=wjx-api-sdk
+npm run build --workspace=wjx-cli
+npm link ./wjx-cli
+```
+
+正式发布后再执行下面的 npm 安装命令：
 
 ```bash
 npm install -g wjx-cli      # 安装 CLI
@@ -64,7 +77,7 @@ claude --agent wjx-cli-expert "创建一份英语考试问卷，包含单选、�
 ## 典型场景
 
 **创建考试问卷：**
-子 Agent 读取 `references/question-types.md` 学习 JSONL 的中文 `qtype` 和字段 → `wjx survey create-by-json --dry-run` 预览 → 创建 → 返回编辑链接
+子 Agent 读取 `references/question-types.md` 学习 JSONL 的中文 `qtype` 和字段 → `wjx survey create --dry-run` 预览 → 创建 → 返回编辑链接
 
 **分析问卷数据：**
 `response report` 概览 → `response query` 明细 → `analytics nps/csat` 计算 → `analytics anomalies` 检测异常

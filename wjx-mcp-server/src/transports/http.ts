@@ -10,6 +10,17 @@ export interface HttpOptions {
   port: number;
   authToken?: string;
   stateful?: boolean;
+  /** Maximum JSON request size accepted by the HTTP transport. */
+  maxBodyBytes?: number;
+}
+
+export const DEFAULT_MAX_BODY_BYTES = 10 * 1024 * 1024;
+
+class RequestBodyTooLargeError extends Error {
+  constructor(readonly maxBytes: number) {
+    super(`Request body exceeds maximum size of ${maxBytes} bytes`);
+    this.name = "RequestBodyTooLargeError";
+  }
 }
 
 /**
@@ -40,19 +51,49 @@ function getClientIp(req: IncomingMessage): string | undefined {
   return req.socket.remoteAddress;
 }
 
-/** Read the full request body as a string, then JSON.parse it. */
-function readBody(req: IncomingMessage): Promise<unknown> {
+/** Read a bounded request body as a string, then JSON.parse it. */
+function readBody(req: IncomingMessage, maxBytes: number): Promise<unknown> {
   return new Promise((resolve, reject) => {
     const chunks: Buffer[] = [];
-    req.on("data", (chunk: Buffer) => chunks.push(chunk));
+    let totalBytes = 0;
+    let settled = false;
+    const fail = (error: unknown) => {
+      if (settled) return;
+      settled = true;
+      // Continue consuming the request without retaining data so an oversized
+      // client cannot leave the connection in a half-read state.
+      req.resume();
+      reject(error);
+    };
+
+    const contentLengthHeader = req.headers["content-length"];
+    const contentLength = Array.isArray(contentLengthHeader)
+      ? Number(contentLengthHeader[0])
+      : Number(contentLengthHeader);
+    if (Number.isFinite(contentLength) && contentLength > maxBytes) {
+      fail(new RequestBodyTooLargeError(maxBytes));
+      return;
+    }
+
+    req.on("data", (chunk: Buffer) => {
+      if (settled) return;
+      totalBytes += chunk.byteLength;
+      if (totalBytes > maxBytes) {
+        fail(new RequestBodyTooLargeError(maxBytes));
+        return;
+      }
+      chunks.push(Buffer.from(chunk));
+    });
     req.on("end", () => {
+      if (settled) return;
+      settled = true;
       try {
         resolve(JSON.parse(Buffer.concat(chunks).toString("utf-8")));
       } catch (e) {
         reject(e);
       }
     });
-    req.on("error", reject);
+    req.on("error", fail);
   });
 }
 
@@ -69,6 +110,10 @@ export async function startHttpTransport(
   serverFactory?: () => McpServer,
 ): Promise<{ httpServer: ReturnType<typeof createHttpServer> }> {
   const enableSessions = options.stateful !== false;
+  const maxBodyBytes = options.maxBodyBytes ?? DEFAULT_MAX_BODY_BYTES;
+  if (!Number.isSafeInteger(maxBodyBytes) || maxBodyBytes < 1) {
+    throw new RangeError("maxBodyBytes must be a positive safe integer");
+  }
 
   // Session map: sessionId → { transport, server, credentials }
   const sessions = new Map<string, SessionEntry>();
@@ -120,14 +165,19 @@ export async function startHttpTransport(
         // Parse body BEFORE deciding transport routing
         let body: unknown;
         try {
-          body = await readBody(req);
-        } catch {
-          res.writeHead(400, { "Content-Type": "application/json" });
-          res.end(JSON.stringify({
-            jsonrpc: "2.0",
-            error: { code: -32700, message: "Parse error: Invalid JSON" },
-            id: null,
-          }));
+          body = await readBody(req, maxBodyBytes);
+        } catch (error) {
+          if (error instanceof RequestBodyTooLargeError) {
+            res.writeHead(413, { "Content-Type": "application/json" });
+            res.end(JSON.stringify({ error: error.message }));
+          } else {
+            res.writeHead(400, { "Content-Type": "application/json" });
+            res.end(JSON.stringify({
+              jsonrpc: "2.0",
+              error: { code: -32700, message: "Parse error: Invalid JSON" },
+              id: null,
+            }));
+          }
           return;
         }
 

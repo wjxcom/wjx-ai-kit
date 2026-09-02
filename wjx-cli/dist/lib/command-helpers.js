@@ -1,8 +1,8 @@
-import { getCredentials } from "./auth.js";
 import { formatOutput } from "./output.js";
-import { CliError, handleError } from "./errors.js";
+import { CliError } from "./errors.js";
 import { mergeStdinWithOpts } from "./stdin.js";
 import { maskAuthHeader } from "./mask.js";
+import { redactJson } from "./mask.js";
 /**
  * Strict integer parser. Rejects garbage like "123abc".
  */
@@ -20,8 +20,35 @@ export function strictInt(v) {
  * Require a field in the merged input. Throws INPUT_ERROR if missing.
  */
 export function requireField(merged, field, label) {
-    if (merged[field] === undefined || merged[field] === null) {
+    const value = merged[field];
+    if (value === undefined || value === null ||
+        (typeof value === "string" && value.trim() === "") ||
+        (Array.isArray(value) && value.length === 0)) {
         throw new CliError("INPUT_ERROR", `Missing required option: --${label || field}`);
+    }
+}
+/** Require a positive integer for identifiers such as vid/system_id. */
+export function requirePositiveInt(merged, field, label) {
+    requireField(merged, field, label);
+    const value = merged[field];
+    if (typeof value !== "number" || !Number.isInteger(value) || value <= 0) {
+        throw new CliError("INPUT_ERROR", `--${label || field} 必须是正整数`);
+    }
+}
+/** Require an option to use one of the values documented by the API. */
+export function requireEnum(merged, field, allowed, label) {
+    requireField(merged, field, label);
+    const value = merged[field];
+    if (!allowed.some((candidate) => candidate === value)) {
+        throw new CliError("INPUT_ERROR", `--${label || field} 必须是 ${allowed.join("、")} 之一`);
+    }
+}
+/** Require an integer in an inclusive range. */
+export function requireIntRange(merged, field, min, max, label) {
+    requireField(merged, field, label);
+    const value = merged[field];
+    if (typeof value !== "number" || !Number.isInteger(value) || value < min || value > max) {
+        throw new CliError("INPUT_ERROR", `--${label || field} 必须是 ${min}-${max} 范围内的整数`);
     }
 }
 export function createCapturingFetch() {
@@ -37,7 +64,7 @@ export function createCapturingFetch() {
             method: init?.method ?? "GET",
             url: String(url),
             headers,
-            body: init?.body ? String(init.body) : "",
+            body: redactJson(init?.body ? String(init.body) : ""),
         };
         return new Response(JSON.stringify({ result: true, data: {} }), {
             status: 200,
@@ -46,13 +73,13 @@ export function createCapturingFetch() {
     };
     return { fetchImpl, getCapturedRequest: () => captured };
 }
-export function printDryRunPreview(request) {
-    process.stderr.write(JSON.stringify({ dry_run: true, request }, null, 2) + "\n");
+export function printDryRunPreview(request, opts = {}) {
+    formatOutput({
+        kind: "dry-run",
+        plans: request ? [request] : [],
+    }, opts);
 }
-/**
- * Merge stdin data with CLI opts (source-aware).
- * Extracts the common pattern used in both executeCommand and manual handlers.
- */
+/** Merge stdin data with CLI opts (source-aware). */
 export function getMerged(cmd) {
     const stdinData = cmd.__stdinData;
     if (stdinData && Object.keys(stdinData).length > 0) {
@@ -95,53 +122,36 @@ export function ensureStringArray(value, fieldName) {
     }
     return parsed;
 }
-/**
- * Central command executor.
- * - Merges stdin data with CLI opts (source-aware)
- * - Gets credentials (unless noAuth)
- * - Calls SDK function
- * - Checks result===false (P0 fix)
- * - Formats output to stdout
- * - Routes errors to stderr JSON with correct exit codes
- */
-export async function executeCommand(program, actionCommand, sdkFn, buildInput, opts = {}) {
-    try {
-        const merged = getMerged(actionCommand);
-        const input = buildInput(merged);
-        const globalOpts = program.opts();
-        if (opts.noAuth) {
-            if (globalOpts.dryRun) {
-                process.stderr.write(JSON.stringify({
-                    dry_run: true,
-                    note: "本地命令，不会发送 API 请求",
-                    input,
-                }, null, 2) + "\n");
-                return;
-            }
-            // Local commands (e.g. buildSurveyUrl) — call with input only
-            const localFn = sdkFn;
-            const result = localFn(input);
-            formatOutput(result, globalOpts);
-            return;
-        }
-        const creds = getCredentials(globalOpts);
-        const finalInput = opts.transformInput ? await opts.transformInput(input, creds) : input;
-        if (globalOpts.dryRun) {
-            const { fetchImpl, getCapturedRequest } = createCapturingFetch();
-            await sdkFn(finalInput, creds, fetchImpl);
-            printDryRunPreview(getCapturedRequest());
-            return;
-        }
-        const result = await sdkFn(finalInput, creds);
-        // P0 fix: detect SDK API failure response
-        if (result.result === false) {
-            throw new CliError("API_ERROR", result.errormsg || "API 请求失败");
-        }
-        const output = opts.transformResult ? opts.transformResult(result) : result;
-        formatOutput(output, globalOpts);
+/** Validate a required JSON array and reject an empty collection. */
+export function ensureNonEmptyJsonArray(value, fieldName) {
+    const json = ensureJsonString(value, fieldName);
+    if (json === undefined)
+        return undefined;
+    const parsed = JSON.parse(json);
+    if (!Array.isArray(parsed) || parsed.length === 0) {
+        throw new CliError("INPUT_ERROR", `${fieldName} 必须是非空 JSON 数组`);
     }
-    catch (e) {
-        handleError(e);
+    return json;
+}
+/** Validate a JSON array while allowing an explicitly empty optional array. */
+export function ensureJsonArray(value, fieldName) {
+    const json = ensureJsonString(value, fieldName);
+    if (json === undefined)
+        return undefined;
+    if (!Array.isArray(JSON.parse(json))) {
+        throw new CliError("INPUT_ERROR", `${fieldName} 必须是 JSON 数组`);
     }
+    return json;
+}
+/** Validate a JSON object (arrays and scalar JSON values are rejected). */
+export function ensureJsonObject(value, fieldName) {
+    const json = ensureJsonString(value, fieldName);
+    if (json === undefined)
+        return undefined;
+    const parsed = JSON.parse(json);
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+        throw new CliError("INPUT_ERROR", `${fieldName} 必须是 JSON 对象`);
+    }
+    return json;
 }
 //# sourceMappingURL=command-helpers.js.map

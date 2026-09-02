@@ -3,13 +3,13 @@ import io
 import sys
 import tempfile
 import unittest
-from contextlib import redirect_stdout
+from contextlib import redirect_stderr, redirect_stdout
 from pathlib import Path
 from unittest.mock import patch
 
 from wjx_survey_ppt import __main__ as cli
 from wjx_survey_ppt import fetch_survey
-from wjx_survey_ppt.build_project import data_signature
+from wjx_survey_ppt.build_project import data_signature, list_themes
 
 
 def _single_choice_survey(answer_valid=1):
@@ -82,7 +82,7 @@ class FetchSurveyAccuracyTests(unittest.TestCase):
                 "--page_index",
                 "1",
                 "--page_size",
-                "100",
+                "50",
             ],
             calls,
         )
@@ -210,8 +210,144 @@ class FinalStageFreshnessTests(unittest.TestCase):
 
             self.assertEqual(exit_code, 4)
             build_mock.assert_not_called()
-            saved = json.loads((workdir / "data.json").read_text(encoding="utf-8"))
-            self.assertEqual(saved["response"]["total"], 1)
+
+
+class StagedWorkflowBlackboxTests(unittest.TestCase):
+    def test_all_documented_themes_render_preview_svg(self):
+        data = {
+            "survey": {
+                "vid": "theme-42",
+                "title": "主题覆盖验证",
+                "type": 1,
+                "url": "https://example.test/m/theme",
+            },
+            "response": {"total": 2, "completed": 2, "avg_time": None},
+            "questions": [{
+                "qid": "2",
+                "type": "single",
+                "scale_type": None,
+                "title": "满意度",
+                "distribution": [
+                    {"label": "满意", "value": 1, "count": 1},
+                    {"label": "不满意", "value": 2, "count": 1},
+                ],
+                "options": ["满意", "不满意"],
+            }],
+            "analytics": {},
+            "nps_cross_tab": {},
+        }
+
+        with tempfile.TemporaryDirectory() as tmp:
+            workdir = Path(tmp)
+            (workdir / "data.json").write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
+
+            def invoke(*args):
+                argv = ["wjx_survey_ppt", *map(str, args)]
+                with redirect_stdout(io.StringIO()), redirect_stderr(io.StringIO()), patch.object(sys, "argv", argv):
+                    return cli.main()
+
+            themes = list_themes()
+            self.assertEqual(themes, ["business", "consulting", "editorial", "gov-red", "minimal", "soft", "tech-dark", "warm"])
+            for theme in themes:
+                self.assertEqual(invoke("--stage", "outline", "--workdir", workdir, "--theme", theme), 0, theme)
+                outline = json.loads((workdir / "outline.json").read_text(encoding="utf-8"))
+                self.assertEqual(outline["theme"], theme)
+                self.assertEqual(invoke("--stage", "preview", "--workdir", workdir), 0, theme)
+                previews = list((workdir / "preview").glob("*.svg"))
+                self.assertGreaterEqual(len(previews), 1, theme)
+                self.assertTrue(all("<svg" in path.read_text(encoding="utf-8") for path in previews), theme)
+
+    def test_one_step_data_file_plan_only_generates_svg_without_pptx(self):
+        data = {
+            "survey": {"vid": "one-step-42", "title": "一步法", "type": 1},
+            "response": {"total": 1, "completed": 1, "avg_time": None},
+            "questions": [],
+            "analytics": {},
+            "nps_cross_tab": {},
+        }
+        with tempfile.TemporaryDirectory() as tmp:
+            workdir = Path(tmp)
+            data_file = workdir / "input.json"
+            data_file.write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
+            argv = [
+                "wjx_survey_ppt",
+                "--data-file", str(data_file),
+                "--workdir", str(workdir),
+                "--theme", "warm",
+                "--plan-only",
+            ]
+            with redirect_stdout(io.StringIO()), redirect_stderr(io.StringIO()), patch.object(sys, "argv", argv):
+                self.assertEqual(cli.main(), 0)
+            final_svgs = list((workdir / "project" / "svg_final").glob("*.svg"))
+            self.assertGreaterEqual(len(final_svgs), 1)
+            self.assertFalse((workdir / "output.pptx").exists())
+
+    def test_data_outline_preview_final_chain_uses_real_templates_offline(self):
+        data = {
+            "survey": {
+                "vid": "offline-42",
+                "title": "离线链路验证",
+                "type": 1,
+                "url": "https://example.test/m/abc",
+            },
+            "response": {"total": 2, "completed": 2, "avg_time": None},
+            "questions": [{
+                "qid": "2",
+                "type": "single",
+                "scale_type": None,
+                "title": "你喜欢哪种颜色？",
+                "distribution": [
+                    {"label": "蓝色", "value": 1, "count": 1},
+                    {"label": "绿色", "value": 2, "count": 1},
+                ],
+                "options": ["蓝色", "绿色"],
+            }],
+            "analytics": {},
+            "nps_cross_tab": {},
+        }
+
+        with tempfile.TemporaryDirectory() as tmp:
+            workdir = Path(tmp)
+            data_file = workdir / "input.json"
+            data_file.write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
+
+            def invoke(*args):
+                argv = ["wjx_survey_ppt", *map(str, args)]
+                with redirect_stdout(io.StringIO()), redirect_stderr(io.StringIO()), patch.object(sys, "argv", argv):
+                    return cli.main()
+
+            self.assertEqual(invoke("--stage", "data", "--data-file", data_file, "--workdir", workdir), 0)
+            self.assertTrue((workdir / "data.json").exists())
+
+            self.assertEqual(invoke("--stage", "outline", "--workdir", workdir, "--theme", "minimal"), 0)
+            outline = json.loads((workdir / "outline.json").read_text(encoding="utf-8"))
+            self.assertEqual(outline["theme"], "minimal")
+            self.assertGreaterEqual(len(outline["pages"]), 3)
+
+            self.assertEqual(invoke("--stage", "preview", "--workdir", workdir), 0)
+            previews = list((workdir / "preview").glob("*.svg"))
+            self.assertGreaterEqual(len(previews), 1)
+            self.assertTrue(all("<svg" in path.read_text(encoding="utf-8") for path in previews))
+
+            self.assertEqual(invoke(
+                "--stage", "final", "--data-file", data_file,
+                "--workdir", workdir, "--plan-only", "--skip-ai-check",
+            ), 0)
+            final_svgs = list((workdir / "project" / "svg_final").glob("*.svg"))
+            self.assertGreaterEqual(len(final_svgs), 3)
+            self.assertFalse((workdir / "output.pptx").exists(), "--plan-only must not render a PPTX")
+
+    def test_staged_workflow_reports_missing_intermediate_files(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            workdir = Path(tmp)
+            with redirect_stdout(io.StringIO()), redirect_stderr(io.StringIO()), patch.object(
+                sys, "argv", ["wjx_survey_ppt", "--stage", "outline", "--workdir", str(workdir)]
+            ):
+                self.assertEqual(cli.main(), 2)
+            with redirect_stdout(io.StringIO()), redirect_stderr(io.StringIO()), patch.object(
+                sys, "argv", ["wjx_survey_ppt", "--inspect-outline", "--workdir", str(workdir)]
+            ):
+                self.assertEqual(cli.main(), 2)
 
     def test_final_stage_stale_outline_block_ignores_skip_ai_check(self):
         with tempfile.TemporaryDirectory() as tmp:

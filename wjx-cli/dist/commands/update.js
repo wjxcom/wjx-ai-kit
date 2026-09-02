@@ -1,76 +1,142 @@
-import { execSync } from "node:child_process";
+import { execFileSync } from "node:child_process";
 import { createInterface } from "node:readline/promises";
 import { stdin, stderr } from "node:process";
 import { updateSkill, getVersion } from "../lib/install-skill.js";
+import { CliError } from "../lib/errors.js";
+import { executeRuntimeLocal } from "../lib/runtime/executor.js";
+const SEMVER_PATTERN = /^v?(\d+)\.(\d+)\.(\d+)(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$/;
+function parseVersion(version) {
+    const match = SEMVER_PATTERN.exec(version.trim());
+    if (!match)
+        throw new Error(`版本 "${version}" 必须是有效的 semver（x.y.z）`);
+    return [Number(match[1]), Number(match[2]), Number(match[3])];
+}
+/** Compare two package versions without allowing npm to choose a downgrade. */
+export function compareVersions(left, right) {
+    const a = parseVersion(left);
+    const b = parseVersion(right);
+    for (let index = 0; index < a.length; index += 1) {
+        if (a[index] < b[index])
+            return -1;
+        if (a[index] > b[index])
+            return 1;
+    }
+    return 0;
+}
+export function shouldUpdate(currentVersion, latestVersion) {
+    return compareVersions(latestVersion, currentVersion) > 0;
+}
+function npmExecutable() {
+    return process.platform === "win32" ? "npm.cmd" : "npm";
+}
+function runNpm(args, options = {}) {
+    if (process.platform === "win32") {
+        // Batch files need cmd.exe on Windows; invoking it explicitly avoids Node's
+        // shell=true deprecation warning leaking into the CLI error channel.
+        return execFileSync(process.env.ComSpec ?? "cmd.exe", ["/d", "/s", "/c", [npmExecutable(), ...args].join(" ")], options);
+    }
+    return execFileSync(npmExecutable(), args, options);
+}
+function readLatestVersion() {
+    let raw;
+    try {
+        raw = String(runNpm(["view", "wjx-cli@latest", "version", "--json"], {
+            encoding: "utf8",
+            stdio: ["ignore", "pipe", "pipe"],
+        })).trim();
+    }
+    catch (error) {
+        const detail = error instanceof Error ? error.message : String(error);
+        throw new CliError("API_ERROR", `无法检查 wjx-cli 的 registry 最新版本: ${detail}`);
+    }
+    let parsed = raw;
+    try {
+        parsed = JSON.parse(raw);
+    }
+    catch {
+        // npm can return a plain version string when its output is not JSON encoded.
+    }
+    const candidate = typeof parsed === "string"
+        ? parsed
+        : parsed && typeof parsed === "object" && !Array.isArray(parsed) && typeof parsed.version === "string"
+            ? parsed.version
+            : "";
+    try {
+        parseVersion(candidate);
+    }
+    catch {
+        throw new CliError("API_ERROR", `registry 返回了无效的 wjx-cli 版本: ${candidate || raw || "<empty>"}`);
+    }
+    return candidate.trim();
+}
+function installLatest(global) {
+    runNpm(global
+        ? ["install", "wjx-cli@latest", "--global"]
+        : ["install", "wjx-cli@latest"], { stdio: "pipe" });
+}
 export function registerUpdateCommands(program) {
     program
         .command("update")
         .description("自更新 wjx-cli 到最新版本")
         .option("--silent", "静默执行，不询问 skill update")
-        .action(async (opts) => {
-        const { silent = false } = opts;
+        .action(async (_opts, cmd) => {
         const oldVersion = getVersion();
-        if (!silent) {
-            stderr.write(`当前版本: v${oldVersion}\n`);
-            stderr.write("正在更新 wjx-cli...\n");
-        }
-        let globalError;
-        try {
-            execSync("npm update wjx-cli -g", { stdio: silent ? "pipe" : "inherit" });
-        }
-        catch (e) {
-            globalError = e instanceof Error ? e.message : String(e);
-            // Fallback: try local update
-            try {
-                execSync("npm update wjx-cli", { stdio: silent ? "pipe" : "inherit" });
-            }
-            catch (err) {
-                const msg = `更新失败: ${err instanceof Error ? err.message : String(err)}`;
+        await executeRuntimeLocal(program, cmd, async (input) => {
+            const silent = input.silent === true;
+            const latestVersion = readLatestVersion();
+            if (!shouldUpdate(oldVersion, latestVersion)) {
                 if (!silent) {
-                    if (globalError)
-                        stderr.write(`  全局更新失败: ${globalError}\n`);
-                    stderr.write(`${msg}\n`);
+                    stderr.write(`当前版本: v${oldVersion}\n`);
+                    stderr.write(`registry 最新版本: v${latestVersion}，未执行更新。\n`);
                 }
-                else {
-                    process.stdout.write(JSON.stringify({
-                        status: "error",
-                        oldVersion,
-                        message: msg,
-                    }) + "\n");
-                }
-                process.exitCode = 1;
-                return;
+                return {
+                    status: "up-to-date",
+                    oldVersion,
+                    newVersion: oldVersion,
+                    latestVersion,
+                };
             }
-        }
-        // Re-read version after update.
-        // Note: due to Node.js module cache, this may still return the old version
-        // in the same process. The user will see the actual new version on next run.
-        const newVersion = getVersion();
-        if (silent) {
-            process.stdout.write(JSON.stringify({
-                status: "updated",
-                oldVersion,
-                newVersion,
-            }) + "\n");
-            return;
-        }
-        stderr.write(`更新完成: v${oldVersion} → v${newVersion}\n`);
-        // Only prompt for skill update if stdin is a TTY (not piped)
-        if (!stdin.isTTY)
-            return;
-        const rl = createInterface({ input: stdin, output: stderr });
-        try {
-            const answer = await rl.question("是否同时更新技能？(y/n) ");
-            if (answer.trim().toLowerCase() === "y") {
-                const result = updateSkill(process.cwd());
-                if (result.status === "error") {
-                    stderr.write("提示: 可运行 wjx skill install 先安装技能\n");
+            let globalError;
+            try {
+                installLatest(true);
+            }
+            catch (e) {
+                globalError = e instanceof Error ? e.message : String(e);
+                try {
+                    installLatest(false);
+                }
+                catch (err) {
+                    const msg = `更新失败: ${err instanceof Error ? err.message : String(err)}`;
+                    throw new CliError("API_ERROR", msg, globalError ? { globalError } : undefined);
                 }
             }
-        }
-        finally {
-            rl.close();
-        }
+            const newVersion = latestVersion;
+            if (!silent) {
+                stderr.write(`当前版本: v${oldVersion}\n`);
+                stderr.write("正在更新 wjx-cli...\n");
+            }
+            if (silent)
+                return { status: "updated", oldVersion, newVersion };
+            stderr.write(`更新完成: v${oldVersion} → v${newVersion}\n`);
+            if (!stdin.isTTY)
+                return undefined;
+            const rl = createInterface({ input: stdin, output: stderr });
+            try {
+                const answer = await rl.question("是否同时更新技能？(y/n) ");
+                if (answer.trim().toLowerCase() === "y") {
+                    const result = updateSkill(process.cwd());
+                    if (result.status === "error")
+                        stderr.write("提示: 可运行 wjx skill install 先安装技能\n");
+                }
+            }
+            finally {
+                rl.close();
+            }
+            return undefined;
+        }, {
+            dryRun: (input) => ({ command: "update", silent: input.silent === true, currentVersion: oldVersion }),
+            emit: (_result, input) => input.silent === true,
+        });
     });
 }
 //# sourceMappingURL=update.js.map

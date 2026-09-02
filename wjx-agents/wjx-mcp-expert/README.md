@@ -16,7 +16,7 @@ Agent 不重复 Skill 中的工具参数内容，而是在需要时读取对应�
 
 - MCP 工具的完整知识（问卷、答卷、通讯录、分析等；数量以源码为准；用户体系工具仅兼容维护）
 - 8 个 MCP 资源的参考数据（题型编码、DSL 语法、分析公式等）
-- 22 个 Prompt 模板（NPS 分析、异常检测、问卷生成等；数量以源码为准）
+- 15 个 Prompt 模板（NPS 分析、异常检测、JSONL 问卷生成等；数量以源码为准）
 - 内置的工作流程和安全原则
 
 ## 与 wjx-cli-expert 的区别
@@ -25,7 +25,7 @@ Agent 不重复 Skill 中的工具参数内容，而是在需要时读取对应�
 |---|---|---|
 | **交互方式** | MCP 工具调用 | `wjx` 命令行执行 |
 | **适用场景** | 支持 MCP 的 AI 客户端 | 任意终端 / CI / 通用 Agent |
-| **依赖** | wjx-mcp-server 运行中 | `npm install -g wjx-cli` |
+| **依赖** | wjx-mcp-server 运行中 | `wjx-cli >= 0.4.1`（可选） |
 
 ## 前置条件
 
@@ -53,6 +53,8 @@ claude mcp add wjx --env WJX_API_KEY=你的APIKey -- node /absolute/path/wjx-mcp
 ```
 
 ### 2. 部署 Agent 和 Skill
+
+`0.4.1` 尚未发布到 npm；发布前请使用本机构建的 CLI，发布后才使用 `npx wjx-cli`：
 
 ```bash
 npx wjx-cli skill install   # 自动部署 wjx-cli-expert Agent + Skill

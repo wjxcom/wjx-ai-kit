@@ -1,20 +1,4 @@
-# 问卷管理工具详解（13 tools）
-
-## create_survey — 创建问卷
-
-从零创建或复制已有问卷。
-
-| 参数 | 类型 | 必填 | 说明 |
-|------|------|------|------|
-| `title` | string | 是 | 问卷名称 |
-| `atype` | number | 否 | 问卷类型：1=调查(默认), 2=测评, 3=投票, 6=考试, 7=表单 |
-| `desc` | string | 否 | 问卷描述 |
-| `publish` | boolean | 否 | 是否立即发布（默认 false） |
-| `questions` | string | 否 | 题目列表 JSON 字符串 |
-| `source_vid` | string | 否 | 源问卷编号（复制模式） |
-| `creater` | string | 否 | 创建者子账号用户名 |
-| `compress_img` | boolean | 否 | 是否压缩图片 |
-| `is_string` | boolean | 否 | 是否使用原始 activity string 格式 |
+# 问卷管理工具详解（11 个当前工具）
 
 ## create_survey_by_json — 用 JSONL 创建问卷（推荐）
 
@@ -25,7 +9,7 @@
 | `jsonl` | string | 是 | JSONL 字符串；首行为 `qtype:"问卷基础信息"`，后续每行一个题目对象 |
 | `title` | string | 否 | 覆盖 JSONL 首行中的问卷标题 |
 | `atype` | number | 否 | 问卷类型：1=调查(默认), 2=测评, 3=投票, 6=考试, 7=表单 |
-| `publish` | boolean | 否 | 是否立即发布（默认 false） |
+| `publish` | boolean | 否 | 是否立即发布；未指定时普通题型默认 true，包含纯框架题型时默认 false |
 | `optional_titles` | string[] | 否 | 允许设为选填的题目标题；其余题目默认必答 |
 | `creater` | string | 否 | 创建者子账号用户名 |
 
@@ -43,17 +27,6 @@
 - 子填空位数量 = title 中 `{_}` 占位符的数量。例 `"电话 {_}，邮箱 {_}"` 生成 2 个输入框。
 - **禁止使用 `rowtitle` 数组定义子项** — `rowtitle` 是矩阵题/比重题/Kano/PSM 的字段，多项填空不支持，服务端会忽略并只生成 1 个空位。
 - 考试多项填空（`qtype="考试多项填空"`）和考试完形填空同理，都依赖 `{_}` 占位符。
-
-## create_survey_by_text — 用 DSL 文本创建问卷（已弃用）
-
-> **已弃用**：新项目请改用 `create_survey_by_json`（支持 70+ 题型，覆盖更全）。本工具仅为兼容保留，不再推荐使用。
-
-| 参数 | 类型 | 必填 | 说明 |
-|------|------|------|------|
-| `text` | string | 是 | DSL 格式的问卷文本（语法见 dsl-and-types.md） |
-| `atype` | number | 否 | 问卷类型：1=调查(默认), 2=测评, 3=投票, 6=考试, 7=表单 |
-| `publish` | boolean | 否 | 是否立即发布（默认 false） |
-| `creater` | string | 否 | 创建者子账号用户名 |
 
 ## get_survey — 获取问卷详情
 

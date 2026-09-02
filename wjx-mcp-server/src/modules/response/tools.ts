@@ -216,24 +216,30 @@ export function registerResponseTools(server: McpServer): void {
       },
     },
     wrapToolHandler(async (args) => {
-      // 复用一次 getSurvey：既规范化 submitdata，又自动取 jpmversion
+      // 自动版本模式才需要 getSurvey；显式版本直接提交调用方提供的数据。
       let submitdata = args.submitdata;
       let jpmversion = args.jpmversion;
-      try {
+      if (jpmversion === undefined) {
         const survey = await getSurvey({ vid: args.vid });
+        if (survey.result !== true) {
+          const message = survey.result === false
+            ? survey.errormsg || "获取问卷版本失败"
+            : "获取问卷版本返回了无效响应";
+          throw new Error(message);
+        }
         const data = survey?.data as {
           version?: number;
           questions?: Array<{ q_index: number; q_type: number; q_subtype: number }>;
         } | undefined;
+        const version = data?.version;
+        if (typeof version !== "number" || !Number.isSafeInteger(version) || version <= 0) {
+          throw new Error("自动获取问卷版本失败：API 响应缺少有效的正整数 version");
+        }
         const questions = data?.questions ?? [];
         if (questions.length > 0) {
           submitdata = normalizeSubmitdata(submitdata, questions);
         }
-        if (jpmversion === undefined && typeof data?.version === "number") {
-          jpmversion = data.version;
-        }
-      } catch {
-        // 获取问卷结构失败时不阻塞提交，使用原始 submitdata 与无版本号
+        jpmversion = version;
       }
       return submitResponse({
         vid: args.vid,

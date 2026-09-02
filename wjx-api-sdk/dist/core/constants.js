@@ -1,32 +1,62 @@
-export function getWjxBaseUrl() {
-    return (process.env.WJX_BASE_URL ?? "https://www.wjx.cn").replace(/\/+$/, "");
+function normalizeBaseUrl(baseUrl) {
+    const trimmed = baseUrl.trim().replace(/\/+$/, "");
+    try {
+        const parsed = new URL(trimmed);
+        if (/^\/openapi\/[^/]+\.aspx$/i.test(parsed.pathname))
+            return parsed.origin;
+    }
+    catch {
+        // Preserve malformed values so fetch reports the caller's configuration error.
+    }
+    return trimmed;
 }
-export function getWjxApiUrl() {
-    return process.env.WJX_API_URL ?? `${getWjxBaseUrl()}/openapi/default.aspx`;
+export function getWjxBaseUrl(baseUrl) {
+    return normalizeBaseUrl(baseUrl ?? process.env.WJX_BASE_URL ?? "https://www.wjx.cn");
 }
-export function getWjxUserSystemApiUrl() {
-    return process.env.WJX_USER_SYSTEM_API_URL ?? `${getWjxBaseUrl()}/openapi/usersystem.aspx`;
+export function getWjxApiUrl(baseUrl) {
+    return baseUrl !== undefined
+        ? `${getWjxBaseUrl(baseUrl)}/openapi/default.aspx`
+        : process.env.WJX_API_URL ?? `${getWjxBaseUrl()}/openapi/default.aspx`;
 }
-export function getWjxSubuserApiUrl() {
-    return process.env.WJX_SUBUSER_API_URL ?? `${getWjxBaseUrl()}/openapi/subuser.aspx`;
+export function getWjxUserSystemApiUrl(baseUrl) {
+    return baseUrl !== undefined
+        ? `${getWjxBaseUrl(baseUrl)}/openapi/usersystem.aspx`
+        : process.env.WJX_USER_SYSTEM_API_URL ?? `${getWjxBaseUrl()}/openapi/usersystem.aspx`;
 }
-export function getWjxContactsApiUrl() {
-    return process.env.WJX_CONTACTS_API_URL ?? `${getWjxBaseUrl()}/openapi/contacts.aspx`;
+export function getWjxSubuserApiUrl(baseUrl) {
+    return baseUrl !== undefined
+        ? `${getWjxBaseUrl(baseUrl)}/openapi/subuser.aspx`
+        : process.env.WJX_SUBUSER_API_URL ?? `${getWjxBaseUrl()}/openapi/subuser.aspx`;
 }
-export function getWjxSsoSubaccountUrl() {
-    return process.env.WJX_SSO_SUBACCOUNT_URL ?? `${getWjxBaseUrl()}/zunxiang/login.aspx`;
+export function getWjxContactsApiUrl(baseUrl) {
+    return baseUrl !== undefined
+        ? `${getWjxBaseUrl(baseUrl)}/openapi/contacts.aspx`
+        : process.env.WJX_CONTACTS_API_URL ?? `${getWjxBaseUrl()}/openapi/contacts.aspx`;
 }
-export function getWjxSsoUserSystemUrl() {
-    return process.env.WJX_SSO_USER_SYSTEM_URL ?? `${getWjxBaseUrl()}/user/loginform.aspx`;
+export function getWjxSsoSubaccountUrl(baseUrl) {
+    return baseUrl !== undefined
+        ? `${getWjxBaseUrl(baseUrl)}/zunxiang/login.aspx`
+        : process.env.WJX_SSO_SUBACCOUNT_URL ?? `${getWjxBaseUrl()}/zunxiang/login.aspx`;
 }
-export function getWjxSsoPartnerUrl() {
-    return process.env.WJX_SSO_PARTNER_URL ?? `${getWjxBaseUrl()}/partner/login.aspx`;
+export function getWjxSsoUserSystemUrl(baseUrl) {
+    return baseUrl !== undefined
+        ? `${getWjxBaseUrl(baseUrl)}/user/loginform.aspx`
+        : process.env.WJX_SSO_USER_SYSTEM_URL ?? `${getWjxBaseUrl()}/user/loginform.aspx`;
 }
-export function getWjxSurveyCreateUrl() {
-    return process.env.WJX_SURVEY_CREATE_URL ?? `${getWjxBaseUrl()}/newwjx/mysojump/createblankNew.aspx`;
+export function getWjxSsoPartnerUrl(baseUrl) {
+    return baseUrl !== undefined
+        ? `${getWjxBaseUrl(baseUrl)}/partner/login.aspx`
+        : process.env.WJX_SSO_PARTNER_URL ?? `${getWjxBaseUrl()}/partner/login.aspx`;
 }
-export function getWjxSurveyEditUrl() {
-    return process.env.WJX_SURVEY_EDIT_URL ?? `${getWjxBaseUrl()}/newwjx/design/editquestionnaire.aspx`;
+export function getWjxSurveyCreateUrl(baseUrl) {
+    return baseUrl !== undefined
+        ? `${getWjxBaseUrl(baseUrl)}/newwjx/mysojump/createblankNew.aspx`
+        : process.env.WJX_SURVEY_CREATE_URL ?? `${getWjxBaseUrl()}/newwjx/mysojump/createblankNew.aspx`;
+}
+export function getWjxSurveyEditUrl(baseUrl) {
+    return baseUrl !== undefined
+        ? `${getWjxBaseUrl(baseUrl)}/newwjx/design/editquestionnaire.aspx`
+        : process.env.WJX_SURVEY_EDIT_URL ?? `${getWjxBaseUrl()}/newwjx/design/editquestionnaire.aspx`;
 }
 export const Action = {
     GET_SURVEY: "1000001",
@@ -34,7 +64,6 @@ export const Action = {
     GET_SETTINGS: "1000003",
     GET_TAGS: "1000004",
     GET_TAG_DETAILS: "1000005",
-    CREATE_SURVEY: "1000101",
     UPDATE_STATUS: "1000102",
     UPDATE_SETTINGS: "1000103",
     UPLOAD_FILE: "1000104",

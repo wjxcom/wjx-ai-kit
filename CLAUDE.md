@@ -8,7 +8,7 @@ wjx-ai-kit is a monorepo (npm workspaces) wrapping the Wenjuanxing (问卷星) O
 
 - **wjx-cli** — Commander.js CLI; command count follows `wjx --help`. **Main product / primary entry point**, recommended for nearly all use cases.
 - **wjx-api-sdk** — Zero-dependency TypeScript SDK (48+ functions, foundation layer). Used by wjx-cli and any Node.js project.
-- **wjx-mcp-server** — MCP Server (58 tools, 8 resources, 22 prompts) for AI clients. **Secondary / maintenance-mode**: only useful for clients with native MCP protocol support (Claude Code/Desktop, Cursor, Cline). Functionality matches wjx-cli; if in doubt, prefer wjx-cli.
+- **wjx-mcp-server** — MCP Server (56 tools, 8 resources, 15 prompts) for AI clients. **Secondary / maintenance-mode**: only useful for clients with native MCP protocol support (Claude Code/Desktop, Cursor, Cline). Functionality matches wjx-cli; if in doubt, prefer wjx-cli.
 
 When in doubt about which package to feature in docs / examples / new functionality, **CLI first**. Only add MCP-specific behavior when the user explicitly requests MCP support.
 
@@ -60,13 +60,14 @@ wjx-cli / wjx-mcp-server  (consumers — both depend on SDK)
 
 ### SDK Function Signature Pattern
 
-Every SDK function follows this uniform 3-parameter signature:
+Network SDK functions use three base parameters and, where transport overrides are supported, an optional fourth `RequestOverrides` parameter:
 
 ```typescript
 async function doSomething(
   input: DoSomethingInput,
   credentials: WjxCredentials = getWjxCredentials(),
   fetchImpl: FetchLike = fetch,
+  requestOptions?: RequestOverrides,
 ): Promise<WjxApiResponse<T>>
 ```
 
@@ -121,7 +122,7 @@ MCP server has its own .env parser (`src/core/load-env.ts`, no dotenv dependency
 - **dist/ is gitignored**: build locally before publishing/testing
 - **No linter/formatter**: no ESLint or Prettier configured
 - **Style**: 2-space indent, double quotes, semicolons
-- **Git**: branch `develop`, remote on GitHub
+- **Git**: current working branch is `master`; do not assume a push target unless the task specifies one
 - **CLI output protocol**: JSON to stdout, structured errors to stderr, exit codes 0 (success), 1 (API/auth error), 2 (input error)
 - **沟通语言**: 使用中文与用户沟通，包括代码注释、提交信息和对话回复
 

@@ -5,16 +5,16 @@
 > echo '{"vid":12345,"get_questions":true,"get_items":true,"format":"dsl"}' | wjx survey get --stdin
 > ```
 
-## wjx survey create-by-json
+## wjx survey create
 
 用 JSONL 格式创建问卷（**唯一使用的创建方式**，覆盖 70+ 题型）。每个非空行是一个完整 JSON 对象，首行必须是 `qtype` 为 `问卷基础信息` 的元数据。
 
 ```bash
 wjx survey jsonl-template --type 1 --raw > survey.jsonl
 # 编辑 survey.jsonl 后创建
-wjx survey create-by-json --file survey.jsonl
-wjx survey create-by-json --file survey.jsonl --type 6 --publish
-wjx survey create-by-json --file survey.jsonl --dry-run    # 预览解析结果
+wjx survey create --file survey.jsonl
+wjx survey create --file survey.jsonl --type 6 --publish
+wjx survey create --file survey.jsonl --dry-run    # 预览解析结果
 ```
 
 | Flag | 必填 | 说明 |
@@ -25,7 +25,7 @@ wjx survey create-by-json --file survey.jsonl --dry-run    # 预览解析结果
 | `--title <s>` | 否 | 覆盖 JSONL 中的问卷标题 |
 | `--type <n>` | 否 | 1=调查, 2=测评, 3=投票, 6=考试, 7=表单, 10=量表, 11=民主测评（默认 1） |
 | `--optional_titles <json>` | 否 | 允许设为选填的题目标题 JSON 数组 |
-| `--publish` | 否 | 创建后立即发布 |
+| `--publish` | 否 | 显式要求创建后立即发布；未传时普通题型默认发布，纯框架题型默认保持草稿 |
 | `--creater <s>` | 否 | 创建者子账号 |
 | `--dry-run` | 否 | 预览解析结果，不实际创建 |
 
@@ -45,6 +45,12 @@ wjx survey create-by-json --file survey.jsonl --dry-run    # 预览解析结果
 - 默认题目必答。仅当题目标题同时列入 `--optional_titles` 时，才写 `"requir":false`。
 - 先运行 `wjx survey jsonl-template --type <n> --raw`，从当前 CLI 模板开始生成调查、投票、考试、表单或量表。
 
+### 发布策略
+
+普通题型在未指定 `--publish` 时默认立即发布。下列纯框架题型只有骨架，必须在问卷星编辑页补充素材或配置，未指定 `--publish` 时 SDK 会以草稿创建：`折叠栏目`、`轮播图`、`AI追问`、`AI处理`、`AI访谈`、`图片OCR`、`VlookUp问卷关联`、`分页计时器`。
+
+创建后请先获取问卷详情和编辑入口，完成二次编辑并由用户明确要求发布时，再使用发布操作；AI 不得为这些题型自行追加 `--publish`。
+
 完整字段、中文题型名和示例见 [question-types.md](question-types.md)。
 
 ### 通过 stdin 传参
@@ -53,12 +59,12 @@ wjx survey create-by-json --file survey.jsonl --dry-run    # 预览解析结果
 
 ```bash
 printf '%s\n' '{"jsonl":"{\"qtype\":\"问卷基础信息\",\"title\":\"客户需求调查\",\"atype\":1}\n{\"qtype\":\"单选\",\"title\":\"请选择使用频率\",\"select\":[\"每天\",\"每周\"]}"}' \
-  | wjx survey create-by-json --stdin --dry-run
+  | wjx survey create --stdin --dry-run
 ```
 
 ### 创建响应中的填写地址字段
 
-`create-by-json` 成功后先保留并结构化解析完整 JSON 响应。当前 CLI 只格式化服务端原始字段，不会自动从这些字段派生 `fill_url`；不要把字段不存在误判成没有填写地址，也不要因此用 `vid` 猜路径。常见字段含义如下（字段可能位于响应的 `data` 或问卷记录对象中）：
+`create` 成功后先保留并结构化解析完整 JSON 响应。当前 CLI 只格式化服务端原始字段，不会自动从这些字段派生 `fill_url`；不要把字段不存在误判成没有填写地址，也不要因此用 `vid` 猜路径。常见字段含义如下（字段可能位于响应的 `data` 或问卷记录对象中）：
 
 | 字段 | 含义 | 用途 |
 |------|------|------|
@@ -79,7 +85,7 @@ const fillUrl = new URL(record.pc_path || record.mobile_path, record.activity_do
 
 获取刚创建问卷的推荐流程：
 
-1. 保存 `create-by-json` 的完整 JSON 成功响应，不要用 `head` 截断或用文本搜索提取字段。
+1. 保存 `create` 的完整 JSON 成功响应，不要用 `head` 截断或用文本搜索提取字段。
 2. 在创建响应中先查找已归一化的 `fill_url`；没有时，用同一记录的 `activity_domain` 与 `pc_path`/`mobile_path` 按上面的规则组合并校验。
 3. 如果创建响应没有可验证路径，取其中的 `vid`/`sid`，保持筛选和排序条件不变，按 `survey list` 的 `page_index`、`page_size`、`total_count` 逐页查找相同 `vid` 的记录，再从该记录读取短路径。
 4. 列表中也没有服务端路径时，明确报告暂时无法取得填写链接；不要改用编辑地址、创建地址或数字 `vid` 路径。
@@ -137,7 +143,7 @@ wjx survey list --name_like "满意度" --status 1
 - 普通列表请求可以只展示当前页，但必须报告总数和页码：总页数为 `Math.ceil(total_count / page_size)`。
 - 用户要求全部结果时，保持所有筛选和排序参数不变，查询第 1 页到总页数，并核对累计数量等于 `total_count`。
 - 不要把 `--query_all` 当作自动翻页开关；它只扩大账号查询范围。
-- 不要为问卷列表使用 `--table`，该模式只展示部分问卷行，可能隐藏 `sid`、域名、填写路径以及 `total_count`、`page_index`、`page_size`，不能用于机器解析或链接查找。
+- 不要为问卷列表使用 `--format table`，该模式只展示部分问卷行，可能隐藏 `sid`、域名、填写路径以及 `total_count`、`page_index`、`page_size`，不能用于机器解析或链接查找。
 - 使用 JSON 解析器读取完整响应，不要用 `head` 截断 JSON 或用 `grep` 搜索字段。为刚创建的问卷找链接时，先用创建响应里的 `vid`/`sid`；仅在创建响应没有可验证路径时按页定位目标记录。
 
 ## wjx survey get

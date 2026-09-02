@@ -19,6 +19,11 @@ function parseUrl(urlStr) {
 // They just build the URL with the provided input params.
 
 describe("buildSsoSubaccountUrl", () => {
+  it("supports an explicit per-call base URL", () => {
+    const url = buildSsoSubaccountUrl({ subuser: "user1" }, "https://tenant.example");
+    assert.equal(parseUrl(url).base, "https://tenant.example/zunxiang/login.aspx");
+  });
+
   it("should return URL with correct base path", () => {
     const url = buildSsoSubaccountUrl({ subuser: "user1" });
     const { base } = parseUrl(url);

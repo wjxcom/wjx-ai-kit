@@ -10,4 +10,4 @@
 | `MCP_AUTH_TOKEN` | 无 | HTTP 单租户 Bearer gate |
 | `MCP_SESSION` | stateful | 设置为 `stateless` 禁用会话 |
 
-CLI 还支持 `wjx init` 写入用户级配置。环境变量优先于配置文件。
+CLI 还支持 `wjx init` 写入用户级配置。环境变量优先于配置文件；选择命名 profile 时，profile 的 `baseUrl`/`corpId` 优先于旧版 `.wjxrc` 的默认路由字段。CLI 将选中的地址作为每次请求的显式路由，不会为切换 profile 临时修改全局环境。

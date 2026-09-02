@@ -2,6 +2,20 @@
 
 本文件记录项目的所有重要变更。
 
+> 说明：以下 0.x 条目保留为历史记录。条目中出现的 `createSurvey`、`createSurveyByText`、`textToSurvey` 创建相关能力已移除，不属于当前 SDK，也不得据此恢复或新增兼容入口。当前问卷创建唯一使用 `createSurveyByJson`。
+
+## [0.4.1] - Unreleased
+
+- 工作树版本更新为 `0.4.1`；`0.4.0` 已废弃，尚未执行本版本 npm 发布。
+
+## [0.4.0] - 2026-08-30
+
+### Breaking
+
+- 移除旧的 `createSurvey`、`createSurveyByText` 和 `textToSurvey` 创建相关导出；问卷创建唯一使用 action `1000106` 的 `createSurveyByJson` JSONL 接口。
+- `WjxCredentials`/请求选项支持按请求指定 `baseUrl`、`corpId` 和 `retryBudget`，并保留现有调用签名的默认行为。
+- JSONL 题型清单、语法预检和必答/考试元数据校验统一由 JSONL 管道负责；旧的 JSON 数组/DSL 创建转换器不再作为 SDK 能力提供。
+
 ## [0.2.6] - 2026-04-24
 
 ### Added

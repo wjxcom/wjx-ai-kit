@@ -12,7 +12,10 @@ export declare const CONFIG_PATH: string;
 export declare function loadConfig(): WjxConfig | null;
 export declare function saveConfig(config: WjxConfig): void;
 /**
- * Apply config values to process.env where env vars are not already set.
- * This makes SDK layer (which reads process.env) automatically use config values.
+ * Apply the legacy config's credential fallback to process.env.
+ *
+ * Routing values stay in the resolved profile so an explicitly selected
+ * profile cannot be overwritten by values copied from `.wjxrc`. The SDK and
+ * CLI pass the selected base URL per request instead of mutating global state.
  */
 export declare function applyConfigToEnv(): void;

@@ -42,7 +42,7 @@ describe("SDK barrel exports", () => {
 
     it("should export Action as an object with string values", () => {
       assert.equal(typeof sdk.Action, "object");
-      assert.equal(typeof sdk.Action.CREATE_SURVEY, "string");
+      assert.equal(typeof sdk.Action.CREATE_SURVEY_BY_JSON, "string");
     });
 
     it("should export timeout/retry constants as numbers", () => {
@@ -60,10 +60,6 @@ describe("SDK barrel exports", () => {
 
     it("should export getWjxCredentials as a function", () => {
       assert.equal(typeof sdk.getWjxCredentials, "function");
-    });
-
-    it("should export validateQuestionsJson as a function", () => {
-      assert.equal(typeof sdk.validateQuestionsJson, "function");
     });
 
     it("should export callWjxApi as a function", () => {
@@ -90,7 +86,7 @@ describe("SDK barrel exports", () => {
   // ─── Survey module ─────────────────────────────────────────────────
   describe("survey module", () => {
     for (const name of [
-      "createSurvey", "createSurveyByJson", "getSurvey", "listSurveys", "updateSurveyStatus",
+      "createSurveyByJson", "getSurvey", "listSurveys", "updateSurveyStatus",
       "getSurveySettings", "updateSurveySettings", "deleteSurvey",
       "getQuestionTags", "getTagDetails", "clearRecycleBin", "uploadFile",
       "extractJsonlMetadata", "normalizeJsonl",

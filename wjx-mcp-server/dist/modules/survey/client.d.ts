@@ -1,2 +1,2 @@
-export { createSurvey, createSurveyByText, createSurveyByJson, getSurvey, listSurveys, updateSurveyStatus, getSurveySettings, updateSurveySettings, deleteSurvey, getQuestionTags, getTagDetails, clearRecycleBin, uploadFile, surveyToText, textToSurvey, parsedQuestionsToWire, extractJsonlMetadata, normalizeJsonl, MAX_JSONL_SIZE, } from "wjx-api-sdk";
-export type { SurveyDetail, ParsedSurvey, ParsedQuestion } from "wjx-api-sdk";
+export { createSurveyByJson, getSurvey, listSurveys, updateSurveyStatus, getSurveySettings, updateSurveySettings, deleteSurvey, getQuestionTags, getTagDetails, clearRecycleBin, uploadFile, surveyToText, extractJsonlMetadata, normalizeJsonl, MAX_JSONL_SIZE, } from "wjx-api-sdk";
+export type { SurveyDetail } from "wjx-api-sdk";

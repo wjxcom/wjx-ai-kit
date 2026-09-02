@@ -7,17 +7,22 @@ import { maskApiKey } from "../lib/mask.js";
 import { installSkill } from "../lib/install-skill.js";
 import { installPptSkill } from "../lib/install-ppt-skill.js";
 import { resolveInstallRoot } from "../lib/install-root.js";
+import { formatOutput } from "../lib/output.js";
+import { CliError } from "../lib/errors.js";
+import { getMerged } from "../lib/command-helpers.js";
 import type { WjxConfig } from "../lib/config.js";
 
 const DEFAULT_BASE_URL = "https://www.wjx.cn";
 
 /** Validate API Key by calling listSurveys. Returns true if valid. */
-async function validateApiKey(apiKey: string): Promise<boolean> {
+async function validateApiKey(apiKey: string, baseUrl?: string): Promise<boolean> {
   stderr.write("验证 API Key...");
   try {
     const result = await listSurveys(
       { page_index: 1, page_size: 1 },
       { apiKey },
+      fetch,
+      baseUrl ? { baseUrl } : undefined,
     );
     if (result.result === false) {
       stderr.write(` 失败 (${result.errormsg})\n`);
@@ -61,14 +66,7 @@ async function initWithArgs(opts: {
   const baseUrl = opts.baseUrl || DEFAULT_BASE_URL;
   const corpId = opts.corpId || undefined;
 
-  // Apply base URL for validation
-  if (baseUrl !== DEFAULT_BASE_URL) {
-    process.env.WJX_BASE_URL = baseUrl;
-  } else {
-    delete process.env.WJX_BASE_URL;
-  }
-
-  await validateApiKey(apiKey);
+  await validateApiKey(apiKey, baseUrl);
   saveAndReport(apiKey, baseUrl, corpId);
 
   if (opts.installSkill) {
@@ -129,14 +127,7 @@ async function initInteractive(opts: { targetDir?: string } = {}): Promise<void>
     // 3. Corp ID (保留已有值，不再默认询问以简化向导；如需配置请直接编辑 ~/.wjxrc)
     const corpId = currentCorpId || undefined;
 
-    // Apply base URL before validation so SDK uses the correct endpoint
-    if (baseUrl !== DEFAULT_BASE_URL) {
-      process.env.WJX_BASE_URL = baseUrl;
-    } else {
-      delete process.env.WJX_BASE_URL;
-    }
-
-    await validateApiKey(apiKey);
+    await validateApiKey(apiKey, baseUrl);
     stderr.write("\n");
     saveAndReport(apiKey, baseUrl, corpId);
     stderr.write("提示: 也可以直接编辑该文件修改配置（如 WJX_CORP_ID 通讯录）。\n");
@@ -145,7 +136,7 @@ async function initInteractive(opts: { targetDir?: string } = {}): Promise<void>
     stderr.write("\n");
     const ans1 = (await rl.question(
       "安装 wjx-cli-use 技能 + wjx-cli-expert 子 Agent？\n" +
-        "  装到 ./skills/wjx-cli-use/ + ./.claude/agents/wjx-cli-expert.md\n" +
+        "  装到 ./skills/wjx-cli-use/、./.claude/skills/wjx-cli-use/ + ./.claude/agents/wjx-cli-expert.md\n" +
         "  AI Agent 用它来自动操作问卷星 [Y/n]: ",
     )).trim().toLowerCase();
     if (ans1 !== "n" && ans1 !== "no") {
@@ -187,19 +178,43 @@ export function registerInitCommands(program: Command): void {
       "--target-dir <path>",
       "技能安装根目录（不传时按 WJX_INSTALL_ROOT → 已知客户端环境变量 → cwd 解析）",
     )
-    .action(async (opts: {
+    .action(async (_opts: {
       baseUrl?: string;
       corpId?: string;
       installSkill: boolean;
       installPptSkill?: boolean;
       targetDir?: string;
     }, cmd: Command) => {
+      const merged = getMerged(cmd);
+      const input = {
+        baseUrl: merged.baseUrl as string | undefined,
+        corpId: merged.corpId as string | undefined,
+        installSkill: merged.installSkill === undefined ? true : merged.installSkill === true,
+        installPptSkill: merged.installPptSkill === true,
+        targetDir: merged.targetDir as string | undefined,
+      };
       // --api-key is a global option on the root program; read from parent
       const apiKey = cmd.parent?.opts().apiKey as string | undefined;
 
       if (apiKey) {
+        if (program.opts().dryRun) {
+          formatOutput({
+            kind: "dry-run",
+            plans: [],
+            input: {
+              apiKey: "****",
+              baseUrl: input.baseUrl || DEFAULT_BASE_URL,
+              corpId: input.corpId,
+              installSkill: input.installSkill,
+              installPptSkill: input.installPptSkill,
+              targetDir: input.targetDir,
+            },
+            note: "初始化是本地配置写入操作，dry-run 不验证 API、不写配置、不安装技能",
+          }, program.opts());
+          return;
+        }
         // 参数模式：直接配置，不弹交互
-        await initWithArgs({ apiKey, ...opts });
+        await initWithArgs({ apiKey, ...input });
         return;
       }
 
@@ -211,13 +226,13 @@ export function registerInitCommands(program: Command): void {
           stderr.write("如需更新，请使用参数模式: wjx init --api-key <key>\n");
           return;
         }
-        stderr.write("非交互环境下请使用参数模式:\n");
-        stderr.write("  wjx init --api-key <key> [--base-url <url>] [--corp-id <id>]\n");
-        process.exitCode = 1;
-        return;
+        throw new CliError(
+          "AUTH_ERROR",
+          "非交互环境下缺少 API Key，请使用参数模式: wjx init --api-key <key> [--base-url <url>] [--corp-id <id>]",
+        );
       }
 
       // 交互模式
-      await initInteractive({ targetDir: opts.targetDir });
+      await initInteractive({ targetDir: input.targetDir });
     });
 }

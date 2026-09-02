@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { createManifest } from "./export-manifest.mjs";
@@ -11,5 +11,15 @@ for (const command of manifest.commands) if (!command.source && !command.metadat
 for (const file of ["src/lib/runtime/input.ts", "src/lib/runtime/dry-run.ts"]) {
   const source = readFileSync(resolve(root, file), "utf8");
   if (/fetch\s*\(|sdkFn|callWjxApi/.test(source)) throw new Error(`architecture: network call in preparation module ${file}`);
+}
+for (const file of readdirSync(resolve(root, "src", "commands")).filter((name) => name.endsWith(".ts"))) {
+  const source = readFileSync(resolve(root, "src", "commands", file), "utf8");
+  if (/\bexecuteCommand\b/.test(source)) {
+    throw new Error(`architecture: legacy executeCommand facade remains in ${file}; use runtime executor`);
+  }
+}
+const helperSource = readFileSync(resolve(root, "src", "lib", "command-helpers.ts"), "utf8");
+if (/export\s+(?:async\s+)?function\s+executeCommand\b/.test(helperSource)) {
+  throw new Error("architecture: command-helpers must not export executeCommand");
 }
 process.stdout.write(`architecture contract passed (${manifest.commands.length} catalog entries)\n`);

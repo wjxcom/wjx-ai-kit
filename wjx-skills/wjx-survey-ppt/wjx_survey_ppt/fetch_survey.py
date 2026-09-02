@@ -4,7 +4,7 @@
 - 复用 wjx-cli 的认证、错误处理、重试逻辑
 - skill 与 SDK 解耦，wjx-cli 升级时 skill 自动跟随
 
-关键事实：wjx-cli 返回 {"result": true, "data": {...}}，所有具体字段在 data 下。
+关键事实：wjx-cli 返回 {"ok": true, "data": {...}}，所有具体字段在 data 下。
 """
 
 from __future__ import annotations
@@ -39,23 +39,23 @@ def _resolve_wjx() -> str:
     found = shutil.which("wjx")
     if found:
         return found
-    raise RuntimeError("未找到 wjx 命令，请先安装：npm install -g wjx-cli")
+    raise RuntimeError("未找到 wjx 命令，请先安装 wjx-cli >= 0.4.1；当前未发布版本请从仓库源码构建并链接")
 
 
 def _run_wjx(args: list[str]) -> Any:
-    """调 wjx-cli 子命令，要求 --json 输出，返回 data 字段。
+    """调 wjx-cli 子命令，要求 JSON 输出，返回 data 字段。
 
     出错时抛 RuntimeError 带上 stderr。
 
     wjx-cli 输出有两种风格：
-    - 业务命令（survey/response 等）：{"result": true, "data": {...}, "errormsg": ...}
-    - 工具命令（analytics 等）：直接返回数据对象，无 result 字段
-    本函数兼容两者：有 result=true 取 data；无 result 则原样返回。
+    - 业务命令（survey/response 等）：{"ok": true, "data": {...}}
+    - 工具命令（analytics 等）：直接返回数据对象，无 ok 字段
+    本函数兼容两者：有 ok=true 取 data；ok=false 抛出业务错误；无 ok 则原样返回。
     """
     env = {**os.environ, "PYTHONIOENCODING": "utf-8", "PYTHONUTF8": "1"}
     wjx_path = _resolve_wjx()
     result = subprocess.run(
-        [wjx_path, *args, "--json"],
+        [wjx_path, *args, "--format", "json"],
         capture_output=True,
         text=True,
         encoding="utf-8",
@@ -71,7 +71,18 @@ def _run_wjx(args: list[str]) -> Any:
         raise RuntimeError(
             f"wjx {' '.join(args)} 返回非 JSON：{result.stdout[:200]}"
         ) from exc
-    # 业务命令信封
+    # 当前 CLI 的业务命令信封
+    if isinstance(body, dict) and "ok" in body:
+        if body.get("ok") is not True:
+            error = body.get("error")
+            if isinstance(error, dict):
+                err = error.get("message") or error.get("code") or str(error)
+            else:
+                err = error or "unknown"
+            raise RuntimeError(f"wjx {' '.join(args)} 业务错误：{err}")
+        return body.get("data", {})
+
+    # 旧版 CLI 信封仅为迁移期兼容；当前版本不会生成它。
     if isinstance(body, dict) and "result" in body:
         if not body.get("result"):
             err = body.get("errormsg") or body.get("error") or "unknown"
@@ -279,7 +290,8 @@ def _collect_open_answers(
     一旦每道题都凑满 max_per_q，立即停止分页。
     不依赖 360-report，普通问卷也可用。
     """
-    page_size = 100
+    # Keep within the CLI response query contract (1-50 per page).
+    page_size = 50
     page_count = max(1, (int(total_count) + page_size - 1) // page_size)
     out: dict[int, list[str]] = {qi: [] for qi in text_q_indices}
     seen: dict[int, set[str]] = {qi: set() for qi in text_q_indices}
@@ -332,7 +344,8 @@ def _collect_nps_cross_tab(
       }
     }
     """
-    page_size = 100
+    # Keep within the CLI response query contract (1-50 per page).
+    page_size = 50
     page_count = max(1, (int(total_count) + page_size - 1) // page_size)
     # bucket[gqi][option_idx] = [nps_score, ...]
     bucket: dict[int, dict[int, list[int]]] = {qi: {} for qi in group_qis}
@@ -548,8 +561,8 @@ def _aggregate_from_query(
       answer_report 仿照 API 形态 {str(q_index): {q_index, item_count: {str(idx): count}}}
       matrix_report 矩阵专用 {q_index: {q_row: {col_item_index: count}}}
     """
-    # 服务端实测每页上限 100
-    page_size = 100
+    # The CLI contract caps response query pages at 50.
+    page_size = 50
     page_count = max(1, (int(total_count) + page_size - 1) // page_size)
     qtype_by_qi = {int(q.get("q_index") or 0): int(q.get("q_type") or 0) for q in questions_raw}
 

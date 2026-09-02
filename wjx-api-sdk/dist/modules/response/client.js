@@ -43,7 +43,7 @@ export async function getReport(input, credentials = getWjxCredentials(), fetchI
     ]);
     return callWjxApi(params, { credentials, fetchImpl, timeoutMs: LONG_TIMEOUT_MS });
 }
-export async function submitResponse(input, credentials = getWjxCredentials(), fetchImpl = fetch) {
+export async function submitResponse(input, credentials = getWjxCredentials(), fetchImpl = fetch, requestOptions) {
     const params = {
         action: Action.SUBMIT_RESPONSE,
         vid: input.vid,
@@ -51,7 +51,13 @@ export async function submitResponse(input, credentials = getWjxCredentials(), f
         submitdata: input.submitdata,
     };
     assignDefined(params, input, ["udsid", "sojumpparm", "submittime", "jpmversion"]);
-    return callWjxApi(params, { credentials, fetchImpl, maxRetries: 0 });
+    return callWjxApi(params, {
+        ...requestOptions,
+        credentials,
+        fetchImpl,
+        retryBudget: 0,
+        maxRetries: 0,
+    });
 }
 export async function getFileLinks(input, credentials = getWjxCredentials(), fetchImpl = fetch) {
     const params = {

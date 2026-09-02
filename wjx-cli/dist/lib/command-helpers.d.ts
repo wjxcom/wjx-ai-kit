@@ -1,5 +1,5 @@
 import { Command } from "commander";
-import type { WjxApiResponse, FetchLike } from "wjx-api-sdk";
+import type { FetchLike } from "wjx-api-sdk";
 /**
  * Strict integer parser. Rejects garbage like "123abc".
  */
@@ -8,13 +8,12 @@ export declare function strictInt(v: string): number;
  * Require a field in the merged input. Throws INPUT_ERROR if missing.
  */
 export declare function requireField(merged: Record<string, unknown>, field: string, label?: string): void;
-interface ExecuteOpts {
-    noAuth?: boolean;
-    /** 在输出前转换 API 返回结果（用于提取/重塑数据） */
-    transformResult?: (result: WjxApiResponse<unknown>) => unknown;
-    /** 在调用 SDK 之前异步转换 input（如获取问卷结构修正 submitdata） */
-    transformInput?: (input: Record<string, unknown>, creds: unknown) => Promise<Record<string, unknown>>;
-}
+/** Require a positive integer for identifiers such as vid/system_id. */
+export declare function requirePositiveInt(merged: Record<string, unknown>, field: string, label?: string): void;
+/** Require an option to use one of the values documented by the API. */
+export declare function requireEnum(merged: Record<string, unknown>, field: string, allowed: readonly (string | number)[], label?: string): void;
+/** Require an integer in an inclusive range. */
+export declare function requireIntRange(merged: Record<string, unknown>, field: string, min: number, max: number, label?: string): void;
 export interface CapturedRequest {
     method: string;
     url: string;
@@ -25,11 +24,10 @@ export declare function createCapturingFetch(): {
     fetchImpl: FetchLike;
     getCapturedRequest: () => CapturedRequest | null;
 };
-export declare function printDryRunPreview(request: CapturedRequest | null): void;
-/**
- * Merge stdin data with CLI opts (source-aware).
- * Extracts the common pattern used in both executeCommand and manual handlers.
- */
+export declare function printDryRunPreview(request: CapturedRequest | null, opts?: {
+    format?: "json" | "pretty" | "table" | "ndjson" | "csv";
+}): void;
+/** Merge stdin data with CLI opts (source-aware). */
 export declare function getMerged(cmd: Command): Record<string, unknown>;
 /**
  * Ensure a value is a JSON string suitable for the OpenAPI.
@@ -41,15 +39,9 @@ export declare function getMerged(cmd: Command): Record<string, unknown>;
  */
 export declare function ensureJsonString(value: unknown, fieldName: string): string | undefined;
 export declare function ensureStringArray(value: unknown, fieldName: string): string[] | undefined;
-type SdkFunction = (input: any, creds: any, ...rest: any[]) => Promise<WjxApiResponse<any>>;
-/**
- * Central command executor.
- * - Merges stdin data with CLI opts (source-aware)
- * - Gets credentials (unless noAuth)
- * - Calls SDK function
- * - Checks result===false (P0 fix)
- * - Formats output to stdout
- * - Routes errors to stderr JSON with correct exit codes
- */
-export declare function executeCommand(program: Command, actionCommand: Command, sdkFn: SdkFunction, buildInput: (merged: Record<string, unknown>) => Record<string, unknown>, opts?: ExecuteOpts): Promise<void>;
-export {};
+/** Validate a required JSON array and reject an empty collection. */
+export declare function ensureNonEmptyJsonArray(value: unknown, fieldName: string): string | undefined;
+/** Validate a JSON array while allowing an explicitly empty optional array. */
+export declare function ensureJsonArray(value: unknown, fieldName: string): string | undefined;
+/** Validate a JSON object (arrays and scalar JSON values are rejected). */
+export declare function ensureJsonObject(value: unknown, fieldName: string): string | undefined;

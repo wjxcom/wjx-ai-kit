@@ -13,8 +13,11 @@ import {
   validateSurveyTitle,
   validateSurveyHasQuestions,
   NON_QUESTION_QTYPE_SET,
+  FRAMEWORK_ONLY_JSONL_QTYPES,
+  hasFrameworkOnlyJsonlQtype,
   preflightJsonl,
   createSurveyByJson,
+  setCredentialProvider,
 } from "../dist/index.js";
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -120,11 +123,9 @@ describe("preprocessExamJsonl", () => {
     assert.equal(examLine.isquiz, "1");
   });
 
-  it("should preserve user-supplied isquiz value", () => {
+  it("should reject an explicit isquiz value that would downgrade an exam question", () => {
     const jsonl = '{"qtype":"考试单选","title":"Q1","isquiz":"0"}';
-    const { jsonl: out, hasExam } = preprocessExamJsonl(jsonl);
-    assert.equal(hasExam, true);
-    assert.equal(JSON.parse(out).isquiz, "0");
+    assert.throws(() => preprocessExamJsonl(jsonl), /isquiz.*1/);
   });
 
   it("should not touch non-exam questions", () => {
@@ -221,6 +222,32 @@ describe("createSurveyByJson exam handling", () => {
       fakeFetch,
     );
     assert.equal(captured.body.atype, 1);
+  });
+
+  it("rejects malformed JSONL before sending the create request", async () => {
+    const { fakeFetch, captured } = makeFakeFetch();
+    let calls = 0;
+    const countingFetch = async (...args) => {
+      calls += 1;
+      return fakeFetch(...args);
+    };
+
+    await assert.rejects(
+      createSurveyByJson(
+        {
+          jsonl: [
+            "not valid json",
+            '{"qtype":"问卷基础信息","title":"测试问卷"}',
+            '{"qtype":"单选","title":"Q","select":["A"]}',
+          ].join("\n"),
+        },
+        { apiKey: "test-key" },
+        countingFetch,
+      ),
+      /JSONL 第 1 行解析失败/,
+    );
+    assert.equal(calls, 0);
+    assert.equal(captured.body, null);
   });
 });
 
@@ -332,6 +359,50 @@ describe("createSurveyByJson 默认必答 & atype 推断 & 标题校验", () => 
     );
     const sentLines = captured.body.surveydatajson.split("\n");
     assert.equal(JSON.parse(sentLines[1]).requir, true);
+  });
+
+  it("普通题型默认发布，显式 false 才保持草稿", async () => {
+    const { fakeFetch, captured } = makeFakeFetch();
+    await createSurveyByJson(
+      {
+        jsonl: [
+          '{"qtype":"问卷基础信息","title":"普通发布测试"}',
+          '{"qtype":"单选","title":"Q1","select":["A","B"]}',
+        ].join("\n"),
+      },
+      { apiKey: "k" },
+      fakeFetch,
+    );
+    assert.equal(captured.body.publish, true);
+
+    await createSurveyByJson(
+      {
+        jsonl: [
+          '{"qtype":"问卷基础信息","title":"普通草稿测试"}',
+          '{"qtype":"单选","title":"Q1","select":["A","B"]}',
+        ].join("\n"),
+        publish: false,
+      },
+      { apiKey: "k" },
+      fakeFetch,
+    );
+    assert.equal(captured.body.publish, false);
+  });
+
+  it("每个纯框架题型默认保持草稿，但显式 publish=true 仍可发布", async () => {
+    const { fakeFetch, captured } = makeFakeFetch();
+    for (const qtype of FRAMEWORK_ONLY_JSONL_QTYPES) {
+      const jsonl = [
+        JSON.stringify({ qtype: "问卷基础信息", title: `框架题测试-${qtype}` }),
+        JSON.stringify({ qtype, title: "待二次编辑" }),
+      ].join("\n");
+      assert.equal(hasFrameworkOnlyJsonlQtype(jsonl), true, `${qtype} must be detected`);
+      await createSurveyByJson({ jsonl }, { apiKey: "k" }, fakeFetch);
+      assert.equal(captured.body.publish, false, `${qtype} should default to draft`);
+
+      await createSurveyByJson({ jsonl, publish: true }, { apiKey: "k" }, fakeFetch);
+      assert.equal(captured.body.publish, true, `${qtype} explicit publish should win`);
+    }
   });
 
   it("标题含「投票」不再抛错（投票类型已支持，atype 自动推断为 3）", async () => {
@@ -480,6 +551,29 @@ describe("validateSurveyHasQuestions", () => {
   it("空白行 / 无法解析行不影响计数", () => {
     const jsonl = ["", "not json", '{"qtype":"单选","title":"Q","select":["A"]}'].join("\n");
     assert.doesNotThrow(() => validateSurveyHasQuestions(jsonl));
+  });
+
+  it("对 JSON null 给出稳定的行级对象错误", () => {
+    assert.throws(
+      () => validateSurveyHasQuestions("null"),
+      /JSONL 第 1 行必须是 JSON 对象/,
+    );
+  });
+
+  it("先验证输入再解析凭证", async () => {
+    const previousApiKey = process.env.WJX_API_KEY;
+    delete process.env.WJX_API_KEY;
+    setCredentialProvider(() => undefined);
+    try {
+      await assert.rejects(
+        () => createSurveyByJson({ jsonl: "" }),
+        /jsonl must not be empty/,
+      );
+    } finally {
+      if (previousApiKey === undefined) delete process.env.WJX_API_KEY;
+      else process.env.WJX_API_KEY = previousApiKey;
+      setCredentialProvider(undefined);
+    }
   });
 });
 

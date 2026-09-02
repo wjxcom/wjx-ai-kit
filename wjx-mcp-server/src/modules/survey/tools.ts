@@ -1,8 +1,6 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import {
-  createSurvey,
-  createSurveyByText,
   createSurveyByJson,
   getSurvey,
   listSurveys,
@@ -15,132 +13,13 @@ import {
   clearRecycleBin,
   uploadFile,
   surveyToText,
+  MAX_JSONL_SIZE,
 } from "./client.js";
 import type { SurveyDetail } from "./client.js";
 import { toolResult, toolError } from "../../helpers.js";
 import { QUESTION_TYPES } from "../../resources/survey-reference.js";
 
 export function registerSurveyTools(server: McpServer): void {
-  // ─── create_survey ────────────────────────────────────────────────
-  server.registerTool(
-    "create_survey",
-    {
-      title: "创建问卷",
-      description:
-        "通过问卷星 OpenAPI 创建新问卷。支持两种模式：1) 全新创建：需传 atype/desc/questions；2) 复制已有问卷���传 source_vid 即可。" +
-        "【重要】考试问卷必须设置 atype=6，考试中的单选/多选/填空题与普通题型使用相同的 q_type，区别在于问卷类型(atype)为6。" +
-        "创建考试问卷后，需单独调用 update_survey_settings 的 time_setting 设置考试时间限制（max_answer_seconds=最长作答秒数）。" +
-        "不要在 q_title 中包含题型标记（如[单选题]、[考试单选]等），题型由 q_type/q_subtype 决定。" +
-        "【请勿创建测试问卷】每次调用都会创建真实问卷，直接按用户要求创建最终版本。" +
-        "【OpenAPI 限制】多级下拉(501)和绘图(801)创建时可能回落为基础类型，建议创建后在页面手动调整。",
-      inputSchema: {
-        title: z.string().min(1).describe("问卷名称"),
-        atype: z
-          .number()
-          .int()
-          .optional()
-          .describe("问卷类型：1=调查（默认）, 2=测评, 3=投票, 6=考试, 7=表单, 10=量表, 11=民主评议。考试问卷必须设为6，考试中的单选/多选/填空自动变为考试题型；投票问卷用 atype=3，题目仍是普通单选/多选（作答页会显示票数和百分比）。注意：4(360度评估)、5(360评估无测评关系)、8(用户体系)、9(教学评估) 不支持通过 API 创建。不使用 source_vid 时必填"),
-        desc: z.string().optional().describe("问卷描述。不使用 source_vid 时必填"),
-        publish: z.boolean().optional().default(false).describe("是否立即发布"),
-        questions: z
-          .string()
-          .min(2)
-          .optional()
-          .describe(
-            "题目列表 JSON 字符串。不使用 source_vid 时必填。每个题目必须包含 q_index（题号）、q_type（主题型）和 q_subtype（子类型，必填）。" +
-            "【主题型 q_type】3=单选, 4=多选, 5=填空, 6=多项填空, 7=矩阵, 8=文件上传, 9=比重, 10=滑动条, 1=分页, 2=段落。" +
-            "【子类型 q_subtype（必填！）】3=普通单选, 301=下拉框, 302=量表题, 303=评分单选, 305=判断题, 4=普通多选, 401=评分多选, 402=排序题, 403=商品题, 5=普通填空, 501=多级下拉, 6=普通多项填空, 601=考试多项填空, 602=考试完形填空, 8=文件上传, 801=绘图题, 9=比重, 10=滑动条。" +
-            "【考试题型说明】考试单选=atype:6+q_type:3+q_subtype:3, 考试多选=atype:6+q_type:4+q_subtype:4, 考试单项填空=atype:6+q_type:5+q_subtype:5, 考试多项填空=q_type:6+q_subtype:601, 考试完形填空=q_type:6+q_subtype:602, 简答题=q_type:5+q_subtype:5。" +
-            "【多项填空特殊要求】q_type=6 的多项填空题，q_title 中必须包含填空占位符 {_}（如：'姓名{_}，年龄{_}'），否则创建失败。" +
-            "选择题需包含 items 数组，q_title 不要包含题型标记。" +
-            "示例：[{\"q_index\":1,\"q_type\":3,\"q_subtype\":301,\"q_title\":\"城市\",\"items\":[{\"q_index\":1,\"item_index\":1,\"item_title\":\"北京\"},{\"q_index\":1,\"item_index\":2,\"item_title\":\"上海\"}]}]",
-          ),
-        optional_titles: z
-          .array(z.string().min(1))
-          .optional()
-          .describe("允许设为选填的题目标题列表。默认所有题目必答；只有列在这里的题目才允许 is_requir=false"),
-        source_vid: z
-          .string()
-          .optional()
-          .describe("源问卷编号，传入后从已有问卷复制创建，无需传 atype/desc/questions"),
-        creater: z
-          .string()
-          .optional()
-          .describe("创建者子账号用户名，不传则默认主账号"),
-        compress_img: z
-          .boolean()
-          .optional()
-          .describe("是否压缩问卷中的图片"),
-        is_string: z
-          .boolean()
-          .optional()
-          .describe("是否使用原始 activity string 格式"),
-      },
-      annotations: {
-        destructiveHint: false,
-        idempotentHint: false,
-        openWorldHint: true,
-        title: "创建问卷",
-      },
-    },
-    async (args) => {
-      try {
-        let questionsStr = args.questions ?? "";
-        let optionalTitles = args.optional_titles;
-        // Auto-fix questions JSON before sending to API
-        if (questionsStr) {
-          try {
-            const questions = JSON.parse(questionsStr);
-            if (Array.isArray(questions)) {
-              let modified = false;
-              for (const q of questions) {
-                // Auto-insert {_} placeholders for multi-fill questions (q_type=6)
-                if (q.q_type === 6 && q.q_title && !q.q_title.includes("{_}")) {
-                  const originalTitle = q.q_title;
-                  const count = (q.items && q.items.length > 0) ? q.items.length : 2;
-                  const placeholders = Array.from({ length: count }, () => "{_}").join("，");
-                  const sep = /[：:，,、。.；;）)》>\s]$/.test(q.q_title) ? "" : "：";
-                  q.q_title = `${q.q_title}${sep}${placeholders}`;
-                  if (optionalTitles?.includes(originalTitle)) {
-                    optionalTitles = optionalTitles.map((title) => title === originalTitle ? q.q_title : title);
-                  }
-                  modified = true;
-                }
-                // Auto-assign item_score for scoring subtypes (量表302, 评分单选303, 评分多选401)
-                if ([302, 303, 401].includes(q.q_subtype) && Array.isArray(q.items)) {
-                  for (const item of q.items) {
-                    if (item.item_score === undefined) {
-                      item.item_score = item.item_index ?? 1;
-                      modified = true;
-                    }
-                  }
-                }
-              }
-              if (modified) {
-                questionsStr = JSON.stringify(questions);
-              }
-            }
-          } catch { /* keep original string if parse fails */ }
-        }
-        const result = await createSurvey({
-          title: args.title,
-          type: args.atype ?? 1,
-          description: args.desc ?? "",
-          publish: args.publish,
-          questions: questionsStr,
-          optionalTitles,
-          source_vid: args.source_vid,
-          creater: args.creater,
-          compress_img: args.compress_img,
-          is_string: args.is_string,
-        });
-        return toolResult(result, result.result === false);
-      } catch (error) {
-        return toolError(error);
-      }
-    },
-  );
-
   // ─── get_survey ───────────────────────────────────────────────────
   server.registerTool(
     "get_survey",
@@ -630,57 +509,6 @@ export function registerSurveyTools(server: McpServer): void {
     },
   );
 
-  // ─── create_survey_by_text ────────────────────────────────────────
-  server.registerTool(
-    "create_survey_by_text",
-    {
-      title: "用 DSL 文本创建问卷",
-      description:
-        "（简单场景备选，仅支持约 25 种题型）通过人类可读的 DSL 文本创建问卷。文本格式与 get_survey(format='dsl') 输出一致。" +
-        "支持题型标签：[单选题]、[下拉框]/[下拉单选]、[多选题]、[填空题]、[简答题]/[问答题]、[多项填空题]、[量表题]、[评分单选]、[评分多选]、[排序题]、[判断题]、[比重题]、[滑动条]、[矩阵题]、[矩阵量表题]、[矩阵单选题]、[矩阵多选题]、[矩阵填空题]、[文件上传]、[绘图题]、[段落说明]、[商品题]、[多级下拉题]、[考试多项填空]、[考试完形填空]。" +
-        "【考试题型】创建考试问卷时设 atype=6，考试中的单选/多选/填空自动变为考试题型。" +
-        "【多项填空/考试填空】题目标题中必须包含填空占位符 {_}，如：'The boy {_} a student'。" +
-        "【API 限制】考试问卷的正确答案和分值无法通过 API 设置，需在问卷星网页端手动配置。" +
-        "q_title 不要包含题型标记。" +
-        "输入示例：\n" +
-        "用户满意度调查\n\n" +
-        "请认真填写\n\n" +
-        "1. 整体满意度[单选题]\n" +
-        "非常满意\n满意\n不满意\n\n" +
-        "2. 建议[填空题]",
-      inputSchema: {
-        text: z.string().min(1).describe("DSL 格式的问卷文本"),
-        atype: z
-          .number()
-          .int()
-          .optional()
-          .default(1)
-          .describe("问卷类型：1=调查（默认）, 2=测评, 3=投票, 6=考试, 7=表单, 10=量表, 11=民主评议"),
-        publish: z.boolean().optional().default(false).describe("是否立即发布"),
-        creater: z.string().optional().describe("创建者子账号用户名"),
-      },
-      annotations: {
-        destructiveHint: false,
-        idempotentHint: false,
-        openWorldHint: true,
-        title: "用 DSL 文本创建问卷",
-      },
-    },
-    async (args) => {
-      try {
-        const result = await createSurveyByText({
-          text: args.text,
-          atype: args.atype,
-          publish: args.publish,
-          creater: args.creater,
-        });
-        return toolResult(result, result.result === false);
-      } catch (error) {
-        return toolError(error);
-      }
-    },
-  );
-
   // ─── create_survey_by_json ───────────────────────────────────────
   server.registerTool(
     "create_survey_by_json",
@@ -714,9 +542,12 @@ export function registerSurveyTools(server: McpServer): void {
         '{"qtype":"投票多选","title":"哪些网站是你经常使用的","select":["淘宝网","开心网","百度","腾讯","人人网"]}\n' +
         '{"qtype":"量表题","title":"满意度评分","select":["1","2","3","4","5"],"minvaluetext":"非常不满意","maxvaluetext":"非常满意"}',
       inputSchema: {
-        jsonl: z.string().min(1).max(1_000_000).describe(
+        jsonl: z.string().min(1).refine(
+          (value) => Buffer.byteLength(value, "utf8") <= MAX_JSONL_SIZE,
+          `JSONL UTF-8 字节数不能超过 ${MAX_JSONL_SIZE}`,
+        ).describe(
           "JSONL 格式的问卷内容（每行一个 JSON 对象）。" +
-            "硬性要求：1) 首行 _meta 的 title 必须是真实主题，不得为占位符 ??? / 无标题 / TODO / xxx；" +
+            "硬性要求：1) 首行 qtype=问卷基础信息 的 title 必须是真实主题，不得为占位符 ??? / 无标题 / TODO / xxx；" +
             "2) 必须包含 ≥1 道真实题目（元数据/分页/段落/知情同意书不计）；" +
             "3) 默认所有题型必答，未指定 requir 时 SDK 会补 true，只有用户明确指定具体题目选填时才传 requir=false；违反会被 SDK 拒绝。",
         ),
@@ -738,7 +569,9 @@ export function registerSurveyTools(server: McpServer): void {
               "兜底（仅用于调用方遗漏时挽救，不应作为正常路径）：含考试题型→6；含投票题型或标题含「投票/评选」→3；含「表单/报名表/登记表/申请表」→7；含「测评」→2；其余 1。" +
               "显式传值始终优先于兜底推断。",
           ),
-        publish: z.boolean().optional().default(false).describe("是否立即发布"),
+        publish: z.boolean().optional().describe(
+          "是否立即发布；未指定时普通题型默认发布，包含纯框架题型（需二次编辑完善）时默认保持草稿",
+        ),
         creater: z.string().optional().describe("创建者子账号用户名"),
       },
       annotations: {

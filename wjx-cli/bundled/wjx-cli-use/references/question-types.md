@@ -1,8 +1,8 @@
 # JSONL 题型参考
 
-本文件只描述 `wjx survey create-by-json` 接受的 JSONL。每个非空行必须是一个完整 JSON 对象，首行必须是问卷基础信息，后续每行一道题。
+本文件只描述 `wjx survey create` 接受的 JSONL。每个非空行必须是一个完整 JSON 对象，首行必须是问卷基础信息，后续每行一道题。
 
-> `q_type`、`q_subtype`、`q_title`、`items` 是旧创建接口及部分查询结果使用的内部字段，**不能**作为 `create-by-json` 的输入。JSONL 必须使用中文字符串 `qtype` 以及 `title`、`select`、`rowtitle` 等字段。
+> `q_type`、`q_subtype`、`q_title`、`items` 是旧创建接口及部分查询结果使用的内部字段，**不能**作为 `create` 的输入。JSONL 必须使用中文字符串 `qtype` 以及 `title`、`select`、`rowtitle` 等字段。
 
 ## 从模板开始
 
@@ -10,10 +10,10 @@
 
 ```bash
 wjx survey jsonl-template --type 1 --raw > survey.jsonl
-wjx survey create-by-json --file survey.jsonl
+wjx survey create --file survey.jsonl
 ```
 
-模板类型：`1` 调查、`2` 测评、`3` 投票、`6` 考试、`7` 表单、`10` 量表。创建其他 CLI 支持的类型时，以 `wjx survey create-by-json -h` 的实时输出为准。
+模板类型：`1` 调查、`2` 测评、`3` 投票、`6` 考试、`7` 表单、`10` 量表。创建其他 CLI 支持的类型时，以 `wjx survey create -h` 的实时输出为准。
 
 ## 基本格式
 
@@ -61,7 +61,7 @@ wjx survey create-by-json --file survey.jsonl
 | 评分 | `量表题`, `NPS量表`, `评分单选`, `评分多选`, `评价题` |
 | 矩阵 | `矩阵单选`, `矩阵多选`, `矩阵量表`, `矩阵填空`, `矩阵滑动条`, `矩阵数值题` |
 | 表格 | `表格数值`, `表格填空`, `表格下拉框`, `表格组合`, `自增表格`, `多项文件题`, `多项简答题` |
-| 其他 | `滑动条`, `比重题`, `文件上传`, `多级下拉`, `门店选择` |
+| 其他 | `滑动条`, `比重题`, `文件上传`, `多级下拉`, `门店选择`, `签名题`, `地图`, `折叠栏目`, `轮播图`, `图片OCR`, `商品题`, `预约题` |
 | 页面结构 | `分页栏`, `段落说明`, `知情同意书` |
 | 投票 | `投票单选`, `投票多选` |
 | 考试 | `考试单选`, `考试判断`, `考试多选`, `考试单项填空`, `考试多项填空`, `考试简答`, `考试文件`, `考试绘图`, `考试代码` |
@@ -80,6 +80,10 @@ NPS 题必须使用 `qtype:"NPS量表"`，并提供完整且严格有序的 11 �
 
 ## 其他受支持 qtype
 
+### 纯框架题型（默认不发布）
+
+以下题型可以通过 `create` 建立骨架，但仅凭 JSONL 示例不能完成素材、AI 参数、关联关系或页面时序配置：`折叠栏目`、`轮播图`、`AI追问`、`AI处理`、`AI访谈`、`图片OCR`、`VlookUp问卷关联`、`分页计时器`。包含这些题型时，未显式指定发布选项会创建为草稿；创建后应先在编辑页完善，再由用户明确要求发布。
+
 以下名称适用于更专门的场景；字段结构不明确时先查看当前 CLI 模板或按用户已有的合法 JSONL 结构操作，不要猜字段：
 
 | 类别 | qtype |
@@ -88,6 +92,10 @@ NPS 题必须使用 `qtype:"NPS量表"`，并提供完整且严格有序的 11 �
 | 调研模型 | `情景随机`, `BWS`, `MaxDiff`, `图片PK`, `联合分析`, `Kano模型`, `SUS模型`, `品牌漏斗`, `货架题`, `BPTO模型`, `PSM模型`, `价格断裂点`, `层次分析`, `选项分类`, `CATI调研`, `文字点睛`, `心理学实验`, `VlookUp问卷关联`, `循环评价`, `热力图` |
 | 预设信息 | `姓名`, `基本信息`, `身份证号`, `国家及地区`, `省市`, `省市区`, `邮箱`, `手机`, `高校`, `邮寄地址`, `社会阶层`, `企业信息` |
 | 系统采集 | `设备信息`, `城市级别`, `当前语言`, `当前语音`, `答题录音`, `答卷摄像`, `分页计时器` |
+| 信息采集 | `性别`, `年龄段`, `民族`, `学历`, `婚姻`, `手机验证`, `时间`, `职业`, `行业`, `密码` |
+
+签名、地图、折叠栏目、轮播图、图片 OCR、预约，以及性别/年龄段等信息采集题由服务端根据 qtype
+解释专用字段。CLI/SDK 不改写这些字段；请使用问卷星接口文档或已有合法 JSONL 样例提供完整属性，未知专用字段不会被客户端伪造。
 
 兼容别名包括 `表格数值题`、`表格填空题`、`表格组合题`、`表格自增题` 和 `Maxdiff`。生成新 JSONL 时优先使用表中的规范名称。
 
@@ -121,7 +129,7 @@ NPS 题必须使用 `qtype:"NPS量表"`，并提供完整且严格有序的 11 �
 ```
 
 ```bash
-wjx survey create-by-json --file vote.jsonl --type 3
+wjx survey create --file vote.jsonl --type 3
 ```
 
 ### 考试
@@ -135,7 +143,7 @@ wjx survey create-by-json --file vote.jsonl --type 3
 ```
 
 ```bash
-wjx survey create-by-json --file exam.jsonl --type 6
+wjx survey create --file exam.jsonl --type 6
 ```
 
 ### 可选题
@@ -147,9 +155,9 @@ wjx survey create-by-json --file exam.jsonl --type 6
 ```
 
 ```bash
-wjx survey create-by-json --file survey.jsonl --optional_titles '["其他建议"]'
+wjx survey create --file survey.jsonl --optional_titles '["其他建议"]'
 ```
 
 ## 数字题型字段只用于读取结果
 
-`survey get`、`response submit-template` 等输出中仍可能出现 `q_type`、`q_subtype` 和 `q_index`。这些字段用于解释服务端结果和构造答卷，不要复制回 JSONL。使用 `create-by-json` 创建后，问卷基础信息占 `q_index=1`，真实题目通常从 `q_index=2` 开始；提交答卷时始终以 `wjx response submit-template --vid <vid>` 返回的 `q_index` 为准。
+`survey get`、`response submit-template` 等输出中仍可能出现 `q_type`、`q_subtype` 和 `q_index`。这些字段用于解释服务端结果和构造答卷，不要复制回 JSONL。使用 `create` 创建后，问卷基础信息占 `q_index=1`，真实题目通常从 `q_index=2` 开始；提交答卷时始终以 `wjx response submit-template --vid <vid>` 返回的 `q_index` 为准。

@@ -1,6 +1,5 @@
 export {
   getWjxCredentials,
-  validateQuestionsJson,
   callWjxApi,
   callWjxUserSystemApi,
   callWjxSubuserApi,

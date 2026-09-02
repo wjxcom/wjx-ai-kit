@@ -5,8 +5,14 @@ const path = require("node:path");
 const { marked } = require("marked");
 const { ROOT, DOCS_DIR, MANIFEST, entries } = require("./doc-manifest.js");
 
-const outputHtml = path.join(DOCS_DIR, "wjx-kit.html");
-const outputFragment = path.join(DOCS_DIR, "wjx-kit.fragment.html");
+// CI can direct generation to a temporary directory so consistency checks do
+// not overwrite tracked artifacts while comparing the canonical Markdown.
+const outputDir = process.env.WJX_DOCS_OUTPUT_DIR
+  ? path.resolve(process.env.WJX_DOCS_OUTPUT_DIR)
+  : DOCS_DIR;
+fs.mkdirSync(outputDir, { recursive: true });
+const outputHtml = path.join(outputDir, "wjx-kit.html");
+const outputFragment = path.join(outputDir, "wjx-kit.fragment.html");
 
 function readTree(dir) {
   const result = [];

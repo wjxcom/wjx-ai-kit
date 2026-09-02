@@ -1,5 +1,9 @@
+import { executeRuntimeAction } from "../lib/runtime/executor.js";
 import { buildSsoSubaccountUrl, buildSsoUserSystemUrl, buildSsoPartnerUrl, } from "wjx-api-sdk";
-import { executeCommand, strictInt, requireField } from "../lib/command-helpers.js";
+import { strictInt, requireField, requireEnum, requirePositiveInt } from "../lib/command-helpers.js";
+import { CliError } from "../lib/errors.js";
+import { getProfileBaseUrl } from "../lib/auth.js";
+import { resolveProfile } from "../lib/profiles.js";
 export function registerSsoCommands(program) {
     const sso = program.command("sso").description("SSO 单点登录");
     // --- subaccount-url ---
@@ -13,8 +17,12 @@ export function registerSsoCommands(program) {
         .option("--url <s>", "登录后跳转URL")
         .option("--admin <n>", "主账号登录(1)", strictInt)
         .action(async (_opts, cmd) => {
-        await executeCommand(program, cmd, buildSsoSubaccountUrl, (m) => {
+        await executeRuntimeAction(program, cmd, ((input) => buildSsoSubaccountUrl(input, getProfileBaseUrl(resolveProfile({ profile: program.opts().profile })))), (m) => {
             requireField(m, "subuser");
+            if (m.role_id !== undefined)
+                requireEnum(m, "role_id", [1, 2, 3, 4]);
+            if (m.admin !== undefined)
+                requireEnum(m, "admin", [1]);
             return {
                 subuser: m.subuser,
                 mobile: m.mobile,
@@ -40,10 +48,15 @@ export function registerSsoCommands(program) {
         .option("--activity <n>", "跳转问卷vid", strictInt)
         .option("--return_url <s>", "返回URL")
         .action(async (_opts, cmd) => {
-        await executeCommand(program, cmd, buildSsoUserSystemUrl, (m) => {
+        await executeRuntimeAction(program, cmd, ((input) => buildSsoUserSystemUrl(input, getProfileBaseUrl(resolveProfile({ profile: program.opts().profile })))), (m) => {
             requireField(m, "u");
-            requireField(m, "system_id");
+            requirePositiveInt(m, "system_id");
             requireField(m, "uid");
+            if (m.activity !== undefined)
+                requirePositiveInt(m, "activity");
+            if (m.is_login !== undefined && m.is_login !== 0 && m.is_login !== 1) {
+                throw new CliError("INPUT_ERROR", "--is_login 必须是 0 或 1");
+            }
             return {
                 u: m.u,
                 system_id: m.system_id,
@@ -66,7 +79,7 @@ export function registerSsoCommands(program) {
         .option("--mobile <s>", "手机号")
         .option("--subuser <s>", "子账号用户名")
         .action(async (_opts, cmd) => {
-        await executeCommand(program, cmd, buildSsoPartnerUrl, (m) => {
+        await executeRuntimeAction(program, cmd, ((input) => buildSsoPartnerUrl(input, getProfileBaseUrl(resolveProfile({ profile: program.opts().profile })))), (m) => {
             requireField(m, "username");
             return {
                 username: m.username,

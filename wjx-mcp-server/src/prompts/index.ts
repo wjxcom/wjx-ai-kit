@@ -1,7 +1,6 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { registerAnalysisPrompts } from "./analysis.js";
-import { registerSurveyGenerationPrompts } from "./survey-generation.js";
 import { registerSurveyGenerationJsonPrompts } from "./survey-generation-json.js";
 
 export function registerPrompts(server: McpServer): void {
@@ -46,7 +45,7 @@ JSONL 格式说明（每行一个 JSON 对象）：
 - 多项填空必须在 title 中用 {_} 占位符表示每个子填空位，如 {"qtype":"多项填空","title":"电话 {_}，邮箱 {_}"}；**不要用 rowtitle 数组**（那是矩阵题字段，多项填空不支持，会导致只生成 1 个空位）
 - 更多 qtype 及字段请参考 generate-survey-json prompt
 
-如果问卷仅涉及简单题型（约 25 种），也可退而使用 DSL 文本格式 + create_survey_by_text 工具。${voteNotice}`,
+所有问卷都必须使用 create_survey_by_json；即使只有简单题型，也要按 JSONL 逐行提供。${voteNotice}`,
           },
         }],
       };
@@ -276,9 +275,6 @@ Use survey type 1 (survey) and pass a JSONL string to create_survey_by_json. The
 
   // ═══ Analysis Prompts ══════════════════════════════════════════════════
   registerAnalysisPrompts(server);
-
-  // ═══ Survey Generation Prompts ════════════════════════════════════════
-  registerSurveyGenerationPrompts(server);
 
   // ═══ Survey Generation Prompts (JSON format) ════════════════════════
   registerSurveyGenerationJsonPrompts(server);

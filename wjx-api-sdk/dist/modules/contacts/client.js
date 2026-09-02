@@ -1,16 +1,16 @@
 import { Action } from "../../core/constants.js";
 import { callWjxContactsApi, getWjxCredentials, getCorpId } from "../../core/api-client.js";
-function resolveCorpId(input) {
-    const corpid = input.corpid || getCorpId();
+function resolveCorpId(input, credentials) {
+    const corpid = input.corpid || credentials.corpId || getCorpId();
     if (!corpid) {
-        throw new Error("corpid is required: set WJX_CORP_ID env var or pass corpid parameter");
+        throw new Error("corpid is required: set WJX_CORP_ID env var, pass corpid parameter, or provide credentials.corpId");
     }
     return corpid;
 }
 export async function queryContacts(input, credentials = getWjxCredentials(), fetchImpl = fetch) {
     const params = {
         action: Action.QUERY_CONTACTS,
-        corpid: resolveCorpId(input),
+        corpid: resolveCorpId(input, credentials),
         uid: input.uid,
     };
     return callWjxContactsApi(params, { credentials, fetchImpl });
@@ -18,7 +18,7 @@ export async function queryContacts(input, credentials = getWjxCredentials(), fe
 export async function addContacts(input, credentials = getWjxCredentials(), fetchImpl = fetch) {
     const params = {
         action: Action.ADD_CONTACTS,
-        corpid: resolveCorpId(input),
+        corpid: resolveCorpId(input, credentials),
         users: input.users,
     };
     if (input.auto_create_udept !== undefined)
@@ -30,7 +30,7 @@ export async function addContacts(input, credentials = getWjxCredentials(), fetc
 export async function deleteContacts(input, credentials = getWjxCredentials(), fetchImpl = fetch) {
     return callWjxContactsApi({
         action: Action.MANAGE_CONTACTS,
-        corpid: resolveCorpId(input),
+        corpid: resolveCorpId(input, credentials),
         uids: input.uids,
     }, { credentials, fetchImpl, maxRetries: 0 });
 }
@@ -38,21 +38,21 @@ export async function deleteContacts(input, credentials = getWjxCredentials(), f
 export async function addAdmin(input, credentials = getWjxCredentials(), fetchImpl = fetch) {
     return callWjxContactsApi({
         action: Action.ADD_ADMIN,
-        corpid: resolveCorpId(input),
+        corpid: resolveCorpId(input, credentials),
         users: input.users,
     }, { credentials, fetchImpl, maxRetries: 0 });
 }
 export async function deleteAdmin(input, credentials = getWjxCredentials(), fetchImpl = fetch) {
     return callWjxContactsApi({
         action: Action.DELETE_ADMIN,
-        corpid: resolveCorpId(input),
+        corpid: resolveCorpId(input, credentials),
         uids: input.uids,
     }, { credentials, fetchImpl, maxRetries: 0 });
 }
 export async function restoreAdmin(input, credentials = getWjxCredentials(), fetchImpl = fetch) {
     return callWjxContactsApi({
         action: Action.RESTORE_ADMIN,
-        corpid: resolveCorpId(input),
+        corpid: resolveCorpId(input, credentials),
         uids: input.uids,
     }, { credentials, fetchImpl, maxRetries: 0 });
 }
@@ -60,28 +60,28 @@ export async function restoreAdmin(input, credentials = getWjxCredentials(), fet
 export async function listDepartments(input, credentials = getWjxCredentials(), fetchImpl = fetch) {
     const params = {
         action: Action.LIST_DEPARTMENTS,
-        corpid: resolveCorpId(input),
+        corpid: resolveCorpId(input, credentials),
     };
     return callWjxContactsApi(params, { credentials, fetchImpl });
 }
 export async function addDepartment(input, credentials = getWjxCredentials(), fetchImpl = fetch) {
     return callWjxContactsApi({
         action: Action.ADD_DEPARTMENT,
-        corpid: resolveCorpId(input),
+        corpid: resolveCorpId(input, credentials),
         depts: input.depts,
     }, { credentials, fetchImpl, maxRetries: 0 });
 }
 export async function modifyDepartment(input, credentials = getWjxCredentials(), fetchImpl = fetch) {
     return callWjxContactsApi({
         action: Action.MODIFY_DEPARTMENT,
-        corpid: resolveCorpId(input),
+        corpid: resolveCorpId(input, credentials),
         depts: input.depts,
     }, { credentials, fetchImpl, maxRetries: 0 });
 }
 export async function deleteDepartment(input, credentials = getWjxCredentials(), fetchImpl = fetch) {
     const params = {
         action: Action.DELETE_DEPARTMENT,
-        corpid: resolveCorpId(input),
+        corpid: resolveCorpId(input, credentials),
         type: input.type,
         depts: input.depts,
     };
@@ -93,13 +93,13 @@ export async function deleteDepartment(input, credentials = getWjxCredentials(),
 export async function listTags(input, credentials = getWjxCredentials(), fetchImpl = fetch) {
     return callWjxContactsApi({
         action: Action.LIST_TAGS,
-        corpid: resolveCorpId(input),
+        corpid: resolveCorpId(input, credentials),
     }, { credentials, fetchImpl });
 }
 export async function addTag(input, credentials = getWjxCredentials(), fetchImpl = fetch) {
     const params = {
         action: Action.ADD_TAG,
-        corpid: resolveCorpId(input),
+        corpid: resolveCorpId(input, credentials),
         child_names: input.child_names,
     };
     if (input.is_radio !== undefined)
@@ -109,7 +109,7 @@ export async function addTag(input, credentials = getWjxCredentials(), fetchImpl
 export async function modifyTag(input, credentials = getWjxCredentials(), fetchImpl = fetch) {
     const params = {
         action: Action.MODIFY_TAG,
-        corpid: resolveCorpId(input),
+        corpid: resolveCorpId(input, credentials),
         tp_id: input.tp_id,
     };
     if (input.tp_name !== undefined)
@@ -121,7 +121,7 @@ export async function modifyTag(input, credentials = getWjxCredentials(), fetchI
 export async function deleteTag(input, credentials = getWjxCredentials(), fetchImpl = fetch) {
     return callWjxContactsApi({
         action: Action.DELETE_TAG,
-        corpid: resolveCorpId(input),
+        corpid: resolveCorpId(input, credentials),
         type: input.type,
         tags: input.tags,
     }, { credentials, fetchImpl, maxRetries: 0 });

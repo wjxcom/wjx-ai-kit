@@ -10,7 +10,7 @@ export interface RuntimeContext {
   readonly credentials?: Readonly<WjxCredentials>;
   readonly policy: PolicyEvaluator;
   readonly streams: RuntimeStreams;
-  readonly requestOptions?: Pick<RequestOptions, "retryBudget" | "timeoutMs">;
+  readonly requestOptions?: Pick<RequestOptions, "retryBudget" | "timeoutMs" | "clientName" | "clientVersion">;
 }
 
 export function createRuntimeContext(options: {
@@ -18,7 +18,7 @@ export function createRuntimeContext(options: {
   credentials?: WjxCredentials;
   policy?: PolicyEvaluator;
   streams?: RuntimeStreams;
-  requestOptions?: Pick<RequestOptions, "retryBudget" | "timeoutMs">;
+  requestOptions?: Pick<RequestOptions, "retryBudget" | "timeoutMs" | "clientName" | "clientVersion">;
 } = {}): RuntimeContext {
   return Object.freeze({
     profile: Object.freeze({ ...(options.profile ?? {}) }),

@@ -18,7 +18,7 @@
 | get_config 显示 api_key "(未设置)" | 检查 MCP 配置中 `WJX_API_KEY` 环境变量，或 `~/.wjxrc` 文件 |
 | get_config 显示 base_url 是默认值但用户用自定义域名 | 在 MCP 配置中加 `WJX_BASE_URL` 环境变量，或用 `wjx init --base-url` 写入 `~/.wjxrc` |
 | 工具调用返回空数据 | 确认问卷已发布（state=1），且有答卷数据 |
-| create_survey_by_text 题目丢失 | 检查 DSL 文本格式：题号 + 题目 + [题型标签]，选项各占一行 |
+| 历史 DSL 无法创建 | 当前 MCP 不提供 DSL 创建工具；先在 MCP 外部转换为 JSONL，再调用 `create_survey_by_json` |
 
 ## 自定义域名
 
@@ -30,7 +30,7 @@
 
 ## 考试问卷限制
 
-考试问卷（atype=6）通过已弃用的 `create_survey_by_text` 创建后：
-- 题目和选项会正常创建
-- DSL 不携带正确答案和每题分值；创建后应提供编辑链接（`build_survey_url({ mode: "edit", activity: vid })`）补充
+考试问卷（atype=6）从历史 DSL 迁移后：
+- 先将 DSL 离线转换为 JSONL，再调用 `create_survey_by_json`
+- 在 JSONL 中设置 `correctselect`、`quizscore` 和 `answeranalysis`，避免信息丢失
 - 新项目使用 `create_survey_by_json`，在 JSONL 题目中设置 `correctselect`、`quizscore` 和 `answeranalysis`
