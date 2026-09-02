@@ -169,7 +169,11 @@ export async function startHttpTransport(
         } catch (error) {
           if (error instanceof RequestBodyTooLargeError) {
             res.writeHead(413, { "Content-Type": "application/json" });
-            res.end(JSON.stringify({ error: error.message }));
+            res.end(JSON.stringify({
+              jsonrpc: "2.0",
+              error: { code: -32600, message: error.message },
+              id: null,
+            }));
           } else {
             res.writeHead(400, { "Content-Type": "application/json" });
             res.end(JSON.stringify({

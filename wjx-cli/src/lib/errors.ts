@@ -1,5 +1,4 @@
 import type { WjxApiResponse } from "wjx-api-sdk";
-import { CLI_UPGRADE_COMMAND, MIN_SUPPORTED_CLI_VERSION } from "./client-info.js";
 export type ErrorCode = "API_ERROR" | "INPUT_ERROR" | "AUTH_ERROR" | "CONFIRMATION_REQUIRED" | "POLICY_DENIED" | "UPGRADE_REQUIRED";
 
 const EXIT_CODES: Record<ErrorCode, number> = {
@@ -27,10 +26,22 @@ export class CliError extends Error {
   }
 }
 
+/** Internal control-flow marker: an error envelope has already been emitted. */
+export class CliErrorHandled extends Error {
+  constructor() {
+    super("CLI error already handled");
+    this.name = "CliErrorHandled";
+  }
+}
+
+export function isCliErrorHandled(err: unknown): err is CliErrorHandled {
+  return err instanceof CliErrorHandled;
+}
+
 /**
- * Write structured JSON error to stderr and exit.
+ * Write structured JSON error to stderr and terminate the current command path.
  */
-export function stderrJson(code: ErrorCode, message: string, details?: ErrorDetails): void {
+export function stderrJson(code: ErrorCode, message: string, details?: ErrorDetails): never {
   const exitCode = EXIT_CODES[code];
   const type = code === "INPUT_ERROR" ? "validation" : code === "AUTH_ERROR" ? "authentication" : code === "CONFIRMATION_REQUIRED" ? "confirmation" : code === "POLICY_DENIED" ? "policy" : code === "UPGRADE_REQUIRED" ? "upgrade" : "api";
   const error = { type, subtype: code.toLowerCase(), code, message, retryable: false, ...(details ?? {}) };
@@ -41,6 +52,7 @@ export function stderrJson(code: ErrorCode, message: string, details?: ErrorDeta
   // process.exit() here can trigger a libuv assertion on Windows after a real
   // HTTP failure, replacing the intended CLI exit code with a crash code.
   process.exitCode = exitCode;
+  throw new CliErrorHandled();
 }
 
 /**
@@ -100,9 +112,9 @@ function isRetryableTransportError(message: string): boolean {
 }
 
 /**
- * Central error handler. Classifies the error, writes stderr JSON, exits.
+ * Central error handler. Classifies the error and writes one stderr envelope.
  */
-export function handleError(err: unknown): void {
+export function handleError(err: unknown): never {
   const cliErr = classifyError(err);
   stderrJson(cliErr.code, cliErr.message, cliErr.details);
 }
@@ -121,24 +133,30 @@ export function ensureApiSuccess<T>(response: WjxApiResponse<T>): asserts respon
   if (failure.traceid !== undefined) details.traceid = failure.traceid;
   const upgrade = getUpgradeDetails(failure);
   if (upgrade) {
+    const upgradeDetails: ErrorDetails = {
+      ...details,
+      upgrade_required: true,
+      ...(upgrade.minClientVersion ? { min_client_version: upgrade.minClientVersion } : {}),
+      ...(upgrade.command ? { upgrade_command: upgrade.command } : {}),
+    };
+    if (upgrade.minClientVersion || upgrade.command) {
+      upgradeDetails.hint = [
+        upgrade.minClientVersion ? `请升级 wjx-cli 至 ${upgrade.minClientVersion} 或更高版本` : "请升级 wjx-cli",
+        upgrade.command ? `：${upgrade.command}` : "",
+      ].join("");
+    }
     throw new CliError(
       "UPGRADE_REQUIRED",
-      failure.errormsg || `当前客户端版本过低，请升级 wjx-cli 至 ${upgrade.minClientVersion} 或更高版本`,
-      {
-        ...details,
-        upgrade_required: true,
-        min_client_version: upgrade.minClientVersion,
-        upgrade_command: upgrade.command,
-        hint: `请升级 wjx-cli 至 ${upgrade.minClientVersion} 或更高版本：${upgrade.command}`,
-      },
+      failure.errormsg || "当前客户端版本需要升级",
+      upgradeDetails,
     );
   }
   throw new CliError("API_ERROR", failure.errormsg || "API 请求失败", details);
 }
 
 interface UpgradeDetails {
-  minClientVersion: string;
-  command: string;
+  minClientVersion?: string;
+  command?: string;
 }
 
 function getUpgradeDetails(failure: Extract<WjxApiResponse<unknown>, { result: false }>): UpgradeDetails | undefined {
@@ -149,15 +167,18 @@ function getUpgradeDetails(failure: Extract<WjxApiResponse<unknown>, { result: f
   const dataCode = typeof data.code === "string" ? data.code.toUpperCase() : "";
   const isUpgradeCode = [errorCode, dataCode].some((code) => ["CLIENT_VERSION_TOO_OLD", "CLI_VERSION_TOO_OLD", "UPGRADE_REQUIRED"].includes(code));
   const isUpgradeData = data.upgrade_required === true;
-  const messageSuggestsUpgrade = /版本过低|客户端版本|请升级|upgrade required|upgrade .*client/i.test(failure.errormsg ?? "");
-  const hasUpgradeDetails = data.min_client_version !== undefined || data.upgrade_command !== undefined;
-  if (!isUpgradeCode && !isUpgradeData && !messageSuggestsUpgrade && !hasUpgradeDetails) return undefined;
+  const hasUpgradeDetails = (
+    typeof data.min_client_version === "string" && data.min_client_version.trim().length > 0
+  ) || (
+    typeof data.upgrade_command === "string" && data.upgrade_command.trim().length > 0
+  );
+  if (!isUpgradeCode && !isUpgradeData && !hasUpgradeDetails) return undefined;
 
   const minClientVersion = typeof data.min_client_version === "string" && data.min_client_version.trim()
     ? data.min_client_version.trim()
-    : MIN_SUPPORTED_CLI_VERSION;
+    : undefined;
   const command = typeof data.upgrade_command === "string" && data.upgrade_command.trim()
     ? data.upgrade_command.trim()
-    : CLI_UPGRADE_COMMAND;
+    : undefined;
   return { minClientVersion, command };
 }

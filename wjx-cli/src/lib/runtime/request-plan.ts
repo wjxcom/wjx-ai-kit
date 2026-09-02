@@ -1,6 +1,5 @@
 import { getWjxApiUrl, type WjxCredentials } from "wjx-api-sdk";
 import type { RequestPlan } from "./types.js";
-import { redactJson } from "../mask.js";
 
 export interface RequestPlanInput {
   service?: string;
@@ -28,7 +27,7 @@ export function buildRequestPlan(input: RequestPlanInput): RequestPlan {
     method: "POST",
     url,
     headers,
-    body: redactJson(JSON.stringify(input.body)),
+    body: JSON.stringify(input.body),
     ...(input.unresolved && input.unresolved.length > 0
       ? { unresolved: [...input.unresolved] }
       : {}),

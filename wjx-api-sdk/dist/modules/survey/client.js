@@ -184,7 +184,7 @@ export async function createSurveyByJson(input, credentials, fetchImpl = fetch, 
         fetchImpl,
         retryBudget: 0,
         maxRetries: 0,
-        timeoutMs: LONG_TIMEOUT_MS,
+        timeoutMs: requestOptions?.timeoutMs ?? LONG_TIMEOUT_MS,
     });
 }
 export async function uploadFile(input, credentials = getWjxCredentials(), fetchImpl = fetch) {

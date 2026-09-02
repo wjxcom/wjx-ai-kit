@@ -64,8 +64,11 @@ function normalizeOptionValues(values, command) {
         const descriptorMatch = flags.match(/<([^>]+)>|\[([^\]]+)\]/);
         const descriptor = descriptorMatch?.[1] ?? descriptorMatch?.[2];
         if (option.parseArg) {
+            if (typeof value !== "string" && typeof value !== "number") {
+                throw new CliError("INPUT_ERROR", `Invalid value for --${key}: expected a scalar string or number`);
+            }
             try {
-                normalized[key] = option.parseArg(String(value), undefined);
+                normalized[key] = option.parseArg(String(value), option.defaultValue);
             }
             catch (error) {
                 if (error instanceof CliError)

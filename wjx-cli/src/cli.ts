@@ -20,7 +20,7 @@ import { registerUpdateCommands } from "./commands/update.js";
 import { registerApiCommands } from "./commands/api.js";
 import { registerSchemaCommands } from "./commands/schema.js";
 import { readStdin } from "./lib/stdin.js";
-import { handleError } from "./lib/errors.js";
+import { handleError, isCliErrorHandled, CliError } from "./lib/errors.js";
 import { applyConfigToEnv } from "./lib/config.js";
 import { getCompletions } from "./lib/completions.js";
 import { validateOutputFormat } from "./lib/output.js";
@@ -87,6 +87,9 @@ registerSchemaCommands(program);
   try {
     // Hidden completion hook: --get-completions <point> <line...>
     const rawArgs = process.argv.slice(2);
+    if (rawArgs.slice(1).some((arg) => arg === "--version" || arg === "-V")) {
+      throw new CliError("INPUT_ERROR", "--version 只能作为根命令的第一个参数使用");
+    }
     const gcIdx = rawArgs.indexOf("--get-completions");
     if (gcIdx !== -1 && rawArgs[gcIdx + 1] !== undefined) {
       const point = parseInt(rawArgs[gcIdx + 1], 10);
@@ -100,15 +103,24 @@ registerSchemaCommands(program);
 
     await program.parseAsync();
   } catch (err) {
+    if (isCliErrorHandled(err)) return;
     // Commander throws CommanderError for --help, --version, missing args, etc.
     if (err instanceof CommanderError) {
       // help and version are normal exits
       if (err.code === "commander.helpDisplayed" || err.code === "commander.version") {
         process.exit(0);
       }
-      handleError(err);
+      try {
+        handleError(err);
+      } catch (handled) {
+        if (!isCliErrorHandled(handled)) throw handled;
+      }
       return;
     }
-    handleError(err);
+    try {
+      handleError(err);
+    } catch (handled) {
+      if (!isCliErrorHandled(handled)) throw handled;
+    }
   }
 })();

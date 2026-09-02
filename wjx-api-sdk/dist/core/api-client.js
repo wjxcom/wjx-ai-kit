@@ -144,16 +144,20 @@ async function _callApi(baseUrl, params, opts = {}) {
     throw lastError ?? new Error("Exhausted retries");
 }
 export async function callWjxApi(params, opts = {}) {
-    return _callApi(getWjxApiUrl(opts.baseUrl ?? opts.credentials?.baseUrl), params, opts);
+    const credentials = opts.credentials ?? getWjxCredentials();
+    return _callApi(getWjxApiUrl(opts.baseUrl ?? credentials.baseUrl), params, { ...opts, credentials });
 }
 export async function callWjxUserSystemApi(params, opts = {}) {
-    return _callApi(getWjxUserSystemApiUrl(opts.baseUrl ?? opts.credentials?.baseUrl), params, opts);
+    const credentials = opts.credentials ?? getWjxCredentials();
+    return _callApi(getWjxUserSystemApiUrl(opts.baseUrl ?? credentials.baseUrl), params, { ...opts, credentials });
 }
 export async function callWjxSubuserApi(params, opts = {}) {
-    return _callApi(getWjxSubuserApiUrl(opts.baseUrl ?? opts.credentials?.baseUrl), params, opts);
+    const credentials = opts.credentials ?? getWjxCredentials();
+    return _callApi(getWjxSubuserApiUrl(opts.baseUrl ?? credentials.baseUrl), params, { ...opts, credentials });
 }
 export async function callWjxContactsApi(params, opts = {}) {
-    return _callApi(getWjxContactsApiUrl(opts.baseUrl ?? opts.credentials?.baseUrl), params, opts);
+    const credentials = opts.credentials ?? getWjxCredentials();
+    return _callApi(getWjxContactsApiUrl(opts.baseUrl ?? credentials.baseUrl), params, { ...opts, credentials });
 }
 export function getCorpId(env = process.env) {
     return env.WJX_CORP_ID || undefined;

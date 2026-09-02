@@ -7,5 +7,3 @@ export const CLI_CLIENT_NAME = "wjx-cli";
 export const CLI_CLIENT_VERSION = typeof packageJson.version === "string" && packageJson.version.trim()
   ? packageJson.version.trim()
   : "0.4.1";
-export const MIN_SUPPORTED_CLI_VERSION = "0.4.1";
-export const CLI_UPGRADE_COMMAND = "npm install -g wjx-cli@latest";

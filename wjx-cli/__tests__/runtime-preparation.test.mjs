@@ -70,6 +70,23 @@ test("request plan is pure, POST-only, and masks authorization", () => {
   assert.equal(typeof plan.sdkFn, "undefined");
 });
 
+test("request plan keeps raw body data for execution and redacts only dry-run rendering", () => {
+  const plan = buildRequestPlan({
+    action: "1001001",
+    body: { submitdata: "secret-answer", apiKey: "secret-api-key" },
+  });
+  assert.deepEqual(JSON.parse(plan.body), {
+    submitdata: "secret-answer",
+    apiKey: "secret-api-key",
+  });
+
+  const rendered = renderDryRun([plan]);
+  assert.deepEqual(JSON.parse(rendered.plans[0].body), {
+    submitdata: "secret-answer",
+    apiKey: "****",
+  });
+});
+
 test("submit dry-run emits an unresolved version without fetching survey metadata", async () => {
   const fixture = await startFixture({ env: { WJX_API_KEY: "secret-api-key" } });
   try {
@@ -246,4 +263,32 @@ test("dry-run renderer keeps plans separate from diagnostics", () => {
   assert.equal(rendered.kind, "dry-run");
   assert.equal(rendered.plans.length, 1);
   assert.equal(rendered.plans[0].headers.Authorization, "Bearer ****");
+});
+
+test("stdin parser replay uses the option default as previous value", async () => {
+  const program = new Command();
+  const seenPrevious = [];
+  program.option(
+    "--tag <value>",
+    "tag",
+    (value, previous) => {
+      seenPrevious.push(previous);
+      return [...previous, value];
+    },
+    [],
+  );
+  const { mergeStdinWithOpts } = await import("../dist/lib/stdin.js");
+  const merged = mergeStdinWithOpts({ tag: "from-stdin" }, program);
+  assert.deepEqual(merged.tag, ["from-stdin"]);
+  assert.deepEqual(seenPrevious, [[]]);
+});
+
+test("stdin parser replay rejects non-scalar values before string coercion", async () => {
+  const program = new Command();
+  program.option("--tag <value>", "tag", (value) => value);
+  const { mergeStdinWithOpts } = await import("../dist/lib/stdin.js");
+  assert.throws(
+    () => mergeStdinWithOpts({ tag: ["a", "b"] }, program),
+    /Invalid value for --tag: expected a scalar string or number/,
+  );
 });

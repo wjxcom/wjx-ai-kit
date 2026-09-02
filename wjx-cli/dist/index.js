@@ -4,7 +4,7 @@ const require = createRequire(import.meta.url);
 const { version } = require("../package.json");
 const args = process.argv.slice(2);
 // Version checks are common in package managers and should not load the command graph.
-if (args.includes("--version") || args.includes("-V")) {
+if (args[0] === "--version" || args[0] === "-V") {
     process.stdout.write(`${version}\n`);
 }
 else {

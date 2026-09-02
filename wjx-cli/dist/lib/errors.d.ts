@@ -7,14 +7,19 @@ export declare class CliError extends Error {
     readonly details?: ErrorDetails;
     constructor(code: ErrorCode, message: string, details?: ErrorDetails);
 }
+/** Internal control-flow marker: an error envelope has already been emitted. */
+export declare class CliErrorHandled extends Error {
+    constructor();
+}
+export declare function isCliErrorHandled(err: unknown): err is CliErrorHandled;
 /**
- * Write structured JSON error to stderr and exit.
+ * Write structured JSON error to stderr and terminate the current command path.
  */
-export declare function stderrJson(code: ErrorCode, message: string, details?: ErrorDetails): void;
+export declare function stderrJson(code: ErrorCode, message: string, details?: ErrorDetails): never;
 /**
- * Central error handler. Classifies the error, writes stderr JSON, exits.
+ * Central error handler. Classifies the error and writes one stderr envelope.
  */
-export declare function handleError(err: unknown): void;
+export declare function handleError(err: unknown): never;
 /** Convert a WJX response failure without dropping upstream diagnostics. */
 export declare function ensureApiSuccess<T>(response: WjxApiResponse<T>): asserts response is Extract<WjxApiResponse<T>, {
     result: true;

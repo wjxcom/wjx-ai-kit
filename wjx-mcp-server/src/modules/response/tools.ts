@@ -206,7 +206,7 @@ export function registerResponseTools(server: McpServer): void {
         udsid: z.number().int().optional().describe("自定义来源编号"),
         sojumpparm: z.string().optional().describe("自定义链接参数"),
         submittime: z.string().optional().describe("答卷提交时间，日期时间字符串，默认当前时间"),
-        jpmversion: z.number().int().optional().describe("问卷版本号；不传时会自动 getSurvey 取最新 version。仅在调用方已自行管理版本时显式传入。"),
+        jpmversion: z.number().int().optional().describe("问卷版本号；始终尽量获取问卷结构来规范化答卷。不传时必须成功取得最新 version；显式传入时，即使元数据获取失败也可继续提交。"),
       },
       annotations: {
         destructiveHint: false,
@@ -216,30 +216,37 @@ export function registerResponseTools(server: McpServer): void {
       },
     },
     wrapToolHandler(async (args) => {
-      // 自动版本模式才需要 getSurvey；显式版本直接提交调用方提供的数据。
+      // 尽量获取题目结构来规范化答卷；显式版本只放宽元数据获取失败时的阻塞。
       let submitdata = args.submitdata;
       let jpmversion = args.jpmversion;
-      if (jpmversion === undefined) {
-        const survey = await getSurvey({ vid: args.vid });
-        if (survey.result !== true) {
-          const message = survey.result === false
-            ? survey.errormsg || "获取问卷版本失败"
-            : "获取问卷版本返回了无效响应";
-          throw new Error(message);
-        }
-        const data = survey?.data as {
+      let survey: Awaited<ReturnType<typeof getSurvey>> | undefined;
+      try {
+        survey = await getSurvey({ vid: args.vid });
+      } catch (error) {
+        if (jpmversion === undefined) throw error;
+      }
+
+      if (survey?.result === true) {
+        const data = survey.data as {
           version?: number;
           questions?: Array<{ q_index: number; q_type: number; q_subtype: number }>;
         } | undefined;
-        const version = data?.version;
-        if (typeof version !== "number" || !Number.isSafeInteger(version) || version <= 0) {
-          throw new Error("自动获取问卷版本失败：API 响应缺少有效的正整数 version");
-        }
         const questions = data?.questions ?? [];
         if (questions.length > 0) {
           submitdata = normalizeSubmitdata(submitdata, questions);
         }
-        jpmversion = version;
+        const version = data?.version;
+        if (jpmversion === undefined) {
+          if (typeof version !== "number" || !Number.isSafeInteger(version) || version <= 0) {
+            throw new Error("自动获取问卷版本失败：API 响应缺少有效的正整数 version");
+          }
+          jpmversion = version;
+        }
+      } else if (jpmversion === undefined) {
+        const message = survey?.result === false
+          ? survey.errormsg || "获取问卷版本失败"
+          : "获取问卷版本返回了无效响应";
+        throw new Error(message);
       }
       return submitResponse({
         vid: args.vid,

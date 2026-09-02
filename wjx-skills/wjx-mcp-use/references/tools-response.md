@@ -126,7 +126,7 @@
 ```
 1. get_survey({ vid, get_questions: true, get_items: true }) — 拿题目结构
 2. 按每题 q_index 拼 submitdata（不要凭"第几题"数）
-3. submit_response({ vid, inputcosttime: 30, submitdata }) — 自动注入 jpmversion
+3. submit_response({ vid, inputcosttime: 30, submitdata }) — 获取题目结构规范化答卷并自动注入 jpmversion；显式版本时元数据失败不阻塞
 ```
 
 ## get_winners — 获取中奖者信息

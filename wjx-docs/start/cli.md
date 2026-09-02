@@ -53,7 +53,7 @@ wjx survey create --file survey.jsonl --publish
 
 命令的完整选项见 [CLI 命令参考](../reference/cli.md)；按目标操作见 [创建问卷](../tasks/create-survey.md)。
 
-创建请求会携带当前 CLI 名称和版本。若服务端要求升级，CLI 会返回结构化 `UPGRADE_REQUIRED` 错误，并在 `error.hint` 中给出最低版本和升级命令；低于 `0.4.1` 的旧 CLI 需要先更新后再创建。
+创建请求会携带当前 CLI 名称和版本。若服务端以结构化信号要求升级，CLI 会返回 `UPGRADE_REQUIRED`；服务端提供最低版本或升级命令时，`error.hint` 才会包含对应信息。低于 `0.4.1` 的旧 CLI 需要先更新后再创建。
 
 ## Windows 提示
 

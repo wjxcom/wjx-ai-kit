@@ -274,7 +274,7 @@ export async function createSurveyByJson<T = unknown>(
       fetchImpl,
       retryBudget: 0,
       maxRetries: 0,
-      timeoutMs: LONG_TIMEOUT_MS,
+      timeoutMs: requestOptions?.timeoutMs ?? LONG_TIMEOUT_MS,
     },
   );
 }

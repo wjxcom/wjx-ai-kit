@@ -50,7 +50,7 @@ wjx doctor
 
 未配置则引导用户运行 `wjx init` 或设置 `WJX_API_KEY` 环境变量。
 
-若 `survey create` 返回 `error.code=UPGRADE_REQUIRED`，停止重试，向用户说明最低版本并使用 `error.upgrade_command` 给出升级动作。
+若 `survey create` 返回 `error.code=UPGRADE_REQUIRED`，停止重试；服务端提供 `error.min_client_version` 或 `error.upgrade_command` 时，向用户说明并使用该字段给出升级动作，不要自行臆造默认版本或命令。
 
 ## 工作原则
 

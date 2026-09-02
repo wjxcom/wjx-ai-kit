@@ -214,28 +214,32 @@ export async function callWjxApi<T = unknown>(
   params: Record<string, unknown>,
   opts: RequestOptions = {},
 ): Promise<WjxApiResponse<T>> {
-  return _callApi<T>(getWjxApiUrl(opts.baseUrl ?? opts.credentials?.baseUrl), params, opts);
+  const credentials = opts.credentials ?? getWjxCredentials();
+  return _callApi<T>(getWjxApiUrl(opts.baseUrl ?? credentials.baseUrl), params, { ...opts, credentials });
 }
 
 export async function callWjxUserSystemApi<T = unknown>(
   params: Record<string, unknown>,
   opts: RequestOptions = {},
 ): Promise<WjxApiResponse<T>> {
-  return _callApi<T>(getWjxUserSystemApiUrl(opts.baseUrl ?? opts.credentials?.baseUrl), params, opts);
+  const credentials = opts.credentials ?? getWjxCredentials();
+  return _callApi<T>(getWjxUserSystemApiUrl(opts.baseUrl ?? credentials.baseUrl), params, { ...opts, credentials });
 }
 
 export async function callWjxSubuserApi<T = unknown>(
   params: Record<string, unknown>,
   opts: RequestOptions = {},
 ): Promise<WjxApiResponse<T>> {
-  return _callApi<T>(getWjxSubuserApiUrl(opts.baseUrl ?? opts.credentials?.baseUrl), params, opts);
+  const credentials = opts.credentials ?? getWjxCredentials();
+  return _callApi<T>(getWjxSubuserApiUrl(opts.baseUrl ?? credentials.baseUrl), params, { ...opts, credentials });
 }
 
 export async function callWjxContactsApi<T = unknown>(
   params: Record<string, unknown>,
   opts: RequestOptions = {},
 ): Promise<WjxApiResponse<T>> {
-  return _callApi<T>(getWjxContactsApiUrl(opts.baseUrl ?? opts.credentials?.baseUrl), params, opts);
+  const credentials = opts.credentials ?? getWjxCredentials();
+  return _callApi<T>(getWjxContactsApiUrl(opts.baseUrl ?? credentials.baseUrl), params, { ...opts, credentials });
 }
 
 export function getCorpId(env: NodeJS.ProcessEnv = process.env): string | undefined {

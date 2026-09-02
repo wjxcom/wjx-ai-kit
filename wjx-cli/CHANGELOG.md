@@ -6,6 +6,12 @@
 
 - 工作树版本更新为 `0.4.1`；`0.4.0` 已废弃，尚未执行本版本 npm 发布。
 
+### Breaking
+
+- 删除旧的 `createSurvey`、`createSurveyByText`、`textToSurvey`、`create-by-text` 和旧 JSON 创建入口；问卷创建唯一使用 `survey create` / `createSurveyByJson`。
+- `create-by-json` 已改名为 `survey create`，不保留兼容别名；使用旧命令的客户端必须升级到 `0.4.1` 或更高版本。
+- 升级错误只根据结构化服务端信号识别；未提供最低版本或升级命令时，CLI 不再生成默认值。
+
 ## [0.4.0] - 2026-08-30
 
 ### Breaking

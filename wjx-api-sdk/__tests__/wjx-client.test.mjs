@@ -96,6 +96,25 @@ describe("createSurveyByJson", () => {
     assert.equal(fetch.captured().init.headers["X-WJX-Client"], "wjx-api-sdk");
     assert.equal(fetch.captured().init.headers["X-WJX-Client-Version"], "0.4.1");
   });
+
+  it("honors a caller timeout override", async () => {
+    const jsonl = [
+      { qtype: "问卷基础信息", title: "超时覆盖测试" },
+      { qtype: "单选", title: "选择一个", select: ["A", "B"] },
+    ].map(JSON.stringify).join("\n");
+    let seenSignal;
+    const fetch = async (_url, init) => {
+      seenSignal = init.signal;
+      return new Promise((resolve, reject) => {
+        init.signal.addEventListener("abort", () => reject(new Error("aborted")), { once: true });
+      });
+    };
+    await assert.rejects(
+      () => createSurveyByJson({ jsonl }, credentials, fetch, { timeoutMs: 1 }),
+      /aborted|timed out/i,
+    );
+    assert.ok(seenSignal);
+  });
 });
 
 describe("survey read and lifecycle clients", () => {

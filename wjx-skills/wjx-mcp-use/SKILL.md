@@ -53,7 +53,7 @@ https://www.wjx.cn/weixinlogin.aspx?redirecturl=%2Fnewwjx%2Fmanage%2Fuserinfo.as
 
 ### 规则 6：提交答卷的几个易错点
 
-- **jpmversion 无需手动管**：`submit_response` 内部会自动 `get_survey` 取最新 `version` 并注入。**不要**手动算或省略。仅当外部已自行管理版本时才显式传入 `jpmversion` 参数。问卷被发布/编辑后服务端 `version` 自增，不带最新版本号会被拒绝并报"问卷已被修改请刷新"。
+- **jpmversion 默认自动管理**：`submit_response` 每次提交前会尽量 `get_survey` 获取题目结构，规范化矩阵/排序等答卷格式；未显式传入时还必须成功取得最新 `version` 并注入。显式传入 `jpmversion` 时，元数据获取失败不会阻塞提交，但元数据可用仍会执行规范化。问卷被发布/编辑后服务端 `version` 自增，不带最新版本号会被拒绝并报"问卷已被修改请刷新"。
 - **submitdata 题号用 `get_survey` 返回的原始 `q_index`**：服务端严格按此校验——"问卷基础信息"元数据占 `q_index=1`，真实题目从 2 开始。AI 自己按"第 N 题"顺序数（`1$..., 2$...`）极易与服务端 q_index 错位，被拒"5〒答案不符合要求"。**正确流程**：先 `get_survey({ vid, get_questions: true })` 拿 `questions[].q_index`，再按每题 q_index 拼 submitdata。选项序号仍是 1-based（从 1 数到 N）。
 - **矩阵题用行号!列号，行用 `,` 分隔**（每题 3 条可复制示例）：
   - 矩阵单选（q_subtype=702）3 行：`3$1!1,2!3,3!2` — 第 3 题第 1 行选第 1 列、第 2 行选第 3 列、第 3 行选第 2 列

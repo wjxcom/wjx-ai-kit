@@ -5,6 +5,7 @@ import { formatOutput } from "../lib/output.js";
 import { handleError, CliError, ensureApiSuccess } from "../lib/errors.js";
 import { findCatalogEntry } from "../catalog/catalog.js";
 import { buildRequestPlan } from "../lib/runtime/request-plan.js";
+import { renderDryRun } from "../lib/runtime/dry-run.js";
 import { readInput } from "../lib/runtime/fileio.js";
 import { getMerged } from "../lib/command-helpers.js";
 import { createRuntimeContext } from "../lib/runtime/context.js";
@@ -69,7 +70,7 @@ export function registerApiCommands(program: Command): void {
             url: getProfileApiUrl(context.profile),
             body: routedBody,
           });
-          formatOutput({ kind: "dry-run", plans: [plan] }, program.opts());
+          formatOutput(renderDryRun([plan]), program.opts());
           return;
         }
         const credentials = applyProfileCredentials(getCredentials(program.opts()), context.profile);

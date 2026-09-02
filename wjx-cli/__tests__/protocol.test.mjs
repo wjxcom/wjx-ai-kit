@@ -96,7 +96,7 @@ test("survey create reports a structured upgrade requirement from the backend", 
   }
 });
 
-test("survey create supplies a default upgrade hint when backend omits optional details", async () => {
+test("survey create keeps structured upgrade errors without backend details", async () => {
   const fixture = await startFixture({
     response: {
       result: false,
@@ -114,20 +114,20 @@ test("survey create supplies a default upgrade hint when backend omits optional 
     assert.equal(result.exitCode, 1);
     const problem = JSON.parse(result.stderr);
     assert.equal(problem.error.code, "UPGRADE_REQUIRED");
-    assert.equal(problem.error.min_client_version, "0.4.1");
-    assert.equal(problem.error.upgrade_command, "npm install -g wjx-cli@latest");
-    assert.match(problem.error.hint, /请升级 wjx-cli 至 0\.4\.1/);
+    assert.equal(problem.error.min_client_version, undefined);
+    assert.equal(problem.error.upgrade_command, undefined);
+    assert.equal(problem.error.hint, undefined);
   } finally {
     await fixture.close();
   }
 });
 
-test("survey create recognizes a numeric backend code when its message requires an upgrade", async () => {
+test("numeric backend codes are not classified from upgrade wording alone", async () => {
   const fixture = await startFixture({
     response: {
       result: false,
       errorcode: 42601,
-      errormsg: "客户端版本过低，请升级后重试",
+      errormsg: "请升级套餐后重试",
     },
     env: { WJX_API_KEY: "test-key" },
   });
@@ -139,9 +139,69 @@ test("survey create recognizes a numeric backend code when its message requires 
     const result = await fixture.run(["survey", "create", "--jsonl", jsonl]);
     assert.equal(result.exitCode, 1);
     const problem = JSON.parse(result.stderr);
-    assert.equal(problem.error.code, "UPGRADE_REQUIRED");
+    assert.equal(problem.error.code, "API_ERROR");
     assert.equal(problem.error.errorcode, 42601);
   } finally {
     await fixture.close();
   }
+});
+
+test("business upgrade wording is not classified as a client-version upgrade", async () => {
+  const fixture = await startFixture({
+    response: {
+      result: false,
+      errorcode: "PLAN_LIMIT",
+      errormsg: "请升级套餐后继续使用",
+    },
+    env: { WJX_API_KEY: "test-key" },
+  });
+  try {
+    const jsonl = [
+      { qtype: "问卷基础信息", title: "套餐限制测试" },
+      { qtype: "单选", title: "选择一个", select: ["A", "B"] },
+    ].map(JSON.stringify).join("\n");
+    const result = await fixture.run(["survey", "create", "--jsonl", jsonl]);
+    assert.equal(result.exitCode, 1);
+    const problem = JSON.parse(result.stderr);
+    assert.equal(problem.error.code, "API_ERROR");
+    assert.equal(problem.error.upgrade_required, undefined);
+    assert.equal(problem.error.min_client_version, undefined);
+  } finally {
+    await fixture.close();
+  }
+});
+
+test("upgrade classification requires structured backend metadata", async () => {
+  const fixture = await startFixture({
+    response: {
+      result: false,
+      errorcode: 42601,
+      errormsg: "客户端版本过低，请升级后重试",
+      data: { upgrade_required: true, min_client_version: "0.5.0" },
+    },
+    env: { WJX_API_KEY: "test-key" },
+  });
+  try {
+    const jsonl = [
+      { qtype: "问卷基础信息", title: "结构化升级测试" },
+      { qtype: "单选", title: "选择一个", select: ["A", "B"] },
+    ].map(JSON.stringify).join("\n");
+    const result = await fixture.run(["survey", "create", "--jsonl", jsonl]);
+    const problem = JSON.parse(result.stderr);
+    assert.equal(problem.error.code, "UPGRADE_REQUIRED");
+    assert.equal(problem.error.min_client_version, "0.5.0");
+    assert.equal(problem.error.upgrade_command, undefined);
+    assert.match(problem.error.hint, /请升级 wjx-cli 至 0\.5\.0/);
+  } finally {
+    await fixture.close();
+  }
+});
+
+test("version fast path only handles a root-level version flag", async () => {
+  const result = await run(["survey", "list", "--version"]);
+  assert.notEqual(result.code, 0);
+  assert.equal(result.stdout, "");
+  const problem = JSON.parse(result.stderr);
+  assert.equal(problem.ok, false);
+  assert.equal(problem.error.code, "INPUT_ERROR");
 });

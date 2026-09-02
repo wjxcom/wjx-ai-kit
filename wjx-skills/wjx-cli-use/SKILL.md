@@ -9,7 +9,7 @@ wjx-cli 是问卷星 OpenAPI 的命令行工具。命令格式：`wjx <模块> <
 
 全局选项：`--api-key <key>` 覆盖凭据，`--format table` 表格输出，`--dry-run` 预览请求不发送，`--stdin` 从管道读 JSON 参数。低于 `0.4.1` 的 CLI 必须先升级。
 
-如果 `survey create` 返回顶层 `ok:false` 且 `error.code` 为 `UPGRADE_REQUIRED`，停止重试并提示用户先升级到 `error.min_client_version`（默认 `0.4.1`）；优先使用 `error.upgrade_command`，不要把它当作问卷内容或普通 API 失败处理。
+如果 `survey create` 返回顶层 `ok:false` 且 `error.code` 为 `UPGRADE_REQUIRED`，停止重试并提示用户先升级到服务端提供的 `error.min_client_version`（若有）；服务端提供 `error.upgrade_command` 时优先使用它，不要把升级错误当作问卷内容或普通 API 失败处理。
 
 ## AI Agent 行为准则（必读）
 

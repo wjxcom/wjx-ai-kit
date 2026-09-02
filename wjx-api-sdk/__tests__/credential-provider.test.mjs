@@ -1,7 +1,14 @@
 import assert from "node:assert/strict";
 import { describe, it, afterEach } from "node:test";
 
-import { setCredentialProvider, getWjxCredentials } from "../dist/index.js";
+import {
+  setCredentialProvider,
+  getWjxCredentials,
+  callWjxApi,
+  callWjxUserSystemApi,
+  callWjxSubuserApi,
+  callWjxContactsApi,
+} from "../dist/index.js";
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // Credential provider tests
@@ -77,5 +84,33 @@ describe("setCredentialProvider", () => {
       () => getWjxCredentials({}),
       /WJX_API_KEY must be set/,
     );
+  });
+
+  it("routes requests through the provider base URL", async () => {
+    setCredentialProvider(() => ({ apiKey: "provider-token", baseUrl: "https://tenant.example" }));
+    let seenUrl;
+    await callWjxApi(
+      { action: "1000001" },
+      { fetchImpl: async (url) => {
+        seenUrl = String(url);
+        return new Response(JSON.stringify({ result: true, data: {} }));
+      } },
+    );
+    assert.match(seenUrl, /^https:\/\/tenant\.example\/openapi\/default\.aspx\?/);
+  });
+
+  it("routes every transport endpoint through the provider base URL", async () => {
+    setCredentialProvider(() => ({ apiKey: "provider-token", baseUrl: "https://tenant.example" }));
+    const seenUrls = [];
+    const fetchImpl = async (url) => {
+      seenUrls.push(String(url));
+      return new Response(JSON.stringify({ result: true, data: {} }));
+    };
+    await callWjxUserSystemApi({ action: "1002001" }, { fetchImpl });
+    await callWjxSubuserApi({ action: "1003001" }, { fetchImpl });
+    await callWjxContactsApi({ action: "1005001" }, { fetchImpl });
+    assert.match(seenUrls[0], /^https:\/\/tenant\.example\/openapi\/usersystem\.aspx\?/);
+    assert.match(seenUrls[1], /^https:\/\/tenant\.example\/openapi\/subuser\.aspx\?/);
+    assert.match(seenUrls[2], /^https:\/\/tenant\.example\/openapi\/contacts\.aspx\?/);
   });
 });
