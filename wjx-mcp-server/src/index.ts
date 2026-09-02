@@ -29,11 +29,11 @@ export async function main(): Promise<void> {
 
   if (transportMode === "http") {
     const { startHttpTransport } = await import("./transports/http.js");
-    const port = Number(process.env.PORT ?? 3000);
-    if (!Number.isFinite(port) || port < 0 || port > 65535) {
+    const port = Number(process.env.PORT?.trim() || 3000);
+    if (!Number.isSafeInteger(port) || port < 0 || port > 65535) {
       throw new Error(`Invalid PORT: ${process.env.PORT}`);
     }
-    const { httpServer } = await startHttpTransport(
+    const { close } = await startHttpTransport(
       server,
       {
         port,
@@ -42,13 +42,15 @@ export async function main(): Promise<void> {
       },
       createServer,
     );
+    // HTTP sessions use fresh servers from serverFactory; close the unused
+    // bootstrap server as well so the main-owned resource has one lifecycle.
     const shutdown = () => {
-      httpServer.close();
+      void close().finally(() => server.close()).catch(() => undefined);
     };
     process.once("SIGINT", shutdown);
     process.once("SIGTERM", shutdown);
   } else {
-    if (!process.env.WJX_API_KEY) {
+    if (!process.env.WJX_API_KEY?.trim()) {
       console.error("[wjx-mcp-server] Warning: WJX_API_KEY is not set. API calls will fail until an API key is provided.");
     }
     const transport = new StdioServerTransport();

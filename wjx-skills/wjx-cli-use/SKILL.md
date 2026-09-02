@@ -7,6 +7,33 @@ description: "Guide for using wjx-cli (Wenjuanxing CLI) to create surveys, query
 
 wjx-cli 是问卷星 OpenAPI 的命令行工具。命令格式：`wjx <模块> <操作> [选项]`。
 
+> 通过 AI 安装并启用 wjx-cli：先执行 `npm install -g wjx-cli@latest`，成功后再执行 `wjx skill install --force`；安装后命令名是 `wjx`，请用 `wjx --version` 验证，不要运行 `wjx-cli --version`。
+
+## AI 安装与配置任务模板
+
+需要 AI 自动完成安装和配置时，把下面整段话发给 AI；AI 应按顺序执行，拿到 API Key 前暂停等待，不要跳过连接验收：
+
+```text
+请帮我安装并配置问卷星 CLI（wjx-cli）：
+
+1. 检查 Node.js 是否 >= 20（运行 `node --version`），版本过低请引导我升级到 https://nodejs.org
+
+2. 先执行 `npm install -g wjx-cli@latest`，成功后再执行 `wjx skill install --force`，同时安装 CLI 和 wjx-cli-use 技能。npm 包名是 `wjx-cli`，安装后的命令名是 `wjx`；运行 `wjx --version` 验证，不要运行 `wjx-cli --version`
+
+3. 引导我获取问卷星 API Key：
+   - 公网用户：让我访问 https://www.wjx.cn/weixinlogin.aspx?redirecturl=%2Fnewwjx%2Fmanage%2Fuserinfo.aspx%3FshowApiKey%3D1，微信扫码登录后复制 Key
+   - 私有化部署用户：把上面的 www.wjx.cn 换成我的域名（例如 xxx.sojump.cn）
+   等我把 Key 发给你（可能还会附带域名）
+
+4. 拿到 Key 后执行 `wjx init --api-key <我的Key>`；私有化部署用户加 `--base-url https://<我的域名>`。不要在回复、日志或文件中回显完整 API Key
+
+5. 运行 `wjx doctor` 验证连接，应确认 API Key 已配置且网络/API 检查通过
+
+6. 最后运行 `wjx survey list --format table` 做一次人工验收，看到真实列表就说明接好了；这一步只用于人类查看，不要用表格推断总数、分页或填写链接
+```
+
+如果用户只提供了 API Key 而没有明确域名，使用公网地址；如果用户提供了私有化域名，API Key 获取链接和 `--base-url` 必须同时使用该域名。
+
 全局选项：`--api-key <key>` 覆盖凭据，`--format table` 表格输出，`--dry-run` 预览请求不发送，`--stdin` 从管道读 JSON 参数。低于 `0.4.1` 的 CLI 必须先升级。
 
 如果 `survey create` 返回顶层 `ok:false` 且 `error.code` 为 `UPGRADE_REQUIRED`，停止重试并提示用户先升级到服务端提供的 `error.min_client_version`（若有）；服务端提供 `error.upgrade_command` 时优先使用它，不要把升级错误当作问卷内容或普通 API 失败处理。
@@ -120,12 +147,12 @@ https://www.wjx.cn/weixinlogin.aspx?redirecturl=%2Fnewwjx%2Fmanage%2Fuserinfo.as
 
 ### 规则 9：问卷列表必须报告总数和分页范围（强制）
 
-- 调用 `wjx survey list` 时保留默认 JSON 输出，读取 `data.page_index`、`data.page_size`、`data.total_count` 和 `data.activitys`。**不要使用 `--format table`**，表格输出会隐藏总数和分页元数据。
+- 调用 `wjx survey list` 做机器处理、分页或链接查找时保留默认 JSON 输出，读取 `data.page_index`、`data.page_size`、`data.total_count` 和 `data.activitys`。**不要使用 `--format table` 做这些工作**，表格输出会隐藏总数和分页元数据。
 - 必须用 JSON 解析器读取响应对象；不要用 `head` 截断 JSON，也不要用 `grep` 搜索字段。为刚创建的问卷找链接时，优先按创建响应中的 `vid`/`sid` 定位；列表 fallback 才按页读取目标记录。
 - 用户只要求“查看问卷列表”时可以先展示一页，但必须同时说明匹配问卷总数、当前页和本页数量，例如：「共 N 份问卷，当前展示第 X/Y 页的 M 份。」不得把单页结果表述为全部问卷。
 - 用户要求“全部问卷”或任务需要完整集合时，保持筛选和排序条件不变，根据 `total_count` 逐页查询，直到实际收集数量与总数一致；未取完前不得声称已列出全部。
 - `--query_all` 只表示查询范围包含子账号问卷，**不会**自动获取全部分页。
-- `--format table` 只展示部分问卷行，可能隐藏填写路径、链接以及 `total_count`、`page_index`、`page_size` 等元数据，不可用于机器解析或链接查找。
+- `--format table` 只展示部分问卷行，可能隐藏填写路径、链接以及 `total_count`、`page_index`、`page_size` 等元数据；它可以作为安装后的人工可读验收，但不可用于机器解析、分页判断或链接查找。
 - 如果响应缺少 `total_count`，不要口述未核实的总数；逐页查询到空页后计算实际数量，或明确说明当前无法确认总数。详细响应结构见 [references/survey-commands.md](references/survey-commands.md)。
 
 ### 规则 10：答卷查询必须报告总数并按需取全（强制）
@@ -163,7 +190,15 @@ node --version
 
 如果 Node.js 未安装或版本 < 20，需要先安装。参见 [references/install-nodejs.md](references/install-nodejs.md)，根据操作系统选择安装方式。
 
-Node.js 就绪后，先确认要使用的 CLI 至少为 `0.4.1`。当前工作树的 `0.4.1` 尚未发布到 npm；如果 `npm view wjx-cli version` 返回低于 `0.4.1`，不要安装旧版，改为从源码构建并链接 CLI：
+Node.js 就绪后，先确认要使用的 CLI 至少为 `0.4.1`。当前稳定版本已发布到 npm；如果本机版本低于 `0.4.1`，直接安装或升级：
+
+```bash
+npm install -g wjx-cli@latest
+wjx skill install --force
+wjx --version
+```
+
+从源码开发时才执行：
 
 ```bash
 git clone https://github.com/wjxcom/wjx-ai-kit.git
@@ -172,13 +207,6 @@ npm install
 npm run build --workspace=wjx-api-sdk
 npm run build --workspace=wjx-cli
 npm link ./wjx-cli
-```
-
-正式发布后才执行：
-
-```bash
-npm install -g wjx-cli
-wjx --version
 ```
 
 ### 步骤 2：获取并配置 API Key

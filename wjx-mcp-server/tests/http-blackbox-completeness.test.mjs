@@ -15,6 +15,7 @@ setCredentialProvider(getRequestCredentials);
 let mcpHttpServer;
 let apiHttpServer;
 let previousApiUrl;
+let previousApiKey;
 
 function listen(server) {
   return new Promise((resolve, reject) => {
@@ -35,6 +36,8 @@ function close(server) {
 after(async () => {
   if (previousApiUrl === undefined) delete process.env.WJX_API_URL;
   else process.env.WJX_API_URL = previousApiUrl;
+  if (previousApiKey === undefined) delete process.env.WJX_API_KEY;
+  else process.env.WJX_API_KEY = previousApiKey;
   await close(mcpHttpServer);
   await close(apiHttpServer);
 });
@@ -57,7 +60,9 @@ test("HTTP MCP calls reach the WJX API with isolated per-session credentials", a
   });
   const apiPort = await listen(apiHttpServer);
   previousApiUrl = process.env.WJX_API_URL;
+  previousApiKey = process.env.WJX_API_KEY;
   process.env.WJX_API_URL = `http://127.0.0.1:${apiPort}/openapi/default.aspx`;
+  process.env.WJX_API_KEY = "global-config-key";
 
   const { httpServer } = await startHttpTransport(createServer(), {
     port: 0,
@@ -82,9 +87,14 @@ test("HTTP MCP calls reach the WJX API with isolated per-session credentials", a
     return { client, transport };
   };
 
-  const first = await makeClient("tenant-a", "203.0.113.10");
-  const second = await makeClient("tenant-b", "203.0.113.11");
+  const first = await makeClient("tenant-a-secret-key", "203.0.113.10");
+  const second = await makeClient("tenant-b-secret-key", "203.0.113.11");
   try {
+    const configResult = await first.client.callTool({ name: "get_config", arguments: {} });
+    assert.equal(configResult.isError, false, JSON.stringify(configResult));
+    const config = JSON.parse(configResult.content[0].text);
+    assert.equal(config.api_key, "tenant-a****-key");
+
     const [firstResult, secondResult] = await Promise.all([
       first.client.callTool({ name: "list_surveys", arguments: { page_index: 1, page_size: 1 } }),
       second.client.callTool({ name: "list_surveys", arguments: { page_index: 1, page_size: 1 } }),
@@ -97,7 +107,7 @@ test("HTTP MCP calls reach the WJX API with isolated per-session credentials", a
     }
     assert.equal(apiRequests.length, 2);
     const auths = apiRequests.map((request) => request.authorization).sort();
-    assert.deepEqual(auths, ["Bearer tenant-a", "Bearer tenant-b"]);
+    assert.deepEqual(auths, ["Bearer tenant-a-secret-key", "Bearer tenant-b-secret-key"]);
     const ips = apiRequests.map((request) => request.forwardedFor).sort();
     assert.deepEqual(ips, ["203.0.113.10", "203.0.113.11"]);
     assert.ok(apiRequests.every((request) => request.body.action === "1000002"));

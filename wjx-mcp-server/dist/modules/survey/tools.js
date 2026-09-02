@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { createSurveyByJson, CREATABLE_SURVEY_ATYPES, getSurvey, listSurveys, updateSurveyStatus, getSurveySettings, updateSurveySettings, deleteSurvey, getQuestionTags, getTagDetails, clearRecycleBin, uploadFile, surveyToText, MAX_JSONL_SIZE, } from "./client.js";
-import { toolResult, toolError } from "../../helpers.js";
+import { assertApiResponse, toolApiResult, toolResult, toolError } from "../../helpers.js";
 import { QUESTION_TYPES } from "../../resources/survey-reference.js";
 export function registerSurveyTools(server) {
     // ─── get_survey ───────────────────────────────────────────────────
@@ -63,8 +63,9 @@ export function registerSurveyTools(server) {
                 get_tags: args.get_tags,
                 showtitle: args.showtitle,
             });
+            assertApiResponse(result);
             if (result.result === false) {
-                return toolResult(result, true);
+                return toolApiResult(result);
             }
             const fmt = args.format ?? "json";
             if (fmt === "dsl") {
@@ -76,7 +77,7 @@ export function registerSurveyTools(server) {
                 return toolResult({ ...result, dsl }, false);
             }
             // default: json
-            return toolResult(result, false);
+            return toolApiResult(result);
         }
         catch (error) {
             return toolError(error);
@@ -185,7 +186,7 @@ export function registerSurveyTools(server) {
                 begin_time: args.begin_time,
                 end_time: args.end_time,
             });
-            return toolResult(result, result.result === false);
+            return toolApiResult(result);
         }
         catch (error) {
             return toolError(error);
@@ -214,7 +215,7 @@ export function registerSurveyTools(server) {
     }, async (args) => {
         try {
             const result = await updateSurveyStatus({ vid: args.vid, state: args.state });
-            return toolResult(result, result.result === false);
+            return toolApiResult(result);
         }
         catch (error) {
             return toolError(error);
@@ -241,7 +242,7 @@ export function registerSurveyTools(server) {
     }, async (args) => {
         try {
             const result = await getSurveySettings({ vid: args.vid, additional_setting: args.additional_setting });
-            return toolResult(result, result.result === false);
+            return toolApiResult(result);
         }
         catch (error) {
             return toolError(error);
@@ -300,7 +301,7 @@ export function registerSurveyTools(server) {
                 sojumpparm_setting: args.sojumpparm_setting,
                 time_setting: args.time_setting,
             });
-            return toolResult(result, result.result === false);
+            return toolApiResult(result);
         }
         catch (error) {
             return toolError(error);
@@ -328,7 +329,7 @@ export function registerSurveyTools(server) {
                 username: args.username,
                 completely_delete: args.completely_delete,
             });
-            return toolResult(result, result.result === false);
+            return toolApiResult(result);
         }
         catch (error) {
             return toolError(error);
@@ -350,7 +351,7 @@ export function registerSurveyTools(server) {
     }, async (args) => {
         try {
             const result = await getQuestionTags({ username: args.username });
-            return toolResult(result, result.result === false);
+            return toolApiResult(result);
         }
         catch (error) {
             return toolError(error);
@@ -373,7 +374,8 @@ export function registerSurveyTools(server) {
         try {
             const result = await getTagDetails({ tag_id: args.tag_id });
             // Enrich q_type with human-readable description
-            if (result.result !== false && Array.isArray(result.data)) {
+            assertApiResponse(result);
+            if (result.result === true && Array.isArray(result.data)) {
                 for (const item of result.data) {
                     const qType = Number(item.q_type);
                     if (!isNaN(qType) && QUESTION_TYPES[qType]) {
@@ -381,7 +383,7 @@ export function registerSurveyTools(server) {
                     }
                 }
             }
-            return toolResult(result, result.result === false);
+            return toolApiResult(result);
         }
         catch (error) {
             return toolError(error);
@@ -407,7 +409,7 @@ export function registerSurveyTools(server) {
                 file_name: args.file_name,
                 file: args.file,
             });
-            return toolResult(result, result.result === false);
+            return toolApiResult(result);
         }
         catch (error) {
             return toolError(error);
@@ -433,7 +435,7 @@ export function registerSurveyTools(server) {
                 username: args.username,
                 vid: args.vid,
             });
-            return toolResult(result, result.result === false);
+            return toolApiResult(result);
         }
         catch (error) {
             return toolError(error);
@@ -509,7 +511,7 @@ export function registerSurveyTools(server) {
                 publish: args.publish,
                 creater: args.creater,
             });
-            return toolResult(result, result.result === false);
+            return toolApiResult(result);
         }
         catch (error) {
             return toolError(error);

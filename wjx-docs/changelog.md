@@ -1,9 +1,9 @@
 # 变更记录
 
-## 0.4.1（下一发布，尚未发布）
+## 0.4.1（2026-09-02）
 
-- `wjx-api-sdk`、`wjx-mcp-server`、`wjx-cli` 的工作树版本统一为 `0.4.1`，正式发布顺序为 SDK → MCP Server → CLI。
-- 本版本不改变 npm registry；发布前请从源码构建，registry 的 `latest` 仍指向旧版。
+- `wjx-api-sdk`、`wjx-mcp-server`、`wjx-cli` 的稳定版本统一为 `0.4.1`，发布顺序为 SDK → MCP Server → CLI。
+- 三个包已按 SDK → MCP Server → CLI 顺序发布到 npm，registry 的 `latest` 均指向 `0.4.1`。
 - SDK 暴露本地 `buildSubmitTemplate` / `decodePushPayload`；CLI 提供 `survey preview-url`；MCP 补充答卷计数、模板和推送解密工具。
 - 明确 CLI 是完整主入口，MCP 只覆盖核心业务子集；具体差异由 capability matrix 定义。
 

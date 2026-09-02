@@ -415,6 +415,36 @@ describe("survey tools validation via MCP", () => {
     ({ client } = await createTestClient());
   });
 
+  it("rejects a malformed list_surveys API response instead of reporting success", async () => {
+    const previousFetch = globalThis.fetch;
+    globalThis.fetch = async () => new Response(JSON.stringify({ data: { partial: true } }), {
+      status: 200,
+      headers: { "content-type": "application/json" },
+    });
+    try {
+      const result = await client.callTool({ name: "list_surveys", arguments: {} });
+      assert.equal(result.isError, true);
+      assert.match(result.content[0].text, /result must be a boolean/);
+    } finally {
+      globalThis.fetch = previousFetch;
+    }
+  });
+
+  it("rejects a malformed get_survey API response before format conversion", async () => {
+    const previousFetch = globalThis.fetch;
+    globalThis.fetch = async () => new Response(JSON.stringify({ data: { partial: true } }), {
+      status: 200,
+      headers: { "content-type": "application/json" },
+    });
+    try {
+      const result = await client.callTool({ name: "get_survey", arguments: { vid: 42, format: "dsl" } });
+      assert.equal(result.isError, true);
+      assert.match(result.content[0].text, /result must be a boolean/);
+    } finally {
+      globalThis.fetch = previousFetch;
+    }
+  });
+
   describe("create_survey_by_json", () => {
     it("describes the required qtype metadata row instead of the removed _meta row", async () => {
       const listed = await client.listTools();

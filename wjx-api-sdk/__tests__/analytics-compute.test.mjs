@@ -420,6 +420,26 @@ describe("decodePushPayload", () => {
     assert.equal(result.signatureValid, false);
   });
 
+  it("should reject an explicitly empty signature", () => {
+    const appKey = "test-key";
+    const payload = JSON.stringify({ data: "test" });
+    const encrypted = encryptPayload(payload, appKey);
+
+    const result = decodePushPayload(encrypted, appKey, "", "some body");
+    assert.equal(result.signatureValid, false);
+  });
+
+  it("should reject Unicode signatures without throwing", () => {
+    const appKey = "test-key";
+    const payload = JSON.stringify({ data: "test" });
+    const encrypted = encryptPayload(payload, appKey);
+    const rawBody = "some body";
+    const signature = `${"a".repeat(39)}é`;
+
+    const result = decodePushPayload(encrypted, appKey, signature, rawBody);
+    assert.equal(result.signatureValid, false);
+  });
+
   it("should throw on data too short", () => {
     assert.throws(
       () => decodePushPayload(Buffer.from("short").toString("base64"), "key"),

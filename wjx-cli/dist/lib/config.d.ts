@@ -3,13 +3,11 @@ export interface WjxConfig {
     baseUrl?: string;
     corpId?: string;
 }
-/**
- * Evaluated once at module load time. Setting process.env.WJX_CONFIG_PATH
- * after import will NOT change this value. Tests override it by passing the
- * env var to child processes (e.g. via execFileSync env option).
- */
+/** Resolve the config path at the point of use for embedded callers. */
+export declare function getConfigPath(env?: NodeJS.ProcessEnv): string;
+/** Backward-compatible snapshot for callers that only need the startup path. */
 export declare const CONFIG_PATH: string;
-export declare function loadConfig(): WjxConfig | null;
+export declare function loadConfig(env?: NodeJS.ProcessEnv): WjxConfig | null;
 export declare function saveConfig(config: WjxConfig): void;
 /**
  * Apply the legacy config's credential fallback to process.env.

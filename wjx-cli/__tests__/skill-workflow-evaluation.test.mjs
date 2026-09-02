@@ -129,7 +129,7 @@ test("submit auto-version has a metadata prefetch, while --no-auto-version sends
       "--submitdata", "1$1", "--jpmversion", "24",
     ]);
     parseSuccess(explicitAuto);
-    assert.equal(explicitFixture.requests().length, beforeExplicitAuto + 1, "explicit jpmversion must skip metadata prefetch even when auto-version is enabled");
+    assert.equal(explicitFixture.requests().length, beforeExplicitAuto + 2, "explicit jpmversion uses metadata for best-effort normalization when auto-version is enabled");
     assert.equal(JSON.parse(explicitFixture.requests().at(-1).body).jpmversion, 24);
   } finally {
     await explicitFixture.close();

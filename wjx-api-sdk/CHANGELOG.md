@@ -4,9 +4,9 @@
 
 > 说明：以下 0.x 条目保留为历史记录。条目中出现的 `createSurvey`、`createSurveyByText`、`textToSurvey` 创建相关能力已移除，不属于当前 SDK，也不得据此恢复或新增兼容入口。当前问卷创建唯一使用 `createSurveyByJson`。
 
-## [0.4.1] - Unreleased
+## [0.4.1] - 2026-09-02
 
-- 工作树版本更新为 `0.4.1`；`0.4.0` 已废弃，尚未执行本版本 npm 发布。
+- `wjx-api-sdk@0.4.1` 已发布到 npm；`0.4.0` 已废弃。
 - 公开导出 `buildSubmitTemplate` 与 `decodePushPayload`，分别用于本地生成答卷模板和解密/验签推送载荷。
 
 ## [0.4.0] - 2026-08-30

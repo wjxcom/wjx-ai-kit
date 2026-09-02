@@ -219,18 +219,28 @@ export function writeBaseline(
   }
 }
 
+export function enforceBaseline(report, baselinePath = BASELINE) {
+  const baseline = readBaseline(baselinePath);
+  const selected = baseline.baselines[currentKey()] ?? baseline.baselines.default;
+  if (!selected) throw new Error(`No startup baseline for ${currentKey()}; add an approved baseline before enforcing`);
+  const baselineDelta = selected && typeof selected === "object"
+    ? selected.deltaP95Ms
+    : undefined;
+  if (typeof baselineDelta !== "number" || !Number.isFinite(baselineDelta) || baselineDelta < 0) {
+    throw new Error(`Invalid startup baseline for ${currentKey()}: deltaP95Ms must be a finite non-negative number`);
+  }
+  if (report.deltaP95Ms > baselineDelta * 1.2) {
+    throw new Error(`Startup regression: deltaP95Ms=${report.deltaP95Ms} exceeds budget=${rounded(baselineDelta * 1.2)}`);
+  }
+}
+
 export function main(argv = process.argv.slice(2)) {
   const options = parseArgs(argv);
   const report = runBenchmark(options);
-  writeBaseline(report, options);
   if (options.enforce && !options.report) {
-    const baseline = readBaseline();
-    const selected = baseline.baselines[currentKey()] ?? baseline.baselines.default;
-    if (!selected) throw new Error(`No startup baseline for ${currentKey()}; add an approved baseline before enforcing`);
-    if (report.deltaP95Ms > selected.deltaP95Ms * 1.2) {
-      throw new Error(`Startup regression: deltaP95Ms=${report.deltaP95Ms} exceeds budget=${rounded(selected.deltaP95Ms * 1.2)}`);
-    }
+    enforceBaseline(report);
   }
+  writeBaseline(report, options);
   if (options.report || options.writeBaseline || options.writeDefault) {
     process.stdout.write(`${JSON.stringify(report)}\n`);
   }

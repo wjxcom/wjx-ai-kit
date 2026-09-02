@@ -1,8 +1,9 @@
-import { existsSync, mkdirSync, copyFileSync, readdirSync, readFileSync } from "node:fs";
-import { join, dirname } from "node:path";
+import { existsSync, readFileSync, readdirSync, lstatSync, copyFileSync } from "node:fs";
+import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { stderr } from "node:process";
 import { spawnSync } from "node:child_process";
+import { copyDirectory, replaceTargetsAtomically } from "./install-transaction.js";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 /** Resolve the bundled wjx-survey-ppt directory shipped with wjx-cli. */
@@ -20,25 +21,67 @@ function getSkillVersion(skillRoot) {
         return "0.0.0";
     }
 }
-/** Recursively copy a directory, returning the list of copied files. */
-function copyDirSync(src, dest) {
-    const copied = [];
-    mkdirSync(dest, { recursive: true });
-    for (const entry of readdirSync(src, { withFileTypes: true })) {
-        // Skip Python bytecode caches and demo outputs
-        if (entry.name === "__pycache__" || entry.name.startsWith("out"))
-            continue;
-        const srcPath = join(src, entry.name);
-        const destPath = join(dest, entry.name);
-        if (entry.isDirectory()) {
-            copied.push(...copyDirSync(srcPath, destPath));
-        }
-        else {
-            copyFileSync(srcPath, destPath);
-            copied.push(destPath);
-        }
+function isFile(path) {
+    try {
+        return lstatSync(path).isFile();
     }
-    return copied;
+    catch {
+        return false;
+    }
+}
+function isDirectory(path) {
+    try {
+        return lstatSync(path).isDirectory();
+    }
+    catch {
+        return false;
+    }
+}
+function pathExists(path) {
+    try {
+        lstatSync(path);
+        return true;
+    }
+    catch {
+        return false;
+    }
+}
+function installationConflict(path, valid) {
+    if (!pathExists(path) || valid)
+        return undefined;
+    try {
+        if (lstatSync(path).isDirectory() && readdirSync(path).length === 0)
+            return undefined;
+    }
+    catch {
+        // Fall through to the conflict message for inaccessible paths.
+    }
+    return `目标路径已存在但不是可识别的 Skill：${path}。如需替换请显式使用 --force`;
+}
+function hasSkillDirectory(path) {
+    try {
+        if (!lstatSync(path).isDirectory())
+            return false;
+    }
+    catch {
+        return false;
+    }
+    return isFile(join(path, "SKILL.md"));
+}
+// Preserve source/package workflow files when a project uses the installer
+// inside its own checked-in Skill directory.
+const PRESERVED_PROJECT_FILES = ["setup.sh", "package.json", "pack_skill.sh", ".gitignore"];
+function copyPptSkillForInstall(source, destination, existing) {
+    const files = copyDirectory(source, destination, (name) => name === "__pycache__" || name.startsWith("out"));
+    for (const name of PRESERVED_PROJECT_FILES) {
+        const sourcePath = join(existing, name);
+        if (!isFile(sourcePath))
+            continue;
+        const destinationPath = join(destination, name);
+        copyFileSync(sourcePath, destinationPath);
+        files.push(destinationPath);
+    }
+    return files;
 }
 /** Detect a working python executable (>= 3.10). Returns null if none. */
 function detectPython() {
@@ -58,12 +101,19 @@ function detectPython() {
     }
     return null;
 }
-/** Check whether ppt_master_survey is importable in the current Python env. */
+/** Check whether the renderer import and its module entry point both work. */
 function isRendererInstalled(pythonCmd) {
-    const probe = spawnSync(pythonCmd, ["-c", "import ppt_master_survey"], {
+    const importProbe = spawnSync(pythonCmd, ["-c", "import ppt_master_survey"], {
         encoding: "utf-8",
+        stdio: "ignore",
     });
-    return probe.status === 0;
+    if (importProbe.status !== 0)
+        return false;
+    const entrypointProbe = spawnSync(pythonCmd, ["-m", "ppt_master_survey", "--help"], {
+        encoding: "utf-8",
+        stdio: "ignore",
+    });
+    return entrypointProbe.status === 0;
 }
 /** Run `python -m pip install --upgrade ppt-master-survey`. Inherits stdio so user sees progress. */
 function runPipInstall(pythonCmd, silent) {
@@ -89,7 +139,8 @@ function ensureJieba(pythonCmd, silent) {
 /**
  * Install wjx-survey-ppt skill files and the ppt-master-survey PyPI package.
  *
- * - Skill files: copied to <targetDir>/skills/wjx-survey-ppt/
+ * - Skill files: copied to <targetDir>/skills/wjx-survey-ppt/ and mirrored to
+ *   <targetDir>/.claude/skills/wjx-survey-ppt/
  * - PyPI package: installed via `python -m pip install ppt-master-survey`
  *
  * Either step's failure does not abort the other; the result reports both.
@@ -98,7 +149,7 @@ export function installPptSkill(targetDir, options = {}) {
     const { force = false, silent = false, skipPip = false, rootSource } = options;
     const skillSrc = getBundledSkillDir();
     const version = getSkillVersion(skillSrc);
-    if (!existsSync(skillSrc)) {
+    if (!isDirectory(skillSrc) || !hasSkillDirectory(skillSrc)) {
         return {
             status: "error",
             version,
@@ -107,27 +158,62 @@ export function installPptSkill(targetDir, options = {}) {
             message: "找不到 bundled/wjx-survey-ppt 目录，wjx-cli 安装可能不完整",
         };
     }
-    if (!silent) {
-        const suffix = rootSource ? ` (from: ${rootSource})` : "";
-        stderr.write(`Install root: ${targetDir}${suffix}\n`);
-    }
     // ---------- Step 1: copy skill files ----------
     const skillDest = join(targetDir, "skills", "wjx-survey-ppt");
-    const skillExists = existsSync(join(skillDest, "SKILL.md"));
+    const claudeSkillDest = join(targetDir, ".claude", "skills", "wjx-survey-ppt");
+    const skillExists = hasSkillDirectory(skillDest);
+    const claudeSkillExists = hasSkillDirectory(claudeSkillDest);
+    const alreadyInstalled = skillExists || claudeSkillExists;
+    if (!force) {
+        const conflicts = [
+            installationConflict(skillDest, skillExists),
+            installationConflict(claudeSkillDest, claudeSkillExists),
+        ].filter((message) => Boolean(message));
+        if (conflicts.length > 0) {
+            return {
+                status: "error",
+                version,
+                files: [],
+                pipInstalled: false,
+                message: conflicts.join("；"),
+            };
+        }
+    }
     let copiedFiles = [];
     let copyStatus;
-    if (skillExists && !force) {
+    if (alreadyInstalled && !force && skillExists && claudeSkillExists) {
         copyStatus = "skipped";
         if (!silent) {
             stderr.write("wjx-survey-ppt 技能已安装，使用 --force 覆盖或运行 skill update-ppt\n");
         }
     }
     else {
-        copiedFiles = copyDirSync(skillSrc, skillDest);
-        copyStatus = skillExists ? "updated" : "installed";
+        const targets = [];
+        if (force || !skillExists) {
+            targets.push({ destination: skillDest, stage: (path) => copyPptSkillForInstall(skillSrc, path, skillDest) });
+        }
+        if (force || !claudeSkillExists) {
+            targets.push({ destination: claudeSkillDest, stage: (path) => copyDirectory(skillSrc, path, (name) => name === "__pycache__" || name.startsWith("out")) });
+        }
+        try {
+            copiedFiles = replaceTargetsAtomically(targetDir, targets);
+        }
+        catch (error) {
+            const message = error instanceof Error ? error.message : String(error);
+            return {
+                status: "error",
+                version,
+                files: [],
+                pipInstalled: false,
+                message: `wjx-survey-ppt 技能安装失败: ${message}`,
+            };
+        }
+        copyStatus = alreadyInstalled ? "updated" : "installed";
         if (!silent) {
+            const suffix = rootSource ? ` (from: ${rootSource})` : "";
+            stderr.write(`Install root: ${targetDir}${suffix}\n`);
             const action = copyStatus === "updated" ? "已更新" : "已安装";
-            stderr.write(`${action} wjx-survey-ppt 技能 (v${version}): skills/wjx-survey-ppt/ (${copiedFiles.length} files)\n`);
+            stderr.write(`${action} wjx-survey-ppt 技能 (v${version}): skills/wjx-survey-ppt/ + .claude/skills/wjx-survey-ppt/ (${copiedFiles.length} files)\n`);
         }
     }
     // ---------- Step 2: pip install ppt-master-survey ----------
@@ -180,13 +266,9 @@ export function installPptSkill(targetDir, options = {}) {
     }
     // ---------- Compose result ----------
     const overallStatus = (() => {
-        if (copyStatus === "skipped") {
-            return "skipped";
-        }
-        if (pipInstalled || skipPip) {
-            return copyStatus;
-        }
-        return "partial";
+        if (!skipPip && !pipInstalled)
+            return "partial";
+        return copyStatus;
     })();
     const message = (copyStatus === "skipped"
         ? "技能已存在"
@@ -204,7 +286,8 @@ export function installPptSkill(targetDir, options = {}) {
 export function updatePptSkill(targetDir, options = {}) {
     const { silent = false } = options;
     const skillDest = join(targetDir, "skills", "wjx-survey-ppt", "SKILL.md");
-    if (!existsSync(skillDest)) {
+    const claudeSkillDest = join(targetDir, ".claude", "skills", "wjx-survey-ppt", "SKILL.md");
+    if (!existsSync(skillDest) && !existsSync(claudeSkillDest)) {
         const msg = "wjx-survey-ppt 技能尚未安装，请先运行 wjx skill install-ppt";
         return {
             status: "error",

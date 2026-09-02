@@ -258,7 +258,7 @@ describe("Skill rule 5-7: credentials and response submission", () => {
         "--submitdata-file", file, "--jpmversion", "1",
       ]);
       assert.equal(result.exitCode, 0);
-      assert.equal(fixture.requests().length, 1, "explicit jpmversion skips survey metadata prefetch");
+      assert.equal(fixture.requests().length, 2, "default submit prefetches metadata for best-effort normalization");
       const body = JSON.parse(fixture.requests().at(-1).body);
       assert.equal(body.submitdata, "1$1}2$3|4");
     } finally {

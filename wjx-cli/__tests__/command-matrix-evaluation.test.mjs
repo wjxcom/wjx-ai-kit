@@ -78,7 +78,7 @@ const REMOTE_CASES = [
   { id: "response.query", path: ["response", "query"], action: Action.QUERY_RESPONSES, required: ["--vid"], args: ["--vid", "42", "--page_index", "1", "--page_size", "10"], stdin: { vid: 42, page_index: 1, page_size: 10 } },
   { id: "response.realtime", path: ["response", "realtime"], action: Action.QUERY_RESPONSES_REALTIME, required: ["--vid"], args: ["--vid", "42", "--count", "10"], stdin: { vid: 42, count: 10 } },
   { id: "response.download", path: ["response", "download"], action: Action.DOWNLOAD_RESPONSES, required: ["--vid"], args: ["--vid", "42", "--suffix", "0"], stdin: { vid: 42, suffix: 0 } },
-  { id: "response.submit", path: ["response", "submit"], action: Action.SUBMIT_RESPONSE, required: ["--vid", "--inputcosttime", "--submitdata"], args: ["--vid", "42", "--inputcosttime", "30", "--submitdata", "1$1", "--jpmversion", "1"], stdin: { vid: 42, inputcosttime: 30, submitdata: "1$1", jpmversion: 1 } },
+  { id: "response.submit", path: ["response", "submit"], action: Action.SUBMIT_RESPONSE, required: ["--vid", "--inputcosttime", "--submitdata"], args: ["--vid", "42", "--inputcosttime", "30", "--submitdata", "1$1", "--jpmversion", "1", "--no-auto-version"], stdin: { vid: 42, inputcosttime: 30, submitdata: "1$1", jpmversion: 1, autoVersion: false } },
   { id: "response.modify", path: ["response", "modify"], action: Action.MODIFY_RESPONSE, highRisk: true, required: ["--vid", "--jid", "--answers"], args: ["--vid", "42", "--jid", "7", "--answers", "1$1"], stdin: { vid: 42, jid: 7, answers: "1$1" } },
   { id: "response.clear", path: ["response", "clear"], action: Action.CLEAR_RESPONSES, highRisk: true, required: ["--username", "--vid"], args: ["--username", "owner", "--vid", "42"], stdin: { username: "owner", vid: 42 } },
   { id: "response.report", path: ["response", "report"], action: Action.GET_REPORT, required: ["--vid"], args: ["--vid", "42"], stdin: { vid: 42 } },
@@ -806,6 +806,21 @@ describe("complete CLI command contract matrix", () => {
       assert.equal(envelope.data.oldVersion, "0.4.1");
       assert.equal(envelope.data.latestVersion, "0.3.5");
       await assert.rejects(access(marker));
+    } finally {
+      await rm(bin, { recursive: true, force: true });
+    }
+  });
+
+  test("update fails closed when npm reports an older installed version after a successful install", async () => {
+    const bin = await mkdtemp(resolve(process.env.TEMP ?? ".", "wjx-update-verify-bin-"));
+    try {
+      await writeFile(resolve(bin, "npm.cmd"), `@echo off\r\nif "%~1"=="view" (echo "0.4.2" & exit /b 0)\r\nif "%~1"=="install" (exit /b 0)\r\nif "%~1"=="list" (echo {"name":"wjx-cli","version":"0.4.1"} & exit /b 0)\r\nexit /b 1\r\n`, "utf8");
+      const result = await runCli(["update", "--silent"], { env: { PATH: `${bin};${process.env.PATH ?? ""}` } });
+      assert.equal(result.exitCode, 1, result.stdout);
+      assert.equal(result.stdout.trim(), "");
+      const error = parseProblem(result);
+      assert.equal(error.error.code, "API_ERROR");
+      assert.match(error.error.message, /实际安装版本|0\.4\.1|更新失败/);
     } finally {
       await rm(bin, { recursive: true, force: true });
     }

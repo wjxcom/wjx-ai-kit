@@ -4,7 +4,7 @@
 
 /** Mask an API key: show first 4 + last 4 chars, mask the middle. */
 export function maskApiKey(value: string): string {
-  if (value.length <= 4) return "****";
+  if (value.length <= 8) return "****";
   return value.slice(0, 4) + "****" + value.slice(-4);
 }
 
@@ -13,8 +13,11 @@ export function maskApiKey(value: string): string {
  * Preserves the "Bearer " prefix + first 4 key chars, masks middle, keeps last 4.
  */
 export function maskAuthHeader(value: string): string {
-  if (value.length <= 12) return "****";
-  return value.slice(0, 11) + "****" + value.slice(-4);
+  const match = value.match(/^(Bearer\s+)(.*)$/i);
+  if (!match) return maskApiKey(value);
+  const token = match[2];
+  if (token.length <= 8) return "****";
+  return `${match[1]}${maskApiKey(token)}`;
 }
 
 const SENSITIVE_KEY = /(?:api[_-]?key|app[_-]?key|access[_-]?token|refresh[_-]?token|token|secret|password|passwd|upass|authorization|cookie|credential)/i;

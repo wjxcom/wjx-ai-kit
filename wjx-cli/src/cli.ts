@@ -21,12 +21,8 @@ import { registerApiCommands } from "./commands/api.js";
 import { registerSchemaCommands } from "./commands/schema.js";
 import { readStdin } from "./lib/stdin.js";
 import { handleError, isCliErrorHandled, CliError } from "./lib/errors.js";
-import { applyConfigToEnv } from "./lib/config.js";
 import { getCompletions } from "./lib/completions.js";
 import { validateOutputFormat } from "./lib/output.js";
-
-// Load ~/.wjxrc config into process.env (env vars take precedence)
-applyConfigToEnv();
 
 const require = createRequire(import.meta.url);
 const { version } = require("../package.json");
@@ -98,7 +94,8 @@ registerSchemaCommands(program);
       if (results.length > 0) {
         process.stdout.write(results.join("\n") + "\n");
       }
-      process.exit(0);
+      process.exitCode = 0;
+      return;
     }
 
     await program.parseAsync();
@@ -108,7 +105,8 @@ registerSchemaCommands(program);
     if (err instanceof CommanderError) {
       // help and version are normal exits
       if (err.code === "commander.helpDisplayed" || err.code === "commander.version") {
-        process.exit(0);
+        process.exitCode = 0;
+        return;
       }
       try {
         handleError(err);

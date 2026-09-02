@@ -4,10 +4,15 @@
 
 ## 安装与发布
 
-当前工作树对应下一发布版本 `0.4.1`，尚未发布到 npm。npm registry 的
-`latest` 仍是 `wjx-mcp-server@0.3.1`；需要本次源码能力时，请从 GitHub
-克隆并构建 `wjx-api-sdk` 与 `wjx-mcp-server`。发布前不要把 `@0.4.1`
-作为可安装版本。
+当前稳定版本为 `0.4.1`，已发布到 npm，registry 的 `latest` 指向
+`wjx-mcp-server@0.4.1`。直接安装并运行：
+
+```bash
+npm install -g wjx-mcp-server
+WJX_API_KEY="你的 API Key" wjx-mcp-server
+```
+
+需要从源码开发时，再从 GitHub 克隆并构建 `wjx-api-sdk` 与 `wjx-mcp-server`。
 
 ```bash
 git clone https://github.com/wjxcom/wjx-ai-kit.git
@@ -19,19 +24,22 @@ npm run build --workspace=wjx-mcp-server
 
 ## stdio 配置
 
-使用构建后的入口，并通过环境变量传入 API Key：
+全局安装后，客户端可以直接使用命令入口，并通过环境变量传入 API Key：
 
 ```json
 {
   "mcpServers": {
     "wjx": {
-      "command": "node",
-      "args": ["/absolute/path/wjx-mcp-server/dist/index.js"],
+      "command": "wjx-mcp-server",
+      "args": [],
       "env": { "WJX_API_KEY": "你的 API Key" }
     }
   }
 }
 ```
+
+如果使用源码构建，将 `command` 改为 `node`，`args` 改为构建产物的绝对路径：
+`["/absolute/path/wjx-mcp-server/dist/index.js"]`。
 
 保存后完全重启客户端，再调用 `list_surveys` 验证。当前 Server 提供 59 个 Tool、8 个 Resource 和 15 个 Prompt；它不承诺与 CLI 完全同面，具体差异和 CLI-only 能力见 [MCP 工具参考](../wjx-docs/reference/mcp-tools.md) 与仓库 `capabilities/capability-matrix.json`。
 

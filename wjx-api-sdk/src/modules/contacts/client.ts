@@ -19,7 +19,9 @@ import type {
 } from "./types.js";
 
 function resolveCorpId(input: { corpid?: string }, credentials: WjxCredentials): string {
-  const corpid = input.corpid || credentials.corpId || getCorpId();
+  const nonBlank = (value: unknown): string | undefined =>
+    typeof value === "string" && value.trim() ? value.trim() : undefined;
+  const corpid = nonBlank(input.corpid) ?? nonBlank(credentials.corpId) ?? getCorpId();
   if (!corpid) {
     throw new Error("corpid is required: set WJX_CORP_ID env var, pass corpid parameter, or provide credentials.corpId");
   }

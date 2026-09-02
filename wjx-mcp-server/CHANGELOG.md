@@ -4,9 +4,9 @@
 
 > 说明：以下 0.x 条目保留为历史记录。条目中出现的 `create_survey`、`create_survey_by_text` 或 DSL 创建能力已移除，不属于当前 Server，也不得据此恢复工具。当前问卷创建唯一使用 `create_survey_by_json`。
 
-## [0.4.1] - Unreleased
+## [0.4.1] - 2026-09-02
 
-- 工作树版本更新为 `0.4.1`；`0.4.0` 已废弃，尚未执行本版本 npm 发布。
+- `wjx-mcp-server@0.4.1` 已发布到 npm；`0.4.0` 已废弃。
 - 增加 `count_responses`、`build_submit_template` 和 `decode_push_payload`；MCP 明确定位为 CLI 主入口之外的核心业务子集（secondary / maintenance-mode）。
 
 ## [0.4.0] - 2026-08-30

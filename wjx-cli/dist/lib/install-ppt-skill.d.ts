@@ -19,7 +19,8 @@ export interface InstallPptSkillResult {
 /**
  * Install wjx-survey-ppt skill files and the ppt-master-survey PyPI package.
  *
- * - Skill files: copied to <targetDir>/skills/wjx-survey-ppt/
+ * - Skill files: copied to <targetDir>/skills/wjx-survey-ppt/ and mirrored to
+ *   <targetDir>/.claude/skills/wjx-survey-ppt/
  * - PyPI package: installed via `python -m pip install ppt-master-survey`
  *
  * Either step's failure does not abort the other; the result reports both.

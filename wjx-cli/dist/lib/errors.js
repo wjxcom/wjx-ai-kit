@@ -72,6 +72,7 @@ function classifyError(err) {
             err.message.includes("当前接口不支持创建") ||
             err.message.includes("corpid is required") ||
             err.message.includes("DSL 包含不支持的题型") ||
+            /^profile (?:name must not be blank|".*" not found)$/i.test(err.message) ||
             /Encrypted data|bad decrypt|wrong final block|unable to authenticate/i.test(err.message) ||
             err.message.startsWith("题目「")) {
             return new CliError("INPUT_ERROR", err.message);
@@ -79,13 +80,16 @@ function classifyError(err) {
         if (/unknown (?:command|option)/i.test(err.message)) {
             return new CliError("INPUT_ERROR", err.message);
         }
-        return new CliError("API_ERROR", err.message, isRetryableTransportError(err.message) ? { retryable: true } : undefined);
+        return new CliError("API_ERROR", err.message, isRetryableTransportError(err) ? { retryable: true } : undefined);
     }
     return new CliError("API_ERROR", String(err));
 }
 /** Preserve transport retry guidance for agents after the SDK exhausts retries. */
-function isRetryableTransportError(message) {
-    return /\b(?:429|5\d{2})\b|timed out|fetch failed|network|connect|ECONN|ETIMEDOUT|EAI_AGAIN/i.test(message);
+function isRetryableTransportError(err) {
+    const message = err instanceof Error ? err.message : String(err);
+    const code = err instanceof Error ? err.code : undefined;
+    const text = [message, typeof code === "string" ? code : ""].join(" ");
+    return /\b(?:429|5\d{2})\b|timed out|fetch failed|network|connect|ECONN|ETIMEDOUT|EAI_AGAIN/i.test(text);
 }
 /**
  * Central error handler. Classifies the error and writes one stderr envelope.

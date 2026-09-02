@@ -1,7 +1,8 @@
 import { Action } from "../../core/constants.js";
 import { callWjxContactsApi, getWjxCredentials, getCorpId } from "../../core/api-client.js";
 function resolveCorpId(input, credentials) {
-    const corpid = input.corpid || credentials.corpId || getCorpId();
+    const nonBlank = (value) => typeof value === "string" && value.trim() ? value.trim() : undefined;
+    const corpid = nonBlank(input.corpid) ?? nonBlank(credentials.corpId) ?? getCorpId();
     if (!corpid) {
         throw new Error("corpid is required: set WJX_CORP_ID env var, pass corpid parameter, or provide credentials.corpId");
     }

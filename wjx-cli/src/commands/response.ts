@@ -223,22 +223,26 @@ export function registerResponseCommands(program: Command): void {
         prepareExecute: async (input, creds, requestOptions) => {
           const explicitVersion = input.jpmversion;
           const autoVersion = (input as Record<string, unknown>).autoVersion !== false;
-          // 仅在未显式传 jpmversion 且未关闭自动注入时才请求 getSurvey
-          // 同时复用 getSurvey 结果做 submitdata 规范化
+          // 尽量复用 getSurvey 结果做 submitdata 规范化；显式版本只放宽
+          // 元数据获取失败时的阻塞要求。
           let survey: Awaited<ReturnType<typeof getSurvey>> | null = null;
-          // An explicit version is already caller-verified, so it must not
-          // trigger a metadata prefetch. Submitdata normalization depends on
-          // that same metadata and is intentionally skipped in this mode.
-          if (explicitVersion === undefined && autoVersion) {
-            survey = await getSurvey(
-              { vid: input.vid as number },
-              creds as WjxCredentials,
-              undefined,
-              requestOptions,
-            );
-            // Automatic version lookup is part of the submit safety contract.
-            // Never fall through to a potentially stale or unverifiable submit.
-            ensureApiSuccess(survey);
+          if (autoVersion) {
+            try {
+              survey = await getSurvey(
+                { vid: input.vid as number },
+                creds as WjxCredentials,
+                undefined,
+                requestOptions,
+              );
+              // Automatic version lookup is part of the submit safety contract.
+              // Never fall through to a potentially stale or unverifiable submit.
+              ensureApiSuccess(survey);
+            } catch (error) {
+              if (explicitVersion === undefined && autoVersion) throw error;
+              // An explicit caller-supplied version permits submission when
+              // metadata is unavailable; normalization is best effort.
+              survey = null;
+            }
           }
 
           const data = survey?.data as {

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
-import { toolResult, toolError } from "../dist/helpers.js";
+import { assertApiResponse, toolApiResult, toolResult, toolError, wrapToolHandler } from "../dist/helpers.js";
 
 describe("toolResult", () => {
   it("should serialize data as JSON text content", () => {
@@ -79,5 +79,32 @@ describe("toolError", () => {
     const result = toolError(null);
     const parsed = JSON.parse(result.content[0].text);
     assert.equal(parsed.errormsg, "null");
+  });
+});
+
+describe("wrapToolHandler", () => {
+  it("marks an upstream response without a boolean result as an MCP error", async () => {
+    const handler = wrapToolHandler(async () => ({ data: { partial: true } }));
+    const result = await handler({});
+    assert.equal(result.isError, true);
+    assert.deepEqual(JSON.parse(result.content[0].text), {
+      result: false,
+      errormsg: "WJX API response is invalid: result must be a boolean",
+    });
+  });
+});
+
+describe("API response validation", () => {
+  it("rejects a response with a non-boolean result", () => {
+    assert.throws(
+      () => assertApiResponse({ result: "true" }),
+      /result must be a boolean/,
+    );
+  });
+
+  it("renders malformed API responses as MCP errors", () => {
+    const result = toolApiResult({ data: { partial: true } });
+    assert.equal(result.isError, true);
+    assert.match(result.content[0].text, /result must be a boolean/);
   });
 });

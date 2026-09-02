@@ -178,6 +178,19 @@ describe("queryContacts", () => {
       if (saved !== undefined) process.env.WJX_CORP_ID = saved;
     }
   });
+
+  it("should reject a whitespace corpid instead of sending a blank tenant id", async () => {
+    const saved = process.env.WJX_CORP_ID;
+    delete process.env.WJX_CORP_ID;
+    try {
+      await assert.rejects(
+        () => queryContacts({ corpid: " \t", uid: "user1" }, credentials, mockFetch({ result: true })),
+        /corpid is required/,
+      );
+    } finally {
+      if (saved !== undefined) process.env.WJX_CORP_ID = saved;
+    }
+  });
 });
 
 // ─── addContacts ────────────────────────────────────────────────────

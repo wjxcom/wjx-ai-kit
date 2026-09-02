@@ -143,7 +143,7 @@ wjx survey list --name_like "满意度" --status 1
 - 普通列表请求可以只展示当前页，但必须报告总数和页码：总页数为 `Math.ceil(total_count / page_size)`。
 - 用户要求全部结果时，保持所有筛选和排序参数不变，查询第 1 页到总页数，并核对累计数量等于 `total_count`。
 - 不要把 `--query_all` 当作自动翻页开关；它只扩大账号查询范围。
-- 不要为问卷列表使用 `--format table`，该模式只展示部分问卷行，可能隐藏 `sid`、域名、填写路径以及 `total_count`、`page_index`、`page_size`，不能用于机器解析或链接查找。
+- 机器解析、分页或链接查找不要为问卷列表使用 `--format table`；该模式只展示部分问卷行，可能隐藏 `sid`、域名、填写路径以及 `total_count`、`page_index`、`page_size`。安装完成后可以额外用它做人工可读验收，但不能从表格推断总数或链接。
 - 使用 JSON 解析器读取完整响应，不要用 `head` 截断 JSON 或用 `grep` 搜索字段。为刚创建的问卷找链接时，先用创建响应里的 `vid`/`sid`；仅在创建响应没有可验证路径时按页定位目标记录。
 
 ## wjx survey get

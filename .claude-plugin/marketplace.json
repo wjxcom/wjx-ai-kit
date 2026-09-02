@@ -6,7 +6,7 @@
   },
   "metadata": {
     "description": "问卷星 (Wenjuanxing) 官方 AI Skills — 在 Claude Code 里直接操作问卷创建、答卷提交、数据分析、通讯录管理",
-    "version": "0.3.5"
+    "version": "0.4.1"
   },
   "plugins": [
     {
@@ -15,7 +15,7 @@
       "source": "./",
       "strict": false,
       "skills": ["./wjx-skills/wjx-cli-use"],
-      "version": "0.3.5",
+      "version": "0.4.1",
       "author": {
         "name": "wjxagents",
         "url": "https://github.com/wjxcom"
@@ -43,11 +43,11 @@
     },
     {
       "name": "wjx-mcp-use",
-      "description": "（次要）通过 wjx-mcp-server 的 58 个 MCP 工具操作问卷星，仅适用于原生支持 MCP 协议的客户端（Claude Code / Claude Desktop / Cursor / Cline 等）。功能与 wjx-cli-use 等价；如不确定用哪个，优先选 wjx-cli-use。",
+      "description": "（次要）通过 wjx-mcp-server 的 59 个 MCP 工具操作问卷星，仅适用于原生支持 MCP 协议的客户端（Claude Code / Claude Desktop / Cursor / Cline 等）。MCP 只覆盖 CLI 的核心业务子集；如不确定用哪个，优先选 wjx-cli-use。",
       "source": "./",
       "strict": false,
       "skills": ["./wjx-skills/wjx-mcp-use"],
-      "version": "0.3.1",
+      "version": "0.4.1",
       "author": {
         "name": "wjxagents",
         "url": "https://github.com/wjxcom"

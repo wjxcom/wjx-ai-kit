@@ -390,6 +390,7 @@ HTTP 模式基于 `StreamableHTTPServerTransport`，提供：
 - 未命中路由时统一返回 `404` JSON
 
 当 `MCP_SESSION !== "stateless"` 时会生成随机 `sessionId`；否则进入无状态模式。这使同一实现同时适配本地会话型接入和无状态网关接入。
+嵌入式调用 `startHttpTransport()` 会返回 `httpServer` 与幂等的 `close()`；关闭时先停止接收新请求，再清理活动 MCP session，适合宿主在 SIGINT/SIGTERM 中执行优雅停机。
 
 ## 11. 扩展性与兼容性
 

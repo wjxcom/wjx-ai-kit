@@ -51,7 +51,7 @@ def _resolve_wjx() -> str:
     found = shutil.which("wjx")
     if found:
         return found
-    raise RuntimeError("未找到 wjx 命令，请先安装 wjx-cli >= 0.4.1；当前未发布版本请从仓库源码构建并链接")
+    raise RuntimeError("未找到 wjx 命令，请先安装 wjx-cli >= 0.4.1：npm install -g wjx-cli@latest")
 
 
 def _run_wjx(args: list[str]) -> Any:

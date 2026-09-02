@@ -2,7 +2,7 @@ import { describe, test } from "node:test";
 import assert from "node:assert/strict";
 import { execFile } from "node:child_process";
 import { createServer } from "node:http";
-import { mkdir, mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, readdir, rm, stat, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -148,6 +148,37 @@ describe("Skill black-box completeness: transport states", () => {
       await server.close();
     }
   });
+
+  test("explicit jpmversion still uses available metadata to normalize submitdata", async () => {
+    const server = await startServer([
+      {
+        response: {
+          result: true,
+          data: {
+            version: 7,
+            questions: [
+              { q_index: 1, q_type: 1, q_subtype: 0 },
+              { q_index: 2, q_type: 7, q_subtype: 702 },
+            ],
+          },
+        },
+      },
+      { response: { result: true, data: { accepted: true } } },
+    ]);
+    try {
+      const result = await runCli([
+        "--yes", "response", "submit", "--vid", "42", "--inputcosttime", "2",
+        "--submitdata", "2_1$1}2_2$2", "--jpmversion", "7",
+      ], { env: { WJX_API_KEY: "explicit-version-key", WJX_API_URL: server.apiUrl } });
+      parseSuccess(result);
+      assert.equal(server.requests.length, 2);
+      const submitBody = JSON.parse(server.requests[1].body);
+      assert.equal(submitBody.jpmversion, 7);
+      assert.equal(submitBody.submitdata, "2$1!1,2!2");
+    } finally {
+      await server.close();
+    }
+  });
 });
 
 describe("Skill black-box completeness: source merge and environment", () => {
@@ -288,6 +319,8 @@ describe("Skill black-box completeness: install/update side effects", () => {
       assert.equal(await readFile(claudeInstalled, "utf8"), await readFile(bundled, "utf8"));
 
       await writeFile(installed, "tampered", "utf8");
+      await mkdir(join(root, "skills", "wjx-cli-use", "references"), { recursive: true });
+      await writeFile(join(root, "skills", "wjx-cli-use", "references", "removed-old-reference.md"), "stale", "utf8");
       const skipped = await runCli(["skill", "install", "--silent", "--target-dir", root], {
         env: { WJX_INSTALL_ROOT: envRoot },
       });
@@ -297,10 +330,63 @@ describe("Skill black-box completeness: install/update side effects", () => {
       const forced = await runCli(["skill", "install", "--silent", "--force", "--target-dir", root]);
       assert.equal(parseSuccess(forced).data.status, "updated");
       assert.equal(await readFile(installed, "utf8"), await readFile(bundled, "utf8"));
+      await assert.rejects(() => stat(join(root, "skills", "wjx-cli-use", "references", "removed-old-reference.md")));
       await assert.rejects(() => stat(join(envRoot, "skills", "wjx-cli-use", "SKILL.md")));
     } finally {
       await rm(root, { recursive: true, force: true });
       await rm(envRoot, { recursive: true, force: true });
+    }
+  });
+
+  test("forced install preserves project packaging metadata beside the runtime Skill", async () => {
+    const root = await mkdtemp(join(tmpdir(), "wjx-skill-packaging-metadata-"));
+    const skillDir = join(root, "skills", "wjx-cli-use");
+    try {
+      await mkdir(skillDir, { recursive: true });
+      await writeFile(join(skillDir, "SKILL.md"), "old", "utf8");
+      const metadata = {
+        "setup.sh": "#!/bin/sh\necho setup\n",
+        "package.json": "{\"name\":\"wjx-cli-use\"}\n",
+        "pack_skill.sh": "#!/bin/sh\necho pack\n",
+        ".gitignore": "custom-generated/\n",
+      };
+      for (const [name, content] of Object.entries(metadata)) {
+        await writeFile(join(skillDir, name), content, "utf8");
+      }
+
+      const result = await runCli(["skill", "install", "--silent", "--force", "--target-dir", root]);
+      assert.equal(parseSuccess(result).data.status, "updated");
+      for (const [name, content] of Object.entries(metadata)) {
+        assert.equal(await readFile(join(skillDir, name), "utf8"), content);
+      }
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
+  test("forced PPT install preserves project packaging metadata beside the runtime Skill", async () => {
+    const root = await mkdtemp(join(tmpdir(), "wjx-ppt-packaging-metadata-"));
+    const skillDir = join(root, "skills", "wjx-survey-ppt");
+    try {
+      await mkdir(skillDir, { recursive: true });
+      await writeFile(join(skillDir, "SKILL.md"), "old", "utf8");
+      const metadata = {
+        "setup.sh": "#!/bin/sh\necho setup\n",
+        "package.json": "{\"name\":\"custom-ppt-skill\"}\n",
+        "pack_skill.sh": "#!/bin/sh\necho pack\n",
+        ".gitignore": "custom-render-output/\n",
+      };
+      for (const [name, content] of Object.entries(metadata)) {
+        await writeFile(join(skillDir, name), content, "utf8");
+      }
+
+      const result = await runCli(["skill", "install-ppt", "--silent", "--force", "--skip-pip", "--target-dir", root]);
+      assert.equal(parseSuccess(result).data.status, "updated");
+      for (const [name, content] of Object.entries(metadata)) {
+        assert.equal(await readFile(join(skillDir, name), "utf8"), content);
+      }
+    } finally {
+      await rm(root, { recursive: true, force: true });
     }
   });
 
@@ -340,6 +426,97 @@ describe("Skill black-box completeness: install/update side effects", () => {
       assert.equal(await readFile(canonical, "utf8"), await readFile(bundled, "utf8"));
       assert.equal(await readFile(claudeSkill, "utf8"), await readFile(bundled, "utf8"));
       await assert.rejects(() => stat(join(claudeDir, "references", "dsl-syntax.md")));
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
+  test("non-force installs repair a missing mirror without overwriting existing skill content", async () => {
+    const skillRoot = await mkdtemp(join(tmpdir(), "wjx-skill-mirror-repair-"));
+    const pptRoot = await mkdtemp(join(tmpdir(), "wjx-ppt-mirror-repair-"));
+    const bundledSkill = resolve(HERE, "..", "bundled", "wjx-cli-use", "SKILL.md");
+    const bundledPpt = resolve(HERE, "..", "bundled", "wjx-survey-ppt", "SKILL.md");
+    try {
+      await runCli(["skill", "install", "--force", "--silent", "--target-dir", skillRoot]);
+      const canonicalSkill = join(skillRoot, "skills", "wjx-cli-use", "SKILL.md");
+      const claudeSkill = join(skillRoot, ".claude", "skills", "wjx-cli-use");
+      await writeFile(canonicalSkill, "user-customized-skill", "utf8");
+      await rm(claudeSkill, { recursive: true, force: true });
+
+      const repairedSkill = await runCli(["skill", "install", "--silent", "--target-dir", skillRoot]);
+      assert.equal(parseSuccess(repairedSkill).data.status, "updated");
+      assert.equal(await readFile(canonicalSkill, "utf8"), "user-customized-skill");
+      assert.equal(await readFile(join(claudeSkill, "SKILL.md"), "utf8"), await readFile(bundledSkill, "utf8"));
+
+      const agentDest = join(skillRoot, ".claude", "agents", "wjx-cli-expert.md");
+      await rm(agentDest, { force: true });
+      await mkdir(agentDest, { recursive: true });
+      const repairedAgent = await runCli(["skill", "install", "--silent", "--target-dir", skillRoot]);
+      assert.equal(parseSuccess(repairedAgent).data.status, "updated");
+      assert.equal((await stat(agentDest)).isFile(), true);
+
+      await runCli(["skill", "install-ppt", "--force", "--silent", "--skip-pip", "--target-dir", pptRoot]);
+      const canonicalPpt = join(pptRoot, "skills", "wjx-survey-ppt", "SKILL.md");
+      const claudePpt = join(pptRoot, ".claude", "skills", "wjx-survey-ppt");
+      await writeFile(canonicalPpt, "user-customized-ppt", "utf8");
+      await rm(claudePpt, { recursive: true, force: true });
+
+      const repairedPpt = await runCli(["skill", "install-ppt", "--silent", "--skip-pip", "--target-dir", pptRoot]);
+      assert.equal(parseSuccess(repairedPpt).data.status, "updated");
+      assert.equal(await readFile(canonicalPpt, "utf8"), "user-customized-ppt");
+      assert.equal(await readFile(join(claudePpt, "SKILL.md"), "utf8"), await readFile(bundledPpt, "utf8"));
+    } finally {
+      await rm(skillRoot, { recursive: true, force: true });
+      await rm(pptRoot, { recursive: true, force: true });
+    }
+  });
+
+  test("skill installers protect conflicting paths unless --force is explicit", async () => {
+    const cliRoot = await mkdtemp(join(tmpdir(), "wjx-skill-conflict-"));
+    const pptRoot = await mkdtemp(join(tmpdir(), "wjx-ppt-conflict-"));
+    try {
+      const cliSkillPath = join(cliRoot, "skills", "wjx-cli-use");
+      await mkdir(join(cliRoot, "skills"), { recursive: true });
+      await writeFile(cliSkillPath, "user data", "utf8");
+      const cliConflict = await runCli(["skill", "install", "--target-dir", cliRoot]);
+      parseProblem(cliConflict, "INPUT_ERROR");
+      assert.equal(await readFile(cliSkillPath, "utf8"), "user data");
+
+      const agentPath = join(cliRoot, ".claude", "agents", "wjx-cli-expert.md");
+      await mkdir(agentPath, { recursive: true });
+      const forcedCli = await runCli(["skill", "install", "--force", "--silent", "--target-dir", cliRoot]);
+      assert.equal(parseSuccess(forcedCli).data.status, "installed");
+      assert.equal((await stat(agentPath)).isFile(), true);
+
+      const pptSkillPath = join(pptRoot, "skills", "wjx-survey-ppt");
+      await mkdir(join(pptRoot, "skills"), { recursive: true });
+      await writeFile(pptSkillPath, "user data", "utf8");
+      const pptConflict = await runCli(["skill", "install-ppt", "--skip-pip", "--target-dir", pptRoot]);
+      parseProblem(pptConflict, "INPUT_ERROR");
+      assert.equal(await readFile(pptSkillPath, "utf8"), "user data");
+
+      const forcedPpt = await runCli(["skill", "install-ppt", "--force", "--silent", "--skip-pip", "--target-dir", pptRoot]);
+      assert.equal(parseSuccess(forcedPpt).data.status, "installed");
+      assert.equal((await stat(join(pptSkillPath, "SKILL.md"))).isFile(), true);
+    } finally {
+      await rm(cliRoot, { recursive: true, force: true });
+      await rm(pptRoot, { recursive: true, force: true });
+    }
+  });
+
+  test("forced install is atomic when a later mirror destination is blocked", async () => {
+    const root = await mkdtemp(join(tmpdir(), "wjx-skill-atomic-install-"));
+    try {
+      await mkdir(join(root, ".claude"), { recursive: true });
+      await writeFile(join(root, ".claude", "skills"), "blocking file", "utf8");
+
+      const result = await runCli(["skill", "install", "--force", "--silent", "--target-dir", root]);
+      const problem = parseProblem(result, "INPUT_ERROR");
+      assert.match(problem.error.message, /安装|目标|Skill/i);
+      await assert.rejects(() => stat(join(root, "skills", "wjx-cli-use", "SKILL.md")));
+      await assert.rejects(() => stat(join(root, ".claude", "agents", "wjx-cli-expert.md")));
+      assert.equal(await readFile(join(root, ".claude", "skills"), "utf8"), "blocking file");
+      assert.deepEqual((await readdir(root)).filter((name) => name.includes("wjx-install")), []);
     } finally {
       await rm(root, { recursive: true, force: true });
     }
@@ -387,10 +564,17 @@ describe("Skill black-box completeness: install/update side effects", () => {
       assert.equal(installed.pipInstalled, false);
       assert.ok(installed.files.length > 0);
       const skillFile = join(root, "skills", "wjx-survey-ppt", "SKILL.md");
+      const claudeSkillFile = join(root, ".claude", "skills", "wjx-survey-ppt", "SKILL.md");
+      assert.equal(await stat(claudeSkillFile).then(() => true), true);
+      assert.equal(await readFile(claudeSkillFile, "utf8"), await readFile(skillFile, "utf8"));
+      await mkdir(join(root, "skills", "wjx-survey-ppt", "references"), { recursive: true });
+      await writeFile(join(root, "skills", "wjx-survey-ppt", "references", "removed-old-reference.md"), "stale", "utf8");
       await writeFile(skillFile, "tampered", "utf8");
       const update = await runCli(["skill", "update-ppt", "--silent", "--skip-pip", "--target-dir", root]);
       assert.equal(parseSuccess(update).data.status, "updated");
       assert.notEqual(await readFile(skillFile, "utf8"), "tampered");
+      assert.equal(await readFile(claudeSkillFile, "utf8"), await readFile(skillFile, "utf8"));
+      await assert.rejects(() => stat(join(root, "skills", "wjx-survey-ppt", "references", "removed-old-reference.md")));
     } finally {
       await rm(root, { recursive: true, force: true });
     }

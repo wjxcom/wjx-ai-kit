@@ -2,7 +2,7 @@
 
 - Node.js：要求 20+。
 - CLI：以 `wjx --version` 和 `--help` 为准；文档不承诺未在源码出现的旧参数。
-- MCP Server：当前通过 GitHub 源码安装和运行。
+- MCP Server：`0.4.1` 已发布到 npm；需要源码开发时才从 GitHub 安装和运行。
 - 问卷创建的当前入口统一为：CLI `survey create`、SDK `createSurveyByJson`、MCP `create_survey_by_json`，三者都使用 action `1000106` 的 JSONL 链路。
 - DSL：`surveyToText`、CLI `survey export-text` 和 `get_survey` 的 DSL 输出继续用于读取、审阅和离线迁移旧问卷。当前 CLI、SDK 和 MCP 均不注册 `create-by-text`、`createSurveyByText`、`create_survey_by_text` 或原始 `create_survey`。
 

@@ -106,9 +106,9 @@ npm run test:integration --workspace=wjx-mcp-server
 ### 1. 创建分支
 
 ```bash
-# 从最新的 develop 分支创建特性分支
-git checkout develop
-git pull origin develop
+# 从最新的 master 分支创建特性分支
+git checkout master
+git pull origin master
 git checkout -b feat/your-feature-name
 ```
 
@@ -143,7 +143,7 @@ git commit -m "docs: update API reference for contacts module"
 git push origin feat/your-feature-name
 ```
 
-创建 Pull Request，目标分支为 `develop`。请在描述中说明：
+创建 Pull Request，目标分支为 `master`。请在描述中说明：
 
 - **Summary** — 简要说明变更内容
 - **Changes** — 列出具体修改项

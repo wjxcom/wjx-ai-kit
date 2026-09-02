@@ -17,7 +17,7 @@ import {
   MAX_JSONL_SIZE,
 } from "./client.js";
 import type { SurveyDetail } from "./client.js";
-import { toolResult, toolError } from "../../helpers.js";
+import { assertApiResponse, toolApiResult, toolResult, toolError } from "../../helpers.js";
 import { QUESTION_TYPES } from "../../resources/survey-reference.js";
 
 export function registerSurveyTools(server: McpServer): void {
@@ -86,8 +86,10 @@ export function registerSurveyTools(server: McpServer): void {
           showtitle: args.showtitle,
         });
 
+        assertApiResponse(result);
+
         if (result.result === false) {
-          return toolResult(result, true);
+          return toolApiResult(result);
         }
 
         const fmt = args.format ?? "json";
@@ -103,7 +105,7 @@ export function registerSurveyTools(server: McpServer): void {
         }
 
         // default: json
-        return toolResult(result, false);
+        return toolApiResult(result);
       } catch (error) {
         return toolError(error);
       }
@@ -217,7 +219,7 @@ export function registerSurveyTools(server: McpServer): void {
           begin_time: args.begin_time,
           end_time: args.end_time,
         });
-        return toolResult(result, result.result === false);
+        return toolApiResult(result);
       } catch (error) {
         return toolError(error);
       }
@@ -251,7 +253,7 @@ export function registerSurveyTools(server: McpServer): void {
     async (args) => {
       try {
         const result = await updateSurveyStatus({ vid: args.vid, state: args.state });
-        return toolResult(result, result.result === false);
+        return toolApiResult(result);
       } catch (error) {
         return toolError(error);
       }
@@ -285,7 +287,7 @@ export function registerSurveyTools(server: McpServer): void {
     async (args) => {
       try {
         const result = await getSurveySettings({ vid: args.vid, additional_setting: args.additional_setting });
-        return toolResult(result, result.result === false);
+        return toolApiResult(result);
       } catch (error) {
         return toolError(error);
       }
@@ -345,7 +347,7 @@ export function registerSurveyTools(server: McpServer): void {
           sojumpparm_setting: args.sojumpparm_setting,
           time_setting: args.time_setting,
         });
-        return toolResult(result, result.result === false);
+        return toolApiResult(result);
       } catch (error) {
         return toolError(error);
       }
@@ -378,7 +380,7 @@ export function registerSurveyTools(server: McpServer): void {
           username: args.username,
           completely_delete: args.completely_delete,
         });
-        return toolResult(result, result.result === false);
+        return toolApiResult(result);
       } catch (error) {
         return toolError(error);
       }
@@ -405,7 +407,7 @@ export function registerSurveyTools(server: McpServer): void {
     async (args) => {
       try {
         const result = await getQuestionTags({ username: args.username });
-        return toolResult(result, result.result === false);
+        return toolApiResult(result);
       } catch (error) {
         return toolError(error);
       }
@@ -433,7 +435,8 @@ export function registerSurveyTools(server: McpServer): void {
       try {
         const result = await getTagDetails({ tag_id: args.tag_id });
         // Enrich q_type with human-readable description
-        if (result.result !== false && Array.isArray(result.data)) {
+        assertApiResponse(result);
+        if (result.result === true && Array.isArray(result.data)) {
           for (const item of result.data as Array<Record<string, unknown>>) {
             const qType = Number(item.q_type);
             if (!isNaN(qType) && QUESTION_TYPES[qType]) {
@@ -441,7 +444,7 @@ export function registerSurveyTools(server: McpServer): void {
             }
           }
         }
-        return toolResult(result, result.result === false);
+        return toolApiResult(result);
       } catch (error) {
         return toolError(error);
       }
@@ -472,7 +475,7 @@ export function registerSurveyTools(server: McpServer): void {
           file_name: args.file_name,
           file: args.file,
         });
-        return toolResult(result, result.result === false);
+        return toolApiResult(result);
       } catch (error) {
         return toolError(error);
       }
@@ -503,7 +506,7 @@ export function registerSurveyTools(server: McpServer): void {
           username: args.username,
           vid: args.vid,
         });
-        return toolResult(result, result.result === false);
+        return toolApiResult(result);
       } catch (error) {
         return toolError(error);
       }
@@ -595,7 +598,7 @@ export function registerSurveyTools(server: McpServer): void {
           publish: args.publish,
           creater: args.creater,
         });
-        return toolResult(result, result.result === false);
+        return toolApiResult(result);
       } catch (error) {
         return toolError(error);
       }

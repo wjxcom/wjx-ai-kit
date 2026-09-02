@@ -46,10 +46,10 @@ export function getWjxCredentials(
 ): WjxCredentials {
   // 1. Per-request credentials from registered provider (e.g. AsyncLocalStorage)
   const providerCreds = _credentialProvider?.();
-  if (providerCreds) return providerCreds;
+  if (providerCreds) return normalizeCredentials(providerCreds);
 
   // 2. Fallback: environment variables (single-tenant / stdio / CLI mode)
-  const apiKey = env.WJX_API_KEY;
+  const apiKey = typeof env.WJX_API_KEY === "string" ? env.WJX_API_KEY.trim() : "";
 
   if (!apiKey) {
     throw new Error(
@@ -68,6 +68,38 @@ const MAX_RETRY_BUDGET = 10_000;
 const MAX_TIMEOUT_MS = 2_147_483_647;
 const MAX_RETRY_DELAY_MS = 30_000;
 
+function normalizeCredentials(credentials: WjxCredentials): WjxCredentials {
+  const apiKey = typeof credentials?.apiKey === "string" ? credentials.apiKey.trim() : "";
+  if (!apiKey) {
+    throw new Error(
+      "WJX_API_KEY must be set (via env var, credential provider, or explicit credentials).",
+    );
+  }
+  const baseUrl = typeof credentials.baseUrl === "string" && credentials.baseUrl.trim()
+    ? credentials.baseUrl.trim()
+    : undefined;
+  const corpId = typeof credentials.corpId === "string" && credentials.corpId.trim()
+    ? credentials.corpId.trim()
+    : undefined;
+  const clientIp = typeof credentials.clientIp === "string" && credentials.clientIp.trim()
+    ? credentials.clientIp.trim()
+    : undefined;
+  return {
+    apiKey,
+    ...(baseUrl ? { baseUrl } : {}),
+    ...(corpId ? { corpId } : {}),
+    ...(clientIp ? { clientIp } : {}),
+  };
+}
+
+function resolveBaseUrl(explicit: string | undefined, credentialBaseUrl: string | undefined): string | undefined {
+  const requested = typeof explicit === "string" && explicit.trim() ? explicit.trim() : undefined;
+  if (requested) return requested;
+  return typeof credentialBaseUrl === "string" && credentialBaseUrl.trim()
+    ? credentialBaseUrl.trim()
+    : undefined;
+}
+
 function normalizeRetryBudget(opts: RequestOptions): number {
   const value = opts.retryBudget ?? opts.maxRetries ?? DEFAULT_MAX_RETRIES;
   if (!Number.isSafeInteger(value) || value < 0 || value > MAX_RETRY_BUDGET) {
@@ -85,6 +117,13 @@ function normalizeTimeoutMs(value: number | undefined): number {
   return timeoutMs;
 }
 
+function isAbortError(error: unknown): boolean {
+  return (
+    (error instanceof DOMException && error.name === "AbortError") ||
+    (error instanceof Error && error.name === "AbortError")
+  );
+}
+
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
@@ -94,7 +133,7 @@ async function _callApi<T = unknown>(
   params: Record<string, unknown>,
   opts: RequestOptions = {},
 ): Promise<WjxApiResponse<T>> {
-  const credentials = opts.credentials ?? getWjxCredentials();
+  const credentials = normalizeCredentials(opts.credentials ?? getWjxCredentials());
   const fetchImpl = opts.fetchImpl ?? fetch;
   const timeoutMs = normalizeTimeoutMs(opts.timeoutMs);
   const maxRetries = normalizeRetryBudget(opts);
@@ -121,9 +160,15 @@ async function _callApi<T = unknown>(
 
     try {
       const controller = new AbortController();
-      const timer = setTimeout(() => controller.abort(), timeoutMs);
-
-      let response: Response;
+      let rejectTimeout!: (reason: unknown) => void;
+      const timeoutError = new DOMException("The operation timed out", "AbortError");
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        rejectTimeout = reject;
+      });
+      const timer = setTimeout(() => {
+        controller.abort();
+        rejectTimeout(timeoutError);
+      }, timeoutMs);
       try {
         const headers: Record<string, string> = {
           "Content-Type": "application/json",
@@ -145,48 +190,72 @@ async function _callApi<T = unknown>(
           headers["X-Forwarded-For"] = credentials.clientIp;
         }
 
-        response = await fetchImpl(url, {
-          method: "POST",
-          headers,
-          body: JSON.stringify(params),
-          signal: controller.signal,
-        });
+        const response = await Promise.race([
+          fetchImpl(url, {
+            method: "POST",
+            headers,
+            body: JSON.stringify(params),
+            signal: controller.signal,
+          }),
+          timeoutPromise,
+        ]);
+
+        if (!response.ok) {
+          // Release a non-2xx body before retrying or throwing. Undici cannot
+          // reuse the connection while the response stream remains open.
+          try {
+            await Promise.race([response.body?.cancel() ?? Promise.resolve(), timeoutPromise]);
+          } catch (error) {
+            if (error === timeoutError) throw error;
+            // Preserve the original HTTP status error if body cleanup fails.
+          }
+          if (isRetryable(response.status) && attempt < maxRetries) {
+            lastError = new Error(
+              `WJX API request failed with ${response.status} ${response.statusText}`,
+            );
+            continue;
+          }
+          throw new Error(
+            `WJX API request failed with ${response.status} ${response.statusText}`,
+          );
+        }
+
+        let result: WjxApiResponse<T>;
+        try {
+          result = await Promise.race([response.json(), timeoutPromise]) as WjxApiResponse<T>;
+        } catch (parseError) {
+          if (isAbortError(parseError)) throw parseError;
+          throw new Error(
+            `WJX API returned unparseable response for action=${action} traceid=${traceId}: ${
+              parseError instanceof Error ? parseError.message : String(parseError)
+            }`,
+          );
+        }
+
+        if (!result || typeof result !== "object" || Array.isArray(result)) {
+          throw new Error(
+            `WJX API returned an invalid response for action=${action} traceid=${traceId}: expected an object`,
+          );
+        }
+
+        if (typeof result.result !== "boolean") {
+          throw new Error(
+            `WJX API returned an invalid response for action=${action} traceid=${traceId}: result must be a boolean`,
+          );
+        }
+
+        if (result.result === false) {
+          logger?.error(
+            `[wjx] api error action=${action} traceid=${traceId}: ${result.errormsg}`,
+          );
+        }
+
+        return result;
       } finally {
         clearTimeout(timer);
       }
-
-      if (!response.ok) {
-        if (isRetryable(response.status) && attempt < maxRetries) {
-          lastError = new Error(
-            `WJX API request failed with ${response.status} ${response.statusText}`,
-          );
-          continue;
-        }
-        throw new Error(
-          `WJX API request failed with ${response.status} ${response.statusText}`,
-        );
-      }
-
-      let result: WjxApiResponse<T>;
-      try {
-        result = (await response.json()) as WjxApiResponse<T>;
-      } catch (parseError) {
-        throw new Error(
-          `WJX API returned unparseable response for action=${action} traceid=${traceId}: ${
-            parseError instanceof Error ? parseError.message : String(parseError)
-          }`,
-        );
-      }
-
-      if (result.result === false) {
-        logger?.error(
-          `[wjx] api error action=${action} traceid=${traceId}: ${result.errormsg}`,
-        );
-      }
-
-      return result;
     } catch (error) {
-      if (error instanceof DOMException && error.name === "AbortError") {
+      if (isAbortError(error)) {
         lastError = new Error(
           `WJX API request timed out after ${timeoutMs}ms (action=${action}, traceid=${traceId})`,
         );
@@ -194,10 +263,14 @@ async function _callApi<T = unknown>(
         throw lastError;
       }
 
-      const isNetworkError =
-        error instanceof TypeError &&
-        typeof error.message === "string" &&
-        /fetch|network|connect|ECONN|ETIMEDOUT|EAI_AGAIN/i.test(error.message);
+      const errorCode = error instanceof Error
+        ? (error as Error & { code?: unknown }).code
+        : undefined;
+      const errorText = [
+        error instanceof Error ? error.message : String(error),
+        typeof errorCode === "string" ? errorCode : "",
+      ].join(" ");
+      const isNetworkError = /fetch|network|connect|ECONN|ETIMEDOUT|EAI_AGAIN/i.test(errorText);
       if (isNetworkError && attempt < maxRetries) {
         lastError = error as Error;
         continue;
@@ -214,36 +287,37 @@ export async function callWjxApi<T = unknown>(
   params: Record<string, unknown>,
   opts: RequestOptions = {},
 ): Promise<WjxApiResponse<T>> {
-  const credentials = opts.credentials ?? getWjxCredentials();
-  return _callApi<T>(getWjxApiUrl(opts.baseUrl ?? credentials.baseUrl), params, { ...opts, credentials });
+  const credentials = normalizeCredentials(opts.credentials ?? getWjxCredentials());
+  return _callApi<T>(getWjxApiUrl(resolveBaseUrl(opts.baseUrl, credentials.baseUrl)), params, { ...opts, credentials });
 }
 
 export async function callWjxUserSystemApi<T = unknown>(
   params: Record<string, unknown>,
   opts: RequestOptions = {},
 ): Promise<WjxApiResponse<T>> {
-  const credentials = opts.credentials ?? getWjxCredentials();
-  return _callApi<T>(getWjxUserSystemApiUrl(opts.baseUrl ?? credentials.baseUrl), params, { ...opts, credentials });
+  const credentials = normalizeCredentials(opts.credentials ?? getWjxCredentials());
+  return _callApi<T>(getWjxUserSystemApiUrl(resolveBaseUrl(opts.baseUrl, credentials.baseUrl)), params, { ...opts, credentials });
 }
 
 export async function callWjxSubuserApi<T = unknown>(
   params: Record<string, unknown>,
   opts: RequestOptions = {},
 ): Promise<WjxApiResponse<T>> {
-  const credentials = opts.credentials ?? getWjxCredentials();
-  return _callApi<T>(getWjxSubuserApiUrl(opts.baseUrl ?? credentials.baseUrl), params, { ...opts, credentials });
+  const credentials = normalizeCredentials(opts.credentials ?? getWjxCredentials());
+  return _callApi<T>(getWjxSubuserApiUrl(resolveBaseUrl(opts.baseUrl, credentials.baseUrl)), params, { ...opts, credentials });
 }
 
 export async function callWjxContactsApi<T = unknown>(
   params: Record<string, unknown>,
   opts: RequestOptions = {},
 ): Promise<WjxApiResponse<T>> {
-  const credentials = opts.credentials ?? getWjxCredentials();
-  return _callApi<T>(getWjxContactsApiUrl(opts.baseUrl ?? credentials.baseUrl), params, { ...opts, credentials });
+  const credentials = normalizeCredentials(opts.credentials ?? getWjxCredentials());
+  return _callApi<T>(getWjxContactsApiUrl(resolveBaseUrl(opts.baseUrl, credentials.baseUrl)), params, { ...opts, credentials });
 }
 
 export function getCorpId(env: NodeJS.ProcessEnv = process.env): string | undefined {
-  return env.WJX_CORP_ID || undefined;
+  const corpId = env.WJX_CORP_ID?.trim();
+  return corpId || undefined;
 }
 
 /**

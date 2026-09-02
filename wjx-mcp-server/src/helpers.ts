@@ -34,9 +34,31 @@ export function toolError(error: unknown) {
   return toolResult({ result: false, errormsg: msg }, true);
 }
 
+function hasBooleanResult(value: unknown): value is { result: boolean } {
+  return Boolean(value) && typeof value === "object" && typeof (value as { result?: unknown }).result === "boolean";
+}
+
+/** Assert that a value has the top-level shape returned by the WJX API. */
+export function assertApiResponse(value: unknown): asserts value is { result: boolean } {
+  if (!hasBooleanResult(value)) {
+    throw new Error("WJX API response is invalid: result must be a boolean");
+  }
+}
+
+/** Render an upstream WJX API response with consistent MCP error semantics. */
+export function toolApiResult(data: unknown) {
+  try {
+    assertApiResponse(data);
+    return toolResult(data, data.result === false);
+  } catch (error) {
+    return toolError(error);
+  }
+}
+
 /**
- * Wrap a standard tool handler with try/catch + toolResult/toolError.
- * Use for tools where the handler is: call SDK → return toolResult(result, result.result === false).
+ * Wrap a standard API tool handler with try/catch + toolResult/toolError.
+ * Upstream responses must carry a boolean `result`; otherwise the Agent must
+ * see an MCP error instead of treating a partial payload as a successful call.
  */
 export function wrapToolHandler<A>(
   fn: (args: A) => Promise<{ result?: boolean }>,
@@ -44,7 +66,7 @@ export function wrapToolHandler<A>(
   return async (args: A) => {
     try {
       const result = await fn(args);
-      return toolResult(result, result.result === false);
+      return toolApiResult(result);
     } catch (error) {
       return toolError(error);
     }

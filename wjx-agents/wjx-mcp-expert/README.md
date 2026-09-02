@@ -6,8 +6,8 @@
 
 本 Agent 遵循**渐进式披露**原则：
 
-1. **Agent 定义（`wjx-mcp-expert.md`）** — 只包含职责、工作原则和安全规范（~80 行）
-2. **Skill（`skills/wjx-mcp-use/SKILL.md`）** — 工具总览和核心工作流（~110 行）
+1. **Agent 定义（`wjx-mcp-expert.md`）** — 职责、工作原则和安全规范
+2. **Skill（`skills/wjx-mcp-use/SKILL.md`）** — 工具总览、核心工作流和 Agent 行为规则
 3. **References（`skills/wjx-mcp-use/references/`）** — 详细参数，按需加载
 
 Agent 不重复 Skill 中的工具参数内容，而是在需要时读取对应的 reference 文件。
@@ -54,11 +54,15 @@ claude mcp add wjx --env WJX_API_KEY=你的APIKey -- node /absolute/path/wjx-mcp
 
 ### 2. 部署 Agent 和 Skill
 
-`0.4.1` 尚未发布到 npm；发布前请使用本机构建的 CLI，发布后才使用 `npx wjx-cli`：
+如需在同一项目中启用 CLI 专家 Agent，安装 npm 包并使用实际命令名 `wjx`：
 
 ```bash
-npx wjx-cli skill install   # 自动部署 wjx-cli-expert Agent + Skill
+npm install -g wjx-cli@latest
+wjx skill install --force
+wjx --version
 ```
+
+这会自动部署 `wjx-cli-expert` Agent、`wjx-cli-use` Skill 及 Claude Code 的 Skill 镜像；不应运行 `wjx-cli --version`，npm 包名和可执行命令名不同。
 
 如需 MCP 专家 Agent，手动复制：
 
@@ -67,8 +71,9 @@ npx wjx-cli skill install   # 自动部署 wjx-cli-expert Agent + Skill
 mkdir -p .claude/agents
 curl -o .claude/agents/wjx-mcp-expert.md https://raw.githubusercontent.com/wjxcom/wjx-ai-kit/master/wjx-agents/wjx-mcp-expert/wjx-mcp-expert.md
 
-# 下载 MCP Skill 参考文档
-npx degit wjxcom/wjx-ai-kit/wjx-skills/wjx-mcp-use wjx-skills/wjx-mcp-use
+# 下载 MCP Skill 到通用目录，并同步 Claude Code 的发现目录
+npx degit --force wjxcom/wjx-ai-kit/wjx-skills/wjx-mcp-use skills/wjx-mcp-use
+npx degit --force wjxcom/wjx-ai-kit/wjx-skills/wjx-mcp-use .claude/skills/wjx-mcp-use
 ```
 
 > 也可以直接从 [GitHub 仓库](https://github.com/wjxcom/wjx-ai-kit/tree/master/wjx-agents/wjx-mcp-expert) 手动下载这些文件。

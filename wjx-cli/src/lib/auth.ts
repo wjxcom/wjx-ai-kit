@@ -1,4 +1,10 @@
-import { getWjxApiUrl, type WjxCredentials } from "wjx-api-sdk";
+import {
+  getWjxApiUrl,
+  getWjxContactsApiUrl,
+  getWjxSubuserApiUrl,
+  getWjxUserSystemApiUrl,
+  type WjxCredentials,
+} from "wjx-api-sdk";
 import { CliError } from "./errors.js";
 import { resolveProfile } from "./profiles.js";
 import { getCredentialProvider } from "./credential-provider.js";
@@ -18,9 +24,20 @@ function profileString(profile: { readonly baseUrl?: unknown }, key: "baseUrl"):
   return trimmed;
 }
 
-export function getProfileApiUrl(profile: { readonly baseUrl?: unknown }): string | undefined {
+export type ApiService = "default" | "user-system" | "subuser" | "contacts";
+
+export function getProfileApiUrl(
+  profile: { readonly baseUrl?: unknown },
+  service: ApiService = "default",
+): string | undefined {
   const baseUrl = profileString(profile, "baseUrl");
-  return baseUrl ? getWjxApiUrl(baseUrl) : undefined;
+  if (!baseUrl && service === "default") return undefined;
+  switch (service) {
+    case "contacts": return getWjxContactsApiUrl(baseUrl);
+    case "subuser": return getWjxSubuserApiUrl(baseUrl);
+    case "user-system": return getWjxUserSystemApiUrl(baseUrl);
+    default: return getWjxApiUrl(baseUrl);
+  }
 }
 
 export function getProfileBaseUrl(profile: { readonly baseUrl?: unknown }): string | undefined {
@@ -55,7 +72,13 @@ export function applyProfileCredentials(
 export function getCredentials(globalOpts: { apiKey?: string; profile?: string }): WjxCredentials {
   try {
     const profile = resolveProfile({ profile: globalOpts.profile });
-    const credentials = globalOpts.apiKey ? { apiKey: globalOpts.apiKey } : getCredentialProvider().get(profile, "user");
+    const explicitApiKey = typeof globalOpts.apiKey === "string" ? globalOpts.apiKey.trim() : "";
+    if (globalOpts.apiKey !== undefined && !explicitApiKey) {
+      throw new CliError("AUTH_ERROR", "WJX_API_KEY 不能为空。请通过 --api-key、环境变量或 wjx init 提供有效 Key。");
+    }
+    const credentials = explicitApiKey
+      ? { apiKey: explicitApiKey }
+      : getCredentialProvider().get(profile, "user");
     return applyProfileCredentials(credentials, profile);
   } catch (error) {
     if (error instanceof CliError) throw error;

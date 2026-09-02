@@ -131,6 +131,19 @@ export async function createSurveyByJson(input, credentials, fetchImpl = fetch, 
     if (input.title !== undefined && typeof input.title !== "string") {
         throw new TypeError("title must be a string");
     }
+    if (input.publish !== undefined && typeof input.publish !== "boolean") {
+        throw new TypeError("publish must be a boolean");
+    }
+    if (input.atype !== undefined && (!Number.isSafeInteger(input.atype) || input.atype < 1)) {
+        throw new TypeError("atype must be a finite safe integer");
+    }
+    if (input.optionalTitles !== undefined && (!Array.isArray(input.optionalTitles) ||
+        input.optionalTitles.some((title) => typeof title !== "string"))) {
+        throw new TypeError("optionalTitles must be an array of strings");
+    }
+    if (input.creater !== undefined && (typeof input.creater !== "string" || !input.creater.trim())) {
+        throw new TypeError("creater must be a non-empty string");
+    }
     const jsonl = normalizeJsonl(input.jsonl.trim());
     if (!jsonl) {
         throw new Error("jsonl must not be empty");
@@ -180,7 +193,7 @@ export async function createSurveyByJson(input, credentials, fetchImpl = fetch, 
         desc: description,
         surveydatajson: processedJsonl,
         publish: resolveJsonlPublish(processedJsonl, input.publish),
-        ...(input.creater !== undefined ? { creater: input.creater } : {}),
+        ...(input.creater !== undefined ? { creater: input.creater.trim() } : {}),
     }, {
         ...requestOptions,
         credentials: resolvedCredentials,

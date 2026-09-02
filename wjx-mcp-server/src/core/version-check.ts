@@ -28,17 +28,28 @@ function compareSemver(a: string, b: string): number {
   return 0;
 }
 
-export function checkLatestVersion(): void {
+export function checkLatestVersion(fetchImpl: typeof fetch = fetch): void {
   if (process.env.WJX_DISABLE_VERSION_CHECK === "1") return;
   const current = readCurrentVersion();
   if (!current) return;
 
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
+  timer.unref?.();
 
-  fetch(REGISTRY_URL, { signal: controller.signal })
+  // Normalize injected implementations that throw before returning a Promise
+  // so the optional registry check can never break server startup.
+  Promise.resolve()
+    .then(() => fetchImpl(REGISTRY_URL, { signal: controller.signal }))
     .then(async (res) => {
-      if (!res.ok) return;
+      if (!res.ok) {
+        try {
+          await res.body?.cancel();
+        } catch {
+          // Preserve the best-effort, non-blocking nature of the check.
+        }
+        return;
+      }
       const meta = (await res.json()) as { version?: string };
       const latest = meta.version;
       if (!latest || typeof latest !== "string") return;

@@ -100,6 +100,16 @@ function normalizeOptionValues(
       continue;
     }
 
+    // Commander options without a value descriptor are boolean flags. JSON
+    // stdin must use a real boolean here; accepting "false" would make it a
+    // truthy string and could accidentally enable a destructive operation.
+    if (!descriptor && typeof value !== "boolean") {
+      throw new CliError(
+        "INPUT_ERROR",
+        `Invalid value for --${key}: expected a boolean`,
+      );
+    }
+
     // JSON options intentionally accept parsed arrays/objects from stdin;
     // all other value-bearing Commander options are scalar strings.
     if (descriptor === "json") continue;

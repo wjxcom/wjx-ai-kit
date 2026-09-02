@@ -1,11 +1,14 @@
 # Claude Code
 
-Claude Code 能执行 shell，也支持 MCP、Agent 和 Skill。当前工作树的 `0.4.1` 尚未发布到 npm；发布前请按 [CLI 快速开始](../start/cli.md) 从源码构建并链接 CLI。`0.4.1` 发布后再执行：
+Claude Code 能执行 shell，也支持 MCP、Agent 和 Skill。CLI `0.4.1` 已发布到 npm，直接安装：
 
 ```bash
-npm install -g wjx-cli
+npm install -g wjx-cli@latest
+wjx skill install --force
 wjx init --api-key "你的 API Key"
 ```
+
+npm 包名是 `wjx-cli`，安装后的命令名是 `wjx`；请用 `wjx --version` 验证，不要运行 `wjx-cli --version`。
 
 然后在对话中让 Claude 调用 `wjx` 命令。只有需要原生工具调用时再配置 MCP，使用本地构建入口：
 

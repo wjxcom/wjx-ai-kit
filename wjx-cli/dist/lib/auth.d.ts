@@ -1,7 +1,8 @@
 import { type WjxCredentials } from "wjx-api-sdk";
+export type ApiService = "default" | "user-system" | "subuser" | "contacts";
 export declare function getProfileApiUrl(profile: {
     readonly baseUrl?: unknown;
-}): string | undefined;
+}, service?: ApiService): string | undefined;
 export declare function getProfileBaseUrl(profile: {
     readonly baseUrl?: unknown;
 }): string | undefined;

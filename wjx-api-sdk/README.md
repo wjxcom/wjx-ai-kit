@@ -4,19 +4,19 @@
 
 ## 安装
 
-当前工作树版本为 `0.4.1`，尚未发布到 npm；registry 的 `latest` 仍是 `0.3.1`。发布前请从 monorepo 根目录构建 SDK：
+当前稳定版本为 `0.4.1`，已发布到 npm，registry 的 `latest` 指向 `0.4.1`：
+
+```bash
+npm install wjx-api-sdk
+```
+
+从源码开发时，再从 monorepo 根目录构建 SDK：
 
 ```bash
 git clone https://github.com/wjxcom/wjx-ai-kit.git
 cd wjx-ai-kit
 npm install
 npm run build --workspace=wjx-api-sdk
-```
-
-`0.4.1` 正式发布后，才执行下面的包安装命令：
-
-```bash
-npm install wjx-api-sdk
 ```
 
 要求 Node.js 20+。通过环境变量配置凭据：

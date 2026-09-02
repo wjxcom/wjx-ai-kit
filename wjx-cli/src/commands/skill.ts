@@ -89,6 +89,12 @@ export function registerSkillCommands(program: Command): void {
       if (result.status === "error") {
         throw new CliError("INPUT_ERROR", result.message);
       }
+      if (result.status === "partial") {
+        throw new CliError("INPUT_ERROR", result.message, {
+          status: result.status,
+          pip_installed: result.pipInstalled,
+        });
+      }
       return result;
       }, {
         dryRun: (input) => ({ command: "skill.install-ppt", force: input.force, silent: input.silent, skipPip: input.skipPip, targetDir: input.targetDir }),
@@ -113,6 +119,12 @@ export function registerSkillCommands(program: Command): void {
       });
       if (result.status === "error") {
         throw new CliError("INPUT_ERROR", result.message);
+      }
+      if (result.status === "partial") {
+        throw new CliError("INPUT_ERROR", result.message, {
+          status: result.status,
+          pip_installed: result.pipInstalled,
+        });
       }
       return result;
       }, {

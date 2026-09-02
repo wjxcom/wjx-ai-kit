@@ -1,7 +1,7 @@
 import { createInterface } from "node:readline/promises";
 import { stdin, stderr } from "node:process";
-import { listSurveys } from "wjx-api-sdk";
-import { loadConfig, saveConfig, CONFIG_PATH } from "../lib/config.js";
+import { getWjxBaseUrl, listSurveys } from "wjx-api-sdk";
+import { loadConfig, saveConfig, getConfigPath } from "../lib/config.js";
 import { maskApiKey } from "../lib/mask.js";
 import { installSkill } from "../lib/install-skill.js";
 import { installPptSkill } from "../lib/install-ppt-skill.js";
@@ -10,34 +10,41 @@ import { formatOutput } from "../lib/output.js";
 import { CliError } from "../lib/errors.js";
 import { getMerged } from "../lib/command-helpers.js";
 const DEFAULT_BASE_URL = "https://www.wjx.cn";
-/** Validate API Key by calling listSurveys. Returns true if valid. */
+const API_KEY_LOGIN_PATH = "/weixinlogin.aspx?redirecturl=%2Fnewwjx%2Fmanage%2Fuserinfo.aspx%3FshowApiKey%3D1";
+function nonBlank(value) {
+    return typeof value === "string" && value.trim() ? value.trim() : undefined;
+}
+export function buildApiKeyLoginUrl(baseUrl) {
+    return `${getWjxBaseUrl(baseUrl)}${API_KEY_LOGIN_PATH}`;
+}
+/** Validate API Key by calling listSurveys. Failed validation aborts init. */
 async function validateApiKey(apiKey, baseUrl) {
-    stderr.write("验证 API Key...");
     try {
         const result = await listSurveys({ page_index: 1, page_size: 1 }, { apiKey }, fetch, baseUrl ? { baseUrl } : undefined);
         if (result.result === false) {
-            stderr.write(` 失败 (${result.errormsg})\n`);
-            stderr.write("  配置仍将保存，请检查 Key 是否正确。\n");
-            return false;
+            throw new CliError("AUTH_ERROR", `API Key 验证失败: ${result.errormsg || "API 请求被拒绝"}`, {
+                ...(result.errorcode !== undefined ? { errorcode: result.errorcode } : {}),
+                ...(result.traceid !== undefined ? { traceid: result.traceid } : {}),
+            });
         }
-        stderr.write(" OK\n");
-        return true;
+        if (result.result !== true) {
+            throw new CliError("API_ERROR", "API Key 验证响应格式无效：缺少布尔 result 字段");
+        }
     }
     catch (err) {
-        stderr.write(` 失败 (${err instanceof Error ? err.message : String(err)})\n`);
-        stderr.write("  配置仍将保存。\n");
-        return false;
+        if (err instanceof CliError)
+            throw err;
+        throw new CliError("API_ERROR", `API Key 验证请求失败: ${err instanceof Error ? err.message : String(err)}`);
     }
 }
-/** Save config and print confirmation. */
-function saveAndReport(apiKey, baseUrl, corpId) {
+/** Save config without emitting partial success output. */
+function saveConfigValues(apiKey, baseUrl, corpId) {
     const newConfig = { apiKey };
     if (baseUrl !== DEFAULT_BASE_URL)
         newConfig.baseUrl = baseUrl;
     if (corpId)
         newConfig.corpId = corpId;
     saveConfig(newConfig);
-    stderr.write(`已保存到 ${CONFIG_PATH}\n`);
 }
 /**
  * Non-interactive init: wjx init --api-key <key> [--base-url <url>] [--corp-id <id>]
@@ -47,25 +54,34 @@ function saveAndReport(apiKey, baseUrl, corpId) {
  * 调用方可通过 `--no-install-skill` 关闭核心安装、`--install-ppt-skill` 显式启用 PPT。
  */
 async function initWithArgs(opts) {
-    const apiKey = opts.apiKey;
-    const baseUrl = opts.baseUrl || DEFAULT_BASE_URL;
-    const corpId = opts.corpId || undefined;
+    const apiKey = opts.apiKey.trim();
+    if (!apiKey)
+        throw new CliError("INPUT_ERROR", "API Key 不能为空");
+    const baseUrl = nonBlank(opts.baseUrl) ?? nonBlank(process.env.WJX_BASE_URL) ?? DEFAULT_BASE_URL;
+    const corpId = nonBlank(opts.corpId) ?? nonBlank(process.env.WJX_CORP_ID);
     await validateApiKey(apiKey, baseUrl);
-    saveAndReport(apiKey, baseUrl, corpId);
+    const messages = [];
     if (opts.installSkill) {
         const { root, source } = resolveInstallRoot({ targetDir: opts.targetDir });
-        const result = installSkill(root, { force: true, rootSource: source });
+        const result = installSkill(root, { force: true, silent: true, rootSource: source });
         if (result.status === "error") {
-            stderr.write(`技能安装失败: ${result.message}\n`);
+            throw new CliError("INPUT_ERROR", `技能安装失败: ${result.message}`, { config_path: getConfigPath() });
         }
+        messages.push(result.message);
     }
     if (opts.installPptSkill) {
         const { root, source } = resolveInstallRoot({ targetDir: opts.targetDir });
-        const result = installPptSkill(root, { force: true, rootSource: source });
-        if (result.status === "error") {
-            stderr.write(`wjx-survey-ppt 技能安装失败: ${result.message}\n`);
+        const result = installPptSkill(root, { force: true, silent: true, rootSource: source });
+        if (result.status === "error" || result.status === "partial") {
+            throw new CliError("INPUT_ERROR", `wjx-survey-ppt 技能安装失败: ${result.message}`, { config_path: getConfigPath(), status: result.status });
         }
+        messages.push(`wjx-survey-ppt: ${result.message}`);
     }
+    saveConfigValues(apiKey, baseUrl, corpId);
+    stderr.write("验证 API Key... OK\n");
+    stderr.write(`已保存到 ${getConfigPath()}\n`);
+    for (const message of messages)
+        stderr.write(`${message}\n`);
 }
 /**
  * Interactive init wizard.
@@ -77,11 +93,11 @@ async function initWithArgs(opts) {
  */
 async function initInteractive(opts = {}) {
     const config = loadConfig();
-    const currentApiKey = process.env.WJX_API_KEY || config?.apiKey || "";
-    const currentBaseUrl = process.env.WJX_BASE_URL || config?.baseUrl || "";
-    const currentCorpId = process.env.WJX_CORP_ID || config?.corpId || "";
+    const currentApiKey = nonBlank(process.env.WJX_API_KEY) ?? nonBlank(config?.apiKey) ?? "";
+    const currentBaseUrl = nonBlank(process.env.WJX_BASE_URL) ?? nonBlank(config?.baseUrl) ?? "";
+    const currentCorpId = nonBlank(process.env.WJX_CORP_ID) ?? nonBlank(config?.corpId) ?? "";
     stderr.write("问卷星 CLI 配置向导\n");
-    stderr.write(`配置文件: ${CONFIG_PATH}\n\n`);
+    stderr.write(`配置文件: ${getConfigPath()}\n\n`);
     const rl = createInterface({ input: stdin, output: stderr });
     try {
         // 1. API Key (required *)
@@ -90,7 +106,7 @@ async function initInteractive(opts = {}) {
             const hint = currentApiKey ? ` [${maskApiKey(currentApiKey)}]` : "";
             if (!currentApiKey) {
                 stderr.write("获取 API Key：微信扫码登录下方链接，登录后页面会显示你的 API Key。\n");
-                stderr.write("https://www.wjx.cn/weixinlogin.aspx?redirecturl=%2Fnewwjx%2Fmanage%2Fuserinfo.aspx%3FshowApiKey%3D1\n\n");
+                stderr.write(`${buildApiKeyLoginUrl(currentBaseUrl || DEFAULT_BASE_URL)}\n\n`);
             }
             const input = await rl.question(`* WJX_API_KEY${hint}: `);
             apiKey = input.trim() || currentApiKey;
@@ -105,9 +121,7 @@ async function initInteractive(opts = {}) {
         // 3. Corp ID (保留已有值，不再默认询问以简化向导；如需配置请直接编辑 ~/.wjxrc)
         const corpId = currentCorpId || undefined;
         await validateApiKey(apiKey, baseUrl);
-        stderr.write("\n");
-        saveAndReport(apiKey, baseUrl, corpId);
-        stderr.write("提示: 也可以直接编辑该文件修改配置（如 WJX_CORP_ID 通讯录）。\n");
+        const messages = [];
         // ── 询问 1：cli-use 技能 + wjx-cli-expert 子 Agent（默认 Y，核心使用面） ──
         stderr.write("\n");
         const ans1 = (await rl.question("安装 wjx-cli-use 技能 + wjx-cli-expert 子 Agent？\n" +
@@ -115,9 +129,10 @@ async function initInteractive(opts = {}) {
             "  AI Agent 用它来自动操作问卷星 [Y/n]: ")).trim().toLowerCase();
         if (ans1 !== "n" && ans1 !== "no") {
             const { root, source } = resolveInstallRoot({ targetDir: opts.targetDir });
-            const r = installSkill(root, { force: true, rootSource: source });
+            const r = installSkill(root, { force: true, silent: true, rootSource: source });
             if (r.status === "error")
-                stderr.write(`安装失败: ${r.message}\n`);
+                throw new CliError("INPUT_ERROR", `技能安装失败: ${r.message}`, { config_path: getConfigPath() });
+            messages.push(r.message);
         }
         else {
             stderr.write("已跳过。后续可运行：wjx skill install\n");
@@ -129,13 +144,20 @@ async function initInteractive(opts = {}) {
             "  适合需要把问卷数据自动出 PPT 报告的场景 [y/N]: ")).trim().toLowerCase();
         if (ans2 === "y" || ans2 === "yes") {
             const { root, source } = resolveInstallRoot({ targetDir: opts.targetDir });
-            const r = installPptSkill(root, { force: true, rootSource: source });
-            if (r.status === "error")
-                stderr.write(`安装失败: ${r.message}\n`);
+            const r = installPptSkill(root, { force: true, silent: true, rootSource: source });
+            if (r.status === "error" || r.status === "partial")
+                throw new CliError("INPUT_ERROR", `wjx-survey-ppt 技能安装失败: ${r.message}`, { config_path: getConfigPath(), status: r.status });
+            messages.push(`wjx-survey-ppt: ${r.message}`);
         }
         else {
             stderr.write("已跳过。后续可运行：wjx skill install-ppt\n");
         }
+        saveConfigValues(apiKey, baseUrl, corpId);
+        stderr.write("验证 API Key... OK\n\n");
+        stderr.write(`已保存到 ${getConfigPath()}\n`);
+        stderr.write("提示: 也可以直接编辑该文件修改配置（如 WJX_CORP_ID 通讯录）。\n");
+        for (const message of messages)
+            stderr.write(`${message}\n`);
     }
     finally {
         rl.close();
@@ -160,8 +182,8 @@ export function registerInitCommands(program) {
             targetDir: merged.targetDir,
         };
         // --api-key is a global option on the root program; read from parent
-        const apiKey = cmd.parent?.opts().apiKey;
-        if (apiKey) {
+        const apiKeyOption = cmd.parent?.opts().apiKey;
+        if (apiKeyOption !== undefined) {
             if (program.opts().dryRun) {
                 formatOutput({
                     kind: "dry-run",
@@ -179,14 +201,14 @@ export function registerInitCommands(program) {
                 return;
             }
             // 参数模式：直接配置，不弹交互
-            await initWithArgs({ apiKey, ...input });
+            await initWithArgs({ apiKey: String(apiKeyOption), ...input });
             return;
         }
         // 非 TTY 且无 --api-key：无法交互
         if (!stdin.isTTY) {
             const config = loadConfig();
             if (config?.apiKey) {
-                stderr.write(`已有配置 (${CONFIG_PATH})，API Key: ${maskApiKey(config.apiKey)}\n`);
+                stderr.write(`已有配置 (${getConfigPath()})，API Key: ${maskApiKey(config.apiKey)}\n`);
                 stderr.write("如需更新，请使用参数模式: wjx init --api-key <key>\n");
                 return;
             }

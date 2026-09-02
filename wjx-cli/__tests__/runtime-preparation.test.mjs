@@ -284,6 +284,36 @@ test("runtime action forwards context credentials and transport options to SDK f
   assert.deepEqual(received[3], { retryBudget: 0, timeoutMs: 1234 });
 });
 
+test("runtime action awaits asynchronous noAuth functions before formatting", async () => {
+  const program = new Command("wjx");
+  program.option("--format <format>");
+  const command = program.command("probe");
+  const originalWrite = process.stdout.write;
+  let output = "";
+  process.stdout.write = ((chunk) => {
+    output += String(chunk);
+    return true;
+  });
+
+  try {
+    await executeRuntimeAction(
+      program,
+      command,
+      async () => {
+        await new Promise((resolve) => setImmediate(resolve));
+        return { result: true, data: { ready: true } };
+      },
+      () => ({}),
+      { noAuth: true },
+    );
+  } finally {
+    process.stdout.write = originalWrite;
+  }
+
+  assert.match(output, /"ready"\s*:\s*true/);
+  assert.doesNotMatch(output, /Promise/);
+});
+
 test("dry-run renderer keeps plans separate from diagnostics", () => {
   const rendered = renderDryRun([
     buildRequestPlan({ action: "1000002", apiKey: "secret", body: { page_index: 1 } }),

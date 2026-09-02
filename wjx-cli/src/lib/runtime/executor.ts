@@ -129,8 +129,8 @@ export async function executeRuntimeAction(
         }, globalOpts);
         return;
       }
-      const localFn = sdkFn as unknown as (value: Record<string, unknown>) => unknown;
-      formatOutput(localFn(input), globalOpts);
+      const localFn = sdkFn as unknown as (value: Record<string, unknown>) => unknown | Promise<unknown>;
+      formatOutput(await localFn(input), globalOpts);
       return;
     }
 

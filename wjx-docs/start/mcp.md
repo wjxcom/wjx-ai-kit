@@ -8,17 +8,14 @@ MCP 适用于原生支持 Model Context Protocol 的客户端。若客户端只�
 - 问卷星 OpenAPI API Key
 - Claude Desktop、Claude Code、Cursor 等 MCP 客户端
 
-当前工作树对应下一发布版本 `0.4.1`，尚未发布到 npm。npm registry 的
-`latest` 仍是 `wjx-mcp-server@0.3.1`；发布前请从源码构建本版本，不要
-把 `@0.4.1` 作为可安装版本。
+当前稳定版本为 `0.4.1`，已发布到 npm，registry 的 `latest` 指向
+`wjx-mcp-server@0.4.1`。直接安装：
 
 ```bash
-git clone https://github.com/wjxcom/wjx-ai-kit.git
-cd wjx-ai-kit
-npm install
-npm run build --workspace=wjx-api-sdk
-npm run build --workspace=wjx-mcp-server
+npm install -g wjx-mcp-server
 ```
+
+需要从源码开发时，再从 monorepo 根目录构建 SDK 和 MCP Server。
 
 本地 stdio 启动命令：
 

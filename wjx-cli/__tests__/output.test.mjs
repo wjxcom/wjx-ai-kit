@@ -171,6 +171,24 @@ describe("enrichSurveyListOutput", () => {
     assert.equal("fill_url" in result.data.activitys.survey, false);
   });
 
+  it("rejects a same-origin path outside the respondent routes", () => {
+    const input = {
+      data: {
+        activitys: {
+          survey: {
+            vid: 123,
+            activity_domain: "https://www.wjx.cn",
+            mobile_path: "/admin/edit.aspx",
+          },
+        },
+      },
+    };
+
+    const result = enrichSurveyListOutput(input);
+
+    assert.equal("fill_url" in result.data.activitys.survey, false);
+  });
+
   it("returns unrelated response shapes unchanged", () => {
     for (const input of [null, "response", [], { data: [] }, { data: { rows: [] } }]) {
       assert.equal(enrichSurveyListOutput(input), input);

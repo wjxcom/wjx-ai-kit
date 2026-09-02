@@ -1,9 +1,9 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { execFileSync, execFile } from "node:child_process";
-import { resolve, dirname } from "node:path";
+import { resolve, dirname, join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
-import { mkdirSync, readFileSync, rmSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { startFixture } from "./fixtures/http-fixture.mjs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -196,6 +196,16 @@ describe("errors: exit code routing", () => {
     assert.equal(typeof envelope.error.code, "string");
     assert.equal(typeof envelope.exitCode, "number");
   });
+
+  it("blank explicit API keys fail before any request", async () => {
+    const result = await runFull(
+      ["--api-key", "   ", "survey", "list"],
+      { env: NO_CONFIG },
+    );
+    assert.equal(result.exitCode, 1);
+    assert.equal(result.stdout.trim(), "");
+    assert.equal(parseProblem(result.stderr).code, "AUTH_ERROR");
+  });
 });
 
 // ═══════════════════════════════════════
@@ -263,6 +273,18 @@ describe("--stdin support", () => {
     const parsed = parseResultData(result.stdout);
     // Should use stdin mode="edit" + activity=99999, not default mode="create"
     assert.match(parsed.url, /99999/);
+  });
+
+  it("--stdin rejects string values for boolean flags", async () => {
+    const result = await runFull(["--dry-run", "survey", "delete", "--stdin"], {
+      input: JSON.stringify({ vid: 123, username: "tester", completely: "false" }),
+      env: { ...NO_CONFIG, WJX_API_KEY: "" },
+    });
+    assert.equal(result.exitCode, 2);
+    const error = parseProblem(result.stderr);
+    assert.equal(error.code, "INPUT_ERROR");
+    assert.match(error.message, /completely|boolean|布尔/i);
+    assert.equal(result.stdout, "");
   });
 });
 
@@ -433,6 +455,18 @@ describe("doctor", () => {
     // WJX_API_KEY check should be fail
     const tokenCheck = parsed.data.checks.find((c) => c.check === "WJX_API_KEY");
     assert.equal(tokenCheck.status, "fail");
+  });
+
+  it("doctor treats a whitespace API key as unconfigured", async () => {
+    const result = await runFull(["doctor"], {
+      env: { WJX_API_KEY: "   ", PATH: process.env.PATH, ...NO_CONFIG },
+    });
+    assert.equal(result.exitCode, 1);
+    const parsed = JSON.parse(result.stdout.trim());
+    const tokenCheck = parsed.data.checks.find((check) => check.check === "WJX_API_KEY");
+    assert.equal(tokenCheck.status, "fail");
+    const connectionCheck = parsed.data.checks.find((check) => check.check === "API 连接");
+    assert.equal(connectionCheck.status, "skip");
   });
 
   it("doctor --help shows description", () => {
@@ -1356,6 +1390,47 @@ describe("reference", () => {
 // ═══════════════════════════════════════
 
 describe("init", () => {
+  it("builds the API Key login URL from a private deployment base URL", async () => {
+    const { buildApiKeyLoginUrl } = await import(pathToFileURL(resolve(__dirname, "..", "dist", "commands", "init.js")).href);
+    assert.equal(
+      buildApiKeyLoginUrl("https://tenant.example.com/openapi/default.aspx"),
+      "https://tenant.example.com/weixinlogin.aspx?redirecturl=%2Fnewwjx%2Fmanage%2Fuserinfo.aspx%3FshowApiKey%3D1",
+    );
+  });
+
+  it("init --api-key honors WJX_BASE_URL when --base-url is omitted", async () => {
+    const fixture = await startFixture({ response: { result: true, data: { activitys: {}, total_count: 0 } } });
+    try {
+      const result = await fixture.run(["--api-key", "private_key", "init", "--no-install-skill"]);
+      assert.equal(result.exitCode, 0, result.stderr);
+      assert.equal(fixture.requests().length, 1);
+      const requestUrl = new URL(fixture.requests()[0].path, fixture.baseUrl);
+      assert.equal(requestUrl.pathname, "/openapi/default.aspx");
+      assert.equal(requestUrl.searchParams.get("action"), "1000002");
+      const saved = JSON.parse(readFileSync(resolve(fixture.tempDir, ".wjxrc"), "utf8"));
+      assert.equal(saved.baseUrl, fixture.baseUrl);
+    } finally {
+      await fixture.close();
+    }
+  });
+
+  it("init treats a whitespace base URL option as unset", async () => {
+    const fixture = await startFixture({
+      response: { result: true, data: { activitys: {}, total_count: 0 } },
+    });
+    try {
+      const result = await fixture.run(["--api-key", "private_key", "init", "--no-install-skill", "--base-url", "   "]);
+      assert.equal(result.exitCode, 0, result.stderr);
+      assert.equal(fixture.requests().length, 1);
+      const requestUrl = new URL(fixture.requests()[0].path, fixture.baseUrl);
+      assert.equal(requestUrl.pathname, "/openapi/default.aspx");
+      const saved = JSON.parse(readFileSync(resolve(fixture.tempDir, ".wjxrc"), "utf8"));
+      assert.equal(saved.baseUrl, fixture.baseUrl);
+    } finally {
+      await fixture.close();
+    }
+  });
+
   it("init --help shows description", () => {
     const out = run(["init", "--help"]);
     assert.match(out, /初始化|配置|init/);
@@ -1378,13 +1453,16 @@ describe("init", () => {
   });
 
   it("init --api-key saves config (non-interactive)", async () => {
+    const fixture = await startFixture({
+      response: { result: true, data: { activitys: {}, total_count: 0 } },
+    });
     const tmpDir = resolve(__dirname, "..", "__tmp_init_test__");
     const configPath = resolve(tmpDir, ".wjxrc");
     mkdirSync(tmpDir, { recursive: true });
     try {
-      const { exitCode, stderr } = await runFull(
+      const { exitCode, stderr } = await fixture.run(
         ["--api-key", "test_key_123", "init", "--no-install-skill"],
-        { env: { ...NO_CONFIG, WJX_CONFIG_PATH: configPath } },
+        { env: { WJX_CONFIG_PATH: configPath }, cwd: tmpDir },
       );
       assert.strictEqual(exitCode, 0);
       assert.match(stderr, /已保存/);
@@ -1392,20 +1470,70 @@ describe("init", () => {
       assert.strictEqual(saved.apiKey, "test_key_123");
     } finally {
       rmSync(tmpDir, { recursive: true, force: true });
+      await fixture.close();
+    }
+  });
+
+  it("init rejects an API validation failure without claiming success", async () => {
+    const fixture = await startFixture({
+      response: {
+        result: false,
+        errormsg: "API Key 无效",
+        errorcode: "INVALID_API_KEY",
+        traceid: "trace-init-invalid",
+      },
+    });
+    try {
+      const result = await fixture.run(["--api-key", "invalid-key", "init", "--no-install-skill"]);
+      assert.equal(result.exitCode, 1);
+      assert.equal(result.stdout.trim(), "");
+      const problem = JSON.parse(result.stderr);
+      assert.equal(problem.ok, false);
+      assert.equal(problem.error.code, "AUTH_ERROR");
+      assert.equal(problem.error.errorcode, "INVALID_API_KEY");
+      assert.equal(problem.error.traceid, "trace-init-invalid");
+    } finally {
+      await fixture.close();
+    }
+  });
+
+  it("init does not save config or claim success when Skill installation fails", async () => {
+    const fixture = await startFixture({
+      response: { result: true, data: { activitys: {}, total_count: 0 } },
+    });
+    const targetDir = fixture.tempDir;
+    try {
+      mkdirSync(join(targetDir, ".claude"), { recursive: true });
+      writeFileSync(join(targetDir, ".claude", "skills"), "blocking file", "utf8");
+      const result = await fixture.run([
+        "--api-key", "valid-key", "init", "--target-dir", targetDir,
+      ], { cwd: targetDir });
+      assert.equal(result.exitCode, 2);
+      assert.equal(result.stdout.trim(), "");
+      const problem = parseProblem(result.stderr);
+      assert.equal(problem.code, "INPUT_ERROR");
+      assert.match(problem.message, /技能安装失败|安装失败/);
+      assert.equal(readFileSync(join(targetDir, ".claude", "skills"), "utf8"), "blocking file");
+      assert.equal(existsSync(join(targetDir, ".wjxrc")), false);
+    } finally {
+      await fixture.close();
     }
   });
 
   it("init --install-ppt-skill takes the ppt branch (without pip dep on test machine)", async () => {
+    const fixture = await startFixture({
+      response: { result: true, data: { activitys: {}, total_count: 0 } },
+    });
     // 隔离 cwd 防止把 skills/wjx-survey-ppt/ 写到仓库根
     const tmpDir = resolve(__dirname, "..", "__tmp_init_ppt_test__");
     const configPath = resolve(tmpDir, ".wjxrc");
     rmSync(tmpDir, { recursive: true, force: true });
     mkdirSync(tmpDir, { recursive: true });
     try {
-      const { exitCode, stderr } = await runFull(
+      const { exitCode, stderr } = await fixture.run(
         ["--api-key", "test_key_xyz", "init", "--no-install-skill", "--install-ppt-skill"],
         {
-          env: { ...NO_CONFIG, WJX_CONFIG_PATH: configPath },
+          env: { WJX_CONFIG_PATH: configPath },
           cwd: tmpDir,
           timeout: 30_000, // pip 探测可能慢
         },
@@ -1415,6 +1543,7 @@ describe("init", () => {
       assert.match(stderr, /wjx-survey-ppt/);
     } finally {
       rmSync(tmpDir, { recursive: true, force: true });
+      await fixture.close();
     }
   });
 

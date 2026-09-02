@@ -10,12 +10,12 @@
 
 ---
 
-## [0.4.1] - Unreleased
+## [0.4.1] - 2026-09-02
 
-### 下一发布版本
+### 已发布
 
-- 三个工作区包统一使用 `0.4.1`；本版本尚未发布到 npm，registry 的 `latest` 保持旧版本。
-- 延续 `0.4.0` 的 JSONL-only 创建接口清理和统一输出协议，不执行 registry 写操作。
+- 三个工作区包统一使用 `0.4.1`，已按 SDK → MCP Server → CLI 顺序发布到 npm，registry 的 `latest` 均指向 `0.4.1`。
+- 延续 `0.4.0` 的 JSONL-only 创建接口清理和统一输出协议。
 - 明确 SDK 基础层、CLI 主入口与 MCP 核心业务子集的边界；新增能力矩阵和文档/消费者一致性门禁。
 - CLI 增加 `survey preview-url`；MCP 核心业务子集包含 `count_responses`、`build_submit_template` 和 `decode_push_payload`。
 

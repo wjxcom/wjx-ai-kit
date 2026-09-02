@@ -7,7 +7,7 @@ wjx-ai-kit 以 SDK 作为共享业务基础层，并通过 CLI 和 MCP Server �
 | 你的场景 | 推荐入口 | 原因 |
 | --- | --- | --- |
 | 终端、脚本、CI，或不确定 AI 是否支持 MCP | [CLI 快速开始](start/cli.md) | 默认入口，任何能执行 shell 的客户端都能用 |
-| Claude Desktop、Claude Code、Cursor 等原生 MCP 客户端 | [MCP 快速开始](start/mcp.md) | 直接调用工具；MCP 包当前从 GitHub 源码安装 |
+| Claude Desktop、Claude Code、Cursor 等原生 MCP 客户端 | [MCP 快速开始](start/mcp.md) | 直接调用已发布的 MCP 工具 |
 | 在 Node.js/TypeScript 应用中集成 | [SDK 快速开始](start/sdk.md) | 类型安全的程序化调用 |
 | 让 Claude Code 自动遵循问卷业务流程 | [Claude Code 集成](integrations/claude-code.md) | CLI/MCP 之上的 Agent 与 Skill 工作流 |
 

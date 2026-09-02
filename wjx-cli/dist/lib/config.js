@@ -1,31 +1,37 @@
 import { chmodSync, readFileSync, renameSync, unlinkSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { homedir } from "node:os";
-/**
- * Evaluated once at module load time. Setting process.env.WJX_CONFIG_PATH
- * after import will NOT change this value. Tests override it by passing the
- * env var to child processes (e.g. via execFileSync env option).
- */
-export const CONFIG_PATH = process.env.WJX_CONFIG_PATH || join(homedir(), ".wjxrc");
-export function loadConfig() {
+/** Resolve the config path at the point of use for embedded callers. */
+export function getConfigPath(env = process.env) {
+    const configured = env.WJX_CONFIG_PATH?.trim();
+    return configured || join(homedir(), ".wjxrc");
+}
+/** Backward-compatible snapshot for callers that only need the startup path. */
+export const CONFIG_PATH = getConfigPath();
+export function loadConfig(env = process.env) {
     try {
-        const raw = readFileSync(CONFIG_PATH, "utf8");
+        const raw = readFileSync(getConfigPath(env), "utf8");
         const parsed = JSON.parse(raw);
-        if (typeof parsed === "object" && parsed !== null && typeof parsed.apiKey === "string") {
-            return parsed;
-        }
-        return null;
+        if (!parsed || typeof parsed !== "object" || Array.isArray(parsed))
+            return null;
+        const apiKey = typeof parsed.apiKey === "string" ? parsed.apiKey.trim() : "";
+        if (!apiKey)
+            return null;
+        const baseUrl = typeof parsed.baseUrl === "string" && parsed.baseUrl.trim() ? parsed.baseUrl.trim() : undefined;
+        const corpId = typeof parsed.corpId === "string" && parsed.corpId.trim() ? parsed.corpId.trim() : undefined;
+        return { apiKey, ...(baseUrl ? { baseUrl } : {}), ...(corpId ? { corpId } : {}) };
     }
     catch {
         return null;
     }
 }
 export function saveConfig(config) {
-    const temporaryPath = `${CONFIG_PATH}.${process.pid}.${Date.now()}.tmp`;
+    const configPath = getConfigPath();
+    const temporaryPath = `${configPath}.${process.pid}.${Date.now()}.tmp`;
     try {
         writeFileSync(temporaryPath, JSON.stringify(config, null, 2) + "\n", { encoding: "utf8", mode: 0o600 });
-        renameSync(temporaryPath, CONFIG_PATH);
-        chmodSync(CONFIG_PATH, 0o600);
+        renameSync(temporaryPath, configPath);
+        chmodSync(configPath, 0o600);
     }
     catch (error) {
         try {
@@ -46,7 +52,7 @@ export function applyConfigToEnv() {
     const config = loadConfig();
     if (!config)
         return;
-    if (!process.env.WJX_API_KEY && config.apiKey) {
+    if ((!process.env.WJX_API_KEY || !process.env.WJX_API_KEY.trim()) && config.apiKey.trim()) {
         process.env.WJX_API_KEY = config.apiKey;
     }
 }

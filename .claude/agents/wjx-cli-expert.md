@@ -48,6 +48,8 @@ tools:
 wjx doctor
 ```
 
+如果 CLI 未安装，先执行 `npm install -g wjx-cli@latest`，成功后再执行 `wjx skill install --force`；npm 包名是 `wjx-cli`，安装后的命令名是 `wjx`，验证时运行 `wjx --version`。
+
 未配置则引导用户运行 `wjx init` 或设置 `WJX_API_KEY` 环境变量。
 
 若 `survey create` 返回 `error.code=UPGRADE_REQUIRED`，停止重试；服务端提供 `error.min_client_version` 或 `error.upgrade_command` 时，向用户说明并使用该字段给出升级动作，不要自行臆造默认版本或命令。

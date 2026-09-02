@@ -21,7 +21,8 @@ function extractBearerToken(req) {
     if (!auth)
         return undefined;
     const match = auth.match(/^Bearer\s+(.+)$/i);
-    return match ? match[1] : undefined;
+    const token = match?.[1]?.trim();
+    return token || undefined;
 }
 /**
  * Extract the client IP from the incoming request.
@@ -41,7 +42,7 @@ function getClientIp(req) {
     return req.socket.remoteAddress;
 }
 /** Read a bounded request body as a string, then JSON.parse it. */
-function readBody(req, maxBytes) {
+export function readBody(req, maxBytes) {
     return new Promise((resolve, reject) => {
         const chunks = [];
         let totalBytes = 0;
@@ -55,6 +56,9 @@ function readBody(req, maxBytes) {
             req.resume();
             reject(error);
         };
+        // Register the stream error handler before the Content-Length fast path.
+        // An oversized request is resumed and can still emit a late socket error.
+        req.on("error", fail);
         const contentLengthHeader = req.headers["content-length"];
         const contentLength = Array.isArray(contentLengthHeader)
             ? Number(contentLengthHeader[0])
@@ -84,7 +88,6 @@ function readBody(req, maxBytes) {
                 reject(e);
             }
         });
-        req.on("error", fail);
     });
 }
 export async function startHttpTransport(_mcpServer, options, 
@@ -92,11 +95,21 @@ export async function startHttpTransport(_mcpServer, options,
 serverFactory) {
     const enableSessions = options.stateful !== false;
     const maxBodyBytes = options.maxBodyBytes ?? DEFAULT_MAX_BODY_BYTES;
+    const authToken = typeof options.authToken === "string" && options.authToken.trim()
+        ? options.authToken.trim()
+        : undefined;
     if (!Number.isSafeInteger(maxBodyBytes) || maxBodyBytes < 1) {
         throw new RangeError("maxBodyBytes must be a positive safe integer");
     }
+    if (!Number.isSafeInteger(options.port) || options.port < 0 || options.port > 65535) {
+        throw new RangeError("port must be a safe integer between 0 and 65535");
+    }
+    if (!enableSessions && !serverFactory) {
+        throw new TypeError("serverFactory is required when stateful is false");
+    }
     // Session map: sessionId → { transport, server, credentials }
     const sessions = new Map();
+    let closing = false;
     const httpServer = createHttpServer(async (req, res) => {
         const url = new URL(req.url ?? "/", `http://${req.headers.host ?? "localhost"}`);
         // ── Health check (before auth — must work for Docker/k8s probes) ──
@@ -107,12 +120,14 @@ serverFactory) {
         }
         const bearerToken = extractBearerToken(req);
         // ── Authentication ───────────────────────────────────────────────
-        if (options.authToken) {
+        if (authToken) {
             // Single-tenant gate: verify the incoming token matches MCP_AUTH_TOKEN
-            const expected = options.authToken;
-            if (!bearerToken ||
-                bearerToken.length !== expected.length ||
-                !timingSafeEqual(Buffer.from(bearerToken), Buffer.from(expected))) {
+            const expected = authToken;
+            const providedBytes = bearerToken ? Buffer.from(bearerToken) : undefined;
+            const expectedBytes = Buffer.from(expected);
+            if (!providedBytes ||
+                providedBytes.length !== expectedBytes.length ||
+                !timingSafeEqual(providedBytes, expectedBytes)) {
                 res.writeHead(401, { "Content-Type": "application/json" });
                 res.end(JSON.stringify({ error: "Unauthorized" }));
                 return;
@@ -158,30 +173,56 @@ serverFactory) {
                 }
                 let transport;
                 let creds;
+                let requestServer;
+                const createRequestTransport = async () => {
+                    // Stateless mode must create an isolated Protocol/McpServer pair for
+                    // every request because the MCP Protocol can only own one transport.
+                    // The production entry point supplies serverFactory for this mode;
+                    // retain the injected server as a useful single-request fallback for
+                    // embedded callers.
+                    const server = serverFactory ? serverFactory() : _mcpServer;
+                    let requestTransport;
+                    requestTransport = new StreamableHTTPServerTransport({
+                        sessionIdGenerator: enableSessions ? () => randomUUID() : undefined,
+                        onsessioninitialized: (sid) => {
+                            if (closing) {
+                                void Promise.allSettled([requestTransport.close(), server.close()]);
+                                return;
+                            }
+                            sessions.set(sid, { transport: requestTransport, server, credentials: clientCreds });
+                            console.error(`[wjx-mcp-server] session ${sid} initialized (active: ${sessions.size})`);
+                        },
+                    });
+                    requestTransport.onclose = () => {
+                        const sid = requestTransport.sessionId;
+                        if (sid) {
+                            sessions.delete(sid);
+                            console.error(`[wjx-mcp-server] session ${sid} closed (active: ${sessions.size})`);
+                        }
+                    };
+                    try {
+                        await server.connect(requestTransport);
+                    }
+                    catch (error) {
+                        await Promise.allSettled([
+                            requestTransport.close(),
+                            server.close(),
+                        ]);
+                        throw error;
+                    }
+                    return { transport: requestTransport, server };
+                };
                 if (sessionId && sessions.has(sessionId)) {
                     // ── Existing session ──────────────────────────────────────
                     const entry = sessions.get(sessionId);
                     transport = entry.transport;
                     creds = entry.credentials;
                 }
-                else if (!sessionId && isInitializeRequest(body)) {
-                    // ── New session (initialize request) ──────────────────────
-                    transport = new StreamableHTTPServerTransport({
-                        sessionIdGenerator: enableSessions ? () => randomUUID() : undefined,
-                        onsessioninitialized: (sid) => {
-                            sessions.set(sid, { transport, server, credentials: clientCreds });
-                            console.error(`[wjx-mcp-server] session ${sid} initialized (active: ${sessions.size})`);
-                        },
-                    });
-                    transport.onclose = () => {
-                        const sid = transport.sessionId;
-                        if (sid) {
-                            sessions.delete(sid);
-                            console.error(`[wjx-mcp-server] session ${sid} closed (active: ${sessions.size})`);
-                        }
-                    };
-                    const server = serverFactory ? serverFactory() : _mcpServer;
-                    await server.connect(transport);
+                else if (!sessionId && (isInitializeRequest(body) || !enableSessions)) {
+                    // ── New session or stateless request ──────────────────────
+                    const created = await createRequestTransport();
+                    transport = created.transport;
+                    requestServer = created.server;
                     creds = clientCreds;
                 }
                 else {
@@ -195,11 +236,35 @@ serverFactory) {
                     return;
                 }
                 // Pass pre-parsed body as third argument
-                if (creds) {
-                    await credentialStore.run(creds, () => transport.handleRequest(req, res, body));
+                let cleanupStateless;
+                if (!enableSessions) {
+                    // A stateless transport/server is intentionally created per request.
+                    // Close both once the response is flushed so repeated HTTP calls do
+                    // not retain protocol listeners or in-memory tool state.
+                    let cleanedUp = false;
+                    cleanupStateless = () => {
+                        if (cleanedUp)
+                            return;
+                        cleanedUp = true;
+                        void transport.close().catch(() => undefined);
+                        void requestServer.close().catch(() => undefined);
+                    };
+                    res.once("finish", cleanupStateless);
+                    res.once("close", cleanupStateless);
                 }
-                else {
-                    await transport.handleRequest(req, res, body);
+                try {
+                    if (creds) {
+                        await credentialStore.run(creds, () => transport.handleRequest(req, res, body));
+                    }
+                    else {
+                        await transport.handleRequest(req, res, body);
+                    }
+                }
+                finally {
+                    // A handler can finish synchronously before the response events are
+                    // delivered; do not leave a completed stateless request open.
+                    if (res.writableEnded)
+                        cleanupStateless?.();
                 }
             }
             else if (req.method === "GET" || req.method === "DELETE") {
@@ -229,13 +294,44 @@ serverFactory) {
             }
         }
     });
-    return new Promise((resolve) => {
+    await new Promise((resolve, reject) => {
+        const handleListenError = (error) => {
+            httpServer.off("error", handleListenError);
+            reject(error);
+        };
+        httpServer.once("error", handleListenError);
         httpServer.listen(options.port, () => {
+            httpServer.off("error", handleListenError);
             const addr = httpServer.address();
             const port = typeof addr === "object" && addr ? addr.port : options.port;
             console.error(`[wjx-mcp-server] HTTP transport listening on port ${port}`);
-            resolve({ httpServer });
+            resolve();
         });
     });
+    let closePromise;
+    const close = () => {
+        if (closePromise)
+            return closePromise;
+        closing = true;
+        closePromise = (async () => {
+            let listenerClosed;
+            if (httpServer.listening) {
+                listenerClosed = new Promise((resolve, reject) => {
+                    httpServer.close((error) => error ? reject(error) : resolve());
+                });
+            }
+            const activeSessions = [...sessions.entries()];
+            await Promise.allSettled(activeSessions.map(async ([sessionId, entry]) => {
+                sessions.delete(sessionId);
+                await Promise.allSettled([
+                    entry.transport.close(),
+                    entry.server.close(),
+                ]);
+            }));
+            await listenerClosed;
+        })();
+        return closePromise;
+    };
+    return { httpServer, close };
 }
 //# sourceMappingURL=http.js.map

@@ -77,4 +77,4 @@ SDK 直接返回问卷星 OpenAPI 原始响应，业务失败通常返回 `resul
 
 CLI 会将该响应转换为 `UPGRADE_REQUIRED` 错误，并保留服务端实际提供的最低版本、升级命令和 trace id；未提供的可选升级字段不会由客户端臆造。旧于 `0.4.1` 的 CLI 不会发送版本请求头；服务端应同时将旧创建 action 或缺少客户端版本头的创建请求判定为升级场景。
 
-当前工作树的 `0.4.1` 尚未发布到 npm，因此 `npm install -g wjx-cli@latest` 仅适用于正式发布后；发布前请按 [CLI 快速开始](../start/cli.md) 从源码构建。
+`wjx-cli@0.4.1` 已发布到 npm；CLI 用户可先执行 `npm install -g wjx-cli@latest`，成功后再执行 `wjx skill install --force` 获取 CLI 并启用 `wjx-cli-use`。npm 包名是 `wjx-cli`，安装后的命令名是 `wjx`，验证时运行 `wjx --version`。需要源码开发时，再按 [CLI 快速开始](../start/cli.md) 构建。

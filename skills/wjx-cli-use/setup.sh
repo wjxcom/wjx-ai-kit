@@ -16,6 +16,7 @@ NC='\033[0m'
 # 脚本所在目录
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 MIN_WJX_CLI_VERSION="0.4.1"
+DEFAULT_WJX_BASE_URL="https://www.wjx.cn"
 
 # 打印函数
 print_info()    { echo -e "${BLUE}[INFO]${NC} $1"; }
@@ -23,14 +24,32 @@ print_success() { echo -e "${GREEN}[OK]${NC} $1"; }
 print_warning() { echo -e "${YELLOW}[WARNING]${NC} $1"; }
 print_error()   { echo -e "${RED}[ERROR]${NC} $1"; }
 
+has_nonblank() {
+    [ -n "${1//[[:space:]]/}" ]
+}
+
+trim_whitespace() {
+    local value="$1"
+    value="${value#"${value%%[![:space:]]*}"}"
+    value="${value%"${value##*[![:space:]]}"}"
+    printf '%s' "$value"
+}
+
+config_has_api_key() {
+    local path="$1"
+    [ -f "$path" ] || return 1
+    node -e 'const fs = require("node:fs"); try { const value = JSON.parse(fs.readFileSync(process.argv[1], "utf8")); process.exit(value && typeof value.apiKey === "string" && value.apiKey.trim() ? 0 : 1); } catch { process.exit(1); }' "$path"
+}
+
 # Compare semantic versions without relying on GNU sort (the script also runs on macOS).
 version_at_least() {
     node -e 'const [actual, minimum] = process.argv.slice(1); const parse = value => value.replace(/^v/, "").split(".").map(part => Number.parseInt(part, 10) || 0); const a = parse(actual); const b = parse(minimum); process.exit(a[0] > b[0] || (a[0] === b[0] && (a[1] > b[1] || (a[1] === b[1] && a[2] >= b[2]))) ? 0 : 1);' "$1" "$2"
 }
 
 print_cli_source_guide() {
-    echo "当前工作树的 wjx-cli ${MIN_WJX_CLI_VERSION} 尚未发布到 npm，registry latest 仍是旧版。"
-    echo "发布前请从源码构建并链接："
+    echo "wjx-cli ${MIN_WJX_CLI_VERSION} 已发布到 npm，请直接安装或升级："
+    echo "  npm install -g wjx-cli@latest && wjx skill install --force"
+    echo "如果需要从源码开发，再执行："
     echo "  git clone https://github.com/wjxcom/wjx-ai-kit.git"
     echo "  cd wjx-ai-kit && npm install"
     echo "  npm run build --workspace=wjx-api-sdk"
@@ -39,14 +58,86 @@ print_cli_source_guide() {
 }
 
 check_cli_version() {
-    WJX_VERSION=$(wjx --version 2>/dev/null | head -n 1 || true)
-    if [ -z "$WJX_VERSION" ] || ! version_at_least "$WJX_VERSION" "$MIN_WJX_CLI_VERSION"; then
+    if ! WJX_VERSION="$(wjx --version 2>/dev/null)"; then
+        print_error "无法执行 wjx --version"
+        print_cli_source_guide
+        return 1
+    fi
+    WJX_VERSION="$(printf '%s' "$WJX_VERSION" | awk 'NR == 1 { print; exit }')"
+    if ! has_nonblank "$WJX_VERSION" || ! version_at_least "$WJX_VERSION" "$MIN_WJX_CLI_VERSION"; then
         print_error "wjx-cli 版本过低: ${WJX_VERSION:-unknown}（需要 ${MIN_WJX_CLI_VERSION}+）"
         print_cli_source_guide
         return 1
     fi
     print_success "wjx-cli ${WJX_VERSION}"
     return 0
+}
+
+install_core_skill() {
+    print_info "安装 wjx-cli-use 技能..."
+    local root
+    root="$(resolve_install_root)"
+    if wjx skill install --force --target-dir "$root"; then
+        print_success "wjx-cli-use 技能已安装"
+        return 0
+    fi
+    print_error "wjx-cli-use 技能安装失败"
+    return 1
+}
+
+# Keep the shell installer and the CLI's default discovery rules aligned.
+resolve_install_root() {
+    local value
+    value="$(trim_whitespace "${WJX_INSTALL_ROOT:-}")"
+    if has_nonblank "$value"; then
+        printf '%s' "$value"
+    elif value="$(trim_whitespace "${CLAUDE_PROJECT_DIR:-}")" && [ -d "$value" ]; then
+        printf '%s' "$value"
+    elif value="$(trim_whitespace "${WORKBUDDY_HOME:-}")" && [ -d "$value" ]; then
+        printf '%s' "$value"
+    elif value="$(trim_whitespace "${CLAW_HOME:-}")" && [ -d "$value" ]; then
+        printf '%s' "$value"
+    else
+        printf '%s' "$PWD"
+    fi
+}
+
+check_core_skill() {
+    local root
+    local missing=0
+    root="$(resolve_install_root)"
+    for path in \
+        "$root/skills/wjx-cli-use/SKILL.md" \
+        "$root/.claude/skills/wjx-cli-use/SKILL.md" \
+        "$root/.claude/agents/wjx-cli-expert.md"; do
+        if [ ! -s "$path" ]; then
+            print_warning "缺少核心 Skill 文件: $path"
+            missing=1
+        fi
+    done
+    if [ "$missing" -eq 0 ] && ! cmp -s \
+        "$root/skills/wjx-cli-use/SKILL.md" \
+        "$root/.claude/skills/wjx-cli-use/SKILL.md"; then
+        print_warning "核心 Skill 镜像内容不一致，请运行 wjx skill install --force"
+        missing=1
+    fi
+    if [ "$missing" -eq 0 ]; then
+        print_success "wjx-cli-use Skill 与 Claude 镜像已安装"
+        return 0
+    fi
+    return 1
+}
+
+upgrade_cli() {
+    print_info "正在升级 wjx-cli 到最新版本..."
+    if npm install -g wjx-cli@latest; then
+        return 0
+    fi
+    if command -v sudo &> /dev/null && sudo npm install -g wjx-cli@latest; then
+        return 0
+    fi
+    print_error "wjx-cli 升级失败"
+    return 1
 }
 
 # 检测操作系统
@@ -107,16 +198,21 @@ install_cli() {
     print_info "Step 2/5: 安装 wjx-cli..."
 
     if command -v wjx &> /dev/null; then
-        check_cli_version
+        if ! check_cli_version; then
+            upgrade_cli || return 1
+            check_cli_version || return 1
+        fi
+        install_core_skill
         return $?
     fi
 
     print_info "正在全局安装 wjx-cli..."
     NPM_ERR=$(mktemp)
-    if npm install -g wjx-cli 2>"$NPM_ERR"; then
+    if npm install -g wjx-cli@latest 2>"$NPM_ERR"; then
         rm -f "$NPM_ERR"
         if check_cli_version; then
-            print_success "wjx-cli 安装成功"
+            if ! install_core_skill; then return 1; fi
+            print_success "wjx-cli 与 wjx-cli-use 安装成功"
             return 0
         fi
         return 1
@@ -126,9 +222,10 @@ install_cli() {
         rm -f "$NPM_ERR"
         print_info "尝试 sudo..."
         if command -v sudo &> /dev/null; then
-            if sudo npm install -g wjx-cli; then
+            if sudo npm install -g wjx-cli@latest; then
                 if check_cli_version; then
-                    print_success "wjx-cli 安装成功（sudo）"
+                    if ! install_core_skill; then return 1; fi
+                    print_success "wjx-cli 与 wjx-cli-use 安装成功（sudo）"
                     return 0
                 fi
                 return 1
@@ -137,8 +234,8 @@ install_cli() {
         echo ""
         print_error "wjx-cli 安装失败"
         echo ""
-        echo "请在 ${MIN_WJX_CLI_VERSION} 发布后手动安装："
-        echo "  sudo npm install -g wjx-cli"
+        echo "请手动安装已发布的 wjx-cli ${MIN_WJX_CLI_VERSION}+："
+        echo "  sudo npm install -g wjx-cli@latest && wjx skill install --force"
         echo ""
         echo "或使用 npx 免安装运行："
         echo "  npx wjx-cli@${MIN_WJX_CLI_VERSION} survey list"
@@ -149,13 +246,59 @@ install_cli() {
     fi
 }
 
+# Resolve the deployment origin used both for the API Key page and wjx init.
+# Accepting an origin here prevents private deployments from accidentally
+# opening the public wjx.cn login page.
+normalize_base_url() {
+    local value
+    value="$(trim_whitespace "${1:-$DEFAULT_WJX_BASE_URL}")"
+    value="${value:-$DEFAULT_WJX_BASE_URL}"
+    while [[ "$value" == */ ]]; do value="${value%/}"; done
+    if [[ "$value" != http://* && "$value" != https://* ]]; then
+        value="https://$value"
+    fi
+    if [[ "$value" == */openapi/* ]]; then
+        value="${value%%/openapi/*}"
+    fi
+    printf '%s' "$value"
+}
+
+configure_base_url() {
+    local value="$(trim_whitespace "${WJX_BASE_URL:-}")"
+    if ! has_nonblank "$value"; then
+        if [ "${AUTO_INSTALL:-0}" -eq 1 ] || [ ! -t 0 ]; then
+            value="$DEFAULT_WJX_BASE_URL"
+        else
+            read -r -p "  问卷星部署地址（公网直接回车，私有化填写域名） [$DEFAULT_WJX_BASE_URL]: " value
+            value="$(trim_whitespace "$value")"
+            value="${value:-$DEFAULT_WJX_BASE_URL}"
+        fi
+    fi
+    WJX_BASE_URL="$(normalize_base_url "$value")"
+    export WJX_BASE_URL
+}
+
 # Step 3: 引导获取 API Key
 guide_api_key() {
     print_info "Step 3/5: 获取问卷星 API Key..."
 
-    LOGIN_URL="https://www.wjx.cn/weixinlogin.aspx?redirecturl=%2Fnewwjx%2Fmanage%2Fuserinfo.aspx%3FshowApiKey%3D1"
+    configure_base_url
+    if has_nonblank "${WJX_API_KEY:-}"; then
+        print_success "检测到 WJX_API_KEY 环境变量，跳过浏览器取 Key"
+        return 0
+    fi
+    if [ "${AUTO_INSTALL:-0}" -eq 1 ] && [ ! -t 0 ]; then
+        print_error "非交互自动安装缺少 WJX_API_KEY；请先设置环境变量后重新运行"
+        return 1
+    fi
+    LOGIN_URL="${WJX_BASE_URL}/weixinlogin.aspx?redirecturl=%2Fnewwjx%2Fmanage%2Fuserinfo.aspx%3FshowApiKey%3D1"
 
     echo ""
+    if [ "$WJX_BASE_URL" = "$DEFAULT_WJX_BASE_URL" ]; then
+        echo "  当前使用问卷星公网地址。"
+    else
+        echo "  当前使用私有化部署地址：$WJX_BASE_URL"
+    fi
     echo "  即将打开浏览器，请用微信扫码登录问卷星。"
     echo "  登录后会自动跳转到 API Key 管理页面，复制你的 API Key。"
     echo ""
@@ -189,16 +332,29 @@ guide_api_key() {
 # Step 4: 配置 wjx-cli
 configure_cli() {
     print_info "Step 4/5: 配置 wjx-cli..."
+    if has_nonblank "${WJX_API_KEY:-}"; then
+        local args=(--api-key "$WJX_API_KEY" --base-url "$WJX_BASE_URL" --no-install-skill)
+        if has_nonblank "${WJX_CORP_ID:-}"; then
+            args+=(--corp-id "$WJX_CORP_ID")
+        fi
+        wjx init "${args[@]}"
+        return $?
+    fi
     echo ""
     echo "  请将刚才复制的 API Key 粘贴到下方："
     echo ""
-    wjx init
+    # install_cli already installs the core skill; avoid asking the user to
+    # install the same Skill a second time during this setup flow.
+    wjx init --no-install-skill
 }
 
 # Step 5: 验证
 verify_setup() {
     print_info "Step 5/5: 验证连接..."
     wjx doctor
+    echo ""
+    print_info "人工验收：列出问卷..."
+    wjx survey list --format table
 }
 
 # 仅检查环境
@@ -225,16 +381,21 @@ check_only() {
     # wjx-cli
     if command -v wjx &> /dev/null; then
         check_cli_version || PASS=0
+        check_core_skill || PASS=0
     else
-        print_warning "wjx-cli 未安装或版本低于 ${MIN_WJX_CLI_VERSION}（请按上面的源码构建说明处理）"
+        print_warning "wjx-cli 未安装或版本低于 ${MIN_WJX_CLI_VERSION}（请执行 npm install -g wjx-cli@latest && wjx skill install --force）"
         PASS=0
     fi
 
-    # ~/.wjxrc
-    if [ -f "$HOME/.wjxrc" ]; then
-        print_success "~/.wjxrc 配置文件存在"
+    # 配置文件（可由 WJX_CONFIG_PATH 覆盖）
+    CONFIG_PATH="$(trim_whitespace "${WJX_CONFIG_PATH:-$HOME/.wjxrc}")"
+    if has_nonblank "${WJX_API_KEY:-}"; then
+        print_success "WJX_API_KEY 环境变量已配置"
+    elif config_has_api_key "$CONFIG_PATH"; then
+        print_success "$CONFIG_PATH 配置文件含有效 API Key"
     else
-        print_warning "~/.wjxrc 未配置（运行 wjx init）"
+        print_warning "$CONFIG_PATH 未配置（运行 wjx init）"
+        PASS=0
     fi
 
     echo ""
@@ -264,8 +425,12 @@ verify_only() {
         exit 1
     fi
 
+    check_core_skill || exit 1
+
     echo ""
     wjx doctor
+    echo ""
+    wjx survey list --format table
 }
 
 # 显示帮助
@@ -289,10 +454,10 @@ show_help() {
 
 安装流程:
     1. 检测 Node.js 20+
-    2. 安装并验证 wjx-cli >= ${MIN_WJX_CLI_VERSION}（${MIN_WJX_CLI_VERSION} 发布前从源码构建）
-    3. 打开浏览器获取 API Key（微信扫码登录）
+    2. 安装并验证 wjx-cli >= ${MIN_WJX_CLI_VERSION}（安装后使用命令 wjx）
+    3. 选择公网或私有化部署地址，打开对应页面获取 API Key（微信扫码登录）
     4. 配置 wjx init（粘贴 API Key）
-    5. 验证连接 wjx doctor
+    5. 验证连接 wjx doctor，并用 wjx survey list --format table 做人工验收
 
 EOF
 }

@@ -17,6 +17,7 @@ import {
   parseArgs,
   readBaseline,
   writeBaseline,
+  enforceBaseline,
 } from "../scripts/benchmark-startup.mjs";
 
 const PACKAGE_ROOT = fileURLToPath(new URL("..", import.meta.url));
@@ -178,10 +179,60 @@ test("startup baseline keeps runner entries under the versioned document", () =>
   assert.ok(selectedBaseline, "baseline must provide an exact runner entry or default fallback");
 });
 
+test("startup enforcement rejects regressions against the stored baseline", async () => {
+  const tempDir = await mkdtemp(join(tmpdir(), "wjx-cli-enforce-order-"));
+  const path = join(tempDir, "startup-baseline.json");
+  const original = {
+    schemaVersion: 1,
+    baselines: { default: { deltaP95Ms: 10 } },
+  };
+  const report = {
+    key: "win32-x64-node24",
+    samples: 1,
+    discard: 0,
+    deltaP95Ms: 100,
+  };
+
+  try {
+    await writeFile(path, `${JSON.stringify(original)}\n`);
+    assert.throws(() => enforceBaseline(report, path), /Startup regression/);
+    assert.deepEqual(readBaseline(path).baselines.default, original.baselines.default);
+  } finally {
+    await rm(tempDir, { recursive: true, force: true });
+  }
+});
+
+test("startup enforcement rejects a malformed baseline instead of silently passing", async () => {
+  const tempDir = await mkdtemp(join(tmpdir(), `wjx-cli-invalid-baseline-${process.pid}-`));
+  const path = join(tempDir, "startup-baseline.json");
+  try {
+    await writeFile(path, JSON.stringify({ baselines: { default: { deltaP95Ms: "not-a-number" } } }));
+    assert.throws(
+      () => enforceBaseline({ deltaP95Ms: 0 }, path),
+      /Invalid startup baseline.*finite non-negative number/,
+    );
+  } finally {
+    await rm(tempDir, { recursive: true, force: true });
+  }
+});
+
+test("startup main enforces before it writes a baseline", () => {
+  const source = readFileSync(resolve(PACKAGE_ROOT, "scripts", "benchmark-startup.mjs"), "utf8");
+  assert.ok(
+    source.indexOf("enforceBaseline(report)") < source.indexOf("writeBaseline(report, options)"),
+    "baseline enforcement must precede any baseline write",
+  );
+});
+
 test("version bootstrap does not statically load command modules", () => {
   const source = readFileSync(resolve(PACKAGE_ROOT, "src", "index.ts"), "utf8");
   assert.doesNotMatch(source, /from [\"']\.\/commands\//);
   assert.match(source, /import\([\"']\.\/cli\.js[\"']\)/);
+});
+
+test("normal CLI exits let stdout drain instead of calling process.exit", () => {
+  const source = readFileSync(resolve(PACKAGE_ROOT, "src", "cli.ts"), "utf8");
+  assert.doesNotMatch(source, /process\.exit\(0\)/);
 });
 
 test("runtime commands expose one structured success result protocol", () => {

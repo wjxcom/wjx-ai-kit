@@ -4,6 +4,7 @@ import { execFile } from "node:child_process";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { startFixture } from "./fixtures/http-fixture.mjs";
+import { handleError, CliErrorHandled } from "../dist/lib/errors.js";
 
 const ROOT = fileURLToPath(new URL("..", import.meta.url));
 const CLI = resolve(ROOT, "dist", "index.js");
@@ -37,6 +38,16 @@ test("errors are ProblemEnvelope on stderr and stdout remains empty", async () =
   const parsed = JSON.parse(result.stderr);
   assert.equal(parsed.ok, false);
   assert.equal(parsed.error.type, "validation");
+});
+
+test("init treats an explicitly blank API key as input validation", async () => {
+  const result = await run(["init", "--api-key", ""]);
+  assert.equal(result.code, 2);
+  assert.equal(result.stdout, "");
+  const problem = JSON.parse(result.stderr);
+  assert.equal(problem.ok, false);
+  assert.equal(problem.error.code, "INPUT_ERROR");
+  assert.match(problem.error.message, /不能为空/);
 });
 
 test("API response failures never become successful stdout envelopes", async () => {
@@ -204,4 +215,29 @@ test("version fast path only handles a root-level version flag", async () => {
   const problem = JSON.parse(result.stderr);
   assert.equal(problem.ok, false);
   assert.equal(problem.error.code, "INPUT_ERROR");
+});
+
+test("CLI preserves retryable guidance for transport errors identified by error code", () => {
+  const originalWrite = process.stderr.write;
+  const previousExitCode = process.exitCode;
+  let output = "";
+  process.stderr.write = ((chunk) => {
+    output += String(chunk);
+    return true;
+  });
+
+  try {
+    assert.throws(
+      () => handleError(Object.assign(new Error("socket hang up"), { code: "ECONNRESET" })),
+      CliErrorHandled,
+    );
+  } finally {
+    process.stderr.write = originalWrite;
+    process.exitCode = previousExitCode;
+  }
+
+  const problem = JSON.parse(output);
+  assert.equal(problem.ok, false);
+  assert.equal(problem.error.code, "API_ERROR");
+  assert.equal(problem.error.retryable, true);
 });

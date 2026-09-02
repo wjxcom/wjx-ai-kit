@@ -115,6 +115,68 @@ describe("createSurveyByJson", () => {
     );
     assert.ok(seenSignal);
   });
+
+  it("rejects non-boolean publish values before transport", async () => {
+    let calls = 0;
+    const fetch = async () => { calls += 1; return new Response("{}"); };
+    const jsonl = [
+      { qtype: "问卷基础信息", title: "发布类型校验" },
+      { qtype: "单选", title: "选择一个", select: ["A", "B"] },
+    ].map(JSON.stringify).join("\n");
+    await assert.rejects(
+      () => createSurveyByJson({ jsonl, publish: "false" }, credentials, fetch),
+      /publish must be a boolean/,
+    );
+    assert.equal(calls, 0);
+  });
+
+  it("rejects malformed optional titles, atype, and creator values before transport", async () => {
+    let calls = 0;
+    const fetch = async () => {
+      calls += 1;
+      return new Response(JSON.stringify({ result: true, data: {} }));
+    };
+    const jsonl = [
+      { qtype: "问卷基础信息", title: "创建参数边界测试" },
+      { qtype: "单选", title: "选择一个", select: ["A", "B"] },
+    ].map(JSON.stringify).join("\n");
+
+    await assert.rejects(
+      () => createSurveyByJson({ jsonl, atype: 1.5 }, credentials, fetch),
+      /atype must be a finite safe integer/,
+    );
+    await assert.rejects(
+      () => createSurveyByJson({ jsonl, optionalTitles: ["允许", 42] }, credentials, fetch),
+      /optionalTitles must be an array of strings/,
+    );
+    await assert.rejects(
+      () => createSurveyByJson({ jsonl, creater: "   " }, credentials, fetch),
+      /creater must be a non-empty string/,
+    );
+    assert.equal(calls, 0);
+  });
+
+  it("never retries survey creation even when a retry budget is provided", async () => {
+    let calls = 0;
+    const jsonl = [
+      { qtype: "问卷基础信息", title: "创建重试安全测试" },
+      { qtype: "单选", title: "选择一个", select: ["A", "B"] },
+    ].map(JSON.stringify).join("\n");
+    const fetch = async () => {
+      calls += 1;
+      return new Response(JSON.stringify({ result: true, data: {} }), {
+        status: 500,
+        statusText: "Server Error",
+        headers: { "Content-Type": "application/json" },
+      });
+    };
+
+    await assert.rejects(
+      () => createSurveyByJson({ jsonl }, credentials, fetch, { retryBudget: 3 }),
+      /500 Server Error/,
+    );
+    assert.equal(calls, 1);
+  });
 });
 
 describe("survey read and lifecycle clients", () => {

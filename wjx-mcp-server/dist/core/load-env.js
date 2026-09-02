@@ -13,20 +13,26 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
  * so loading order determines priority: wjxrc first, then .env.
  */
 // ── Step 1: Load ~/.wjxrc (JSON config shared with wjx-cli) ──
-const wjxrcPath = process.env.WJX_CONFIG_PATH || join(homedir(), ".wjxrc");
+const wjxrcPath = process.env.WJX_CONFIG_PATH?.trim() || join(homedir(), ".wjxrc");
+const WJX_CONFIG_KEYS = new Set(["WJX_API_KEY", "WJX_BASE_URL", "WJX_CORP_ID"]);
+function setIfMissing(key, value) {
+    if (typeof value !== "string" || !value.trim())
+        return;
+    // Match the CLI: an explicitly blank WJX variable is treated as unset so a
+    // valid shared .wjxrc value is not accidentally shadowed.
+    const existing = process.env[key];
+    if (existing !== undefined && (!WJX_CONFIG_KEYS.has(key) || existing.trim()))
+        return;
+    process.env[key] = value.trim();
+}
 if (existsSync(wjxrcPath)) {
     try {
         const parsed = JSON.parse(readFileSync(wjxrcPath, "utf-8"));
-        if (typeof parsed === "object" && parsed !== null) {
-            if (!(("WJX_API_KEY") in process.env) && parsed.apiKey) {
-                process.env.WJX_API_KEY = parsed.apiKey;
-            }
-            if (!(("WJX_BASE_URL") in process.env) && parsed.baseUrl) {
-                process.env.WJX_BASE_URL = parsed.baseUrl;
-            }
-            if (!(("WJX_CORP_ID") in process.env) && parsed.corpId) {
-                process.env.WJX_CORP_ID = parsed.corpId;
-            }
+        if (typeof parsed === "object" && parsed !== null && !Array.isArray(parsed)) {
+            const config = parsed;
+            setIfMissing("WJX_API_KEY", config.apiKey);
+            setIfMissing("WJX_BASE_URL", config.baseUrl);
+            setIfMissing("WJX_CORP_ID", config.corpId);
         }
     }
     catch {
@@ -73,9 +79,7 @@ if (envPath) {
                     (value[0] === "'" && value[value.length - 1] === "'"))) {
                 value = value.slice(1, -1);
             }
-            if (!(key in process.env)) {
-                process.env[key] = value;
-            }
+            setIfMissing(key, value);
         }
     }
     catch {

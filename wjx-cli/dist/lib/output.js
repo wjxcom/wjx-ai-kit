@@ -91,17 +91,6 @@ export function enrichSurveyListOutput(data) {
                     break;
             }
         }
-        if (!fillUrl && origin && mobilePath) {
-            try {
-                const candidate = new URL(mobilePath, `${origin}/`);
-                if (candidate.origin === origin && !pathExposesVid(candidate.pathname, vid)) {
-                    fillUrl = candidate.href;
-                }
-            }
-            catch {
-                // Invalid server paths are omitted from the output.
-            }
-        }
         return [id, fillUrl ? { ...safeItem, fill_url: fillUrl } : safeItem];
     }));
     return {

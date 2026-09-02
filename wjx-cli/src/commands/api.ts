@@ -1,6 +1,13 @@
 import { Command } from "commander";
-import { callWjxApi } from "wjx-api-sdk";
-import { applyProfileCredentials, applyProfileDefaults, getCredentials, getProfileApiUrl } from "../lib/auth.js";
+import {
+  callWjxApi,
+  callWjxContactsApi,
+  callWjxSubuserApi,
+  callWjxUserSystemApi,
+  type WjxApiResponse,
+  type WjxCredentials,
+} from "wjx-api-sdk";
+import { applyProfileCredentials, applyProfileDefaults, getCredentials, getProfileApiUrl, type ApiService } from "../lib/auth.js";
 import { formatOutput } from "../lib/output.js";
 import { handleError, CliError, ensureApiSuccess } from "../lib/errors.js";
 import { findCatalogEntry } from "../catalog/catalog.js";
@@ -12,6 +19,21 @@ import { createRuntimeContext } from "../lib/runtime/context.js";
 import { ensureConfirmation } from "../lib/runtime/confirmation.js";
 import { getCommandMetadata } from "../lib/command-metadata.js";
 import { resolveProfile } from "../lib/profiles.js";
+
+async function callCatalogTransport(
+  service: ApiService,
+  params: Record<string, unknown>,
+  credentials: WjxCredentials,
+  retryBudget: number | undefined,
+): Promise<WjxApiResponse<unknown>> {
+  const requestOptions = retryBudget === undefined ? {} : { retryBudget };
+  switch (service) {
+    case "contacts": return callWjxContactsApi(params, { credentials, ...requestOptions });
+    case "subuser": return callWjxSubuserApi(params, { credentials, ...requestOptions });
+    case "user-system": return callWjxUserSystemApi(params, { credentials, ...requestOptions });
+    default: return callWjxApi(params, { credentials, ...requestOptions });
+  }
+}
 
 function parseJson(value: unknown, field: string): Record<string, unknown> {
   if (value === undefined || value === null || value === "") return {};
@@ -67,14 +89,21 @@ export function registerApiCommands(program: Command): void {
           const plan = buildRequestPlan({
             service: found.service,
             action: found.action,
-            url: getProfileApiUrl(context.profile),
+            url: getProfileApiUrl(context.profile, found.service),
             body: routedBody,
           });
           formatOutput(renderDryRun([plan]), program.opts());
           return;
         }
         const credentials = applyProfileCredentials(getCredentials(program.opts()), context.profile);
-        const result = await callWjxApi(routedBody, { credentials });
+        // Raw Catalog writes are not safe to replay after an ambiguous network
+        // failure; read actions retain the SDK's default retry policy.
+        const result = await callCatalogTransport(
+          found.service,
+          routedBody,
+          credentials,
+          found.risk === "read" ? undefined : 0,
+        );
         ensureApiSuccess(result);
         formatOutput(result, program.opts());
       } catch (error) { handleError(error); }

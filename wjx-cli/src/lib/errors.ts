@@ -88,6 +88,7 @@ function classifyError(err: unknown): CliError {
       err.message.includes("当前接口不支持创建") ||
       err.message.includes("corpid is required") ||
       err.message.includes("DSL 包含不支持的题型") ||
+      /^profile (?:name must not be blank|".*" not found)$/i.test(err.message) ||
       /Encrypted data|bad decrypt|wrong final block|unable to authenticate/i.test(err.message) ||
       err.message.startsWith("题目「")
     ) {
@@ -99,7 +100,7 @@ function classifyError(err: unknown): CliError {
     return new CliError(
       "API_ERROR",
       err.message,
-      isRetryableTransportError(err.message) ? { retryable: true } : undefined,
+      isRetryableTransportError(err) ? { retryable: true } : undefined,
     );
   }
 
@@ -107,8 +108,11 @@ function classifyError(err: unknown): CliError {
 }
 
 /** Preserve transport retry guidance for agents after the SDK exhausts retries. */
-function isRetryableTransportError(message: string): boolean {
-  return /\b(?:429|5\d{2})\b|timed out|fetch failed|network|connect|ECONN|ETIMEDOUT|EAI_AGAIN/i.test(message);
+function isRetryableTransportError(err: unknown): boolean {
+  const message = err instanceof Error ? err.message : String(err);
+  const code = err instanceof Error ? (err as Error & { code?: unknown }).code : undefined;
+  const text = [message, typeof code === "string" ? code : ""].join(" ");
+  return /\b(?:429|5\d{2})\b|timed out|fetch failed|network|connect|ECONN|ETIMEDOUT|EAI_AGAIN/i.test(text);
 }
 
 /**

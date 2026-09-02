@@ -54,6 +54,10 @@ const isHistorical = (file) => file.endsWith("/CHANGELOG.md")
   || file.startsWith("wjx-docs/legacy/");
 const activeFiles = files.filter((file) => !isHistorical(file));
 
+function readNormalized(relativePath) {
+  return readFileSync(join(ROOT, relativePath), "utf8").replace(/\r\n/g, "\n");
+}
+
 function lineHasHistoricalContext(line) {
   return /不提供|不注册|不导出|不再|已移除|已删除|旧|历史|迁移|转换|禁止|不得|不能|不要|legacy|removed|deprecated|not\s+(?:provide|register|export|create)|outside/i.test(line);
 }
@@ -77,8 +81,99 @@ for (const file of activeFiles) {
 }
 
 const combined = activeFiles.map((file) => readFileSync(join(ROOT, file), "utf8")).join("\n");
+for (const file of activeFiles) {
+  const text = readFileSync(join(ROOT, file), "utf8");
+  if (text.includes("npm install -g wjx-cli@latest")
+    && !text.includes("wjx skill install --force")) {
+    failures.push(`${file}: CLI installation guidance must install wjx-cli-use in the same command`);
+  }
+  if (text.includes("npm install -g wjx-cli@latest && wjx skill install --force")) {
+    failures.push(`${file}: AI installation guidance must use two sequential commands so Windows PowerShell 5.1 can execute it`);
+  }
+}
 for (const required of ["preview-url", "count_responses", "build_submit_template", "decode_push_payload", "decodePushPayload"]) {
   if (!combined.includes(required)) failures.push(`active documentation is missing required capability name: ${required}`);
+}
+if (!combined.includes("npm install -g wjx-cli@latest") || !combined.includes("wjx skill install --force")) {
+  failures.push("active documentation is missing the AI CLI installation and Skill setup commands");
+}
+if (!combined.includes("安装后命令名是 `wjx`")) {
+  failures.push("active documentation does not distinguish the npm package name wjx-cli from the executable wjx");
+}
+
+const installationPromptFiles = [
+  "README.md",
+  "wjx-cli/README.md",
+  "wjx-docs/start/cli.md",
+  "wjx-skills/wjx-cli-use/SKILL.md",
+  "wjx-agents/wjx-cli-expert/README.md",
+];
+const installationPromptRequirements = [
+  "请帮我安装并配置问卷星 CLI（wjx-cli）",
+  "node --version",
+  "等我把 Key 发给你",
+  "私有化部署用户",
+  "wjx doctor",
+  "wjx survey list --format table",
+  "不要在回复、日志或文件中回显完整 API Key",
+  "人工验收",
+];
+for (const file of installationPromptFiles) {
+  const text = readFileSync(join(ROOT, file), "utf8");
+  for (const required of installationPromptRequirements) {
+    if (!text.includes(required)) {
+      failures.push(`${file}: AI installation prompt is missing required step: ${required}`);
+    }
+  }
+}
+
+// These copies are consumed by different installation paths. A stale setup
+// script or agent mirror is a functional documentation bug, not just a diff
+// cleanliness issue, so compare them after normalizing EOLs.
+const mirrorPairs = [
+  ["wjx-skills/wjx-cli-use/SKILL.md", "skills/wjx-cli-use/SKILL.md"],
+  ["wjx-skills/wjx-cli-use/setup.sh", "skills/wjx-cli-use/setup.sh"],
+  ["wjx-skills/wjx-cli-use/SKILL.md", "wjx-cli/bundled/wjx-cli-use/SKILL.md"],
+  ["wjx-agents/wjx-cli-expert/wjx-cli-expert.md", ".claude/agents/wjx-cli-expert.md"],
+  ["wjx-agents/wjx-cli-expert/wjx-cli-expert.md", "wjx-cli/bundled/wjx-cli-expert.md"],
+];
+for (const [source, mirror] of mirrorPairs) {
+  if (!existsSync(join(ROOT, source)) || !existsSync(join(ROOT, mirror))) {
+    failures.push(`documentation mirror missing: ${source} -> ${mirror}`);
+  } else if (readNormalized(source) !== readNormalized(mirror)) {
+    failures.push(`documentation mirror drift: ${source} != ${mirror}`);
+  }
+}
+
+const cliSetup = readNormalized("wjx-skills/wjx-cli-use/setup.sh");
+for (const required of [
+  "npm install -g wjx-cli@latest && wjx skill install --force",
+  "wjx --version",
+  "wjx doctor",
+  "wjx survey list --format table",
+  "WJX_BASE_URL",
+  "weixinlogin.aspx?redirecturl=",
+]) {
+  if (!cliSetup.includes(required)) {
+    failures.push(`wjx-cli-use/setup.sh: installation flow is missing required behavior: ${required}`);
+  }
+}
+
+const mcpAgentReadme = readNormalized("wjx-agents/wjx-mcp-expert/README.md");
+for (const required of ["skills/wjx-mcp-use", ".claude/skills/wjx-mcp-use"]) {
+  if (!mcpAgentReadme.includes(required)) {
+    failures.push(`wjx-mcp-expert/README.md: MCP Skill installation is missing canonical destination ${required}`);
+  }
+}
+
+const localMcpAgent = ".claude/agents/wjx-survey.md";
+if (existsSync(join(ROOT, localMcpAgent))) {
+  const text = readNormalized(localMcpAgent);
+  for (const required of ["核心业务子集", "create_survey_by_json", "纯框架题型", ".claude/skills/wjx-mcp-use"]) {
+    if (!text.includes(required)) {
+      failures.push(`${localMcpAgent}: local MCP Agent copy is missing current guidance: ${required}`);
+    }
+  }
 }
 
 if (!/(?:CLI|cli)[^\r\n]{0,240}(?:ok\s*[/,]?(?:data|error)|ok\/data\/meta|envelope)/i.test(combined)) {

@@ -18,6 +18,23 @@ print_warning() { echo -e "${YELLOW}[WARNING]${NC} $1"; }
 print_error()   { echo -e "${RED}[ERROR]${NC} $1"; }
 MIN_WJX_CLI_VERSION="0.4.1"
 
+has_nonblank() {
+    [ -n "${1//[[:space:]]/}" ]
+}
+
+trim_whitespace() {
+    local value="$1"
+    value="${value#"${value%%[![:space:]]*}"}"
+    value="${value%"${value##*[![:space:]]}"}"
+    printf '%s' "$value"
+}
+
+config_has_api_key() {
+    local path="$1"
+    [ -f "$path" ] || return 1
+    node -e 'const fs = require("node:fs"); try { const value = JSON.parse(fs.readFileSync(process.argv[1], "utf8")); process.exit(value && typeof value.apiKey === "string" && value.apiKey.trim() ? 0 : 1); } catch { process.exit(1); }' "$path"
+}
+
 version_at_least() {
     node -e 'const [actual, minimum] = process.argv.slice(1); const parse = value => value.replace(/^v/, "").split(".").map(part => Number.parseInt(part, 10) || 0); const a = parse(actual); const b = parse(minimum); process.exit(a[0] > b[0] || (a[0] === b[0] && (a[1] > b[1] || (a[1] === b[1] && a[2] >= b[2]))) ? 0 : 1);' "$1" "$2"
 }
@@ -95,10 +112,15 @@ install_renderer() {
 
 check_wjx_cli() {
     if command -v wjx &>/dev/null; then
-        WJX_VER=$(wjx --version 2>/dev/null || echo "unknown")
-        if ! version_at_least "$WJX_VER" "$MIN_WJX_CLI_VERSION"; then
+        if ! WJX_VER="$(wjx --version 2>/dev/null)"; then
+            print_error "无法执行 wjx --version"
+            return 1
+        fi
+        WJX_VER="$(printf '%s' "$WJX_VER" | awk 'NR == 1 { print; exit }')"
+        if ! has_nonblank "$WJX_VER" || ! version_at_least "$WJX_VER" "$MIN_WJX_CLI_VERSION"; then
             print_error "wjx-cli 版本过低: $WJX_VER（需要 ${MIN_WJX_CLI_VERSION}+）"
-            echo "当前 ${MIN_WJX_CLI_VERSION} 尚未发布到 npm；请从源码构建并链接 wjx-cli。"
+            echo "请先升级到已发布的 wjx-cli ${MIN_WJX_CLI_VERSION}+："
+            echo "  npm install -g wjx-cli@latest && wjx skill install --force"
             echo "  git clone https://github.com/wjxcom/wjx-ai-kit.git"
             echo "  cd wjx-ai-kit && npm install"
             echo "  npm run build --workspace=wjx-api-sdk"
@@ -107,16 +129,22 @@ check_wjx_cli() {
             return 1
         fi
         print_success "wjx-cli $WJX_VER"
-        if [ -f "$HOME/.wjxrc" ]; then
-            print_success "~/.wjxrc 已配置"
+        local config_path
+        config_path="$(trim_whitespace "${WJX_CONFIG_PATH:-$HOME/.wjxrc}")"
+        if has_nonblank "${WJX_API_KEY:-}"; then
+            print_success "WJX_API_KEY 环境变量已配置"
+        elif config_has_api_key "$config_path"; then
+            print_success "$config_path 含有效 API Key"
         else
-            print_warning "~/.wjxrc 未配置（运行 wjx init 配置 API Key）"
+            print_error "$config_path 未配置（运行 wjx init 配置 API Key）"
+            return 1
         fi
         return 0
     fi
     print_warning "未检测到 wjx-cli"
     echo "  本 skill 需配合 wjx-cli 使用，请先安装："
-    echo "    wjx-cli >= ${MIN_WJX_CLI_VERSION}（${MIN_WJX_CLI_VERSION} 发布前请从源码构建）"
+    echo "    wjx-cli >= ${MIN_WJX_CLI_VERSION}（已发布到 npm）"
+    echo "    npm install -g wjx-cli@latest && wjx skill install --force"
     echo "  详见 wjx-cli-use skill。"
     return 1
 }
@@ -204,7 +232,7 @@ verify_only() {
 
     detect_python || exit 1
     verify_renderer || exit 1
-    check_wjx_cli
+    check_wjx_cli || exit 1
     echo ""
     print_success "验证完成"
 }
@@ -238,7 +266,7 @@ main() {
     install_renderer || exit 1
     verify_renderer || exit 1
     install_jieba          # best-effort，失败不阻塞
-    check_wjx_cli || true   # 不强制阻塞
+    check_wjx_cli || exit 1
 
     echo ""
     echo "============================================"

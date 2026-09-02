@@ -73,6 +73,48 @@ function readLatestVersion(): string {
   return candidate.trim();
 }
 
+function readInstalledVersion(global: boolean): string {
+  let raw: string;
+  try {
+    raw = String(runNpm(
+      global
+        ? ["list", "wjx-cli", "--global", "--depth=0", "--json"]
+        : ["list", "wjx-cli", "--depth=0", "--json"],
+      { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] },
+    )).trim();
+  } catch (error) {
+    const detail = error instanceof Error ? error.message : String(error);
+    throw new CliError("API_ERROR", `无法验证 wjx-cli 实际安装版本: ${detail}`);
+  }
+
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw) as unknown;
+  } catch {
+    throw new CliError("API_ERROR", `无法验证 wjx-cli 实际安装版本: npm list 返回了无效 JSON`);
+  }
+  const dependencies = parsed && typeof parsed === "object" && !Array.isArray(parsed)
+    ? (parsed as { dependencies?: unknown }).dependencies
+    : undefined;
+  const dependency = dependencies && typeof dependencies === "object" && !Array.isArray(dependencies)
+    ? (dependencies as Record<string, unknown>)["wjx-cli"]
+    : undefined;
+  const candidate = dependency && typeof dependency === "object" && !Array.isArray(dependency)
+    ? (dependency as { version?: unknown }).version
+    : parsed && typeof parsed === "object" && !Array.isArray(parsed)
+      ? (parsed as { version?: unknown }).version
+      : undefined;
+  if (typeof candidate !== "string") {
+    throw new CliError("API_ERROR", "无法验证 wjx-cli 实际安装版本: npm list 未返回 wjx-cli.version");
+  }
+  try {
+    parseVersion(candidate);
+  } catch {
+    throw new CliError("API_ERROR", `无法验证 wjx-cli 实际安装版本: ${candidate}`);
+  }
+  return candidate.trim();
+}
+
 function installLatest(global: boolean): void {
   runNpm(global
     ? ["install", "wjx-cli@latest", "--global"]
@@ -103,19 +145,30 @@ export function registerUpdateCommands(program: Command): void {
         }
 
         let globalError: string | undefined;
+        let installedVersion: string;
         try {
           installLatest(true);
+          installedVersion = readInstalledVersion(true);
         } catch (e) {
           globalError = e instanceof Error ? e.message : String(e);
           try {
             installLatest(false);
+            installedVersion = readInstalledVersion(false);
           } catch (err) {
             const msg = `更新失败: ${err instanceof Error ? err.message : String(err)}`;
             throw new CliError("API_ERROR", msg, globalError ? { globalError } : undefined);
           }
         }
 
-        const newVersion = latestVersion;
+        if (compareVersions(installedVersion, latestVersion) < 0) {
+          throw new CliError(
+            "API_ERROR",
+            `更新失败: registry 要求 v${latestVersion}，但实际安装版本为 v${installedVersion}`,
+            { installed_version: installedVersion, latest_version: latestVersion },
+          );
+        }
+
+        const newVersion = installedVersion;
         if (!silent) {
           stderr.write(`当前版本: v${oldVersion}\n`);
           stderr.write("正在更新 wjx-cli...\n");

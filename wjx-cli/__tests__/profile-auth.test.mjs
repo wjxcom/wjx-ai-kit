@@ -5,6 +5,7 @@ import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { randomUUID } from "node:crypto";
 import { startFixture } from "./fixtures/http-fixture.mjs";
 
 const execFileAsync = promisify(execFile);
@@ -69,6 +70,64 @@ test("profile persistence is atomic and user-readable only", () => {
   }
 });
 
+test("config persistence follows WJX_CONFIG_PATH changes after module load", async () => {
+  const firstPath = join(process.cwd(), `__config-path-first-${randomUUID()}.json`);
+  const secondPath = join(process.cwd(), `__config-path-second-${randomUUID()}.json`);
+  const previousPath = process.env.WJX_CONFIG_PATH;
+  const config = await import(`../dist/lib/config.js?config-path-${randomUUID()}`);
+  try {
+    process.env.WJX_CONFIG_PATH = firstPath;
+    config.saveConfig({ apiKey: "first-key" });
+    assert.equal(JSON.parse(readFileSync(firstPath, "utf8")).apiKey, "first-key");
+
+    process.env.WJX_CONFIG_PATH = secondPath;
+    config.saveConfig({ apiKey: "second-key" });
+    assert.equal(JSON.parse(readFileSync(secondPath, "utf8")).apiKey, "second-key");
+    assert.equal(config.loadConfig().apiKey, "second-key");
+  } finally {
+    if (previousPath === undefined) delete process.env.WJX_CONFIG_PATH;
+    else process.env.WJX_CONFIG_PATH = previousPath;
+    rmSync(firstPath, { force: true });
+    rmSync(secondPath, { force: true });
+  }
+});
+
+test("loadConfig rejects blank credentials and trims optional routing fields", async () => {
+  const configPath = join(process.cwd(), `__config-validation-${randomUUID()}.json`);
+  const config = await import(`../dist/lib/config.js?config-validation-${randomUUID()}`);
+  try {
+    writeFileSync(configPath, JSON.stringify({ apiKey: "   ", baseUrl: "https://invalid.example" }), "utf8");
+    assert.equal(config.loadConfig({ WJX_CONFIG_PATH: configPath }), null);
+
+    writeFileSync(configPath, JSON.stringify({ apiKey: " key ", baseUrl: " https://tenant.example/ ", corpId: " corp " }), "utf8");
+    assert.deepEqual(config.loadConfig({ WJX_CONFIG_PATH: configPath }), {
+      apiKey: "key",
+      baseUrl: "https://tenant.example/",
+      corpId: "corp",
+    });
+  } finally {
+    rmSync(configPath, { force: true });
+  }
+});
+
+test("resolveProfile honors the supplied environment for legacy .wjxrc routing", () => {
+  const configPath = join(process.cwd(), `__profile-config-${randomUUID()}.json`);
+  writeFileSync(configPath, JSON.stringify({
+    apiKey: "legacy-key",
+    baseUrl: "https://tenant-from-config.example",
+    corpId: "config-corp",
+  }), "utf8");
+  try {
+    const resolved = resolveProfile({
+      env: { WJX_CONFIG_PATH: configPath },
+    });
+    assert.equal(resolved.baseUrl, "https://tenant-from-config.example");
+    assert.equal(resolved.corpId, "config-corp");
+  } finally {
+    rmSync(configPath, { force: true });
+  }
+});
+
 test("credential provider is injectable and the default provider never exposes a raw profile secret", () => {
   const previous = getCredentialProvider();
   try {
@@ -83,6 +142,14 @@ test("credential provider is injectable and the default provider never exposes a
   } finally {
     setCredentialProvider(previous);
   }
+});
+
+test("credentialRef profiles never fall back to the global API key", () => {
+  const provider = new EnvCredentialProvider({ WJX_API_KEY: "global-key" });
+  assert.throws(
+    () => provider.get({ name: "tenant-a", credentialRef: "TENANT_A" }, "user"),
+    /credentialRef|WJX_CREDENTIAL_TENANT_A|未设置/,
+  );
 });
 
 test("selected profile supplies credentials to requests and diagnostics are masked", async () => {
@@ -185,6 +252,102 @@ test("explicit profile routing wins over legacy config defaults", async () => {
     assert.equal(profileFixture.requests()[0].headers.authorization, "Bearer profile-key");
   } finally {
     await Promise.all([configFixture.close(), profileFixture.close()]);
+  }
+});
+
+test("named profiles do not inherit the legacy config API key", async () => {
+  const legacyFixture = await startFixture({ env: { WJX_API_KEY: "" } });
+  const profileFixture = await startFixture({ env: { WJX_API_KEY: "" } });
+  const profilesPath = join(legacyFixture.tempDir, "profiles.json");
+  const configPath = join(legacyFixture.tempDir, ".wjxrc");
+  writeFileSync(configPath, JSON.stringify({
+    apiKey: "legacy-config-key",
+    baseUrl: legacyFixture.baseUrl,
+  }), "utf8");
+  writeFileSync(profilesPath, JSON.stringify({
+    version: 1,
+    profiles: {
+      alt: { baseUrl: profileFixture.baseUrl },
+    },
+  }), "utf8");
+
+  try {
+    const result = await legacyFixture.run(["--profile", "alt", "survey", "list"], {
+      env: {
+        WJX_CONFIG_PATH: configPath,
+        WJX_PROFILES_PATH: profilesPath,
+        WJX_API_KEY: "",
+        WJX_API_URL: "",
+        WJX_BASE_URL: "",
+      },
+    });
+    assert.equal(result.exitCode, 1);
+    const problem = JSON.parse(result.stderr);
+    assert.equal(problem.ok, false);
+    assert.equal(problem.error.code, "AUTH_ERROR");
+    assert.equal(legacyFixture.requests().length, 0);
+    assert.equal(profileFixture.requests().length, 0);
+  } finally {
+    await Promise.all([legacyFixture.close(), profileFixture.close()]);
+  }
+});
+
+test("doctor uses the selected profile credentials instead of legacy config", async () => {
+  const configFixture = await startFixture({ env: { WJX_API_KEY: "" } });
+  const profileFixture = await startFixture({ env: { WJX_API_KEY: "" } });
+  const profilesPath = join(configFixture.tempDir, "profiles.json");
+  const configPath = join(configFixture.tempDir, ".wjxrc");
+  writeFileSync(configPath, JSON.stringify({
+    apiKey: "legacy-config-key",
+    baseUrl: configFixture.baseUrl,
+    corpId: "legacy-corp",
+  }), "utf8");
+  writeFileSync(profilesPath, JSON.stringify({
+    version: 1,
+    profiles: {
+      alt: { baseUrl: profileFixture.baseUrl, corpId: "alt-corp", credentialRef: "ALT" },
+    },
+  }), "utf8");
+
+  try {
+    const result = await configFixture.run(["--profile", "alt", "doctor"], {
+      env: {
+        WJX_CONFIG_PATH: configPath,
+        WJX_PROFILES_PATH: profilesPath,
+        WJX_CREDENTIAL_ALT: "profile-secret-key",
+        WJX_API_KEY: "",
+        WJX_API_URL: "",
+        WJX_BASE_URL: "",
+      },
+    });
+    assert.equal(result.exitCode, 0);
+    assert.equal(configFixture.requests().length, 0);
+    assert.equal(profileFixture.requests().length, 1);
+    assert.equal(profileFixture.requests()[0].headers.authorization, "Bearer profile-secret-key");
+    assert.match(result.stdout, /alt-corp/);
+    assert.doesNotMatch(`${result.stdout}\n${result.stderr}`, /legacy-config-key|profile-secret-key/);
+  } finally {
+    await Promise.all([configFixture.close(), profileFixture.close()]);
+  }
+});
+
+test("explicitly selecting an unknown or blank profile fails before transport", () => {
+  const profilesPath = join(process.cwd(), `__profile-selection-${randomUUID()}.json`);
+  writeFileSync(profilesPath, JSON.stringify({
+    version: 1,
+    profiles: { default: {} },
+  }), "utf8");
+  try {
+    assert.throws(
+      () => resolveProfile({ profile: "missing", profilesPath, env: {} }),
+      /profile "missing" not found/,
+    );
+    assert.throws(
+      () => resolveProfile({ profile: "   ", profilesPath, env: {} }),
+      /profile name must not be blank/,
+    );
+  } finally {
+    rmSync(profilesPath, { force: true });
   }
 });
 
