@@ -23,6 +23,6 @@
     "documentation:check": "node scripts/check-documentation-contract.mjs"
   },
   "devDependencies": {
-    "marked": "^18.0.2"
+    "marked": "^18.0.11"
   }
 }
