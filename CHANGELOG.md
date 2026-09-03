@@ -10,6 +10,19 @@
 
 ---
 
+## [0.4.2] - 2026-09-02
+
+### Security
+
+- 升级 MCP 运行时依赖链中的 Hono、Express、`qs`、`fast-uri`、`ip-address` 等 12 个包，解决 Dependabot/npm audit 报告的漏洞路径。
+
+### Infrastructure
+
+- 三个工作区包统一使用 `0.4.2`，继续按 SDK → MCP Server → CLI 顺序发布。
+- CI 增加完整 `npm audit` 门禁，并启用每周 Dependabot 扫描。
+
+---
+
 ## [0.4.1] - 2026-09-02
 
 ### 已发布

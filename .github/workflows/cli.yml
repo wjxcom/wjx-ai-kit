@@ -13,6 +13,7 @@ jobs:
       - uses: actions/setup-node@v4
         with: { node-version: ${{ matrix.node-version }}, cache: npm }
       - run: npm ci
+      - run: npm audit --audit-level=low
       - run: npm --workspace=wjx-api-sdk run build
       - run: npm --workspace=wjx-mcp-server run build
       - run: npm --workspace=wjx-cli run build

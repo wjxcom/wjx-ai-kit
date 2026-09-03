@@ -4,7 +4,7 @@
 
 ## CLI 配置
 
-CLI `0.4.1` 已发布到 npm，直接安装并配置：
+CLI `0.4.2` 已发布到 npm，直接安装并配置：
 
 ```bash
 npm install -g wjx-cli@latest
@@ -17,7 +17,7 @@ npm 包名是 `wjx-cli`，安装后的命令名是 `wjx`；请用 `wjx --version
 
 ## MCP 配置形状
 
-MCP 客户端配置通常包含以下结构。`wjx-mcp-server@0.4.1` 已发布到 npm；直接安装包或使用源码构建后的入口均可。
+MCP 客户端配置通常包含以下结构。`wjx-mcp-server@0.4.2` 已发布到 npm；直接安装包或使用源码构建后的入口均可。
 
 ```json
 {

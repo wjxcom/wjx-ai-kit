@@ -5,7 +5,7 @@
 wjx-cli 是 `wjx-ai-kit` monorepo 的第三个包，与 `wjx-api-sdk`、`wjx-mcp-server` 并列。
 monorepo 根目录：`wjx-ai-kit/`，使用 npm workspaces。
 
-当前稳定版本以各自 `package.json` 为准：SDK 0.4.1、MCP Server 0.4.1、CLI 0.4.1；均已发布到 npm，发布顺序为 SDK → MCP Server → CLI。
+当前稳定版本以各自 `package.json` 为准：SDK 0.4.2、MCP Server 0.4.2、CLI 0.4.2；均已发布到 npm，发布顺序为 SDK → MCP Server → CLI。
 测试数量会随功能变化，使用各 workspace 的 `npm test` 获取实时结果。
 
 ## 关键文件
@@ -20,7 +20,7 @@ monorepo 根目录：`wjx-ai-kit/`，使用 npm workspaces。
 
 - Node.js >= 20, TypeScript, ESM (`"type": "module"`)
 - Commander.js（CLI 框架）
-- wjx-api-sdk（发布依赖固定为 `"wjx-api-sdk": "^0.4.1"`；monorepo 开发时由 workspace 解析）
+- wjx-api-sdk（发布依赖固定为 `"wjx-api-sdk": "^0.4.2"`；monorepo 开发时由 workspace 解析）
 - 认证：`~/.wjxrc` 配置文件（`wjx init`）/ `WJX_API_KEY` 环境变量 / `--api-key` 参数
 
 ## SDK 函数签名模式

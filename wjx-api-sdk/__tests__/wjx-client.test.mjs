@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
+import { createRequire } from "node:module";
 import {
   createSurveyByJson,
   getSurvey,
@@ -11,6 +12,8 @@ import {
   callWjxApi,
 } from "../dist/index.js";
 
+const require = createRequire(import.meta.url);
+const { version: SDK_VERSION } = require("../package.json");
 const credentials = { apiKey: "test-token" };
 
 function mockFetch(responseBody, status = 200) {
@@ -94,7 +97,7 @@ describe("createSurveyByJson", () => {
     await createSurveyByJson({ jsonl }, credentials, fetch);
 
     assert.equal(fetch.captured().init.headers["X-WJX-Client"], "wjx-api-sdk");
-    assert.equal(fetch.captured().init.headers["X-WJX-Client-Version"], "0.4.1");
+    assert.equal(fetch.captured().init.headers["X-WJX-Client-Version"], SDK_VERSION);
   });
 
   it("honors a caller timeout override", async () => {

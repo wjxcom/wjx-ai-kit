@@ -4,6 +4,10 @@
 
 > 说明：以下 0.x 条目保留为历史记录。条目中出现的 `createSurvey`、`createSurveyByText`、`textToSurvey` 创建相关能力已移除，不属于当前 SDK，也不得据此恢复或新增兼容入口。当前问卷创建唯一使用 `createSurveyByJson`。
 
+## [0.4.2] - 2026-09-02
+
+- 与 `wjx-mcp-server@0.4.2`、`wjx-cli@0.4.2` 对齐发布版本；本次安全修复集中在 monorepo 的 MCP 传递依赖锁定。
+
 ## [0.4.1] - 2026-09-02
 
 - `wjx-api-sdk@0.4.1` 已发布到 npm；`0.4.0` 已废弃。

@@ -1,5 +1,10 @@
 # 变更记录
 
+## 0.4.2（2026-09-02）
+
+- `wjx-api-sdk`、`wjx-mcp-server`、`wjx-cli` 统一升级至 `0.4.2`，继续按 SDK → MCP Server → CLI 顺序发布。
+- 修复 MCP 运行时传递依赖中的已知安全漏洞，并在 CI 中加入 `npm audit` 门禁与每周 Dependabot 扫描。
+
 ## 0.4.1（2026-09-02）
 
 - `wjx-api-sdk`、`wjx-mcp-server`、`wjx-cli` 的稳定版本统一为 `0.4.1`，发布顺序为 SDK → MCP Server → CLI。

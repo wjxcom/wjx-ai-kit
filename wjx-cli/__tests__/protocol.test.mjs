@@ -1,12 +1,15 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { execFile } from "node:child_process";
+import { createRequire } from "node:module";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { startFixture } from "./fixtures/http-fixture.mjs";
 import { handleError, CliErrorHandled } from "../dist/lib/errors.js";
 
 const ROOT = fileURLToPath(new URL("..", import.meta.url));
+const require = createRequire(import.meta.url);
+const { version: CLI_VERSION } = require("../package.json");
 const CLI = resolve(ROOT, "dist", "index.js");
 
 function run(args) {
@@ -101,7 +104,7 @@ test("survey create reports a structured upgrade requirement from the backend", 
     assert.match(problem.error.hint, /npm install -g wjx-cli@latest/);
     const request = fixture.requests()[0];
     assert.equal(request.headers["x-wjx-client"], "wjx-cli");
-    assert.equal(request.headers["x-wjx-client-version"], "0.4.1");
+    assert.equal(request.headers["x-wjx-client-version"], CLI_VERSION);
   } finally {
     await fixture.close();
   }

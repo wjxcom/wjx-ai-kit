@@ -1,6 +1,7 @@
 import { describe, test } from "node:test";
 import assert from "node:assert/strict";
 import { execFile } from "node:child_process";
+import { createRequire } from "node:module";
 import { createCipheriv, createHash } from "node:crypto";
 import { access, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
@@ -12,6 +13,8 @@ import { compareVersions, shouldUpdate } from "../dist/commands/update.js";
 import { startFixture } from "./fixtures/http-fixture.mjs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
+const require = createRequire(import.meta.url);
+const { version: CLI_VERSION } = require("../package.json");
 const CLI = resolve(__dirname, "..", "dist", "index.js");
 const SOURCE_INDEX = resolve(__dirname, "..", "src", "index.ts");
 const SOURCE_CLI = resolve(__dirname, "..", "src", "cli.ts");
@@ -791,8 +794,8 @@ describe("complete CLI command contract matrix", () => {
   });
 
   test("update refuses to install when registry latest is older than the local version", async () => {
-    assert.equal(compareVersions("0.4.1", "0.3.5"), 1);
-    assert.equal(shouldUpdate("0.4.1", "0.3.5"), false);
+    assert.equal(compareVersions(CLI_VERSION, "0.3.5"), 1);
+    assert.equal(shouldUpdate(CLI_VERSION, "0.3.5"), false);
 
     const bin = await mkdtemp(resolve(process.env.TEMP ?? ".", "wjx-update-guard-bin-"));
     const marker = resolve(bin, "install-called");
@@ -803,7 +806,7 @@ describe("complete CLI command contract matrix", () => {
       const envelope = JSON.parse(result.stdout);
       assert.equal(envelope.ok, true);
       assert.equal(envelope.data.status, "up-to-date");
-      assert.equal(envelope.data.oldVersion, "0.4.1");
+      assert.equal(envelope.data.oldVersion, CLI_VERSION);
       assert.equal(envelope.data.latestVersion, "0.3.5");
       await assert.rejects(access(marker));
     } finally {
@@ -814,7 +817,7 @@ describe("complete CLI command contract matrix", () => {
   test("update fails closed when npm reports an older installed version after a successful install", async () => {
     const bin = await mkdtemp(resolve(process.env.TEMP ?? ".", "wjx-update-verify-bin-"));
     try {
-      await writeFile(resolve(bin, "npm.cmd"), `@echo off\r\nif "%~1"=="view" (echo "0.4.2" & exit /b 0)\r\nif "%~1"=="install" (exit /b 0)\r\nif "%~1"=="list" (echo {"name":"wjx-cli","version":"0.4.1"} & exit /b 0)\r\nexit /b 1\r\n`, "utf8");
+      await writeFile(resolve(bin, "npm.cmd"), `@echo off\r\nif "%~1"=="view" (echo "0.4.3" & exit /b 0)\r\nif "%~1"=="install" (exit /b 0)\r\nif "%~1"=="list" (echo {"name":"wjx-cli","version":"0.4.1"} & exit /b 0)\r\nexit /b 1\r\n`, "utf8");
       const result = await runCli(["update", "--silent"], { env: { PATH: `${bin};${process.env.PATH ?? ""}` } });
       assert.equal(result.exitCode, 1, result.stdout);
       assert.equal(result.stdout.trim(), "");

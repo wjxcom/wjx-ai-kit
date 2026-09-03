@@ -11,7 +11,7 @@
 
 ## 安装与配置
 
-当前稳定版本为 `0.4.1`，已发布到 npm，registry 的 `latest` 指向 `0.4.1`。直接安装：
+当前稳定版本为 `0.4.2`，已发布到 npm，registry 的 `latest` 指向 `0.4.2`。直接安装：
 
 > 通过 AI 安装并启用 wjx-cli：先执行 `npm install -g wjx-cli@latest`，成功后再执行 `wjx skill install --force`；安装后命令名是 `wjx`，请用 `wjx --version` 验证，不要运行 `wjx-cli --version`。
 
