@@ -13,6 +13,10 @@ wjx-mcp-server 提供 MCP 工具、参考资源和 prompt 模板，覆盖问卷�
 
 当前 MCP Server 只注册 `create_survey_by_json` 作为问卷创建工具。`create_survey_by_text` 与 `create_survey` 已移除；历史 DSL/JSON 必须在 MCP 外部转换为 JSONL。所有当前可创建题型、投票、考试、表单都走 `create_survey_by_json`；JSONL 不承诺覆盖读取接口的全部数字 `q_type/q_subtype` 编码。
 
+### AI 主页
+
+AI 主页工具对应 OpenAPI `A1000107`/`A1000108`：使用 `create_ai_page` 创建 HTML 主页，使用 `update_ai_page` 更新主页。创建必须提供 `html_content` 或 `html`；更新必须提供传统数字 `vid`，不接受 `sid`；HTML 最长 200000 字符。详细参数见 [references/tools-survey.md](references/tools-survey.md)。
+
 ### 规则 1：一个需求 = 一个问卷
 
 无论用户要求多少种题型，**必须在一次 `create_survey_by_json` 调用中包含所有题目**。一个问卷可包含任意数量、任意类型的题目。

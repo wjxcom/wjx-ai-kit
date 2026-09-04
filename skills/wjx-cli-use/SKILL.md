@@ -1,6 +1,14 @@
 ---
 name: wjx-cli-use
+display_name: 问卷星cli
+display_name_en: wjx-cli-use
+displayName: 问卷星cli
+name_en: wjx-cli-use
 description: "Guide for using wjx-cli (Wenjuanxing CLI) to create surveys, query responses, and analyze data. Use when the user mentions: 问卷, 调查, 收集, 表单, 投票, 考试, 测评, 满意度, NPS, 问卷星, wjx, survey, questionnaire, or wants to create surveys, view responses, export data, analyze NPS/CSAT, or manage contacts, departments, and sub-accounts."
+description_zh: "使用 wjx-cli(问卷星命令行工具)创建问卷、查询问卷回复及分析数据的指南。当用户提到以下内容时使用:问卷、调查、收集、表单、投票、考试、测评、满意度、NPS、问卷星，或想要创建问卷、查看回复、导出数据、分析 NPS/CSAT,或管理联系人、部门和子账号。"
+description_en: "Guide for using wjx-cli (Wenjuanxing CLI) to create surveys, query responses, and analyze data. Use when the user mentions: 问卷, 调查, 收集, 表单, 投票, 考试, 测评, 满意度, NPS, 问卷星, wjx, survey, questionnaire, or wants to create surveys, view responses, export data, analyze NPS/CSAT, or manage contacts, departments, and sub-accounts."
+version: 0.4.2
+author: 问卷星
 ---
 
 # wjx-cli 使用指南
@@ -47,6 +55,14 @@ wjx-cli 是问卷星 OpenAPI 的命令行工具。命令格式：`wjx <模块> <
 先运行 `wjx survey jsonl-template --type <问卷类型> --raw` 获取当前 CLI 可接受的骨架，再编辑 JSONL。每个非空行必须是一个完整 JSON 对象；首行必须是 `{"qtype":"问卷基础信息","title":"...","atype":1}`，后续题目使用中文字符串字段 `qtype` 以及 `title`、`select`、`rowtitle` 等字段。
 
 不要把旧接口的 `_meta`、`q_type`、`q_subtype`、`q_title`、`items` 结构传给 `create`；CLI 会将其判为输入错误。
+
+### AI 主页
+
+AI 主页使用 HTML 创建或更新：
+
+- `wjx survey create-ai-page` 调用 OpenAPI `A1000107` 创建 AI 主页，必须提供 `--html_content` 或 `--file`，需要立即发布时使用 `--publish`。
+- `wjx survey update-ai-page` 调用 OpenAPI `A1000108` 更新 AI 主页，必须提供传统数字 `--vid` 和 HTML，不接受 `sid`。
+- HTML 最长 200000 字符，`--page_type` 可为 `0`（网页）、`1`（海报）或 `2`（PPT）。更新已发布主页前，按服务端要求先暂停发布状态。
 
 ### 规则 1：一个需求 = 一个问卷
 

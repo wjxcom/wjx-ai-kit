@@ -56,6 +56,14 @@ wjx-cli 是问卷星 OpenAPI 的命令行工具。命令格式：`wjx <模块> <
 
 不要把旧接口的 `_meta`、`q_type`、`q_subtype`、`q_title`、`items` 结构传给 `create`；CLI 会将其判为输入错误。
 
+### AI 主页
+
+AI 主页使用 HTML 创建或更新：
+
+- `wjx survey create-ai-page` 调用 OpenAPI `A1000107` 创建 AI 主页，必须提供 `--html_content` 或 `--file`，需要立即发布时使用 `--publish`。
+- `wjx survey update-ai-page` 调用 OpenAPI `A1000108` 更新 AI 主页，必须提供传统数字 `--vid` 和 HTML，不接受 `sid`。
+- HTML 最长 200000 字符，`--page_type` 可为 `0`（网页）、`1`（海报）或 `2`（PPT）。更新已发布主页前，按服务端要求先暂停发布状态。
+
 ### 规则 1：一个需求 = 一个问卷
 
 无论用户要求多少种题型，**必须在一次 `create` 调用中包含所有题目**。一个问卷可包含任意数量、任意类型的题目。
