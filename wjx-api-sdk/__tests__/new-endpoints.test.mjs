@@ -14,6 +14,8 @@ import {
   getFileLinks,
   createAiPage,
   updateAiPage,
+  AI_PAGE_MAX_HTML_LENGTH,
+  AI_PAGE_PAGE_TYPES,
   getWjxApiUrl,
   Action,
 } from "../dist/index.js";
@@ -548,6 +550,10 @@ test("Action constants for new endpoints", () => {
 });
 
 test("AI homepage endpoints map fields and validate inputs", async (t) => {
+  await t.test("exports shared limits and page types", () => {
+    assert.equal(AI_PAGE_MAX_HTML_LENGTH, 200000);
+    assert.deepEqual(AI_PAGE_PAGE_TYPES, [0, 1, 2]);
+  });
   await t.test("createAiPage sends action 1000107", async () => {
     const mock = mockFetch({ result: true, data: { vid: 207600 } });
     await createAiPage({ html_content: "<h1>Homepage</h1>", title: "Homepage", page_type: 1, publish: true }, credentials, mock.impl);
@@ -558,6 +564,16 @@ test("AI homepage endpoints map fields and validate inputs", async (t) => {
     assert.equal(body.publish, true);
     assert.match(mock.getUrl(), /action=1000107/);
   });
+  await t.test("rejects blank HTML and invalid create options", async () => {
+    await assert.rejects(
+      () => createAiPage({ html_content: " \n\t" }, credentials, mockFetch({ result: true, data: {} }).impl),
+      /html_content is required/,
+    );
+    await assert.rejects(
+      () => createAiPage({ html_content: "<p>x</p>", publish: "true" }, credentials, mockFetch({ result: true, data: {} }).impl),
+      /publish must be a boolean/,
+    );
+  });
   await t.test("updateAiPage accepts only traditional numeric vid", async () => {
     const mock = mockFetch({ result: true, data: {} });
     await updateAiPage({ vid: "207600", html_content: "<p>Updated</p>" }, credentials, mock.impl);
@@ -565,5 +581,6 @@ test("AI homepage endpoints map fields and validate inputs", async (t) => {
     assert.equal(body.action, Action.UPDATE_AI_PAGE);
     assert.equal(body.vid, "207600");
     await assert.rejects(() => updateAiPage({ vid: "sid-value", html_content: "<p>x</p>" }, credentials, mock.impl), /traditional numeric vid/);
+    await assert.rejects(() => updateAiPage({ vid: "000", html_content: "<p>x</p>" }, credentials, mock.impl), /traditional numeric vid/);
   });
 });

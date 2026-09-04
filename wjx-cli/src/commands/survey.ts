@@ -4,6 +4,8 @@ import {
   createSurveyByJson,
   createAiPage,
   updateAiPage,
+  AI_PAGE_MAX_HTML_LENGTH,
+  AI_PAGE_PAGE_TYPES,
   CREATABLE_SURVEY_ATYPES,
   getSurvey,
   listSurveys,
@@ -33,8 +35,8 @@ import { buildRequestPlan } from "../lib/runtime/request-plan.js";
 import { CLI_CLIENT_NAME, CLI_CLIENT_VERSION } from "../lib/client-info.js";
 
 function resolveAiPageHtml(values: Record<string, unknown>): string {
-  if (typeof values.html_content === "string" && values.html_content.length > 0) return values.html_content;
-  if (typeof values.html === "string" && values.html.length > 0) return values.html;
+  if (typeof values.html_content === "string" && values.html_content.trim().length > 0) return values.html_content;
+  if (typeof values.html === "string" && values.html.trim().length > 0) return values.html;
   if (typeof values.file === "string" && values.file.length > 0) {
     try { return readFileSync(values.file, "utf8"); }
     catch { throw new CliError("INPUT_ERROR", `无法读取 AI 主页 HTML 文件: ${values.file}`); }
@@ -207,12 +209,12 @@ export function registerSurveyCommands(program: Command): void {
       await executeRuntimeCommand(program, cmd, {
         normalize: ({ values }) => {
           const html = resolveAiPageHtml(values);
-          if (values.page_type !== undefined) requireEnum(values, "page_type", [0, 1, 2]);
+          if (values.page_type !== undefined) requireEnum(values, "page_type", AI_PAGE_PAGE_TYPES);
           return { html_content: html, title: values.title, page_type: values.page_type, publish: values.publish, creater: values.creater };
         },
         validate: (input) => {
-          if (typeof input.html_content !== "string" || input.html_content.length === 0) throw new CliError("INPUT_ERROR", "必须提供 --html_content 或 --file 参数");
-          if (input.html_content.length > 200000) throw new CliError("INPUT_ERROR", "AI 主页 HTML 不能超过 200000 个字符");
+          if (typeof input.html_content !== "string" || input.html_content.trim().length === 0) throw new CliError("INPUT_ERROR", "必须提供 --html_content 或 --file 参数");
+          if (input.html_content.length > AI_PAGE_MAX_HTML_LENGTH) throw new CliError("INPUT_ERROR", `AI 主页 HTML 不能超过 ${AI_PAGE_MAX_HTML_LENGTH} 个字符`);
         },
         buildPlans: (input, context) => [buildRequestPlan({
           service: "default", action: Action.CREATE_AI_PAGE, url: context?.apiUrl,
@@ -236,13 +238,13 @@ export function registerSurveyCommands(program: Command): void {
         normalize: ({ values }) => {
           requireField(values, "vid");
           const html = resolveAiPageHtml(values);
-          if (values.page_type !== undefined) requireEnum(values, "page_type", [0, 1, 2]);
+          if (values.page_type !== undefined) requireEnum(values, "page_type", AI_PAGE_PAGE_TYPES);
           return { vid: values.vid, html_content: html, title: values.title, page_type: values.page_type };
         },
         validate: (input) => {
           if (!/^[0-9]+$/.test(String(input.vid)) || Number(input.vid) <= 0) throw new CliError("INPUT_ERROR", "--vid 必须是正整数传统问卷编号，不能使用 sid");
-          if (typeof input.html_content !== "string" || input.html_content.length === 0) throw new CliError("INPUT_ERROR", "必须提供 --html_content 或 --file 参数");
-          if (input.html_content.length > 200000) throw new CliError("INPUT_ERROR", "AI 主页 HTML 不能超过 200000 个字符");
+          if (typeof input.html_content !== "string" || input.html_content.trim().length === 0) throw new CliError("INPUT_ERROR", "必须提供 --html_content 或 --file 参数");
+          if (input.html_content.length > AI_PAGE_MAX_HTML_LENGTH) throw new CliError("INPUT_ERROR", `AI 主页 HTML 不能超过 ${AI_PAGE_MAX_HTML_LENGTH} 个字符`);
         },
         buildPlans: (input, context) => [buildRequestPlan({
           service: "default", action: Action.UPDATE_AI_PAGE, url: context?.apiUrl,

@@ -98,6 +98,12 @@ export type {
 
 // AI homepage module
 export { createAiPage, updateAiPage } from "./modules/ai-page/client.js";
+export {
+  AI_PAGE_MAX_HTML_LENGTH,
+  AI_PAGE_MAX_TITLE_LENGTH,
+  AI_PAGE_PAGE_TYPES,
+} from "./modules/ai-page/constants.js";
+export type { AiPageType } from "./modules/ai-page/constants.js";
 export type { AiPageResult, CreateAiPageInput, UpdateAiPageInput } from "./modules/ai-page/types.js";
 
 // Response module
