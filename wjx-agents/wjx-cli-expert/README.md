@@ -24,7 +24,7 @@ Agent 不重复 Skill 中的命令参数内容，而是在需要时读取对应�
 
 ### 一键安装（推荐）
 
-当前稳定版本 `0.4.2` 已发布到 npm，直接安装 CLI：
+当前稳定版本 `0.4.3` 已发布到 npm，直接安装 CLI：
 
 > 通过 AI 安装并启用 wjx-cli：先执行 `npm install -g wjx-cli@latest`，成功后再执行 `wjx skill install --force`；安装后命令名是 `wjx`，请用 `wjx --version` 验证，不要运行 `wjx-cli --version`。
 

@@ -2,6 +2,10 @@
 
 > 说明：以下 0.x 条目保留为历史记录。条目中出现的旧创建能力仅用于历史追溯，不属于当前 CLI，也不得据此恢复入口。当前问卷创建唯一使用 `survey create`。
 
+## [0.4.3] - 2026-09-04
+
+- Reused SDK AI homepage constraints in CLI validation and rejected blank HTML early.
+
 ## [0.4.2] - 2026-09-02
 
 - 与 `wjx-api-sdk@0.4.2`、`wjx-mcp-server@0.4.2` 对齐发布版本。

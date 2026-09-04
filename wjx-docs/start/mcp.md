@@ -8,8 +8,8 @@ MCP 适用于原生支持 Model Context Protocol 的客户端。若客户端只�
 - 问卷星 OpenAPI API Key
 - Claude Desktop、Claude Code、Cursor 等 MCP 客户端
 
-当前稳定版本为 `0.4.2`，已发布到 npm，registry 的 `latest` 指向
-`wjx-mcp-server@0.4.2`。直接安装：
+当前稳定版本为 `0.4.3`，已发布到 npm，registry 的 `latest` 指向
+`wjx-mcp-server@0.4.3`。直接安装：
 
 ```bash
 npm install -g wjx-mcp-server

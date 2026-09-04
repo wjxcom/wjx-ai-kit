@@ -7,7 +7,7 @@ name_en: wjx-cli-use
 description: "Guide for using wjx-cli (Wenjuanxing CLI) to create surveys, query responses, and analyze data. Use when the user mentions: 问卷, 调查, 收集, 表单, 投票, 考试, 测评, 满意度, NPS, 问卷星, wjx, survey, questionnaire, or wants to create surveys, view responses, export data, analyze NPS/CSAT, or manage contacts, departments, and sub-accounts."
 description_zh: "使用 wjx-cli(问卷星命令行工具)创建问卷、查询问卷回复及分析数据的指南。当用户提到以下内容时使用:问卷、调查、收集、表单、投票、考试、测评、满意度、NPS、问卷星，或想要创建问卷、查看回复、导出数据、分析 NPS/CSAT,或管理联系人、部门和子账号。"
 description_en: "Guide for using wjx-cli (Wenjuanxing CLI) to create surveys, query responses, and analyze data. Use when the user mentions: 问卷, 调查, 收集, 表单, 投票, 考试, 测评, 满意度, NPS, 问卷星, wjx, survey, questionnaire, or wants to create surveys, view responses, export data, analyze NPS/CSAT, or manage contacts, departments, and sub-accounts."
-version: 0.4.2
+version: 0.4.3
 author: 问卷星
 ---
 
@@ -206,7 +206,7 @@ node --version
 
 如果 Node.js 未安装或版本 < 20，需要先安装。参见 [references/install-nodejs.md](references/install-nodejs.md)，根据操作系统选择安装方式。
 
-Node.js 就绪后，当前稳定版本为 `0.4.2`。如果本机版本低于兼容最低版本 `0.4.1`，直接安装或升级：
+Node.js 就绪后，当前稳定版本为 `0.4.3`。如果本机版本低于兼容最低版本 `0.4.1`，直接安装或升级：
 
 ```bash
 npm install -g wjx-cli@latest

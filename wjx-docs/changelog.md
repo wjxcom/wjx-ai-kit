@@ -1,5 +1,11 @@
 # 变更记录
 
+## 0.4.3 (2026-09-04)
+
+- SDK、CLI、MCP Server 统一升级至 0.4.3。
+- 完善 AI 主页参数校验并统一共享约束。
+
+
 ## 0.4.2（2026-09-02）
 
 - `wjx-api-sdk`、`wjx-mcp-server`、`wjx-cli` 统一升级至 `0.4.2`，继续按 SDK → MCP Server → CLI 顺序发布。

@@ -10,6 +10,13 @@
 
 ---
 
+## [0.4.3] - 2026-09-04
+
+### Changed
+
+- Unified the three workspace package versions at `0.4.3`.
+- Hardened AI homepage validation across SDK, CLI, and MCP.
+
 ## [0.4.2] - 2026-09-02
 
 ### Security

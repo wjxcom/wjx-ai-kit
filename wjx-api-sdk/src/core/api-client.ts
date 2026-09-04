@@ -22,7 +22,7 @@ const packageJson = require("../../package.json") as { version?: unknown };
 const SDK_CLIENT_NAME = "wjx-api-sdk";
 const SDK_CLIENT_VERSION = typeof packageJson.version === "string" && packageJson.version.trim()
   ? packageJson.version.trim()
-  : "0.4.2";
+  : "0.4.3";
 
 /** Pluggable credential provider for per-request credentials (e.g. multi-tenant). */
 let _credentialProvider: (() => WjxCredentials | undefined) | undefined;
