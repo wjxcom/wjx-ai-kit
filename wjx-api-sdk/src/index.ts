@@ -96,14 +96,6 @@ export type {
   SurveyDetail,
 } from "./modules/survey/types.js";
 
-// AI homepage module
-export { createAiPage, updateAiPage } from "./modules/ai-page/client.js";
-export type {
-  CreateAiPageInput,
-  UpdateAiPageInput,
-  AiPageResult,
-} from "./modules/ai-page/types.js";
-
 // WJX XML DSL module
 export {
   queryWjxDsl,

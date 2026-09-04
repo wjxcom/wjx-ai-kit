@@ -89,7 +89,7 @@ async function initWithArgs(opts: {
   if (opts.installPptSkill) {
     const { root, source } = resolveInstallRoot({ targetDir: opts.targetDir });
     const result = installPptSkill(root, { force: true, silent: true, rootSource: source });
-    if (result.status === "error") {
+    if (result.status === "error" || result.status === "partial") {
       throw new CliError("INPUT_ERROR", `wjx-survey-ppt 技能安装失败: ${result.message}`, { config_path: getConfigPath(), status: result.status });
     }
     messages.push(`wjx-survey-ppt: ${result.message}`);
@@ -171,7 +171,7 @@ async function initInteractive(opts: { targetDir?: string } = {}): Promise<void>
     if (ans2 === "y" || ans2 === "yes") {
       const { root, source } = resolveInstallRoot({ targetDir: opts.targetDir });
       const r = installPptSkill(root, { force: true, silent: true, rootSource: source });
-      if (r.status === "error") throw new CliError("INPUT_ERROR", `wjx-survey-ppt 技能安装失败: ${r.message}`, { config_path: getConfigPath(), status: r.status });
+      if (r.status === "error" || r.status === "partial") throw new CliError("INPUT_ERROR", `wjx-survey-ppt 技能安装失败: ${r.message}`, { config_path: getConfigPath(), status: r.status });
       messages.push(`wjx-survey-ppt: ${r.message}`);
     } else {
       stderr.write("已跳过。后续可运行：wjx skill install-ppt\n");

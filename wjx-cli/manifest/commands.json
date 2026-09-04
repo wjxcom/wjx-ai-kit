@@ -1343,33 +1343,6 @@
       }
     },
     {
-      "id": "survey.create-ai-page",
-      "command": "survey.create-ai-page",
-      "service": "default",
-      "action": "1000107",
-      "input": {
-        "type": "object",
-        "properties": {}
-      },
-      "risk": "write",
-      "identities": [
-        "user",
-        "bot"
-      ],
-      "source": "api",
-      "metadata": {
-        "path": "survey.create-ai-page",
-        "risk": "write",
-        "identities": [
-          "user",
-          "bot"
-        ],
-        "targetFields": [
-          "title"
-        ]
-      }
-    },
-    {
       "id": "survey.delete",
       "command": "survey.delete",
       "service": "default",
@@ -1731,33 +1704,6 @@
         ],
         "targetFields": [
           "username"
-        ]
-      }
-    },
-    {
-      "id": "survey.update-ai-page",
-      "command": "survey.update-ai-page",
-      "service": "default",
-      "action": "1000108",
-      "input": {
-        "type": "object",
-        "properties": {}
-      },
-      "risk": "high-risk-write",
-      "identities": [
-        "user",
-        "bot"
-      ],
-      "source": "api",
-      "metadata": {
-        "path": "survey.update-ai-page",
-        "risk": "high-risk-write",
-        "identities": [
-          "user"
-        ],
-        "targetFields": [
-          "vid",
-          "title"
         ]
       }
     },

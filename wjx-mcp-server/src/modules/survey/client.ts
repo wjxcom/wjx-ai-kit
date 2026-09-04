@@ -1,7 +1,5 @@
 export {
   createSurveyByJson,
-  createAiPage,
-  updateAiPage,
   CREATABLE_SURVEY_ATYPES,
   getSurvey,
   listSurveys,

@@ -12,8 +12,6 @@ import {
   submitResponse,
   getQuestionTags,
   getFileLinks,
-  createAiPage,
-  updateAiPage,
   getWjxApiUrl,
   Action,
 } from "../dist/index.js";
@@ -543,84 +541,4 @@ test("Action constants for new endpoints", () => {
   assert.equal(Action.SUBMIT_RESPONSE, "1001001");
   assert.equal(Action.GET_TAGS, "1000004");
   assert.equal(Action.GET_FILE_LINKS, "1001005");
-  assert.equal(Action.CREATE_AI_PAGE, "1000107");
-  assert.equal(Action.UPDATE_AI_PAGE, "1000108");
-});
-
-test("createAiPage and updateAiPage", async (t) => {
-  await t.test("createAiPage maps homepage fields to action 1000107", async () => {
-    const mock = mockFetch({ result: true, data: { vid: 207600 } });
-    await createAiPage(
-      {
-        html_content: "<html><body>中秋快乐</body></html>",
-        title: "中秋节 AI 主页",
-        page_type: 1,
-        publish: true,
-        creater: "operator",
-      },
-      credentials,
-      mock.impl,
-    );
-    const body = parsedBody(mock);
-    assert.equal(body.action, Action.CREATE_AI_PAGE);
-    assert.equal(body.html_content, "<html><body>中秋快乐</body></html>");
-    assert.equal(body.title, "中秋节 AI 主页");
-    assert.equal(body.page_type, 1);
-    assert.equal(body.publish, true);
-    assert.equal(body.creater, "operator");
-    assert.match(mock.getUrl(), /action=1000107/);
-  });
-
-  await t.test("createAiPage accepts html alias", async () => {
-    const mock = mockFetch({ result: true, data: {} });
-    await createAiPage({ html: "<p>主页</p>" }, credentials, mock.impl);
-    assert.equal(parsedBody(mock).html_content, "<p>主页</p>");
-  });
-
-  await t.test("updateAiPage maps traditional vid to action 1000108", async () => {
-    const mock = mockFetch({ result: true, data: {} });
-    await updateAiPage(
-      { vid: "207600", html_content: "<p>更新主页</p>", title: "新版主页", page_type: 2 },
-      credentials,
-      mock.impl,
-    );
-    const body = parsedBody(mock);
-    assert.equal(body.action, Action.UPDATE_AI_PAGE);
-    assert.equal(body.vid, "207600");
-    assert.equal(body.html_content, "<p>更新主页</p>");
-    assert.equal(body.title, "新版主页");
-    assert.equal(body.page_type, 2);
-    assert.match(mock.getUrl(), /action=1000108/);
-  });
-
-  await t.test("rejects invalid values before transport", async () => {
-    let calls = 0;
-    const fetchImpl = async () => {
-      calls += 1;
-      throw new Error("transport must not be called");
-    };
-    await assert.rejects(() => createAiPage({ html_content: "" }, credentials, fetchImpl), /html_content/);
-    await assert.rejects(
-      () => createAiPage({ html_content: "<p>x</p>", title: "问卷星主页" }, credentials, fetchImpl),
-      /title/,
-    );
-    await assert.rejects(
-      () => updateAiPage({ vid: "sid-value", html_content: "<p>x</p>" }, credentials, fetchImpl),
-      /traditional numeric vid/,
-    );
-    assert.equal(calls, 0);
-  });
-
-  await t.test("does not retry writes", async () => {
-    let calls = 0;
-    const fetchImpl = async () => {
-      calls += 1;
-      return new Response("server error", { status: 500, statusText: "Error" });
-    };
-    await assert.rejects(
-      () => createAiPage({ html_content: "<p>x</p>" }, credentials, fetchImpl),
-      /500/,
-    );
-    assert.equal(calls, 1);
-  });
 });
