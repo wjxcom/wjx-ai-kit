@@ -1,4 +1,27 @@
-# 问卷管理工具详解（11 个当前工具）
+# 问卷管理工具详解（13 个当前工具）
+
+## create_ai_page - 创建 AI 主页
+
+调用 OpenAPI `A1000107` 创建 AI 主页。`html_content`（或兼容字段 `html`）必填，最大 200000 字符。
+
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| `html_content` | string | 是 | 主页 HTML 内容；也可使用 `html` 别名 |
+| `title` | string | 否 | 主页标题，最长 100 字符 |
+| `page_type` | number | 否 | 页面类型：0=网页、1=海报、2=PPT |
+| `publish` | boolean | 否 | 是否立即发布 |
+| `creater` | string | 否 | 创建者子账号用户名 |
+
+## update_ai_page - 更新 AI 主页
+
+调用 OpenAPI `A1000108` 更新主页。只接受传统数字 `vid`，不接受 `sid`；`html_content`（或 `html`）必填。
+
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| `vid` | number/string | 是 | 传统数字主页编号 |
+| `html_content` | string | 是 | 完整 HTML 内容；也可使用 `html` 别名 |
+| `title` | string | 否 | 主页标题，最长 100 字符 |
+| `page_type` | number | 否 | 页面类型：0=网页、1=海报、2=PPT |
 
 ## create_survey_by_json — 用 JSONL 创建问卷（推荐）
 

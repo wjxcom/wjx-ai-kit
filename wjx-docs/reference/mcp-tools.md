@@ -47,3 +47,6 @@ Prompt 是可复用的工作流模板，不能替代工具权限检查。问卷�
 | JSONL 生成（3，推荐） | `generate-survey-json`, `generate-exam-json`, `generate-form-json` |
 
 不同 MCP 客户端可能只显示其支持的部分能力；需要完整列表时，请查看客户端的 `tools/list`、`resources/list` 和 `prompts/list` 结果。
+# AI 主页工具
+
+`create_ai_page` 调用 `A1000107` 创建 HTML 主页，`update_ai_page` 调用 `A1000108` 更新主页。更新只接受传统数字 `vid`。

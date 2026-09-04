@@ -63,7 +63,7 @@ test("createSurveyByJson sends JSONL to action 1000106 with Bearer auth", async 
   assert.equal("traceid" in parsedBody, false, "traceid should not be in POST body");
 });
 
-test("server exposes all 59 tools, 8 resources, and 15 prompts over stdio", async () => {
+test("server exposes all 61 tools, 8 resources, and 15 prompts over stdio", async () => {
   const transport = new StdioClientTransport({
     command: "node",
     args: [serverEntry],
@@ -104,6 +104,7 @@ test("server exposes all 59 tools, 8 resources, and 15 prompts over stdio", asyn
       "clear_responses",
       "compare_metrics",
       "count_responses",
+      "create_ai_page",
       "create_survey_by_json",
       "decode_push_payload",
       "decode_responses",
@@ -144,6 +145,7 @@ test("server exposes all 59 tools, 8 resources, and 15 prompts over stdio", asyn
       "sso_subaccount_url",
       "sso_user_system_url",
       "submit_response",
+      "update_ai_page",
       "update_survey_settings",
       "update_survey_status",
       "upload_file",

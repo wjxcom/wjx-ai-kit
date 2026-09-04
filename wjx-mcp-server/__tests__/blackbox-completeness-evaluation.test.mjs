@@ -23,6 +23,7 @@ const EXPECTED_ACTIONS = {
   bind_activity: Action.BIND_ACTIVITY,
   clear_recycle_bin: Action.CLEAR_RECYCLE_BIN,
   clear_responses: Action.CLEAR_RESPONSES,
+  create_ai_page: Action.CREATE_AI_PAGE,
   create_survey_by_json: Action.CREATE_SURVEY_BY_JSON,
   count_responses: Action.QUERY_RESPONSES,
   delete_admin: Action.DELETE_ADMIN,
@@ -59,6 +60,7 @@ const EXPECTED_ACTIONS = {
   submit_response: Action.SUBMIT_RESPONSE,
   update_survey_settings: Action.UPDATE_SETTINGS,
   update_survey_status: Action.UPDATE_STATUS,
+  update_ai_page: Action.UPDATE_AI_PAGE,
   upload_file: Action.UPLOAD_FILE,
 };
 
@@ -81,6 +83,7 @@ const TOOL_ARGS = {
     jsonl: `${JSON.stringify({ qtype: "问卷基础信息", title: "黑盒问卷", atype: 1 })}\n${JSON.stringify({ qtype: "单选", title: "满意度", select: ["是", "否"] })}`,
     atype: 1,
   },
+  create_ai_page: { html_content: "<h1>AI homepage</h1>", title: "Test homepage", page_type: 0 },
   count_responses: { vid: 42 },
   decode_push_payload: { encrypted_data: "BwcHBwcHBwcHBwcHBwcHB4KSQXEH8Oas/HhG7FXfJDo=", app_key: "blackbox-key" },
   decode_responses: { submitdata: "1$1}2$2" },
@@ -124,6 +127,7 @@ const TOOL_ARGS = {
   submit_response: { vid: 42, inputcosttime: 2, submitdata: "1$1", jpmversion: 1 },
   update_survey_settings: { vid: 42, api_setting: "{}" },
   update_survey_status: { vid: 42, state: 1 },
+  update_ai_page: { vid: 42, html_content: "<h1>Updated homepage</h1>", page_type: 0 },
   upload_file: { file_name: "image.png", file: "aGVsbG8=" },
 };
 
@@ -170,7 +174,7 @@ test("every registered MCP tool has an executable success-path contract", async 
     const names = listed.tools.map((tool) => tool.name);
     const missing = names.filter((name) => !Object.hasOwn(TOOL_ARGS, name));
     assert.deepEqual(missing, [], "every tool must have a curated valid invocation");
-    assert.equal(names.length, 59, "update the tool denominator only when the MCP surface intentionally changes");
+    assert.equal(names.length, 61, "update the tool denominator only when the MCP surface intentionally changes");
 
     for (const name of names) {
       const before = requests.length;

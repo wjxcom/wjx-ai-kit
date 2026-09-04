@@ -12,6 +12,8 @@ import {
   submitResponse,
   getQuestionTags,
   getFileLinks,
+  createAiPage,
+  updateAiPage,
   getWjxApiUrl,
   Action,
 } from "../dist/index.js";
@@ -541,4 +543,27 @@ test("Action constants for new endpoints", () => {
   assert.equal(Action.SUBMIT_RESPONSE, "1001001");
   assert.equal(Action.GET_TAGS, "1000004");
   assert.equal(Action.GET_FILE_LINKS, "1001005");
+  assert.equal(Action.CREATE_AI_PAGE, "1000107");
+  assert.equal(Action.UPDATE_AI_PAGE, "1000108");
+});
+
+test("AI homepage endpoints map fields and validate inputs", async (t) => {
+  await t.test("createAiPage sends action 1000107", async () => {
+    const mock = mockFetch({ result: true, data: { vid: 207600 } });
+    await createAiPage({ html_content: "<h1>Homepage</h1>", title: "Homepage", page_type: 1, publish: true }, credentials, mock.impl);
+    const body = parsedBody(mock);
+    assert.equal(body.action, Action.CREATE_AI_PAGE);
+    assert.equal(body.html_content, "<h1>Homepage</h1>");
+    assert.equal(body.page_type, 1);
+    assert.equal(body.publish, true);
+    assert.match(mock.getUrl(), /action=1000107/);
+  });
+  await t.test("updateAiPage accepts only traditional numeric vid", async () => {
+    const mock = mockFetch({ result: true, data: {} });
+    await updateAiPage({ vid: "207600", html_content: "<p>Updated</p>" }, credentials, mock.impl);
+    const body = parsedBody(mock);
+    assert.equal(body.action, Action.UPDATE_AI_PAGE);
+    assert.equal(body.vid, "207600");
+    await assert.rejects(() => updateAiPage({ vid: "sid-value", html_content: "<p>x</p>" }, credentials, mock.impl), /traditional numeric vid/);
+  });
 });

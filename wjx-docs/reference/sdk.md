@@ -51,6 +51,8 @@ await createSurveyByJson(input, credentials, fetch, {
 
 `surveyToText` 保留用于把已读取的问卷转换为可读 DSL 文本；读取/导出 DSL 不等于使用 DSL 创建新问卷。
 
+AI 主页通过 `createAiPage`（OpenAPI `A1000107`）和 `updateAiPage`（OpenAPI `A1000108`）创建或更新 HTML 主页。
+
 `buildSubmitTemplate` 是纯本地辅助函数：输入 `getSurvey` 返回的题目结构，输出按服务端原始 `q_index` 组织的 `submitdata` 占位模板和逐题提示，不发起网络请求。分页栏和段落说明会被跳过；生成后应由 AI 或用户替换占位答案，再交给 `submitResponse`。
 
 `decodePushPayload` 是纯本地推送解密与验签函数：输入问卷星推送的加密载荷和 `appKey`，可选 `signature`、`rawBody`，输出解密后的 JSON/文本及验签结果，不发起网络请求。

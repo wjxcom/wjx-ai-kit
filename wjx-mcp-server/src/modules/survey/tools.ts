@@ -2,6 +2,8 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import {
   createSurveyByJson,
+  createAiPage,
+  updateAiPage,
   CREATABLE_SURVEY_ATYPES,
   getSurvey,
   listSurveys,
@@ -21,6 +23,53 @@ import { assertApiResponse, toolApiResult, toolResult, toolError } from "../../h
 import { QUESTION_TYPES } from "../../resources/survey-reference.js";
 
 export function registerSurveyTools(server: McpServer): void {
+  server.registerTool(
+    "create_ai_page",
+    {
+      title: "创建 AI 主页",
+      description: "调用 OpenAPI A1000107 创建 AI 主页。html_content（或兼容字段 html）必填。",
+      inputSchema: {
+        html_content: z.string().min(1).max(200000).optional().describe("AI 主页 HTML 内容，最长 200000 字符"),
+        html: z.string().min(1).max(200000).optional().describe("html_content 的兼容字段"),
+        title: z.string().max(100).optional().describe("AI 主页标题，不能包含问卷星"),
+        page_type: z.number().int().min(0).max(2).optional().describe("页面类型：0=网页, 1=海报, 2=PPT"),
+        publish: z.boolean().optional().describe("是否创建后立即发布"),
+        creater: z.string().optional().describe("创建者子账号用户名"),
+      },
+      annotations: { destructiveHint: false, idempotentHint: false, openWorldHint: true, title: "创建 AI 主页" },
+    },
+    async (args) => {
+      try {
+        return toolApiResult(await createAiPage(args));
+      } catch (error) {
+        return toolError(error);
+      }
+    },
+  );
+
+  server.registerTool(
+    "update_ai_page",
+    {
+      title: "更新 AI 主页",
+      description: "调用 OpenAPI A1000108 更新 AI 主页。vid 必须是传统数字编号，html_content（或兼容字段 html）必填。",
+      inputSchema: {
+        vid: z.union([z.number().int().positive(), z.string().regex(/^\d+$/)]).describe("传统数字 AI 主页 vid，不接受 sid"),
+        html_content: z.string().min(1).max(200000).optional().describe("AI 主页 HTML 内容，最长 200000 字符"),
+        html: z.string().min(1).max(200000).optional().describe("html_content 的兼容字段"),
+        title: z.string().max(100).optional().describe("AI 主页标题，不能包含问卷星"),
+        page_type: z.number().int().min(0).max(2).optional().describe("页面类型：0=网页, 1=海报, 2=PPT"),
+      },
+      annotations: { destructiveHint: true, idempotentHint: true, openWorldHint: true, title: "更新 AI 主页" },
+    },
+    async (args) => {
+      try {
+        return toolApiResult(await updateAiPage(args));
+      } catch (error) {
+        return toolError(error);
+      }
+    },
+  );
+
   // ─── get_survey ───────────────────────────────────────────────────
   server.registerTool(
     "get_survey",
