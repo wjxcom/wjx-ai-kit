@@ -100,8 +100,8 @@ async function discoverLeaves() {
 
 test("CLI surface inventory discovers every leaf command", async () => {
   const leaves = await discoverLeaves();
-  assert.equal(leaves.length, 75, `unexpected leaf count: ${leaves.map((item) => item.join(" ")).join(", ")}`);
-  assert.equal(new Set(leaves.map((item) => item.join(".")).sort()).size, 75);
+  assert.equal(leaves.length, 79, `unexpected leaf count: ${leaves.map((item) => item.join(" ")).join(", ")}`);
+  assert.equal(new Set(leaves.map((item) => item.join(".")).sort()).size, 79);
 });
 
 test("every source-declared option is exposed by at least one command help", async () => {
@@ -110,7 +110,7 @@ test("every source-declared option is exposed by at least one command help", asy
     + (await readFile(resolve(COMMAND_SOURCE, "survey.ts"), "utf8"))
     + (await Promise.all([
       "account.ts", "admin.ts", "analytics.ts", "api.ts", "completion.ts", "contacts.ts",
-      "department.ts", "diagnostics.ts", "init.ts", "reference.ts", "response.ts", "schema.ts",
+      "department.ts", "diagnostics.ts", "dsl.ts", "init.ts", "reference.ts", "response.ts", "schema.ts",
       "skill.ts", "sso.ts", "tag.ts", "update.ts", "user-system.ts",
     ].map((file) => readFile(resolve(COMMAND_SOURCE, file), "utf8")))).join("\n");
   const sourceOptions = new Set();
@@ -130,7 +130,7 @@ test("every source-declared option is exposed by at least one command help", asy
   const builtInOptions = new Set(["--help", "--version"]);
   assert.deepEqual([...helpOptions].filter((option) => !sourceOptions.has(option) && !builtInOptions.has(option)), [],
     "help exposes options that are not declared in source");
-  assert.equal(sourceOptions.size, 139, "update this denominator when a new option is intentionally added");
+  assert.equal(sourceOptions.size, 143, "update this denominator when a new option is intentionally added");
 });
 
 test("every leaf accepts all of its declared options syntactically", async () => {

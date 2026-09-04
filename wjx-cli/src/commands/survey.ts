@@ -2,6 +2,8 @@ import { readFileSync } from "node:fs";
 import { Command } from "commander";
 import {
   createSurveyByJson,
+  createAiPage,
+  updateAiPage,
   CREATABLE_SURVEY_ATYPES,
   getSurvey,
   listSurveys,
@@ -29,6 +31,23 @@ import { strictInt, requireField, requirePositiveInt, requireEnum, getMerged, cr
 import { executeRuntimeAction, executeRuntimeCommand } from "../lib/runtime/executor.js";
 import { buildRequestPlan } from "../lib/runtime/request-plan.js";
 import { CLI_CLIENT_NAME, CLI_CLIENT_VERSION } from "../lib/client-info.js";
+
+function resolveAiPageHtml(values: Record<string, unknown>): string {
+  if (typeof values.html_content === "string" && values.html_content.length > 0) {
+    return values.html_content;
+  }
+  if (typeof values.html === "string" && values.html.length > 0) {
+    return values.html;
+  }
+  if (typeof values.file === "string" && values.file.length > 0) {
+    try {
+      return readFileSync(values.file, "utf8");
+    } catch {
+      throw new CliError("INPUT_ERROR", `无法读取 AI 主页 HTML 文件: ${values.file}`);
+    }
+  }
+  throw new CliError("INPUT_ERROR", "必须提供 --html_content 或 --file 参数");
+}
 
 export function registerSurveyCommands(program: Command): void {
   const survey = program.command("survey").description("问卷管理");
@@ -178,6 +197,103 @@ export function registerSurveyCommands(program: Command): void {
           clientName: CLI_CLIENT_NAME,
           clientVersion: CLI_CLIENT_VERSION,
         },
+      });
+    });
+
+  // --- create-ai-page ---
+  survey
+    .command("create-ai-page")
+    .description("创建 AI 主页")
+    .option("--title <s>", "AI 主页标题")
+    .option("--html_content <s>", "AI 主页 HTML 内容")
+    .option("--file <path>", "从文件读取 AI 主页 HTML 内容")
+    .option("--page_type <n>", "页面类型：0=网页, 1=海报, 2=PPT", strictInt)
+    .option("--publish", "创建后立即发布")
+    .option("--creater <s>", "创建者子账号")
+    .action(async (_opts, cmd) => {
+      await executeRuntimeCommand(program, cmd, {
+        normalize: ({ values }) => {
+          const html = resolveAiPageHtml(values);
+          if (values.page_type !== undefined) requireEnum(values, "page_type", [0, 1, 2]);
+          return {
+            html_content: html,
+            title: values.title,
+            page_type: values.page_type,
+            publish: values.publish,
+            creater: values.creater,
+          };
+        },
+        validate: (input) => {
+          if (typeof input.html_content !== "string" || input.html_content.length === 0) {
+            throw new CliError("INPUT_ERROR", "必须提供 --html_content 或 --file 参数");
+          }
+          if (input.html_content.length > 200000) {
+            throw new CliError("INPUT_ERROR", "AI 主页 HTML 不能超过 200000 个字符");
+          }
+        },
+        buildPlans: (input, context) => [buildRequestPlan({
+          service: "default",
+          action: Action.CREATE_AI_PAGE,
+          url: context?.apiUrl,
+          body: Object.fromEntries(Object.entries({
+            action: Action.CREATE_AI_PAGE,
+            html_content: input.html_content,
+            title: input.title,
+            page_type: input.page_type,
+            publish: input.publish,
+            creater: input.creater,
+          }).filter(([, value]) => value !== undefined)),
+        })],
+        execute: (input, credentials, requestOptions) => createAiPage(input, credentials, undefined, requestOptions),
+      });
+    });
+
+  // --- update-ai-page ---
+  survey
+    .command("update-ai-page")
+    .description("更新 AI 主页（已发布主页需先显式暂停）")
+    .option("--vid <n>", "传统 AI 主页 vid", strictInt)
+    .option("--html_content <s>", "AI 主页 HTML 内容")
+    .option("--file <path>", "从文件读取 AI 主页 HTML 内容")
+    .option("--title <s>", "AI 主页标题")
+    .option("--page_type <n>", "页面类型：0=网页, 1=海报, 2=PPT", strictInt)
+    .action(async (_opts, cmd) => {
+      await executeRuntimeCommand(program, cmd, {
+        normalize: ({ values }) => {
+          requireField(values, "vid");
+          const html = resolveAiPageHtml(values);
+          if (values.page_type !== undefined) requireEnum(values, "page_type", [0, 1, 2]);
+          return {
+            vid: values.vid,
+            html_content: html,
+            title: values.title,
+            page_type: values.page_type,
+          };
+        },
+        validate: (input) => {
+          if (!/^[0-9]+$/.test(String(input.vid)) || Number(input.vid) <= 0) {
+            throw new CliError("INPUT_ERROR", "--vid 必须是正整数传统问卷编号，不能使用 sid");
+          }
+          if (typeof input.html_content !== "string" || input.html_content.length === 0) {
+            throw new CliError("INPUT_ERROR", "必须提供 --html_content 或 --file 参数");
+          }
+          if (input.html_content.length > 200000) {
+            throw new CliError("INPUT_ERROR", "AI 主页 HTML 不能超过 200000 个字符");
+          }
+        },
+        buildPlans: (input, context) => [buildRequestPlan({
+          service: "default",
+          action: Action.UPDATE_AI_PAGE,
+          url: context?.apiUrl,
+          body: Object.fromEntries(Object.entries({
+            action: Action.UPDATE_AI_PAGE,
+            vid: input.vid,
+            html_content: input.html_content,
+            title: input.title,
+            page_type: input.page_type,
+          }).filter(([, value]) => value !== undefined)),
+        })],
+        execute: (input, credentials, requestOptions) => updateAiPage(input as unknown as Parameters<typeof updateAiPage>[0], credentials, undefined, requestOptions),
       });
     });
 

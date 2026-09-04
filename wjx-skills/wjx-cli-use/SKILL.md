@@ -42,7 +42,7 @@ wjx-cli 是问卷星 OpenAPI 的命令行工具。命令格式：`wjx <模块> <
 
 ### 规则 0：创建问卷只用 `survey create`（强制）
 
-创建任何新问卷的唯一入口是 `wjx survey create --file <path>.jsonl`。当前 CLI 不提供 `create-by-text`、`create-by-json` 或 `create --questions`；历史 DSL/旧 JSON 必须先在 CLI 外部转换为 JSONL。
+创建任何新问卷都必须在一次创建调用中完成；可使用 `wjx survey create --file <path>.jsonl`，也可使用 `wjx dsl create --file <path>.wjx` 提交完整 XML DSL。AI 按 DSL 规范生成文本，CLI 只做校验和传输。
 
 先运行 `wjx survey jsonl-template --type <问卷类型> --raw` 获取当前 CLI 可接受的骨架，再编辑 JSONL。每个非空行必须是一个完整 JSON 对象；首行必须是 `{"qtype":"问卷基础信息","title":"...","atype":1}`，后续题目使用中文字符串字段 `qtype` 以及 `title`、`select`、`rowtitle` 等字段。
 
@@ -259,7 +259,7 @@ wjx doctor
 
 | 模块 | 命令 | 说明 |
 |------|------|------|
-| `survey` | list, get, create, jsonl-template, delete, status, settings, update-settings, tags, tag-details, clear-bin, upload, export-text, url, preview-url | 问卷增删改查、配置与预览链接 |
+| `survey` | list, get, create, jsonl-template, delete, status, settings, update-settings, tags, tag-details, clear-bin, upload, export-text, url, preview-url, dsl.query, dsl.create, dsl.update | 问卷增删改查、XML DSL、配置与预览链接 |
 | `response` | query, realtime, download, submit-template, submit, modify, clear, report, count, winners, 360-report | 答卷数据操作 |
 | `contacts` | query, add, delete | 联系人管理（需 WJX_CORP_ID） |
 | `department` | list, add, modify, delete | 部门管理 |

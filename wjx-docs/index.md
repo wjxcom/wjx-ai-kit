@@ -22,9 +22,9 @@ CLI 是默认入口并提供完整工作站能力；MCP 是 secondary / maintena
 
 ## 能力边界
 
-当前版本提供 MCP **59 个 Tool**、**8 个 Resource**、**15 个 Prompt**，以及 CLI **75 个叶子命令**；SDK 的公开导出以 [SDK API 参考](reference/sdk.md) 为准。CLI 是主入口，MCP 只保证核心业务子集；完整差异见仓库 `capabilities/capability-matrix.json`。
+当前版本提供 MCP **63 个 Tool**、**8 个 Resource**、**15 个 Prompt**，以及 CLI **79 个叶子命令**；SDK 的公开导出以 [SDK API 参考](reference/sdk.md) 为准。CLI 是主入口，MCP 只保证核心业务子集；完整差异见仓库 `capabilities/capability-matrix.json`。
 
-问卷创建唯一使用 JSONL 路径。DSL 仅用于读取和离线迁移说明，见 [DSL 兼容](legacy/dsl.md)。
+问卷创建支持 JSONL 和完整 XML DSL 两条路径；XML DSL 规范见 [WJX XML DSL v1](reference/wjx-xml-dsl-v1.md)。
 
 ## 相关链接
 

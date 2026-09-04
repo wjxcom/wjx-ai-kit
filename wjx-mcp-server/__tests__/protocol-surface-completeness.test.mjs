@@ -14,7 +14,7 @@ const MCP_SKILL_ROOT = resolve(HERE, "..", "..", "wjx-skills", "wjx-mcp-use");
 
 const RESOURCE_URIS = [
   "wjx://reference/analysis-methods",
-  "wjx://reference/dsl-syntax",
+  "wjx://reference/wjx-xml-dsl",
   "wjx://reference/push-format",
   "wjx://reference/question-types",
   "wjx://reference/response-format",

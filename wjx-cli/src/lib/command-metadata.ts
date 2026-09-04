@@ -11,9 +11,14 @@ export interface CommandMetadata {
 const USER_TARGETS = ["vid", "jid", "username", "uids", "subuser", "sysid", "type", "depts", "tags"];
 
 const metadata: Record<string, CommandMetadata> = {
+  "dsl.query": { path: "dsl.query", risk: "read", identities: ["user", "bot"], targetFields: ["vid"] },
+  "dsl.create": { path: "dsl.create", risk: "write", identities: ["user", "bot"], targetFields: [] },
+  "dsl.update": { path: "dsl.update", risk: "high-risk-write", identities: ["user", "bot"], targetFields: ["vid"] },
   "survey.list": { path: "survey.list", risk: "read", identities: ["user", "bot"], targetFields: [] },
   "survey.get": { path: "survey.get", risk: "read", identities: ["user", "bot"], targetFields: ["vid"] },
   "survey.create": { path: "survey.create", risk: "write", identities: ["user", "bot"], targetFields: ["title"] },
+  "survey.create-ai-page": { path: "survey.create-ai-page", risk: "write", identities: ["user", "bot"], targetFields: ["title"] },
+  "survey.update-ai-page": { path: "survey.update-ai-page", risk: "high-risk-write", identities: ["user"], targetFields: ["vid", "title"] },
   "survey.delete": { path: "survey.delete", risk: "high-risk-write", identities: ["user"], targetFields: ["vid", "username"] },
   "survey.status": { path: "survey.status", risk: "high-risk-write", identities: ["user"], targetFields: ["vid", "state"] },
   "survey.settings": { path: "survey.settings", risk: "read", identities: ["user", "bot"], targetFields: ["vid"] },

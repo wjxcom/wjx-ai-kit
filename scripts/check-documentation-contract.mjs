@@ -62,7 +62,7 @@ function lineHasHistoricalContext(line) {
   return /不提供|不注册|不导出|不再|已移除|已删除|旧|历史|迁移|转换|禁止|不得|不能|不要|legacy|removed|deprecated|not\s+(?:provide|register|export|create)|outside/i.test(line);
 }
 
-const oldCreationTokens = /create-by-text|create-by-json|createSurveyByText|textToSurvey|create_survey_by_text|create_survey(?!_by_json)|\bcreateSurvey(?!ByJson)\b/;
+const oldCreationTokens = /create-by-text|create-by-json|createSurveyByText|textToSurvey|create_survey_by_text|create_survey(?!_by_json|_from_definition)|\bcreateSurvey(?!ByJson|FromDefinition)\b/;
 const creationWords = /创建|新建|入口|调用|使用|create|survey/i;
 const mcpFullClaims = /MCP[^\r\n]{0,100}(?:所有|全部|完整)(?:的)?(?:问卷星相关任务|能力|操作|工作流)|MCP[^\r\n]{0,100}\b(?:all|full|complete)\b[^\r\n]{0,60}(?:task|capabilit|operation|parity)/i;
 const responseCountClaim = /(?:response|答卷)[^\r\n]{0,30}9\s*(?:个|tools?|工具)|9\s*(?:个|tools?|工具)[^\r\n]{0,30}(?:response|答卷)/i;

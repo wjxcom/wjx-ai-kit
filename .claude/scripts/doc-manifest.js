@@ -23,6 +23,10 @@ const MANIFEST = [
     ["reference/sdk", "SDK API"],
     ["reference/config", "配置项"],
     ["reference/question-types", "题型与 JSONL"],
+    ["reference/wjx-xml-dsl-v1", "WJX XML DSL v1"],
+  ]},
+  { group: "开发计划", collapsed: true, items: [
+    ["tasks/dsl-generation-api-integration-plan", "DSL 生成与 API 集成计划"],
   ]},
   { group: "概念与运维", items: [
     ["concepts/architecture", "架构与边界"],

@@ -1,8 +1,16 @@
 # DSL 语法与题型参考
 
-## DSL 文本语法（仅历史读取/迁移兼容）
+## WJX XML DSL v1
 
-> 本页只用于读取、审阅和迁移历史 DSL。新问卷请使用 JSONL；当前没有 DSL 创建入口。用户体系（`atype=8`）同样不能通过创建接口新建。
+> AI 按本规范直接生成完整 `wjx-dsl 1` 文本，MCP/SDK 负责轻量校验和传输，后端负责最终解析、Diff 与写入。
+
+### 创建、修改和查询工具
+
+- `query_wjx_dsl` 调用 `A1000006`，返回原查询内容和 DSL 往返结果。
+- `generate_wjx_dsl` 只校验/规范化 AI 生成的 DSL，不写服务器。
+- `create_survey_from_definition` 接收完整 DSL，校验后调用 `A1000109`。
+- `update_survey_from_definition` 接收传统 `vid` 和修改后的完整 DSL，校验后一次调用 `A1000110`。
+- 不使用结构化 JSON 到 DSL 的隐式转换，也不使用增量 Patch DSL。
 
 ### 结构规则
 
@@ -120,7 +128,7 @@ DSL 是问卷的「可读摘要」，以下高级设置不在 DSL 中表示：
 运营团队
 ```
 
-当前 MCP Server 不提供 DSL 创建工具。历史 DSL 需要在 MCP 外部转换为 JSONL，再调用 `create_survey_by_json`；不要把 DSL 文本直接传给 MCP。
+DSL 创建和修改通过上述 XML DSL 工具完成；JSONL 创建仍由 `create_survey_by_json` 独立提供。
 
 **注意**：投票问卷的题目就是普通 `[单选题]`/`[多选题]`，不存在 `[投票单选题]` 标签。`atype: 3` 控制问卷展示为投票样式，题型本身不变。
 

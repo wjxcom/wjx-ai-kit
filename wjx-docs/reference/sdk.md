@@ -18,7 +18,7 @@ fn(input, credentials?, fetchImpl?, requestOptions?)
 | contacts | `queryContacts`, `addContacts` |
 | user system（兼容/已过时） | `addParticipants`, `modifyParticipants`, `deleteParticipants`, `bindActivity`, `querySurveyBinding`, `queryUserSurveys`；仅用于已有系统 |
 | SSO | `buildSsoSubaccountUrl`, `buildSsoUserSystemUrl`, `buildSurveyUrl`, `buildPreviewUrl` |
-| DSL 读取/迁移 | `surveyToText`；不提供 DSL 创建接口 |
+| XML DSL | `queryWjxDsl`、`createSurveyByWjxDsl`、`updateWjxDsl`、`validateWjxDsl` |
 
 ## 凭据优先级
 
@@ -47,9 +47,9 @@ await createSurveyByJson(input, credentials, fetch, {
 });
 ```
 
-问卷创建的唯一入口是 `createSurveyByJson`，参数为 JSONL 字符串。创建 `atype` 支持 `1/2/3/4/5/6/7/9/10/11`；`8` 用户体系不能新建。当前 SDK 不导出 `createSurvey`、`createSurveyByText` 或 `textToSurvey`；历史 DSL 需要在 SDK 外部转换为 JSONL。
+问卷创建支持 `createSurveyByJson`（JSONL）和 `createSurveyByWjxDsl`（完整 XML DSL）。修改使用 `updateWjxDsl`，查询使用 `queryWjxDsl`。SDK 只做 DSL 协议校验、规范化和传输，不把结构化业务对象转换成 DSL。
 
-`surveyToText` 保留用于把已读取的问卷转换为可读 DSL 文本；读取/导出 DSL 不等于使用 DSL 创建新问卷。
+`surveyToText` 保留用于旧查询结果的可读摘要；XML DSL API 返回/提交的是完整 `wjx-dsl 1` 文本。
 
 `buildSubmitTemplate` 是纯本地辅助函数：输入 `getSurvey` 返回的题目结构，输出按服务端原始 `q_index` 组织的 `submitdata` 占位模板和逐题提示，不发起网络请求。分页栏和段落说明会被跳过；生成后应由 AI 或用户替换占位答案，再交给 `submitResponse`。
 

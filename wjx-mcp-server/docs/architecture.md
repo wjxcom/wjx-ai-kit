@@ -29,7 +29,7 @@ flowchart TD
     F --> G[McpServer]
     G --> H[Resources 8]
     G --> I[Prompts 15]
-    G --> J[Tools 59]
+    G --> J[Tools 63]
 
     J --> M1[survey]
     J --> M2[response]
@@ -105,7 +105,7 @@ flowchart TD
 | `analytics` | 6 | 答卷解码、推送解密、NPS/CSAT、本地异常检测、指标对比 | `decodeResponses()`、`decodePushPayload()`、`calculateNps()`、`calculateCsat()`、`detectAnomalies()`、`compareMetrics()` |
 | `server`（诊断） | 1 | 配置与运行环境诊断 | `get_config` |
 
-业务模块中的 Tool 数量直接对应各 `src/modules/*/tools.ts` 中 `server.registerTool()` 的出现次数，共 58 个；`src/server.ts` 另注册 1 个 `get_config` 诊断工具，总计 59 个。
+业务模块中的 Tool 数量直接对应各 `src/modules/*/tools.ts` 中 `server.registerTool()` 的出现次数，共 62 个；`src/server.ts` 另注册 1 个 `get_config` 诊断工具，总计 63 个。
 
 ### 5.2 survey 模块
 
@@ -121,9 +121,9 @@ flowchart TD
 - `get_tag_details`
 - `upload_file`
 - `clear_recycle_bin`
-- `create_survey_by_json`（唯一当前创建入口）
+- `create_survey_by_json`（JSONL 创建入口）以及 `create_survey_from_definition`（XML DSL 创建入口）
 
-当前 Server 不注册 `create_survey` 和 `create_survey_by_text`。`get_survey` 的 `format=dsl` 仍保留用于读取和审阅；历史 JSON/DSL 必须在 Server 外部转换为 JSONL，再调用 `create_survey_by_json`。
+当前 Server 不注册 `create_survey`、`create_survey_by_text`、`create_survey_by_wjx_dsl` 或 `update_wjx_dsl`。XML DSL 通过 `query_wjx_dsl`、`generate_wjx_dsl`、`create_survey_from_definition` 和 `update_survey_from_definition` 完成查询、校验、创建和修改；JSONL 创建仍由 `create_survey_by_json` 提供。
 
 特点：
 
@@ -309,7 +309,7 @@ server.registerTool("tool_name", { inputSchema }, async (args) => {
 - `wjx://reference/response-format`
 - `wjx://reference/user-roles`
 - `wjx://reference/push-format`
-- `wjx://reference/dsl-syntax`
+- `wjx://reference/wjx-xml-dsl`
 
 资源层的作用是把稳定字典、格式规范和分析基准放进 MCP 上下文，而不是每次让模型重复猜测编码意义。
 

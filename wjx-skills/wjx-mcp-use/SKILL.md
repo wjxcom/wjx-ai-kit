@@ -9,9 +9,9 @@ wjx-mcp-server 提供 MCP 工具、参考资源和 prompt 模板，覆盖问卷�
 
 ## AI Agent 行为准则（必读）
 
-### 规则 0：创建问卷只用 `create_survey_by_json`（强制）
+### 规则 0：按场景选择 JSONL 或 XML DSL
 
-当前 MCP Server 只注册 `create_survey_by_json` 作为问卷创建工具。`create_survey_by_text` 与 `create_survey` 已移除；历史 DSL/JSON 必须在 MCP 外部转换为 JSONL。所有当前可创建题型、投票、考试、表单都走 `create_survey_by_json`；JSONL 不承诺覆盖读取接口的全部数字 `q_type/q_subtype` 编码。
+问卷可通过 `create_survey_by_json`（JSONL，支持 70+ 题型）或 `create_survey_from_definition`（完整 XML DSL）创建。修改使用 `update_survey_from_definition`，查询 DSL 使用 `query_wjx_dsl`；旧的 `create_survey_by_text`、`create_survey_by_wjx_dsl` 和 `update_wjx_dsl` 不再注册。
 
 ### 规则 1：一个需求 = 一个问卷
 
@@ -74,7 +74,9 @@ https://www.wjx.cn/weixinlogin.aspx?redirecturl=%2Fnewwjx%2Fmanage%2Fuserinfo.as
 
 | 用户意图 | 工具 |
 |---------|------|
-| 做调查/问卷 | `create_survey_by_json`（支持 70+ 题型；atype 可创建 1/2/3/4/5/6/7/9/10/11，8 用户体系不能新建） |
+| 做调查/问卷 | `create_survey_by_json`（JSONL）或 `create_survey_from_definition`（XML DSL） |
+| 按 DSL 创建/修改 | `create_survey_from_definition` / `update_survey_from_definition` |
+| 查询 DSL | `query_wjx_dsl` |
 | 做考试/测验 | `create_survey_by_json` + prompt `generate-exam-json`，`atype: 6` |
 | 做投票 | `create_survey_by_json` + `atype: 3` |
 | 做表单/报名表 | `create_survey_by_json` + prompt `generate-form-json`，`atype: 7` |
@@ -89,7 +91,7 @@ https://www.wjx.cn/weixinlogin.aspx?redirecturl=%2Fnewwjx%2Fmanage%2Fuserinfo.as
 
 | 模块 | 工具数 | 说明 |
 |------|--------|------|
-| 问卷管理 | 11 | create_survey_by_json, get_survey, list_surveys, update_survey_status, get/update_survey_settings, delete_survey, get_question_tags, get_tag_details, upload_file, clear_recycle_bin |
+| 问卷管理 | 13 | create_survey_by_json, get_survey, list_surveys, update_survey_status, get/update_survey_settings, delete_survey, get_question_tags, get_tag_details, upload_file, clear_recycle_bin, create_ai_page, update_ai_page |
 | 答卷数据 | 11 | query_responses, count_responses, query_responses_realtime, download_responses, get_report, submit_response, build_submit_template, get_winners, modify_response, get_360_report, clear_responses |
 | 通讯录 | 14 | query/add/delete_contacts, add/delete/restore_admin, list/add/modify/delete_departments, list/add/modify/delete_tags |
 | 子账号 | 5 | add/modify/delete/restore/query_sub_accounts |
@@ -102,9 +104,9 @@ https://www.wjx.cn/weixinlogin.aspx?redirecturl=%2Fnewwjx%2Fmanage%2Fuserinfo.as
 
 ## 核心工作流
 
-### 创建问卷（统一使用 JSON 方式）
+### 创建和修改问卷
 
-**唯一推荐**：所有问卷创建一律使用 `create_survey_by_json`。JSONL 使用中文 `qtype` 名称；`get_survey` 等读取接口返回的数字 `q_type/q_subtype` 是另一套结果编码。`wjx://reference/question-types` 仅提供读取结果的编码映射；创建白名单以 SDK 的 `JSONL_SUPPORTED_QTYPES` 与服务端校验为准。
+AI 需要创建或修改 XML DSL 问卷时，先读取 `wjx://reference/wjx-xml-dsl`，直接生成完整 `wjx-dsl 1` 文本，再调用对应工具。JSONL 与 XML DSL 是两条独立入口。
 
 ```
 1. 使用 prompt 模板生成题目 JSON（如 generate-survey-json、generate-exam-json 等）
@@ -113,13 +115,13 @@ https://www.wjx.cn/weixinlogin.aspx?redirecturl=%2Fnewwjx%2Fmanage%2Fuserinfo.as
 4. build_survey_url({ mode: "edit", activity: N }) — 提供编辑链接
 ```
 
-`create_survey_by_json` 是唯一创建工具。其 `jsonl` 参数必须是每行一个 JSON 对象的字符串，不是 JSON 数组；当前 Server 不接受旧 DSL 或 JSON 数组创建参数。
+`create_survey_from_definition` 和 `update_survey_from_definition` 的 `dsl` 参数必须是完整 DSL 文本，不是 JSON 数组，也不是增量 Patch。SDK 只做轻量协议校验，后端负责最终题型、逻辑、Diff 和答卷保护。
 
 普通题型未传 `publish` 时默认立即发布；若 JSONL 包含纯框架题型 `折叠栏目`、`轮播图`、`AI追问`、`AI处理`、`AI访谈`、`图片OCR`、`VlookUp问卷关联` 或 `分页计时器`，则默认创建为草稿。先调用 `get_survey` 并提供编辑入口，待用户明确授权后再传 `publish: true`。
 
 **考试问卷（atype=6）注意**：JSONL 路径支持 `correctselect`、`quizscore` 和 `answeranalysis`；DSL 兼容路径不支持这些字段。创建后仍可提供编辑链接补充未覆盖的高级设置。
 
-JSONL 题型字段详见 `create_survey_by_json` 的工具描述与 SDK `JSONL_SUPPORTED_QTYPES`；`wjx://reference/question-types` 只用于解释 `get_survey` 的 `q_type/q_subtype`。读取或迁移历史 DSL 时查阅 [references/dsl-and-types.md](references/dsl-and-types.md)，新问卷始终转换回 JSONL 后创建。
+JSONL 题型字段详见 `create_survey_by_json` 的工具描述与 SDK `JSONL_SUPPORTED_QTYPES`；XML DSL 语法详见 [references/dsl-and-types.md](references/dsl-and-types.md)。
 
 ### 查询和分析数据
 
@@ -172,7 +174,7 @@ submitdata 题号必须与 `get_survey` 返回的原始 `q_index` 对齐——**
 
 | 资源 URI | 内容 |
 |----------|------|
-| `wjx://reference/dsl-syntax` | DSL 文本语法（仅读取、审阅和离线迁移） |
+| `wjx://reference/wjx-xml-dsl` | WJX XML DSL v1 生成、校验、创建和修改规范 |
 | `wjx://reference/question-types` | `get_survey` 读取结果的 q_type/q_subtype 映射（不是 JSONL 创建白名单） |
 | `wjx://reference/survey-types` | 问卷类型编码及创建限制（1/2/3/4/5/6/7/9/10/11 可创建，8 用户体系不能新建） |
 | `wjx://reference/survey-statuses` | 问卷状态码 |
@@ -201,7 +203,7 @@ submitdata 题号必须与 `get_survey` 返回的原始 `q_index` 对齐——**
 ## Reference 文件（按需查阅）
 
 - [DSL 语法与题型](references/dsl-and-types.md) — DSL 格式、25+ 题型标签、q_type/q_subtype 映射表
-- [问卷工具详解](references/tools-survey.md) — 11 个问卷管理工具的完整参数
+- [问卷工具详解](references/tools-survey.md) — 13 个问卷管理工具的完整参数
 - [答卷工具详解](references/tools-response.md) — 11 个答卷数据工具的完整参数
 - [其他工具详解](references/tools-other.md) — 通讯录、子账号、SSO、分析、推送工具参数
 - [错误排查](references/troubleshooting.md) — API 错误码、配置问题、自定义域名、考试限制

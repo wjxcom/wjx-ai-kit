@@ -1,6 +1,6 @@
 # MCP 工具参考
 
-当前版本提供 59 个 Tool、8 个 Resource 和 15 个 Prompt。输入 schema 和描述以运行时能力发现结果为最终契约；MCP 只保证 CLI 的核心业务子集，工作站能力和有意不暴露的通用 API 见仓库 capability matrix。
+当前版本提供 63 个 Tool、8 个 Resource 和 15 个 Prompt。输入 schema 和描述以运行时能力发现结果为最终契约；MCP 只保证 CLI 的核心业务子集，工作站能力和有意不暴露的通用 API 见仓库 capability matrix。
 
 ## Tool 模块
 
@@ -15,7 +15,7 @@
 | analytics（6） | `decode_responses`, `decode_push_payload`, `calculate_nps`, `calculate_csat`, `detect_anomalies`, `compare_metrics` | 本地数据解码、推送解密和指标计算 |
 | server（1） | `get_config` | 查看脱敏配置与运行环境 |
 
-问卷创建的唯一入口是 `create_survey_by_json`。当前 Server 不注册 `create_survey` 或 `create_survey_by_text`；`get_survey` 返回的 DSL 或 Resource 中的 DSL 语法仍可用于读取、审阅和迁移，转换后必须回到 JSONL 创建。
+问卷创建支持 `create_survey_by_json`（JSONL）和 `create_survey_from_definition`（完整 XML DSL）。修改使用 `update_survey_from_definition`，查询 DSL 使用 `query_wjx_dsl`，DSL 预检使用 `generate_wjx_dsl`。
 
 ### 已过时的用户体系能力
 
@@ -27,7 +27,7 @@
 
 | URI | 内容 |
 | --- | --- |
-| `wjx://reference/dsl-syntax` | DSL 文本语法（仅读取、审阅和离线迁移） |
+| `wjx://reference/wjx-xml-dsl` | WJX XML DSL v1 生成、校验、创建和修改规范 |
 | `wjx://reference/question-types` | `get_survey` 读取结果的 `q_type/q_subtype` 映射；JSONL 创建白名单以 SDK 和 `create_survey_by_json` 校验为准 |
 | `wjx://reference/survey-types` | 问卷类型编码和创建限制 |
 | `wjx://reference/survey-statuses` | 问卷状态码和合法转换 |
@@ -38,7 +38,7 @@
 
 ## Prompts（15）
 
-Prompt 是可复用的工作流模板，不能替代工具权限检查。问卷生成统一使用 JSONL 模板；历史 DSL 只能在外部离线转换后交给 `create_survey_by_json`。
+Prompt 是可复用的工作流模板，不能替代工具权限检查。AI 按 XML DSL 规范生成内容后，可交给 DSL 工具提交；JSONL 入口仍独立保留。
 
 | 分组 | 名称 |
 | --- | --- |

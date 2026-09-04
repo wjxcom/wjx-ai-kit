@@ -96,6 +96,42 @@ export type {
   SurveyDetail,
 } from "./modules/survey/types.js";
 
+// AI homepage module
+export { createAiPage, updateAiPage } from "./modules/ai-page/client.js";
+export type {
+  CreateAiPageInput,
+  UpdateAiPageInput,
+  AiPageResult,
+} from "./modules/ai-page/types.js";
+
+// WJX XML DSL module
+export {
+  queryWjxDsl,
+  createSurveyByWjxDsl,
+  updateWjxDsl,
+} from "./modules/dsl/client.js";
+export {
+  generateWjxDsl,
+  normalizeWjxDsl,
+  validateWjxDsl,
+  MAX_WJX_DSL_BYTES,
+} from "./modules/dsl/validate.js";
+export type {
+  WjxDslStatus,
+  WjxDslDiagnostic,
+  WjxDslOperationData,
+  WjxDslLimits,
+  QueryWjxDslInput,
+  QueryWjxDslResult,
+  CreateWjxDslSurveyInput,
+  CreateWjxDslSurveyResult,
+  UpdateWjxDslInput,
+  UpdateWjxDslResult,
+  WjxDslFailureData,
+  WjxDslValidationOptions,
+  WjxDslGenerationResult,
+} from "./modules/dsl/types.js";
+
 // Response module
 export {
   queryResponses,

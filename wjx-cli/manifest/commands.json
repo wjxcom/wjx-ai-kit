@@ -1343,6 +1343,33 @@
       }
     },
     {
+      "id": "survey.create-ai-page",
+      "command": "survey.create-ai-page",
+      "service": "default",
+      "action": "1000107",
+      "input": {
+        "type": "object",
+        "properties": {}
+      },
+      "risk": "write",
+      "identities": [
+        "user",
+        "bot"
+      ],
+      "source": "api",
+      "metadata": {
+        "path": "survey.create-ai-page",
+        "risk": "write",
+        "identities": [
+          "user",
+          "bot"
+        ],
+        "targetFields": [
+          "title"
+        ]
+      }
+    },
+    {
       "id": "survey.delete",
       "command": "survey.delete",
       "service": "default",
@@ -1366,6 +1393,102 @@
         "targetFields": [
           "vid",
           "username"
+        ]
+      }
+    },
+    {
+      "id": "survey.dsl.create",
+      "command": "dsl.create",
+      "service": "default",
+      "action": "1000109",
+      "input": {
+        "type": "object",
+        "properties": {}
+      },
+      "risk": "write",
+      "identities": [
+        "user",
+        "bot"
+      ],
+      "source": "api",
+      "metadata": {
+        "path": "dsl.create",
+        "risk": "write",
+        "identities": [
+          "user",
+          "bot"
+        ],
+        "targetFields": []
+      }
+    },
+    {
+      "id": "survey.dsl.generate",
+      "command": "dsl.generate",
+      "service": "default",
+      "action": "builtin:survey.dsl.generate",
+      "input": {
+        "type": "object",
+        "properties": {}
+      },
+      "risk": "read",
+      "identities": [
+        "user",
+        "bot"
+      ],
+      "source": "builtin",
+      "metadata": null
+    },
+    {
+      "id": "survey.dsl.query",
+      "command": "dsl.query",
+      "service": "default",
+      "action": "1000006",
+      "input": {
+        "type": "object",
+        "properties": {}
+      },
+      "risk": "read",
+      "identities": [
+        "user",
+        "bot"
+      ],
+      "source": "api",
+      "metadata": {
+        "path": "dsl.query",
+        "risk": "read",
+        "identities": [
+          "user",
+          "bot"
+        ],
+        "targetFields": [
+          "vid"
+        ]
+      }
+    },
+    {
+      "id": "survey.dsl.update",
+      "command": "dsl.update",
+      "service": "default",
+      "action": "1000110",
+      "input": {
+        "type": "object",
+        "properties": {}
+      },
+      "risk": "high-risk-write",
+      "identities": [
+        "user",
+        "bot"
+      ],
+      "source": "api",
+      "metadata": {
+        "path": "dsl.update",
+        "risk": "high-risk-write",
+        "identities": [
+          "user",
+          "bot"
+        ],
+        "targetFields": [
+          "vid"
         ]
       }
     },
@@ -1608,6 +1731,33 @@
         ],
         "targetFields": [
           "username"
+        ]
+      }
+    },
+    {
+      "id": "survey.update-ai-page",
+      "command": "survey.update-ai-page",
+      "service": "default",
+      "action": "1000108",
+      "input": {
+        "type": "object",
+        "properties": {}
+      },
+      "risk": "high-risk-write",
+      "identities": [
+        "user",
+        "bot"
+      ],
+      "source": "api",
+      "metadata": {
+        "path": "survey.update-ai-page",
+        "risk": "high-risk-write",
+        "identities": [
+          "user"
+        ],
+        "targetFields": [
+          "vid",
+          "title"
         ]
       }
     },

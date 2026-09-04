@@ -58,6 +58,7 @@ const JSONL = [
   { qtype: "问卷基础信息", title: "矩阵覆盖测试", atype: 1 },
   { qtype: "单选", title: "是否满意？", select: ["是", "否"] },
 ].map(json).join("\n") + "\n";
+const DSL = 'wjx-dsl 1; questionnaire { attr "Title" = "矩阵 DSL 测试"; };';
 
 
 /**
@@ -65,6 +66,9 @@ const JSONL = [
  * deliberately exercise the same flag names that a Skill/Agent would emit.
  */
 const REMOTE_CASES = [
+  { id: "dsl.query", path: ["dsl", "query"], action: Action.QUERY_WJX_DSL, required: ["--vid"], args: ["--vid", "42"], stdin: { vid: "42" } },
+  { id: "dsl.create", path: ["dsl", "create"], action: Action.CREATE_SURVEY_BY_WJX_DSL, required: ["--dsl"], args: ["--dsl", DSL], stdin: { dsl: DSL } },
+  { id: "dsl.update", path: ["dsl", "update"], action: Action.UPDATE_WJX_DSL, highRisk: true, required: ["--vid", "--dsl"], args: ["--vid", "42", "--dsl", DSL], stdin: { vid: "42", dsl: DSL } },
   { id: "survey.list", path: ["survey", "list"], action: Action.LIST_SURVEYS, args: ["--page", "1", "--page_size", "10"], stdin: {} },
   { id: "survey.get", path: ["survey", "get"], action: Action.GET_SURVEY, required: ["--vid"], args: ["--vid", "42"], stdin: { vid: 42 } },
   { id: "survey.create", path: ["survey", "create"], action: Action.CREATE_SURVEY_BY_JSON, required: ["--jsonl"], args: ["--jsonl", JSONL], stdin: { jsonl: JSONL } },
@@ -123,6 +127,7 @@ const LEAF_COMMANDS = [
   "contacts.query", "contacts.add", "contacts.delete",
   "department.list", "department.add", "department.modify", "department.delete",
   "doctor", "init",
+  "dsl.create", "dsl.generate", "dsl.query", "dsl.update",
   "reference", "response.count", "response.query", "response.realtime", "response.download", "response.submit", "response.modify", "response.clear", "response.report", "response.winners", "response.submit-template", "response.360-report",
   "schema", "skill.install", "skill.update", "skill.install-ppt", "skill.update-ppt",
   "sso.subaccount-url", "sso.user-system-url", "sso.partner-url",
@@ -144,6 +149,7 @@ const LOCAL_DRY_RUN_CASES = [
   { id: "completion.fish", args: ["completion", "fish"] },
   { id: "completion.install", args: ["completion", "install"] },
   { id: "doctor", args: ["doctor"] },
+  { id: "dsl.generate", args: ["dsl", "generate", "--dsl", DSL] },
   { id: "init", args: ["--api-key", "dry-run-key", "init", "--no-install-skill"] },
   { id: "reference", args: ["reference", "analytics"] },
   { id: "schema", args: ["schema", "survey.list"] },
@@ -232,7 +238,7 @@ const BOOLEAN_OPTION_FLAGS = new Set([
   "--get_questions", "--get_items", "--get_exts", "--get_setting", "--get_page_cut", "--get_tags",
   "--showtitle",
   "--force", "--silent", "--skip-pip", "--no-install-skill", "--install-ppt-skill",
-  "--raw", "--no-auto-version",
+  "--raw", "--no-auto-version", "--compress-img", "--allow-breaking-changes",
 ]);
 
 const INTEGER_COVERAGE_VALUES = new Map([
@@ -272,6 +278,9 @@ async function coverageValue(command, option, tempDir) {
   if (!option.descriptor) return undefined;
   if (BOOLEAN_OPTION_FLAGS.has(flag)) return undefined;
 
+  // DSL commands accept the complete DSL document as their payload.
+  if (flag === "--dsl") return DSL;
+
   const id = `${command}:${flag}`;
   const semanticValues = new Map([
     ["analytics.csat:--scale", "5-point"],
@@ -309,7 +318,7 @@ async function coverageValue(command, option, tempDir) {
   if (flag === "--file") {
     if (command === "survey.upload") return "aGVsbG8=";
     const file = resolve(tempDir, `${command.replaceAll(".", "-")}-${flag.slice(2)}.txt`);
-    const content = command === "survey.create" ? JSONL : "1$1";
+    const content = command === "survey.create" || command.startsWith("dsl.") ? (command.startsWith("dsl.") ? DSL : JSONL) : "1$1";
     await writeFile(file, content, "utf8");
     return file;
   }
@@ -386,12 +395,16 @@ function optionWireKeys(command, flag) {
     "--status": ["status", "state"],
     "--jsonl": ["jsonl", "surveydatajson"],
     "--submitdata-file": ["submitdata"],
+    "--compress-img": ["compress-img", "compressImg", "compress_img"],
+    "--allow-breaking-changes": ["allow-breaking-changes", "allowBreakingChanges", "allow_breaking_changes"],
     "--text": ["text", "questions"],
     "--optional_titles": ["optional_titles", "optionalTitles", "questions"],
     "--target-dir": ["target-dir", "targetDir"],
     "--no-install-skill": ["no-install-skill", "installSkill"],
     "--file": command === "survey.create"
       ? ["file", "surveydatajson", "jsonl"]
+      : command.startsWith("dsl.")
+        ? ["dsl"]
       : ["file"],
   };
   const name = flag.slice(2);
@@ -430,7 +443,7 @@ function assertOptionReflected(command, flag, value, envelope) {
   // there is no surviving `params`/`body` wrapper to target.
   const flattenedApiInput = command === "api" && (flag === "--params" || flag === "--body")
     && sources.some((source) => expectedValues.some((candidate) => hasDeepValue(source, candidate)));
-  const transformed = (flag === "--file" && command === "survey.create") || flag === "--jsonl";
+  const transformed = (flag === "--file" && (command === "survey.create" || command.startsWith("dsl."))) || flag === "--jsonl";
   const hasTransformedField = transformed && sources.some((source) => {
     if (!source || typeof source !== "object") return false;
     return optionWireKeys(command, flag).some((key) => key in source && source[key] !== undefined && source[key] !== "");
@@ -457,7 +470,7 @@ describe("complete CLI command contract matrix", () => {
 
   test("leaf command inventory is exhaustive and every leaf is discoverable", async () => {
     assert.equal(new Set(LEAF_COMMANDS).size, LEAF_COMMANDS.length);
-    assert.equal(LEAF_COMMANDS.length, 75);
+    assert.equal(LEAF_COMMANDS.length, 79);
     for (const command of LEAF_COMMANDS) {
       const result = await runCli([...command.split("."), "--help"]);
       assert.equal(result.exitCode, 0, `${command}: ${result.stderr}`);
@@ -505,7 +518,7 @@ describe("complete CLI command contract matrix", () => {
     const remoteShortcutIds = new Set(["survey.export-text", "response.submit-template"]);
     const metadataIds = CATALOG
       .filter((entry) => entry.source === "api" || remoteShortcutIds.has(entry.id))
-      .map((entry) => entry.id)
+      .map((entry) => entry.command)
       .sort();
     const caseIds = REMOTE_CASES.map((item) => item.id).sort();
     assert.deepEqual(caseIds, metadataIds);
@@ -1272,6 +1285,7 @@ describe("complete CLI command contract matrix", () => {
             // Mutually exclusive input sources/aliases must be tested alone.
             if (option.flag === "--file") {
               baseArgs = removeOption(baseArgs, "--jsonl");
+              if (command.startsWith("dsl.")) baseArgs = removeOption(baseArgs, "--dsl");
             } else if (option.flag === "--submitdata-file") {
               baseArgs = removeOption(baseArgs, "--submitdata");
             } else if (option.flag === "--status") {
@@ -1306,6 +1320,9 @@ describe("complete CLI command contract matrix", () => {
           if (GLOBAL_OPTION_FLAGS.has(option.flag)) continue;
           expectedLocalOptions.add(key);
           let baseArgs = [...local.args];
+          if (option.flag === "--file" && command.startsWith("dsl.")) {
+            baseArgs = removeOption(baseArgs, "--dsl");
+          }
           if (command === "survey.url" && option.flag === "--activity") {
             baseArgs = removeOption(removeOption(baseArgs, "--mode"), "--name");
             baseArgs.push("--mode", "edit");
@@ -1363,7 +1380,7 @@ describe("complete CLI command contract matrix", () => {
         `option matrix did not execute every command-local option (covered ${covered.size}, expected ${expectedLocalOptions.size})`);
       // This is the current command-local occurrence denominator. Keep it
       // explicit so a help/parser drift cannot silently shrink the matrix.
-      assert.equal(expectedLocalOptions.size, 254,
+      assert.equal(expectedLocalOptions.size, 267,
         "update the command-local option denominator only when the public surface intentionally changes");
     } finally {
       await rm(tempDir, { recursive: true, force: true });
