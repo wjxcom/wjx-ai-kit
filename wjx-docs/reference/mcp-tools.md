@@ -1,6 +1,6 @@
 # MCP 工具参考
 
-当前版本提供 59 个 Tool、8 个 Resource 和 15 个 Prompt。输入 schema 和描述以运行时能力发现结果为最终契约；MCP 只保证 CLI 的核心业务子集，工作站能力和有意不暴露的通用 API 见仓库 capability matrix。
+当前版本提供 61 个 Tool、8 个 Resource 和 15 个 Prompt。输入 schema 和描述以运行时能力发现结果为最终契约；MCP 只保证 CLI 的核心业务子集，工作站能力和有意不暴露的通用 API 见仓库 capability matrix。
 
 ## Tool 模块
 
@@ -49,4 +49,4 @@ Prompt 是可复用的工作流模板，不能替代工具权限检查。问卷�
 不同 MCP 客户端可能只显示其支持的部分能力；需要完整列表时，请查看客户端的 `tools/list`、`resources/list` 和 `prompts/list` 结果。
 # AI 主页工具
 
-`create_ai_page` 调用 `A1000107` 创建 HTML 主页，`update_ai_page` 调用 `A1000108` 更新主页。更新只接受传统数字 `vid`。
+`create_ai_page` 调用 `A1000107` 创建独立的纯展示 HTML 主页，不联动创建表单/问卷；PPT 默认使用逐页展示。`get_survey` 对 AI 主页返回草稿也可读取的 `html_content` 和固定 `page_type`。`update_ai_page` 调用 `A1000108` 基于完整原 HTML 原位更新，只接受传统数字 `vid`，不支持修改页面类型。

@@ -51,7 +51,7 @@ await createSurveyByJson(input, credentials, fetch, {
 
 `surveyToText` 保留用于把已读取的问卷转换为可读 DSL 文本；读取/导出 DSL 不等于使用 DSL 创建新问卷。
 
-AI 主页通过 `createAiPage`（OpenAPI `A1000107`）和 `updateAiPage`（OpenAPI `A1000108`）创建或更新 HTML 主页。
+AI 主页通过 `createAiPage`（OpenAPI `A1000107`）创建，通过 `getSurvey` 读取草稿也可返回的 `html_content` 和固定 `page_type`，再由 `updateAiPage`（OpenAPI `A1000108`）基于完整原 HTML 原位更新。更新不支持修改页面类型。
 
 `buildSubmitTemplate` 是纯本地辅助函数：输入 `getSurvey` 返回的题目结构，输出按服务端原始 `q_index` 组织的 `submitdata` 占位模板和逐题提示，不发起网络请求。分页栏和段落说明会被跳过；生成后应由 AI 或用户替换占位答案，再交给 `submitResponse`。
 

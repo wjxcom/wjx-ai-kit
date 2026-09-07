@@ -127,7 +127,7 @@ const TOOL_ARGS = {
   submit_response: { vid: 42, inputcosttime: 2, submitdata: "1$1", jpmversion: 1 },
   update_survey_settings: { vid: 42, api_setting: "{}" },
   update_survey_status: { vid: 42, state: 1 },
-  update_ai_page: { vid: 42, html_content: "<h1>Updated homepage</h1>", page_type: 0 },
+  update_ai_page: { vid: 42, html_content: "<h1>Updated homepage</h1>" },
   upload_file: { file_name: "image.png", file: "aGVsbG8=" },
 };
 

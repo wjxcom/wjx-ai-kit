@@ -20,29 +20,38 @@ wjx survey create-ai-page `
   --yes --non-interactive
 ```
 
-`--html_content` 和 `--file` 二选一。`page_type` 为 `0` 网页、`1` 海报、`2` PPT；省略时由服务端使用默认值。省略 `--publish` 时创建草稿。
+`--html_content` 和 `--file` 二选一。`page_type` 为 `0` 网页、`1` 海报、`2` PPT；省略时由服务端使用默认值。省略 `--publish` 时创建草稿。AI 主页是独立的纯展示内容，创建它不会创建或关联表单/问卷。
+
+PPT 默认应使用逐页幻灯片结构：每张幻灯片使用独立、固定比例画布，首屏只展示一页并提供逐页切换，不应把全部幻灯片拼成单个纵向长页面。
 
 ## 更新
+
+先读取主页原稿，草稿无需访问公开页：
+
+```powershell
+wjx survey get --vid 123456
+```
+
+AI 主页响应中的 `html_content` 是完整源 HTML，`page_type` 是创建时确定的固定类型。应在原 HTML 上修改后再提交。
 
 ```powershell
 wjx survey update-ai-page `
   --vid 123456 `
   --file .\revised.html `
   --title "更新后的主页" `
-  --page_type 0 `
   --yes --non-interactive
 ```
 
-`vid` 必须是传统数字问卷编号，不能使用 `sid`。后端会校验目标存在、类型为 AI 主页并且属于当前企业。已发布主页需要先使用 `survey status --vid <vid> --state 2` 暂停，再执行更新；客户端不会自动暂停。
+`vid` 必须是传统数字问卷编号，不能使用 `sid`。页面类型不可修改；网页、海报、PPT之间的转换请求会直接失败，不会创建替代主页或删除原主页。后端会校验目标存在、类型为 AI 主页并且属于当前企业。已发布主页需要先使用 `survey status --vid <vid> --state 2` 暂停，再执行更新；客户端不会自动暂停。
 
 ## 输入约束
 
 - HTML 最长 200000 个字符。
 - 标题最长 100 个字符，不能包含“问卷星”。
-- `page_type` 只能是 `0`、`1`、`2`。
+- 创建时 `page_type` 只能是 `0`、`1`、`2`，更新时不能传入或修改。
 - 创建/更新请求不自动重试，避免重复写入。
 - `--dry-run` 只输出脱敏后的请求计划，不访问服务器。
 
 ## 结果
 
-成功响应包含 `vid`、`sid`、`status`、`verify_status`、填写路径和 iframe 地址。CLI 默认以统一 `ok/data/meta` envelope 输出，SDK 保持问卷星原始 `result/data` 响应结构。
+创建和更新成功响应包含 `vid`、`sid`、`status`、`verify_status`、填写路径和 iframe 地址。`get_survey` 对 AI 主页额外返回 `html_content` 和 `page_type`。CLI 默认以统一 `ok/data/meta` envelope 输出，SDK 保持问卷星原始 `result/data` 响应结构。

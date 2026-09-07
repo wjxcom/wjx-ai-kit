@@ -13,6 +13,7 @@ const MANIFEST = [
   ]},
   { group: "按任务查找", items: [
     ["tasks/create-survey", "创建问卷"],
+    ["tasks/ai-page-api-integration", "AI 主页 API 集成"],
     ["tasks/analyze-responses", "分析答卷"],
     ["tasks/export-responses", "导出答卷"],
     ["tasks/configure-client", "配置 AI 客户端"],

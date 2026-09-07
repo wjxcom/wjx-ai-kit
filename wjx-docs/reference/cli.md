@@ -1,6 +1,6 @@
 # CLI 命令参考
 
-运行 `wjx <command> --help` 可查看当前命令和参数；本版本包含 75 个叶子命令。
+运行 `wjx <command> --help` 可查看当前命令和参数；本版本包含 77 个叶子命令。
 
 ## 顶层命令
 
@@ -39,4 +39,4 @@
 `survey create` 请求会发送 `X-WJX-Client: wjx-cli` 和 `X-WJX-Client-Version: <当前版本>`。服务端若返回结构化的 `errorcode: "CLIENT_VERSION_TOO_OLD"`、`"CLI_VERSION_TOO_OLD"`、`"UPGRADE_REQUIRED"`，或 `data.upgrade_required: true`，CLI 会在 stderr 输出 `UPGRADE_REQUIRED`；服务端提供 `min_client_version`、`upgrade_command` 时，CLI 会原样保留并生成对应提示，未提供的字段不会臆造。stdout 不输出伪成功结果。低于 `0.4.1` 的旧 CLI 不会发送这些请求头，服务端需要按旧创建 action 或缺失版本头返回同一业务错误。
 # AI 主页
 
-`wjx survey create-ai-page --file homepage.html` 创建 AI 主页；使用 `--html_content` 可直接传入 HTML。`wjx survey update-ai-page --vid <vid> --file homepage.html` 更新已有主页，`vid` 必须为传统数字编号。
+`wjx survey create-ai-page --file homepage.html` 创建独立的纯展示 AI 主页；使用 `--html_content` 可直接传入 HTML，PPT 默认应采用逐页展示。修改前用 `wjx survey get --vid <vid>` 读取草稿也可返回的 `html_content` 和固定 `page_type`，再通过 `wjx survey update-ai-page --vid <vid> --file homepage.html` 原位更新。`vid` 必须为传统数字编号，更新不支持修改页面类型。

@@ -232,14 +232,12 @@ export function registerSurveyCommands(program: Command): void {
     .option("--html_content <s>", "AI 主页 HTML 内容")
     .option("--file <path>", "从文件读取 AI 主页 HTML 内容")
     .option("--title <s>", "AI 主页标题")
-    .option("--page_type <n>", "页面类型：0=网页, 1=海报, 2=PPT", strictInt)
     .action(async (_opts, cmd) => {
       await executeRuntimeCommand(program, cmd, {
         normalize: ({ values }) => {
           requireField(values, "vid");
           const html = resolveAiPageHtml(values);
-          if (values.page_type !== undefined) requireEnum(values, "page_type", AI_PAGE_PAGE_TYPES);
-          return { vid: values.vid, html_content: html, title: values.title, page_type: values.page_type };
+          return { vid: values.vid, html_content: html, title: values.title };
         },
         validate: (input) => {
           if (!/^[0-9]+$/.test(String(input.vid)) || Number(input.vid) <= 0) throw new CliError("INPUT_ERROR", "--vid 必须是正整数传统问卷编号，不能使用 sid");
@@ -248,7 +246,7 @@ export function registerSurveyCommands(program: Command): void {
         },
         buildPlans: (input, context) => [buildRequestPlan({
           service: "default", action: Action.UPDATE_AI_PAGE, url: context?.apiUrl,
-          body: Object.fromEntries(Object.entries({ action: Action.UPDATE_AI_PAGE, vid: input.vid, html_content: input.html_content, title: input.title, page_type: input.page_type }).filter(([, value]) => value !== undefined)),
+          body: Object.fromEntries(Object.entries({ action: Action.UPDATE_AI_PAGE, vid: input.vid, html_content: input.html_content, title: input.title }).filter(([, value]) => value !== undefined)),
         })],
         execute: (input, credentials, requestOptions) => updateAiPage(input as unknown as Parameters<typeof updateAiPage>[0], credentials, undefined, requestOptions),
       });

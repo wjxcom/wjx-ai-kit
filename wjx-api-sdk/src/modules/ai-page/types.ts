@@ -24,8 +24,6 @@ export interface UpdateAiPageInput {
   html?: string;
   /** Optional replacement title. */
   title?: string;
-  /** Optional replacement page type: 0=web, 1=poster, 2=PPT. */
-  page_type?: number;
 }
 
 /** Common response payload returned by AI homepage create/update APIs. */

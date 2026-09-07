@@ -4,10 +4,10 @@ display_name: 问卷星cli
 display_name_en: wjx-cli-use
 displayName: 问卷星cli
 name_en: wjx-cli-use
-description: "Guide for using wjx-cli (Wenjuanxing CLI) to create surveys, query responses, and analyze data. Use when the user mentions: 问卷, 调查, 收集, 表单, 投票, 考试, 测评, 满意度, NPS, 问卷星, wjx, survey, questionnaire, or wants to create surveys, view responses, export data, analyze NPS/CSAT, or manage contacts, departments, and sub-accounts."
-description_zh: "使用 wjx-cli(问卷星命令行工具)创建问卷、查询问卷回复及分析数据的指南。当用户提到以下内容时使用:问卷、调查、收集、表单、投票、考试、测评、满意度、NPS、问卷星，或想要创建问卷、查看回复、导出数据、分析 NPS/CSAT,或管理联系人、部门和子账号。"
-description_en: "Guide for using wjx-cli (Wenjuanxing CLI) to create surveys, query responses, and analyze data. Use when the user mentions: 问卷, 调查, 收集, 表单, 投票, 考试, 测评, 满意度, NPS, 问卷星, wjx, survey, questionnaire, or wants to create surveys, view responses, export data, analyze NPS/CSAT, or manage contacts, departments, and sub-accounts."
-version: 0.4.3
+description: "Guide for using wjx-cli (Wenjuanxing CLI) to create AI homepages, posters, PPTs, and surveys, query responses, and analyze data. Use when the user mentions: AI主页, AI海报, AI PPT, 问卷, 调查, 收集, 表单, 投票, 考试, 测评, 满意度, NPS, 问卷星, wjx, survey, questionnaire, or wants to create or update those resources."
+description_zh: "使用 wjx-cli 创建或修改 AI主页、AI海报、AI PPT、问卷，查询回复及分析数据的指南。当用户提到 AI主页、AI海报、AI PPT、问卷、调查、收集、表单、投票、考试、测评、满意度、NPS、问卷星时使用。"
+description_en: "Guide for using wjx-cli (Wenjuanxing CLI) to create AI homepages, posters, PPTs, and surveys, query responses, and analyze data. Use when the user mentions AI homepages, AI posters, AI PPTs, surveys, forms, exams, NPS, Wenjuanxing, wjx, or related creation and update tasks."
+version: 0.4.4
 author: 问卷星
 ---
 
@@ -58,11 +58,14 @@ wjx-cli 是问卷星 OpenAPI 的命令行工具。命令格式：`wjx <模块> <
 
 ### AI 主页
 
-AI 主页使用 HTML 创建或更新：
+AI 主页是独立的纯展示内容，与表单/问卷创建互斥：
 
-- `wjx survey create-ai-page` 调用 OpenAPI `A1000107` 创建 AI 主页，必须提供 `--html_content` 或 `--file`，需要立即发布时使用 `--publish`。
-- `wjx survey update-ai-page` 调用 OpenAPI `A1000108` 更新 AI 主页，必须提供传统数字 `--vid` 和 HTML，不接受 `sid`。
-- HTML 最长 200000 字符，`--page_type` 可为 `0`（网页）、`1`（海报）或 `2`（PPT）。更新已发布主页前，按服务端要求先暂停发布状态。
+- 用户只要求创建 AI 主页、AI 海报或 AI PPT 时，只调用一次 `wjx survey create-ai-page`；不得再调用 `survey create`，不得额外创建、复制或关联任何表单/问卷。只有用户明确同时要求收集信息时，才另行确认表单需求。
+- 创建调用 OpenAPI `A1000107`，必须提供 `--html_content` 或 `--file`，需要立即发布时使用 `--publish`。
+- `--page_type` 可为 `0`（网页）、`1`（海报）或 `2`（PPT）。PPT 必须默认生成真正的逐页幻灯片结构：每页使用独立、固定比例的画布并提供逐页切换，首屏只展示一页；禁止将所有幻灯片拼成单个纵向长页面。
+- 修改前先调用 `wjx survey get --vid <vid>` 读取返回的 `html_content` 与 `page_type`；草稿也能直接读取，不得尝试抓取公开页。基于完整原 HTML 做局部修改，再调用 `wjx survey update-ai-page` 提交完整 HTML，不得因读取公开页失败而按主题重做整页。
+- 更新调用 OpenAPI `A1000108`，只接受传统数字 `--vid`，不接受 `sid`。页面类型不可修改；如果用户要求在网页、海报、PPT之间转换，直接说明接口不支持，不得新建替代主页，也不得删除原主页。
+- HTML 最长 200000 字符。更新已发布主页前，按服务端要求先暂停发布状态。
 
 ### 规则 1：一个需求 = 一个问卷
 

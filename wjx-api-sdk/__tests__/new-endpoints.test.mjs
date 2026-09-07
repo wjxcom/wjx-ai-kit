@@ -583,4 +583,16 @@ test("AI homepage endpoints map fields and validate inputs", async (t) => {
     await assert.rejects(() => updateAiPage({ vid: "sid-value", html_content: "<p>x</p>" }, credentials, mock.impl), /traditional numeric vid/);
     await assert.rejects(() => updateAiPage({ vid: "000", html_content: "<p>x</p>" }, credentials, mock.impl), /traditional numeric vid/);
   });
+  await t.test("updateAiPage rejects page type changes before sending a request", async () => {
+    let callCount = 0;
+    const impl = async () => {
+      callCount++;
+      return new Response(JSON.stringify({ result: true, data: {} }));
+    };
+    await assert.rejects(
+      () => updateAiPage({ vid: "207600", html_content: "<p>Updated</p>", page_type: 2 }, credentials, impl),
+      /page_type cannot be changed/,
+    );
+    assert.equal(callCount, 0);
+  });
 });

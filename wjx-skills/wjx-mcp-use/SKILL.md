@@ -1,6 +1,6 @@
 ---
 name: wjx-mcp-use
-description: "Guide for using wjx-mcp-server MCP tools to interact with the Wenjuanxing (问卷星) platform. Use when the user mentions: 问卷, 调查, 收集, 表单, 投票, 考试, 测评, 满意度, NPS, 问卷星, wjx, survey, questionnaire — or wants to create surveys, query responses, analyze data, manage contacts, or generate SSO links via MCP protocol. Tool, resource, and prompt counts are discovered from source at build time."
+description: "Guide for using wjx-mcp-server tools to create or update AI homepages, posters, PPTs, and surveys, query responses, and analyze data. Use when the user mentions: AI主页, AI海报, AI PPT, 问卷, 调查, 收集, 表单, 投票, 考试, 测评, 满意度, NPS, 问卷星, wjx, survey, or questionnaire. Tool, resource, and prompt counts are discovered from source at build time."
 ---
 
 # wjx-mcp-server Usage Guide
@@ -15,7 +15,13 @@ wjx-mcp-server 提供 MCP 工具、参考资源和 prompt 模板，覆盖问卷�
 
 ### AI 主页
 
-AI 主页工具对应 OpenAPI `A1000107`/`A1000108`：使用 `create_ai_page` 创建 HTML 主页，使用 `update_ai_page` 更新主页。创建必须提供 `html_content` 或 `html`；更新必须提供传统数字 `vid`，不接受 `sid`；HTML 最长 200000 字符。详细参数见 [references/tools-survey.md](references/tools-survey.md)。
+AI 主页是独立的纯展示内容，与表单/问卷创建互斥：
+
+- 用户只要求创建 AI 主页、AI 海报或 AI PPT 时，只调用一次 `create_ai_page`；不得调用 `create_survey_by_json`，不得额外创建、复制或关联任何表单/问卷。
+- `page_type=2` 时，HTML 必须是逐页幻灯片：每页使用独立、固定比例的画布并提供逐页切换，首屏只展示一页，禁止单个纵向长页面。
+- 修改前先用 `get_survey` 读取草稿或已发布主页的 `html_content` 与 `page_type`，基于完整原 HTML 局部修改后再调用 `update_ai_page`；不得抓取公开页，也不得无原稿重做整页。
+- 页面类型不可修改。网页、海报、PPT之间的转换请求应直接说明不支持，不得新建替代主页或删除原主页。
+- 创建必须提供 `html_content` 或 `html`；更新必须提供传统数字 `vid`，不接受 `sid`；HTML 最长 200000 字符。详细参数见 [references/tools-survey.md](references/tools-survey.md)。
 
 ### 规则 1：一个需求 = 一个问卷
 

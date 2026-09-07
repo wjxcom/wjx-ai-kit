@@ -20,3 +20,9 @@ test("CLI exposes only survey create", async () => {
   assert.doesNotMatch(stdout, /create-by-text/);
   assert.doesNotMatch(stdout, /create-by-json/);
 });
+
+test("AI homepage update does not expose page type conversion", async () => {
+  const { stdout } = await runHelp(["survey", "update-ai-page"]);
+  assert.doesNotMatch(stdout, /--page_type/);
+  assert.match(stdout, /已发布主页需先显式暂停/);
+});

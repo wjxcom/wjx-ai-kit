@@ -85,14 +85,15 @@ export async function updateAiPage<T = AiPageResult>(
   requestOptions?: RequestOverrides,
 ): Promise<WjxApiResponse<T>> {
   if (!input || typeof input !== "object") throw new TypeError("input must be an object");
+  if ("page_type" in input && input.page_type !== undefined) {
+    throw new TypeError("page_type cannot be changed when updating an AI homepage");
+  }
   const html = resolveHtml(input);
   validateTitle(input.title);
-  validatePageType(input.page_type);
   return callWjxApi<T>({
     action: Action.UPDATE_AI_PAGE,
     vid: normalizeTraditionalVid(input.vid),
     html_content: html,
     ...(input.title === undefined ? {} : { title: input.title }),
-    ...(input.page_type === undefined ? {} : { page_type: input.page_type }),
   }, { ...requestOptions, credentials, fetchImpl, maxRetries: 0, timeoutMs: requestOptions?.timeoutMs ?? LONG_TIMEOUT_MS });
 }

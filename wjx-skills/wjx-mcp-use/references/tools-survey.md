@@ -2,7 +2,7 @@
 
 ## create_ai_page - 创建 AI 主页
 
-调用 OpenAPI `A1000107` 创建 AI 主页。`html_content`（或兼容字段 `html`）必填，最大 200000 字符。
+调用 OpenAPI `A1000107` 创建一个独立的纯展示 AI 主页。`html_content`（或兼容字段 `html`）必填，最大 200000 字符。单独的 AI 主页请求只调用本工具，不创建或关联表单/问卷。
 
 | 参数 | 类型 | 必填 | 说明 |
 |------|------|------|------|
@@ -12,16 +12,19 @@
 | `publish` | boolean | 否 | 是否立即发布 |
 | `creater` | string | 否 | 创建者子账号用户名 |
 
+当 `page_type=2` 时，HTML 默认使用逐页 PPT 结构：每张幻灯片是独立的固定比例画布，首屏只显示一页并提供逐页切换；不要把所有内容拼成一个纵向长页面。
+
 ## update_ai_page - 更新 AI 主页
 
-调用 OpenAPI `A1000108` 更新主页。只接受传统数字 `vid`，不接受 `sid`；`html_content`（或 `html`）必填。
+调用 OpenAPI `A1000108` 原位更新主页。先调用 `get_survey` 读取目标的 `html_content` 和 `page_type`，基于完整原 HTML 修改后提交；草稿也可直接读取，无需访问公开页。只接受传统数字 `vid`，不接受 `sid`；`html_content`（或 `html`）必填。
 
 | 参数 | 类型 | 必填 | 说明 |
 |------|------|------|------|
 | `vid` | number/string | 是 | 传统数字主页编号 |
 | `html_content` | string | 是 | 完整 HTML 内容；也可使用 `html` 别名 |
 | `title` | string | 否 | 主页标题，最长 100 字符 |
-| `page_type` | number | 否 | 页面类型：0=网页、1=海报、2=PPT |
+
+更新不支持修改页面类型。如果用户要求在网页、海报、PPT之间转换，直接返回不支持；不得自动创建替代主页或删除原主页。
 
 ## create_survey_by_json — 用 JSONL 创建问卷（推荐）
 
@@ -52,6 +55,8 @@
 - 考试多项填空（`qtype="考试多项填空"`）依赖 `{_}` 占位符；考试完形填空不在当前 JSONL 创建支持集合中。
 
 ## get_survey — 获取问卷详情
+
+当目标是 AI 主页（`atype=12`）时，响应额外包含完整 `html_content` 和固定的 `page_type`；草稿状态同样返回，可作为后续 `update_ai_page` 的原稿。
 
 | 参数 | 类型 | 必填 | 说明 |
 |------|------|------|------|
