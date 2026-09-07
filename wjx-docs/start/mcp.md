@@ -8,8 +8,8 @@ MCP 适用于原生支持 Model Context Protocol 的客户端。若客户端只�
 - 问卷星 OpenAPI API Key
 - Claude Desktop、Claude Code、Cursor 等 MCP 客户端
 
-当前稳定版本为 `0.4.2`，已发布到 npm，registry 的 `latest` 指向
-`wjx-mcp-server@0.4.2`。直接安装：
+当前稳定版本为 `0.4.3`，已发布到 npm，registry 的 `latest` 指向
+`wjx-mcp-server@0.4.3`。直接安装：
 
 ```bash
 npm install -g wjx-mcp-server
@@ -27,8 +27,8 @@ WJX_API_KEY="你的 API Key" npx wjx-mcp-server
 
 ## 能力发现
 
-当前版本提供 59 个 Tool、8 个 Resource、15 个 Prompt。MCP 是 CLI 的核心业务子集入口；初始化、补全、Skill 安装等工作站能力保持 CLI-only。完整名称和差异见 [MCP 工具参考](../reference/mcp-tools.md) 与仓库 capability matrix。
+当前版本提供 {{MCP_TOOL_COUNT}} 个 Tool、{{MCP_RESOURCE_COUNT}} 个 Resource、{{MCP_PROMPT_COUNT}} 个 Prompt。MCP 是 CLI 的核心业务子集入口；初始化、补全、Skill 安装等工作站能力保持 CLI-only。完整名称和差异见 [MCP 工具参考](../reference/mcp-tools.md) 与仓库 capability matrix。
 
 ## 凭据安全
 
-不要把 API Key 写入提交到仓库的 JSON。优先使用客户端的环境变量配置或本机密钥管理。HTTP 模式还涉及 Bearer gate，见 [认证与安全](../concepts/authentication.md) 和 [HTTP 部署](../operations/http.md)。
+不要把 API Key 写入提交到仓库的 JSON。优先使用客户端的环境变量配置或本机密钥管理。HTTP 模式把访问令牌和上游 API Key 分开处理：`MCP_AUTH_TOKEN` 是 `/mcp` 的 Bearer gate，`WJX_API_KEY` 是单租户上游凭据；多租户请求使用 `X-WJX-API-Key`。详见 [认证与安全](../concepts/authentication.md) 和 [HTTP 部署](../operations/http.md)。

@@ -27,9 +27,9 @@ flowchart TD
     E --> F
 
     F --> G[McpServer]
-    G --> H[Resources 8]
+    G --> H[Resources 13]
     G --> I[Prompts 15]
-    G --> J[Tools 59]
+    G --> J[Tools 60]
 
     J --> M1[survey]
     J --> M2[response]
@@ -99,13 +99,13 @@ flowchart TD
 | `survey` | 11 | 问卷 JSONL 创建、DSL 读取、设置读写、标签、回收站和文件上传 | `createSurveyByJson()`、`getSurvey()`、`updateSurveySettings()`、`clearRecycleBin()` |
 | `response` | 11 | 答卷查询、计数、下载、报告、提交、模板、修改、清空 | `queryResponses()`、`downloadResponses()`、`getReport()`、`submitResponse()`、`buildSubmitTemplate()` |
 | `contacts` | 14 | 通讯录成员、管理员、部门、标签管理 | `queryContacts()`、`addContacts()`、`listDepartments()`、`listTags()` |
-| `sso` | 5 | 子账号 SSO、用户体系 SSO、代理商 SSO、问卷创建/编辑/预览链接 | `buildSsoSubaccountUrl()`、`buildSsoUserSystemUrl()`、`buildSsoPartnerUrl()`、`buildSurveyUrl()`、`buildPreviewUrl()` |
+| `sso` | 6 | 子账号 SSO、用户体系 SSO、代理商 SSO、问卷创建/编辑/预览链接、问卷短链接 | `buildSsoSubaccountUrl()`、`buildSsoUserSystemUrl()`、`buildSsoPartnerUrl()`、`buildSurveyUrl()`、`buildPreviewUrl()`、`getShortLink()` |
 | `user-system` | 6 | 参与者管理、活动绑定、问卷绑定查询、用户关联问卷查询 | `addParticipants()`、`bindActivity()`、`querySurveyBinding()`、`queryUserSurveys()` |
 | `multi-user` | 5 | 子账号创建、修改、删除、恢复、查询 | `addSubAccount()`、`modifySubAccount()`、`querySubAccounts()` |
 | `analytics` | 6 | 答卷解码、推送解密、NPS/CSAT、本地异常检测、指标对比 | `decodeResponses()`、`decodePushPayload()`、`calculateNps()`、`calculateCsat()`、`detectAnomalies()`、`compareMetrics()` |
 | `server`（诊断） | 1 | 配置与运行环境诊断 | `get_config` |
 
-业务模块中的 Tool 数量直接对应各 `src/modules/*/tools.ts` 中 `server.registerTool()` 的出现次数，共 58 个；`src/server.ts` 另注册 1 个 `get_config` 诊断工具，总计 59 个。
+业务模块中的 Tool 数量直接对应各 `src/modules/*/tools.ts` 中 `server.registerTool()` 的出现次数，共 59 个；`src/server.ts` 另注册 1 个 `get_config` 诊断工具，总计 60 个。资源数量以 `src/resources/index.ts` 的 13 个 `server.resource()` 注册为准。
 
 ### 5.2 survey 模块
 
@@ -173,8 +173,9 @@ flowchart TD
 - `sso_partner_url`
 - `build_survey_url`
 - `build_preview_url`
+- `get_short_link`
 
-前三者使用 `URLSearchParams` 编码登录参数，不走问卷星 OpenAPI，也不生成签名；`build_survey_url` 和 `build_preview_url` 分别生成后台创建/编辑链接与答卷预览链接。
+前三者使用 `URLSearchParams` 编码登录参数，不走问卷星 OpenAPI，也不生成签名；`build_survey_url` 和 `build_preview_url` 分别生成后台创建/编辑链接与答卷预览链接；`get_short_link` 调用 `openapi/shortlink.aspx` 将问卷填写长链接转换为短链接。
 
 ### 5.6 user-system 模块
 
@@ -242,10 +243,10 @@ flowchart TD
 
 `src/core/api-client.ts` 是远程调用总入口，承担：
 
-1. 读取凭据中的 `WJX_API_KEY`
+1. 读取请求上下文中的 `WJX_API_KEY`（HTTP tenant 请求来自 `X-WJX-API-Key`，stdio/单租户来自进程配置）
 2. 生成 32 位无连字符 `traceid`
 3. 将 `traceid` 与 `action` 放入 URL 查询参数
-4. 使用 `Authorization: Bearer <WJX_API_KEY>` 发起 POST JSON 请求
+4. 使用 `Authorization: Bearer <WJX_API_KEY>` 发起 POST JSON 请求；HTTP transport 的 `MCP_AUTH_TOKEN` 只负责入口 gate
 5. 处理超时、重试、响应解析和错误归一化
 
 关键设计点：
@@ -300,11 +301,16 @@ server.registerTool("tool_name", { inputSchema }, async (args) => {
 
 ### 8.1 Resources
 
-当前注册了 8 个只读资源：
+当前注册了 13 个只读资源：
 
+- `wjx://reference/jsonl-qtypes`
 - `wjx://reference/survey-types`
 - `wjx://reference/question-types`
 - `wjx://reference/survey-statuses`
+- `wjx://reference/text-validation-types`
+- `wjx://reference/matrix-display-types`
+- `wjx://reference/table-display-types`
+- `wjx://reference/survey-setting-types`
 - `wjx://reference/analysis-methods`
 - `wjx://reference/response-format`
 - `wjx://reference/user-roles`
@@ -327,7 +333,7 @@ server.registerTool("tool_name", { inputSchema }, async (args) => {
 
 ### 9.1 API 调用安全
 
-远程 API 安全基础来自 Bearer 凭据与传输控制：
+远程 API 安全基础来自上游 API 凭据与传输控制：
 
 - `Authorization: Bearer <WJX_API_KEY>` 传递问卷星 API Key
 - `traceid` 便于链路排障
@@ -335,7 +341,7 @@ server.registerTool("tool_name", { inputSchema }, async (args) => {
 
 ### 9.2 HTTP Transport 认证
 
-HTTP 模式可配置 `MCP_AUTH_TOKEN`，服务端在 `src/transports/http.ts` 中执行 Bearer Token 校验，并使用 `timingSafeEqual()` 进行常量时间比较，降低时序攻击风险。
+HTTP 模式把凭据分成两个边界：`MCP_AUTH_TOKEN` 只保护 `/mcp` 的 Bearer gate；单租户上游 API key 来自 `WJX_API_KEY`/`upstreamApiKey`。启用 `MCP_TENANT_MODE=1` 后，请求必须提供 `X-WJX-API-Key`，并在 session 内隔离保存，不能回退进程级 key。只有显式设置 `MCP_LEGACY_BEARER_API_KEY=1` 才允许 Bearer 兼作上游 API key；未设置时单租户保留旧版兼容回退，tenant 模式默认关闭。服务端使用 `timingSafeEqual()` 校验 gate，并且只在诊断中显示脱敏凭据状态。
 
 ### 9.3 推送解密与验签
 
@@ -385,7 +391,8 @@ HTTP 模式基于 `StreamableHTTPServerTransport`，提供：
 - `/mcp`：MCP 主入口
 - `/health`：健康检查
 - 请求体默认限制为 10 MiB；超限请求在 JSON 解析前返回 HTTP 413。嵌入式调用可通过 `startHttpTransport()` 的 `maxBodyBytes` 调整该上限。
-- Bearer 认证
+- Bearer 认证（`MCP_AUTH_TOKEN` gate，与上游 `WJX_API_KEY` 可独立）
+- tenant 模式下的 `X-WJX-API-Key` 请求级凭据隔离
 - 可选 session 模式
 - 未命中路由时统一返回 `404` JSON
 

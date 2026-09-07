@@ -78,10 +78,19 @@ export function createServer(): McpServer {
       // HTTP requests may carry a tenant-specific Bearer credential. Report
       // that request-scoped identity instead of the process-wide fallback.
       const requestCredentials = getRequestCredentials();
-      const apiKey = requestCredentials?.apiKey?.trim() || process.env.WJX_API_KEY?.trim() || "";
+      // Presence of a request scope is authoritative. Never fall back to a
+      // process-wide tenant key when an HTTP request supplied an empty or
+      // missing scoped credential.
+      const apiKey = requestCredentials !== undefined
+        ? requestCredentials.apiKey?.trim() || ""
+        : process.env.WJX_API_KEY?.trim() || "";
       const maskedKey = maskApiKeyForDisplay(apiKey);
-      const baseUrl = getWjxBaseUrl(requestCredentials?.baseUrl);
-      const corpId = requestCredentials?.corpId?.trim() || process.env.WJX_CORP_ID?.trim() || "(未设置)";
+      const baseUrl = requestCredentials !== undefined
+        ? getWjxBaseUrl(requestCredentials.baseUrl)
+        : getWjxBaseUrl();
+      const corpId = requestCredentials !== undefined
+        ? requestCredentials.corpId?.trim() || "(未设置)"
+        : process.env.WJX_CORP_ID?.trim() || "(未设置)";
 
       // Detect config source
       const wjxrcPath = process.env.WJX_CONFIG_PATH?.trim() || join(homedir(), ".wjxrc");
@@ -118,6 +127,11 @@ export function createServer(): McpServer {
         cli_version: cliVersion,
         env_WJX_BASE_URL: process.env.WJX_BASE_URL?.trim() || "(未设置，使用默认值)",
         transport: process.env.MCP_TRANSPORT?.trim() || "stdio",
+        credential_mode: process.env.MCP_TENANT_MODE === "1"
+          ? (process.env.MCP_LEGACY_BEARER_API_KEY === "1" ? "tenant-request-with-legacy-compat" : "tenant-request")
+          : (process.env.MCP_LEGACY_BEARER_API_KEY === "0" ? "single-tenant-configured" : "single-tenant-with-legacy-fallback"),
+        legacy_bearer_api_key: process.env.MCP_LEGACY_BEARER_API_KEY === "1"
+          || (process.env.MCP_TENANT_MODE !== "1" && process.env.MCP_LEGACY_BEARER_API_KEY !== "0"),
       };
 
       return toolResult(config, false);

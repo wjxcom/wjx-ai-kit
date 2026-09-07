@@ -45,6 +45,12 @@ export function getWjxContactsApiUrl(baseUrl) {
         ? `${getWjxBaseUrl(explicitBaseUrl)}/openapi/contacts.aspx`
         : envValue("WJX_CONTACTS_API_URL") ?? `${getWjxBaseUrl()}/openapi/contacts.aspx`;
 }
+export function getWjxShortLinkUrl(baseUrl) {
+    const explicitBaseUrl = nonBlank(baseUrl);
+    return explicitBaseUrl
+        ? `${getWjxBaseUrl(explicitBaseUrl)}/openapi/shortlink.aspx`
+        : envValue("WJX_SHORTLINK_URL") ?? `${getWjxBaseUrl()}/openapi/shortlink.aspx`;
+}
 export function getWjxSsoSubaccountUrl(baseUrl) {
     const explicitBaseUrl = nonBlank(baseUrl);
     return explicitBaseUrl

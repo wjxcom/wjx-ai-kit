@@ -155,6 +155,7 @@ describe("Skill black-box completeness: transport states", () => {
         response: {
           result: true,
           data: {
+            vid: 42,
             version: 7,
             questions: [
               { q_index: 1, q_type: 1, q_subtype: 0 },
@@ -175,6 +176,29 @@ describe("Skill black-box completeness: transport states", () => {
       const submitBody = JSON.parse(server.requests[1].body);
       assert.equal(submitBody.jpmversion, 7);
       assert.equal(submitBody.submitdata, "2$1!1,2!2");
+    } finally {
+      await server.close();
+    }
+  });
+
+  test("explicit jpmversion does not bypass a mismatched survey identity", async () => {
+    const server = await startServer([
+      {
+        response: {
+          result: true,
+          data: { vid: 999, version: 7, questions: [] },
+        },
+      },
+      { response: { result: true, data: { accepted: true } } },
+    ]);
+    try {
+      const result = await runCli([
+        "--yes", "response", "submit", "--vid", "42", "--inputcosttime", "2",
+        "--submitdata", "1$1", "--jpmversion", "7",
+      ], { env: { WJX_API_KEY: "explicit-version-identity-key", WJX_API_URL: server.apiUrl } });
+      const problem = parseProblem(result, "API_ERROR");
+      assert.match(problem.error.message, /身份|编号|停止/);
+      assert.equal(server.requests.length, 1, "identity mismatch must block the submission POST");
     } finally {
       await server.close();
     }
@@ -787,7 +811,7 @@ describe("Skill black-box completeness: concurrent response isolation", () => {
       const body = JSON.parse(Buffer.concat(chunks).toString("utf8"));
       requests.push({ authorization: request.headers.authorization, body });
       const data = body.action === "1000001"
-        ? { version: Number(body.vid) + 10, questions: [] }
+        ? { vid: Number(body.vid), version: Number(body.vid) + 10, questions: [] }
         : { submitted: true, vid: body.vid };
       response.writeHead(200, { "content-type": "application/json" });
       response.end(JSON.stringify({ result: true, data }));

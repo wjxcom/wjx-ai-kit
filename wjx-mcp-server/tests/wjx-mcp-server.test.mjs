@@ -63,7 +63,7 @@ test("createSurveyByJson sends JSONL to action 1000106 with Bearer auth", async 
   assert.equal("traceid" in parsedBody, false, "traceid should not be in POST body");
 });
 
-test("server exposes all 59 tools, 8 resources, and 15 prompts over stdio", async () => {
+test("server exposes all 60 tools, 13 resources, and 15 prompts over stdio", async () => {
   const transport = new StdioClientTransport({
     command: "node",
     args: [serverEntry],
@@ -120,6 +120,7 @@ test("server exposes all 59 tools, 8 resources, and 15 prompts over stdio", asyn
       "get_config",
       "get_question_tags",
       "get_report",
+      "get_short_link",
       "get_survey",
       "get_survey_settings",
       "get_tag_details",
@@ -164,6 +165,15 @@ test("server exposes all 59 tools, 8 resources, and 15 prompts over stdio", asyn
     assert.ok(updateTool);
     assert.deepEqual(updateTool.inputSchema.required?.slice().sort(), ["state", "vid"]);
 
+    const updateSettingsTool = toolsResult.tools.find((t) => t.name === "update_survey_settings");
+    assert.ok(updateSettingsTool);
+    assert.equal(updateSettingsTool.annotations?.destructiveHint, true);
+    assert.equal(
+      updateSettingsTool.annotations?.idempotentHint,
+      false,
+      "full-replacement settings writes must not be replayed by an MCP host",
+    );
+
     // ─── New tools checks ──────────────────────────────────────────
     const queryTool = toolsResult.tools.find((t) => t.name === "query_responses");
     assert.ok(queryTool);
@@ -178,6 +188,10 @@ test("server exposes all 59 tools, 8 resources, and 15 prompts over stdio", asyn
 
     const reportTool = toolsResult.tools.find((t) => t.name === "get_report");
     assert.ok(reportTool);
+
+    const shortLinkTool = toolsResult.tools.find((t) => t.name === "get_short_link");
+    assert.ok(shortLinkTool);
+    assert.ok(shortLinkTool.inputSchema.required?.includes("url"));
 
     const deleteTool = toolsResult.tools.find((t) => t.name === "delete_survey");
     assert.ok(deleteTool);
@@ -197,11 +211,16 @@ test("server exposes all 59 tools, 8 resources, and 15 prompts over stdio", asyn
     assert.deepEqual(resourceUris, [
       "wjx://reference/analysis-methods",
       "wjx://reference/dsl-syntax",
+      "wjx://reference/jsonl-qtypes",
+      "wjx://reference/matrix-display-types",
       "wjx://reference/push-format",
       "wjx://reference/question-types",
       "wjx://reference/response-format",
+      "wjx://reference/survey-setting-types",
       "wjx://reference/survey-statuses",
       "wjx://reference/survey-types",
+      "wjx://reference/table-display-types",
+      "wjx://reference/text-validation-types",
       "wjx://reference/user-roles",
     ]);
     const resourceMeta = resourcesResult.resources.find((resource) => resource.uri === "wjx://reference/question-types");
@@ -244,5 +263,105 @@ test("server exposes all 59 tools, 8 resources, and 15 prompts over stdio", asyn
     assert.ok(npsPrompt.messages[0].content.text.includes("TestProduct"));
   } finally {
     await transport.close();
+  }
+});
+
+function parseReadOnlyTool(result, label) {
+  assert.equal(result?.isError, false, `${label} returned an MCP error`);
+  const text = result?.content?.[0]?.text;
+  assert.equal(typeof text, "string", `${label} returned no text`);
+  let payload;
+  try {
+    payload = JSON.parse(text);
+  } catch {
+    throw new Error(`${label} returned non-JSON content`);
+  }
+  assert.equal(payload?.result, true, `${label} returned an unsuccessful API result`);
+  return payload;
+}
+
+function positiveVid(value) {
+  if (typeof value === "number" && Number.isInteger(value) && value > 0) return value;
+  if (typeof value === "string" && /^\d+$/.test(value.trim())) return Number(value);
+  return undefined;
+}
+
+function findVid(value) {
+  if (!value || typeof value !== "object") return undefined;
+  if (Array.isArray(value)) {
+    for (const item of value) {
+      const found = findVid(item);
+      if (found !== undefined) return found;
+    }
+    return undefined;
+  }
+  const record = value;
+  for (const key of ["vid", "activity_id", "activityid"]) {
+    const found = positiveVid(record[key]);
+    if (found !== undefined) return found;
+  }
+  for (const [key, child] of Object.entries(record)) {
+    if (key === "activitys" || key === "activities") {
+      if (child && typeof child === "object" && !Array.isArray(child)) {
+        for (const [activityId, activity] of Object.entries(child)) {
+          const found = findVid(activity) ?? positiveVid(activityId);
+          if (found !== undefined) return found;
+        }
+      }
+    } else if (child && typeof child === "object") {
+      const found = findVid(child);
+      if (found !== undefined) return found;
+    }
+  }
+  return undefined;
+}
+
+test("real MCP stdio read-only smoke is opt-in through WJX_E2E=1", {
+  skip: process.env.WJX_E2E !== "1",
+}, async (t) => {
+  // Keep the real branch read-only. Creating, publishing, deleting, clearing,
+  // and submitting require a separately reviewed test and explicit scope.
+  const transport = new StdioClientTransport({
+    command: "node",
+    args: [serverEntry],
+    cwd: projectDir,
+    env: { ...process.env, MCP_TRANSPORT: "stdio" },
+    stderr: "pipe",
+  });
+  const client = new Client({
+    name: "wjx-mcp-real-e2e-readonly",
+    version: "1.0.0",
+  });
+
+  try {
+    await client.connect(transport); // initialize
+    const toolsResult = await client.listTools(); // tools/list
+    const names = new Set(toolsResult.tools.map((tool) => tool.name));
+    for (const name of ["list_surveys", "get_survey", "count_responses"]) {
+      assert.ok(names.has(name), `${name} is missing from the MCP surface`);
+    }
+
+    const listed = parseReadOnlyTool(
+      await client.callTool({ name: "list_surveys", arguments: { page_index: 1, page_size: 5 } }),
+      "list_surveys",
+    );
+    const configuredVid = process.env.WJX_E2E_VID?.trim();
+    const vid = configuredVid ? positiveVid(configuredVid) : findVid(listed);
+    if (configuredVid && vid === undefined) throw new Error("WJX_E2E_VID must be a positive integer");
+    if (vid === undefined) {
+      t.skip("No survey was returned; set WJX_E2E_VID to exercise detail and response reads");
+      return;
+    }
+
+    parseReadOnlyTool(
+      await client.callTool({ name: "get_survey", arguments: { vid } }),
+      "get_survey",
+    );
+    parseReadOnlyTool(
+      await client.callTool({ name: "count_responses", arguments: { vid } }),
+      "count_responses",
+    );
+  } finally {
+    await transport.close().catch(() => undefined);
   }
 });

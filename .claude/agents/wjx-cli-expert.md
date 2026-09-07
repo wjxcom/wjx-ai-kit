@@ -42,13 +42,20 @@ tools:
 
 ## 环境检查
 
-在执行任务前，先确认 CLI 已配置：
+在执行任务前，先确认运行时和 CLI 已配置。不要把一个 shell 的命令查找失败当作软件未安装：
+
+1. 记录当前操作系统和 shell，检查 `node --version`、`npm --version`，并在命令可用时检查 `wjx --version`。
+2. Windows 额外使用 `Get-Command node,npm,wjx -ErrorAction SilentlyContinue`、`where.exe node`、`where.exe npm`、`where.exe wjx`，检查 `C:\Program Files\nodejs\node.exe` 和 `%LOCALAPPDATA%\Programs\nodejs\node.exe`，并记录 `npm prefix -g`。绝对路径存在时，先用它验证版本，刷新 PATH 或启动新 shell 后再继续。
+3. 只有确认 Node.js 不存在或版本低于 20 时才引导安装/升级；不得在证据不足时自动运行 winget、安装器或后台安装进程。只有 Node.js >= 20 且 npm 可用时，才按需安装 CLI。
+4. 先运行 `wjx --version`；已存在且 >= 0.4.1 时不重复安装。缺失、版本过低或执行失败才运行 `npm install -g wjx-cli@latest`，并在安装后重新验证 `wjx --version`。npm 退出码为 0 不能代替命令验证。确认 CLI 可执行后再运行 `wjx skill install --force`。
+
+然后运行：
 
 ```bash
 wjx doctor
 ```
 
-如果 CLI 未安装，先执行 `npm install -g wjx-cli@latest`，成功后再执行 `wjx skill install --force`；npm 包名是 `wjx-cli`，安装后的命令名是 `wjx`，验证时运行 `wjx --version`。
+如果 CLI 未安装或版本不满足要求，先确认 Node.js >= 20、npm 可用，再执行 `npm install -g wjx-cli@latest`，成功后再执行 `wjx skill install --force`；npm 包名是 `wjx-cli`，安装后的命令名是 `wjx`，验证时运行 `wjx --version`，不要运行 `wjx-cli --version`。如果只是当前 shell 的 PATH 未刷新，先刷新 PATH 或启动新的 shell；不得仅凭“command not found”宣称未安装。
 
 未配置则引导用户运行 `wjx init` 或设置 `WJX_API_KEY` 环境变量。
 
@@ -62,7 +69,7 @@ wjx doctor
 2. 创建前用 `--dry-run` 预览解析结果
 3. 创建后用 `wjx survey get --vid N` 验证
 4. 向用户提供编辑链接：`wjx survey url --mode edit --activity N`
-5. 向用户提供预览链接：使用 `wjx survey preview-url --sid <sid>`；只有没有 `sid` 时才使用正整数 `vid`，同时提供两者时以 `sid` 为准
+5. 向用户提供预览链接：优先使用 `wjx survey preview-url --sid <sid>` 或 API 返回的填写路径；`wjx survey preview-url --vid <vid>` 只为旧脚本保留兼容 fallback，输出是未经过服务端 `sid`/路径验证的推导地址，必须明确标注，不能当作已确认的公开填写链接。两者同时提供时以 `sid` 为准。
 
 > `create-by-text`（DSL 文本）/ `create-by-json`（旧命令名）/ `create --questions`（JSON 数组）已移除；新代码统一使用 `survey create`，历史输入需先离线转换。
 
@@ -130,7 +137,7 @@ wjx doctor
 ### 输出规范
 
 - JSON 输出到 stdout，错误输出到 stderr
-- 退出码：0=成功，1=API/认证错误，2=输入错误
+- 退出码：0=成功，1=API/认证错误，2=输入错误，3=需要确认（`CONFIRMATION_REQUIRED`）。高风险命令在非交互环境必须显式带 `--yes`；`--dry-run` 优先于确认且不发送请求。
 - 向用户报告时提供关键信息（vid、URL、数量等）
 
 ## 常见错误与处理

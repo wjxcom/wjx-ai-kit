@@ -14,7 +14,7 @@ export async function queryContacts(input, credentials = getWjxCredentials(), fe
         corpid: resolveCorpId(input, credentials),
         uid: input.uid,
     };
-    return callWjxContactsApi(params, { credentials, fetchImpl });
+    return callWjxContactsApi(params, { credentials, fetchImpl, idempotency: "safe", httpRetryable: true });
 }
 export async function addContacts(input, credentials = getWjxCredentials(), fetchImpl = fetch) {
     const params = {
@@ -26,14 +26,14 @@ export async function addContacts(input, credentials = getWjxCredentials(), fetc
         params.auto_create_udept = input.auto_create_udept ? "1" : "0";
     if (input.auto_create_tag !== undefined)
         params.auto_create_tag = input.auto_create_tag ? "1" : "0";
-    return callWjxContactsApi(params, { credentials, fetchImpl, maxRetries: 0 });
+    return callWjxContactsApi(params, { credentials, fetchImpl, maxRetries: 0, idempotency: "unsafe", httpRetryable: false });
 }
 export async function deleteContacts(input, credentials = getWjxCredentials(), fetchImpl = fetch) {
     return callWjxContactsApi({
         action: Action.MANAGE_CONTACTS,
         corpid: resolveCorpId(input, credentials),
         uids: input.uids,
-    }, { credentials, fetchImpl, maxRetries: 0 });
+    }, { credentials, fetchImpl, maxRetries: 0, idempotency: "unsafe", httpRetryable: false });
 }
 // ─── Admin ───────────────────────────────────────────────────────────
 export async function addAdmin(input, credentials = getWjxCredentials(), fetchImpl = fetch) {
@@ -41,21 +41,21 @@ export async function addAdmin(input, credentials = getWjxCredentials(), fetchIm
         action: Action.ADD_ADMIN,
         corpid: resolveCorpId(input, credentials),
         users: input.users,
-    }, { credentials, fetchImpl, maxRetries: 0 });
+    }, { credentials, fetchImpl, maxRetries: 0, idempotency: "unsafe", httpRetryable: false });
 }
 export async function deleteAdmin(input, credentials = getWjxCredentials(), fetchImpl = fetch) {
     return callWjxContactsApi({
         action: Action.DELETE_ADMIN,
         corpid: resolveCorpId(input, credentials),
         uids: input.uids,
-    }, { credentials, fetchImpl, maxRetries: 0 });
+    }, { credentials, fetchImpl, maxRetries: 0, idempotency: "unsafe", httpRetryable: false });
 }
 export async function restoreAdmin(input, credentials = getWjxCredentials(), fetchImpl = fetch) {
     return callWjxContactsApi({
         action: Action.RESTORE_ADMIN,
         corpid: resolveCorpId(input, credentials),
         uids: input.uids,
-    }, { credentials, fetchImpl, maxRetries: 0 });
+    }, { credentials, fetchImpl, maxRetries: 0, idempotency: "unsafe", httpRetryable: false });
 }
 // ─── Department ──────────────────────────────────────────────────────
 export async function listDepartments(input, credentials = getWjxCredentials(), fetchImpl = fetch) {
@@ -63,21 +63,21 @@ export async function listDepartments(input, credentials = getWjxCredentials(), 
         action: Action.LIST_DEPARTMENTS,
         corpid: resolveCorpId(input, credentials),
     };
-    return callWjxContactsApi(params, { credentials, fetchImpl });
+    return callWjxContactsApi(params, { credentials, fetchImpl, idempotency: "safe", httpRetryable: true });
 }
 export async function addDepartment(input, credentials = getWjxCredentials(), fetchImpl = fetch) {
     return callWjxContactsApi({
         action: Action.ADD_DEPARTMENT,
         corpid: resolveCorpId(input, credentials),
         depts: input.depts,
-    }, { credentials, fetchImpl, maxRetries: 0 });
+    }, { credentials, fetchImpl, maxRetries: 0, idempotency: "unsafe", httpRetryable: false });
 }
 export async function modifyDepartment(input, credentials = getWjxCredentials(), fetchImpl = fetch) {
     return callWjxContactsApi({
         action: Action.MODIFY_DEPARTMENT,
         corpid: resolveCorpId(input, credentials),
         depts: input.depts,
-    }, { credentials, fetchImpl, maxRetries: 0 });
+    }, { credentials, fetchImpl, maxRetries: 0, idempotency: "unsafe", httpRetryable: false });
 }
 export async function deleteDepartment(input, credentials = getWjxCredentials(), fetchImpl = fetch) {
     const params = {
@@ -88,14 +88,14 @@ export async function deleteDepartment(input, credentials = getWjxCredentials(),
     };
     if (input.del_child !== undefined)
         params.del_child = input.del_child ? "1" : "0";
-    return callWjxContactsApi(params, { credentials, fetchImpl, maxRetries: 0 });
+    return callWjxContactsApi(params, { credentials, fetchImpl, maxRetries: 0, idempotency: "unsafe", httpRetryable: false });
 }
 // ─── Tag ─────────────────────────────────────────────────────────────
 export async function listTags(input, credentials = getWjxCredentials(), fetchImpl = fetch) {
     return callWjxContactsApi({
         action: Action.LIST_TAGS,
         corpid: resolveCorpId(input, credentials),
-    }, { credentials, fetchImpl });
+    }, { credentials, fetchImpl, idempotency: "safe", httpRetryable: true });
 }
 export async function addTag(input, credentials = getWjxCredentials(), fetchImpl = fetch) {
     const params = {
@@ -105,7 +105,7 @@ export async function addTag(input, credentials = getWjxCredentials(), fetchImpl
     };
     if (input.is_radio !== undefined)
         params.is_radio = input.is_radio ? "1" : "0";
-    return callWjxContactsApi(params, { credentials, fetchImpl, maxRetries: 0 });
+    return callWjxContactsApi(params, { credentials, fetchImpl, maxRetries: 0, idempotency: "unsafe", httpRetryable: false });
 }
 export async function modifyTag(input, credentials = getWjxCredentials(), fetchImpl = fetch) {
     const params = {
@@ -117,7 +117,7 @@ export async function modifyTag(input, credentials = getWjxCredentials(), fetchI
         params.tp_name = input.tp_name;
     if (input.child_names !== undefined)
         params.child_names = input.child_names;
-    return callWjxContactsApi(params, { credentials, fetchImpl, maxRetries: 0 });
+    return callWjxContactsApi(params, { credentials, fetchImpl, maxRetries: 0, idempotency: "unsafe", httpRetryable: false });
 }
 export async function deleteTag(input, credentials = getWjxCredentials(), fetchImpl = fetch) {
     return callWjxContactsApi({
@@ -125,6 +125,6 @@ export async function deleteTag(input, credentials = getWjxCredentials(), fetchI
         corpid: resolveCorpId(input, credentials),
         type: input.type,
         tags: input.tags,
-    }, { credentials, fetchImpl, maxRetries: 0 });
+    }, { credentials, fetchImpl, maxRetries: 0, idempotency: "unsafe", httpRetryable: false });
 }
 //# sourceMappingURL=client.js.map

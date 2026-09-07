@@ -3,6 +3,7 @@ import { describe, it, before } from "node:test";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 import { createServer } from "../dist/server.js";
+import { JSONL_QTYPES_RESOURCE } from "../dist/resources/jsonl-qtypes.js";
 
 process.env.WJX_APP_ID = process.env.WJX_APP_ID || "test-app-id";
 process.env.WJX_APP_KEY = process.env.WJX_APP_KEY || "test-app-key";
@@ -64,6 +65,20 @@ describe("survey-generation-json prompts", () => {
       assert.ok(text.includes("create_survey_by_json"));
     });
 
+    it("gates creation behind an explicit authorization and distinguishes 360 types", async () => {
+      const result = await client.getPrompt({
+        name: "generate-survey-json",
+        arguments: { topic: "360度评估" },
+      });
+      const text = result.messages[0].content.text;
+      assert.match(text, /先.*预览|预览.*先/i);
+      assert.match(text, /明确授权|明确确认|用户.*授权/i);
+      assert.match(text, /360.*atype=4/);
+      assert.match(text, /无测评关系.*atype=5/);
+      assert.match(text, /民主测评.*atype=11/);
+      assert.doesNotMatch(text, /生成完成后，请直接调用 create_survey_by_json/);
+    });
+
     it("respects question_count and requirements parameters", async () => {
       const result = await client.getPrompt({
         name: "generate-survey-json",
@@ -76,6 +91,18 @@ describe("survey-generation-json prompts", () => {
       const text = result.messages[0].content.text;
       assert.ok(text.includes("20"));
       assert.ok(text.includes("包含联合分析"));
+    });
+
+    it("uses the generated JSONL profile instead of a stale hand-maintained qtype list", async () => {
+      const result = await client.getPrompt({
+        name: "generate-survey-json",
+        arguments: { topic: "完整题型覆盖" },
+      });
+      const text = result.messages[0].content.text;
+      for (const qtype of JSONL_QTYPES_RESOURCE.qtypes) {
+        assert.ok(text.includes(qtype), `prompt omitted generated qtype: ${qtype}`);
+      }
+      assert.match(text, /wjx:\/\/reference\/jsonl-qtypes/);
     });
   });
 

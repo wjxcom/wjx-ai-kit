@@ -53,7 +53,9 @@ export function registerMultiUserTools(server) {
         },
         annotations: {
             destructiveHint: true,
-            idempotentHint: true,
+            // The SDK classifies account updates as unsafe writes; a repeated
+            // call can overwrite mutable role/contact fields.
+            idempotentHint: false,
             openWorldHint: true,
             title: "修改子账号",
         },
@@ -91,7 +93,8 @@ export function registerMultiUserTools(server) {
         },
         annotations: {
             destructiveHint: false,
-            idempotentHint: true,
+            // Restore is an unsafe SDK operation without a replay guarantee.
+            idempotentHint: false,
             openWorldHint: true,
             title: "恢复子账号",
         },

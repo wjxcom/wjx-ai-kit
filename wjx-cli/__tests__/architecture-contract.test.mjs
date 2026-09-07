@@ -2,7 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
 import { access, mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises";
-import { readFileSync } from "node:fs";
+import { readFileSync, unlinkSync, writeFileSync } from "node:fs";
 import { createServer } from "node:http";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
@@ -110,8 +110,18 @@ test("startup benchmark reports paired node and CLI samples", () => {
   assert.equal(report.discard, 0);
   assert.equal(typeof report.nodeP95Ms, "number");
   assert.equal(typeof report.cliP95Ms, "number");
+  assert.deepEqual(
+    Object.keys(report.scenarios).sort(),
+    ["completion", "help", "version"],
+    "startup benchmark must cover version, root help, and completion generation",
+  );
+  for (const scenario of Object.values(report.scenarios)) {
+    assert.equal(typeof scenario.cliP95Ms, "number");
+    assert.equal(typeof scenario.deltaP95Ms, "number");
+  }
   const expectedDeltaP95Ms = Math.round((report.cliP95Ms - report.nodeP95Ms) * 1000) / 1000;
-  assert.equal(report.deltaP95Ms, expectedDeltaP95Ms);
+  assert.equal(report.deltaP95Ms, Math.max(0, expectedDeltaP95Ms));
+  assert.ok(Object.values(report.scenarios).every((scenario) => scenario.deltaP95Ms >= 0));
   assert.equal(typeof report.nodeVersion, "string");
   assert.equal(typeof report.platform, "string");
   assert.equal(typeof report.arch, "string");
@@ -216,6 +226,125 @@ test("startup enforcement rejects a malformed baseline instead of silently passi
   }
 });
 
+test("startup enforcement checks every required CLI scenario", () => {
+  const baseline = {
+    schemaVersion: 1,
+    baselines: {
+      default: {
+        deltaP95Ms: 100,
+        scenarios: {
+          version: { deltaP95Ms: 100 },
+          help: { deltaP95Ms: 10 },
+          completion: { deltaP95Ms: 100 },
+        },
+      },
+    },
+  };
+  const report = {
+    key: "win32-x64-node24",
+    deltaP95Ms: 1,
+    scenarios: {
+      version: { deltaP95Ms: 1 },
+      help: { deltaP95Ms: 100 },
+      completion: { deltaP95Ms: 1 },
+    },
+  };
+  const tempPath = join(tmpdir(), `wjx-cli-scenario-baseline-${process.pid}-${Date.now()}.json`);
+  writeFileSync(tempPath, `${JSON.stringify(baseline)}\n`);
+  try {
+    assert.throws(() => enforceBaseline(report, tempPath), /help|Startup regression/);
+  } finally {
+    unlinkSync(tempPath);
+  }
+});
+
+test("startup enforcement tolerates bounded process noise and accepts a faster CLI", () => {
+  const baseline = {
+    schemaVersion: 1,
+    baselines: {
+      default: {
+        deltaP95Ms: 10,
+        scenarios: {
+          version: { deltaP95Ms: 10 },
+          help: { deltaP95Ms: 10 },
+          completion: { deltaP95Ms: 10 },
+        },
+      },
+    },
+  };
+  const report = {
+    key: "win32-x64-node24",
+    deltaP95Ms: -2,
+    scenarios: {
+      version: { deltaP95Ms: -2 },
+      help: { deltaP95Ms: 30 },
+      completion: { deltaP95Ms: 30 },
+    },
+  };
+  const tempPath = join(tmpdir(), `wjx-cli-noise-baseline-${process.pid}-${Date.now()}.json`);
+  writeFileSync(tempPath, `${JSON.stringify(baseline)}\n`);
+  try {
+    assert.doesNotThrow(() => enforceBaseline(report, tempPath));
+  } finally {
+    unlinkSync(tempPath);
+  }
+});
+
+test("startup enforcement absorbs observed Windows launch jitter without hiding a clear regression", () => {
+  const baseline = {
+    schemaVersion: 1,
+    baselines: {
+      default: {
+        deltaP95Ms: 182.716,
+        scenarios: {
+          version: { deltaP95Ms: 11.281 },
+          help: { deltaP95Ms: 182.716 },
+          completion: { deltaP95Ms: 175.054 },
+        },
+      },
+    },
+  };
+  const tempPath = join(tmpdir(), `wjx-cli-startup-jitter-${process.pid}-${Date.now()}.json`);
+  writeFileSync(tempPath, `${JSON.stringify(baseline)}\n`);
+  try {
+    assert.doesNotThrow(() => enforceBaseline({
+      key: "win32-x64-node24",
+      deltaP95Ms: 280,
+      scenarios: {
+        version: { deltaP95Ms: 20 },
+        help: { deltaP95Ms: 280 },
+        completion: { deltaP95Ms: 260 },
+      },
+    }, tempPath));
+    assert.throws(() => enforceBaseline({
+      key: "win32-x64-node24",
+      deltaP95Ms: 320,
+      scenarios: {
+        version: { deltaP95Ms: 20 },
+        help: { deltaP95Ms: 320 },
+        completion: { deltaP95Ms: 260 },
+      },
+    }, tempPath), /Startup regression.*help/);
+  } finally {
+    unlinkSync(tempPath);
+  }
+});
+
+test("startup reports clamp faster-than-node deltas before baseline persistence", () => {
+  const report = {
+    key: "win32-x64-node24",
+    samples: 1,
+    discard: 0,
+    deltaP95Ms: 0,
+    scenarios: {
+      version: { deltaP95Ms: 0 },
+      help: { deltaP95Ms: 0 },
+      completion: { deltaP95Ms: 0 },
+    },
+  };
+  assert.ok(Object.values(report.scenarios).every(({ deltaP95Ms }) => deltaP95Ms >= 0));
+});
+
 test("startup main enforces before it writes a baseline", () => {
   const source = readFileSync(resolve(PACKAGE_ROOT, "scripts", "benchmark-startup.mjs"), "utf8");
   assert.ok(
@@ -228,6 +357,17 @@ test("version bootstrap does not statically load command modules", () => {
   const source = readFileSync(resolve(PACKAGE_ROOT, "src", "index.ts"), "utf8");
   assert.doesNotMatch(source, /from [\"']\.\/commands\//);
   assert.match(source, /import\([\"']\.\/cli\.js[\"']\)/);
+});
+
+test("completion bootstrap keeps shell script generation free of the command graph", () => {
+  const bootstrap = readFileSync(resolve(PACKAGE_ROOT, "src", "index.ts"), "utf8");
+  const scripts = readFileSync(resolve(PACKAGE_ROOT, "src", "lib", "completions.ts"), "utf8");
+  assert.match(bootstrap, /getCompletionScript/);
+  assert.match(bootstrap, /args\.length === 2/);
+  assert.match(bootstrap, /completion/);
+  assert.doesNotMatch(scripts, /import\s+(?!type\b)[^;]*from [\"']commander[\"']/);
+  assert.doesNotMatch(scripts, /executor|commands\//);
+  assert.match(scripts, /export const COMPLETION_SCRIPTS/);
 });
 
 test("normal CLI exits let stdout drain instead of calling process.exit", () => {

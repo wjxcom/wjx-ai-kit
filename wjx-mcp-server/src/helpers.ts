@@ -31,6 +31,23 @@ export function toolResult(data: unknown, isError: boolean) {
 
 export function toolError(error: unknown) {
   const msg = error instanceof Error ? error.message : String(error);
+  if (error && typeof error === "object" && (error as { outcome?: unknown }).outcome === "unknown") {
+    const ambiguous = error as {
+      outcome: "unknown";
+      action?: unknown;
+      traceId?: unknown;
+      attempts?: unknown;
+    };
+    return toolResult({
+      result: false,
+      outcome: "unknown",
+      errormsg: msg,
+      ...(typeof ambiguous.action === "string" ? { action: ambiguous.action } : {}),
+      ...(typeof ambiguous.traceId === "string" ? { traceid: ambiguous.traceId } : {}),
+      ...(typeof ambiguous.attempts === "number" ? { attempts: ambiguous.attempts } : {}),
+      recommendation: "read-after-write verification",
+    }, true);
+  }
   return toolResult({ result: false, errormsg: msg }, true);
 }
 

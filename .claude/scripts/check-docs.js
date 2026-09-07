@@ -8,6 +8,15 @@ const { DOCS_DIR, entries } = require("./doc-manifest.js");
 
 const failures = [];
 const canonical = new Set(entries.map((entry) => entry.key));
+// These placeholders are intentionally resolved by build-docs-html.js. Keep
+// the allowlist here so a typo or an undocumented variable still fails the
+// source check before it can reach a generated artifact.
+const documentationVariables = new Set([
+  "MCP_TOOL_COUNT",
+  "MCP_RESOURCE_COUNT",
+  "MCP_PROMPT_COUNT",
+  "CLI_COMMAND_COUNT",
+]);
 const forbiddenUserDocPhrases = [
   "文档如何维护",
   "维护规则",
@@ -47,7 +56,10 @@ for (const entry of entries) {
     continue;
   }
   const text = fs.readFileSync(file, "utf8");
-  if (/\{\{[A-Z0-9_]+\}\}/.test(text)) {
+  const unresolvedVariables = [...text.matchAll(/\{\{([A-Z0-9_]+)\}\}/g)]
+    .map((match) => match[1])
+    .filter((name) => !documentationVariables.has(name));
+  if (unresolvedVariables.length > 0) {
     failures.push(`${entry.key}: contains unresolved documentation variable`);
   }
   for (const phrase of forbiddenUserDocPhrases) {

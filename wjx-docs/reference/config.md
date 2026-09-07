@@ -10,6 +10,8 @@
 | `MCP_TRANSPORT` | `stdio` | MCP 传输模式；也可用 `--http` |
 | `PORT` | `3000` | HTTP 模式端口 |
 | `MCP_AUTH_TOKEN` | 无 | HTTP 单租户 Bearer gate |
+| `MCP_TENANT_MODE` | `0` | 设置为 `1` 后要求每个请求使用 `X-WJX-API-Key`，不回退进程级 API Key |
+| `MCP_LEGACY_BEARER_API_KEY` | 按模式 | 设置为 `1` 允许 Bearer 兼作上游 API Key；tenant 模式默认关闭 |
 | `MCP_SESSION` | stateful | 设置为 `stateless` 禁用会话 |
 
 CLI 还支持 `wjx init` 写入用户级配置。环境变量优先于配置文件；选择命名 profile 时，profile 的 `baseUrl`/`corpId` 优先于旧版 `.wjxrc` 的默认路由字段。配置了 `credentialRef` 的 profile 必须提供对应的 `WJX_CREDENTIAL_<REF>`，缺失时不会回退到全局 `WJX_API_KEY`，以免误用其他租户凭据；命令行 `--api-key` 仍可显式覆盖。CLI 将选中的地址作为每次请求的显式路由，不会为切换 profile 临时修改全局环境。

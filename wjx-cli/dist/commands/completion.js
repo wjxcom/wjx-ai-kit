@@ -3,40 +3,7 @@ import { writeFileSync, readFileSync, existsSync } from "node:fs";
 import { join } from "node:path";
 import { CliError } from "../lib/errors.js";
 import { executeRuntimeLocal } from "../lib/runtime/executor.js";
-const BASH_SCRIPT = `
-_wjx_completions() {
-  local cur_word="\${COMP_WORDS[COMP_CWORD]}"
-  local line="\${COMP_LINE}"
-  local point="\${COMP_POINT}"
-
-  local candidates
-  candidates=$(wjx --get-completions "$point" "$line" 2>/dev/null)
-
-  COMPREPLY=($(compgen -W "$candidates" -- "$cur_word"))
-}
-
-complete -F _wjx_completions wjx
-`.trim();
-const ZSH_SCRIPT = `
-_wjx_completions() {
-  local line="\${words[*]}"
-  local point="\${CURSOR}"
-
-  local candidates
-  candidates=("\${(@f)$(wjx --get-completions "$point" "$line" 2>/dev/null)}")
-
-  local -a completions
-  for c in "\${candidates[@]}"; do
-    [[ -n "$c" ]] && completions+=("$c")
-  done
-  _describe 'wjx' completions
-}
-
-compdef _wjx_completions wjx
-`.trim();
-const FISH_SCRIPT = `
-complete -c wjx -f -a '(wjx --get-completions (commandline -C) (commandline) 2>/dev/null)'
-`.trim();
+import { COMPLETION_SCRIPTS } from "../lib/completions.js";
 const PROFILE_FILES = {
     bash: ".bashrc",
     zsh: ".zshrc",
@@ -65,19 +32,19 @@ export function registerCompletionCommands(program) {
         .command("bash")
         .description("输出 Bash 补全脚本")
         .action(async (_opts, cmd) => {
-        await executeRuntimeLocal(program, cmd, () => BASH_SCRIPT, { rawOutput: true });
+        await executeRuntimeLocal(program, cmd, () => COMPLETION_SCRIPTS.bash, { rawOutput: true });
     });
     completion
         .command("zsh")
         .description("输出 Zsh 补全脚本")
         .action(async (_opts, cmd) => {
-        await executeRuntimeLocal(program, cmd, () => ZSH_SCRIPT, { rawOutput: true });
+        await executeRuntimeLocal(program, cmd, () => COMPLETION_SCRIPTS.zsh, { rawOutput: true });
     });
     completion
         .command("fish")
         .description("输出 Fish 补全脚本")
         .action(async (_opts, cmd) => {
-        await executeRuntimeLocal(program, cmd, () => FISH_SCRIPT, { rawOutput: true });
+        await executeRuntimeLocal(program, cmd, () => COMPLETION_SCRIPTS.fish, { rawOutput: true });
     });
     completion
         .command("install")

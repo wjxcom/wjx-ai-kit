@@ -73,7 +73,7 @@
 | 参数 | 类型 | 必填 | 说明 |
 |------|------|------|------|
 | `vid` | number | 是 | 问卷编号 |
-| `additional_setting` | string | 否 | 设置类别 JSON 数组（默认 `[1000,1001,1002,1003,1004,1005,1006,1007]`） |
+| `additional_setting` | string | 否 | 设置类别 JSON 数组（默认 `[1000,1001,1002,1003,1004,1005,1006,1007]`）；编码映射见 `wjx://reference/survey-setting-types` |
 
 ## update_survey_settings — 修改问卷设置
 
@@ -82,17 +82,19 @@
 | `vid` | number | 是 | 问卷编号 |
 | `api_setting` | string | 否 | API 请求次数限制设置 JSON 字符串 |
 | `after_submit_setting` | string | 否 | 作答后跳转设置 JSON 字符串 |
-| `msg_setting` | string | 否 | 数据推送设置 JSON 字符串 |
+| `msg_setting` | string | 否 | 数据推送设置 JSON 字符串，例如 `{"post_url":"https://...","quick_post":true,"retry":true}`；这是全量替换，必须先读完整设置、合并后再写，写后复读核验 |
 | `sojumpparm_setting` | string | 否 | 自定义链接参数设置 JSON 字符串 |
 | `time_setting` | string | 否 | 时间设置 JSON 字符串 |
 
-## delete_survey — 删除问卷（不可恢复）
+## delete_survey — 删除问卷（可选彻底删除）
 
 | 参数 | 类型 | 必填 | 说明 |
 |------|------|------|------|
 | `vid` | number | 是 | 问卷编号 |
 | `username` | string | 是 | 用户名 |
-| `completely_delete` | boolean | 否 | 是否彻底删除 |
+| `completely_delete` | boolean | 否 | 传 `true` 才彻底删除（status=4，不可恢复）；不传则进入回收站（status=3，可恢复） |
+
+工具只发送一次删除请求，随后以有界只读轮询等待状态落库。普通删除必须读回 `status=3` 才算 `verified`；彻底删除必须证明 `status=4`。单纯 not-found 不足以证明任一删除状态，会返回 `outcome: "unknown"`。
 
 ## get_question_tags — 获取题目标签
 
@@ -114,6 +116,8 @@
 | `file` | string | 是 | Base64 编码的文件内容 |
 
 ## clear_recycle_bin — 清空回收站
+
+不传 `vid` 时调用批量回收站清理接口；传入 `vid` 时使用彻底删除动作并只处理该问卷，随后必须读回 `status=4`。服务端对 `1000302 + vid` 可能只返回成功但仍保留 `status=3`，因此不能把该响应当作指定问卷已清理。
 
 | 参数 | 类型 | 必填 | 说明 |
 |------|------|------|------|

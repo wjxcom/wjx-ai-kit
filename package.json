@@ -20,7 +20,11 @@
     "docs:build": "node .claude/scripts/build-docs-html.js",
     "docs:check": "node .claude/scripts/check-docs.js",
     "capability:check": "node scripts/check-capability-matrix.mjs",
-    "documentation:check": "node scripts/check-documentation-contract.mjs"
+    "documentation:check": "node scripts/check-documentation-contract.mjs",
+    "agent-contract:export": "npm run build --workspace=wjx-api-sdk && npm run build --workspace=wjx-mcp-server && npm run build --workspace=wjx-cli && node scripts/export-agent-contract.mjs",
+    "agent-contract:check": "npm run build --workspace=wjx-api-sdk && npm run build --workspace=wjx-mcp-server && npm run build --workspace=wjx-cli && node scripts/check-agent-contract.mjs",
+    "jsonl-capabilities:export": "npm run build --workspace=wjx-api-sdk && node scripts/export-jsonl-capabilities.mjs",
+    "jsonl-capabilities:check": "npm run build --workspace=wjx-api-sdk && node scripts/export-jsonl-capabilities.mjs --check"
   },
   "devDependencies": {
     "marked": "^18.0.2"

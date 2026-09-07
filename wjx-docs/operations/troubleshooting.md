@@ -10,7 +10,14 @@
 
 ## HTTP 返回 401
 
-确认 `Authorization: Bearer` 的值与 `MCP_AUTH_TOKEN` 完全一致。当前实现把该值同时作为问卷星 API Key；不要配置一个任意的独立 token 后期待 API 调用仍能成功。
+先区分两类凭据：
+
+- `Authorization: Bearer` 必须与 `MCP_AUTH_TOKEN` 完全一致（如果服务端配置了 gate）。
+- 单租户还要确认服务端配置了正确的 `WJX_API_KEY`；它不必与 `MCP_AUTH_TOKEN` 相同。
+- `MCP_TENANT_MODE=1` 时，当前请求必须带 `X-WJX-API-Key`。服务端不会使用另一个租户的进程级 key；检查代理是否转发了该请求头，并为每个新 session 重新建立凭据上下文。
+- 只有设置 `MCP_LEGACY_BEARER_API_KEY=1` 才能让 Bearer 兼作上游 API Key。修改环境变量后重启 MCP Server。
+
+`GET /health` 不需要 Bearer；它返回 200 只能说明 HTTP 进程存活，不能证明上游 API 凭据有效。
 
 ## 参数报错
 

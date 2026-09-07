@@ -58,6 +58,7 @@ export const CATALOG: readonly CatalogEntry[] = Object.freeze([
   shortcutEntry("survey.export-text"),
   shortcutEntry("survey.url"),
   shortcutEntry("survey.preview-url"),
+  shortcutEntry("survey.shortlink"),
   builtinEntry("survey.jsonl-template"),
 
   apiEntry("response.count", Action.QUERY_RESPONSES),

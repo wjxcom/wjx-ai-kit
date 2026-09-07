@@ -6,7 +6,7 @@
 
 ## 从 MCP npm 安装迁移
 
-旧版源码安装方式仍可用。当前三个包均为 `0.4.2`，已按 SDK → MCP Server → CLI 顺序发布到 npm，registry 的 `latest` 均已更新。直接安装最新包即可；需要开发源码时再从 GitHub 克隆并构建。
+旧版源码安装方式仍可用。当前三个包均为 `0.4.3`，已按 SDK → MCP Server → CLI 顺序发布到 npm，registry 的 `latest` 均已更新。直接安装最新包即可；需要开发源码时再从 GitHub 克隆并构建。
 
 ## 从旧 CLI 参数迁移
 
@@ -17,6 +17,8 @@
 这条规则只适用于 CLI 输出。`wjx-api-sdk` 仍返回问卷星 OpenAPI 原始响应，业务失败使用 `result: false`；SDK 调用方不要按 CLI 的 `ok/data/meta` envelope 解析。
 
 高风险删除、清空和修改命令在非交互环境必须追加 `--yes`；`--dry-run` 始终优先且不会发出 HTTP 请求。dry-run 成功结果同样写入 stdout，读取 `ok/data`，其中 `data.kind` 为 `dry-run`、`data.plans` 是脱敏后的请求计划；stderr 只保留诊断信息。
+
+MCP 的 `query_responses_realtime` 会消费实时队列，当前 Agent contract 将它合并为高风险、不可重放操作。支持该合同的宿主在调用前应要求确认；这项提升只作用于 MCP/Agent 安全策略，不改变 CLI metadata 或 CLI 退出码。CLI 的 `CONFIRMATION_REQUIRED` 当前退出码为 **3**，已有非交互脚本应继续传 `--yes`，并可先用 `--dry-run` 检查请求计划。
 
 | 旧写法 | 当前写法 |
 | --- | --- |

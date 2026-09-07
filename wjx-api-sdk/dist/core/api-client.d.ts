@@ -5,6 +5,13 @@ import type { WjxCredentials, WjxApiResponse, RequestOptions } from "./types.js"
  */
 export declare function setCredentialProvider(fn: (() => WjxCredentials | undefined) | undefined): void;
 export declare function getWjxCredentials(env?: NodeJS.ProcessEnv): WjxCredentials;
+export declare class WjxAmbiguousOutcomeError extends Error {
+    readonly outcome: "unknown";
+    readonly action: string;
+    readonly traceId: string;
+    readonly attempts: number;
+    constructor(action: string, traceId: string, attempts: number, cause?: unknown);
+}
 export declare function callWjxApi<T = unknown>(params: Record<string, unknown>, opts?: RequestOptions): Promise<WjxApiResponse<T>>;
 export declare function callWjxUserSystemApi<T = unknown>(params: Record<string, unknown>, opts?: RequestOptions): Promise<WjxApiResponse<T>>;
 export declare function callWjxSubuserApi<T = unknown>(params: Record<string, unknown>, opts?: RequestOptions): Promise<WjxApiResponse<T>>;

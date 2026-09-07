@@ -1,10 +1,12 @@
-export { getWjxBaseUrl, getWjxApiUrl, getWjxUserSystemApiUrl, getWjxSubuserApiUrl, getWjxContactsApiUrl, getWjxSsoSubaccountUrl, getWjxSsoUserSystemUrl, getWjxSsoPartnerUrl, getWjxSurveyCreateUrl, getWjxSurveyEditUrl, Action, DEFAULT_TIMEOUT_MS, LONG_TIMEOUT_MS, DEFAULT_MAX_RETRIES, RETRY_DELAY_MS, } from "./core/constants.js";
+export { getWjxBaseUrl, getWjxApiUrl, getWjxUserSystemApiUrl, getWjxSubuserApiUrl, getWjxContactsApiUrl, getWjxShortLinkUrl, getWjxSsoSubaccountUrl, getWjxSsoUserSystemUrl, getWjxSsoPartnerUrl, getWjxSurveyCreateUrl, getWjxSurveyEditUrl, Action, DEFAULT_TIMEOUT_MS, LONG_TIMEOUT_MS, DEFAULT_MAX_RETRIES, RETRY_DELAY_MS, } from "./core/constants.js";
 export type { WjxCredentials, WjxApiSuccess, WjxApiFailure, WjxApiResponse, FetchLike, RequestOptions, RequestOverrides, Logger, } from "./core/types.js";
-export { setCredentialProvider, getWjxCredentials, callWjxApi, callWjxUserSystemApi, callWjxSubuserApi, callWjxContactsApi, getCorpId, assignDefined, } from "./core/api-client.js";
+export { setCredentialProvider, getWjxCredentials, callWjxApi, callWjxUserSystemApi, callWjxSubuserApi, callWjxContactsApi, getCorpId, assignDefined, WjxAmbiguousOutcomeError, } from "./core/api-client.js";
 export { createSurveyByJson, CREATABLE_SURVEY_ATYPES, getSurvey, listSurveys, updateSurveyStatus, getSurveySettings, updateSurveySettings, deleteSurvey, getQuestionTags, getTagDetails, clearRecycleBin, uploadFile, } from "./modules/survey/client.js";
 export { surveyToText, typeToLabel, stripHtml } from "./modules/survey/survey-to-text.js";
-export { extractJsonlMetadata, normalizeJsonl, MAX_JSONL_SIZE, parseJsonl, jsonToSurvey, EXAM_QTYPES, preprocessExamJsonl, hasVoteJsonlQtype, injectDefaultRequir, injectAtypeIntoJsonl, inferAtypeFromTitle, validateSurveyTitle, validateSurveyHasQuestions, NON_QUESTION_QTYPE_SET, JSONL_SUPPORTED_QTYPES, FRAMEWORK_ONLY_JSONL_QTYPES, hasFrameworkOnlyJsonlQtype, resolveJsonlPublish, preflightJsonl, } from "./modules/survey/json-to-survey.js";
+export { extractJsonlMetadata, normalizeJsonl, MAX_JSONL_SIZE, canonicalizeJsonlQtypes, parseJsonl, jsonToSurvey, EXAM_QTYPES, preprocessExamJsonl, hasVoteJsonlQtype, injectDefaultRequir, injectAtypeIntoJsonl, inferAtypeFromTitle, validateSurveyTitle, validateSurveyHasQuestions, NON_QUESTION_QTYPE_SET, JSONL_SUPPORTED_QTYPES, JSONL_READ_ONLY_OR_WEB_EDITOR_QTYPES, FRAMEWORK_ONLY_JSONL_QTYPES, hasFrameworkOnlyJsonlQtype, resolveJsonlPublish, preflightJsonl, } from "./modules/survey/json-to-survey.js";
+export { getJsonlQuestionTypeCode, extractJsonlQuestionTypeExpectations, compareJsonlQuestionTypes, filterJsonlVerificationQuestions, } from "./modules/survey/qtype-mapping.js";
 export type { JsonSurveyMetadata, JsonSurveyQuestion, JsonParsedSurvey, } from "./modules/survey/json-to-survey.js";
+export type { JsonlQuestionTypeExpectation, JsonlQuestionTypeCheck, } from "./modules/survey/qtype-mapping.js";
 export type { CreateSurveyByJsonInput, GetSurveyInput, ListSurveysInput, UpdateSurveyStatusInput, GetSurveySettingsInput, UpdateSurveySettingsInput, DeleteSurveyInput, GetQuestionTagsInput, GetTagDetailsInput, ClearRecycleBinInput, UploadFileInput, SurveyQuestionItem, SurveyQuestion, SurveyDetail, } from "./modules/survey/types.js";
 export { queryResponses, queryResponsesRealtime, downloadResponses, getReport, submitResponse, getFileLinks, getWinners, modifyResponse, get360Report, clearResponses, } from "./modules/response/client.js";
 export { normalizeSubmitdata } from "./modules/response/submitdata.js";
@@ -19,6 +21,8 @@ export { addSubAccount, modifySubAccount, deleteSubAccount, restoreSubAccount, q
 export type { AddSubAccountInput, ModifySubAccountInput, DeleteSubAccountInput, RestoreSubAccountInput, QuerySubAccountsInput, } from "./modules/multi-user/types.js";
 export { buildSsoSubaccountUrl, buildSsoUserSystemUrl, buildSsoPartnerUrl, buildSurveyUrl, buildPreviewUrl, } from "./modules/sso/client.js";
 export type { SsoSubaccountInput, SsoUserSystemInput, SsoPartnerInput, BuildSurveyUrlInput, BuildPreviewUrlInput, } from "./modules/sso/types.js";
+export { getShortLink } from "./modules/shortlink/client.js";
+export type { GetShortLinkInput, ShortLinkSuccess, ShortLinkFailure, ShortLinkResponse, } from "./modules/shortlink/types.js";
 export { decodeResponses, calculateNps, calculateCsat, detectAnomalies, compareMetrics, } from "./modules/analytics/compute.js";
 export { decodePushPayload } from "./modules/analytics/push-decode.js";
 export type { DecodedAnswer, DecodeResponsesResult, NpsResult, CsatResult, AnomalyFlag, AnomalyResult, MetricComparison, CompareResult, PushDecodeResult, } from "./modules/analytics/types.js";

@@ -33,6 +33,10 @@ export interface RequestOptions {
     maxRetries?: number;
     /** Optional caller budget; defaults preserve the existing maxRetries behavior. */
     retryBudget?: number;
+    /** Idempotency classification; unsafe/unknown calls fail closed on ambiguous transport errors. */
+    idempotency?: "safe" | "unsafe" | "unknown";
+    /** Allow bounded 429/5xx retries for this explicitly safe endpoint. */
+    httpRetryable?: boolean;
     /** Optional client identity sent as X-WJX-Client headers for server-side compatibility checks. */
     clientName?: string;
     clientVersion?: string;

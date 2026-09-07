@@ -3,6 +3,7 @@ export declare function getWjxApiUrl(baseUrl?: string): string;
 export declare function getWjxUserSystemApiUrl(baseUrl?: string): string;
 export declare function getWjxSubuserApiUrl(baseUrl?: string): string;
 export declare function getWjxContactsApiUrl(baseUrl?: string): string;
+export declare function getWjxShortLinkUrl(baseUrl?: string): string;
 export declare function getWjxSsoSubaccountUrl(baseUrl?: string): string;
 export declare function getWjxSsoUserSystemUrl(baseUrl?: string): string;
 export declare function getWjxSsoPartnerUrl(baseUrl?: string): string;

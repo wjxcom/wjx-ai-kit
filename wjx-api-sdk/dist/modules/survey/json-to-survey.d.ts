@@ -63,6 +63,10 @@ export interface JsonSurveyQuestion {
     aigoal?: string;
     /** MaxDiff / BWS / 图片PK */
     mdattr?: string[];
+    /** BWS / MaxDiff / 图片PK / 联合分析 每个任务抽取的对象数。 */
+    pertaskcount?: number | string;
+    /** BWS / MaxDiff / 图片PK / 联合分析 任务数。 */
+    tasklength?: number | string;
     /** 联合分析；表格/自增表格也可用作列标题 */
     columntitle?: string[];
     /** 表格题字段类型（与 rowtitle 一一对应） */
@@ -206,6 +210,19 @@ export declare const NON_QUESTION_QTYPE_SET: ReadonlySet<string>;
  * 零题目通常源于上层 LLM 生成失败（只吐出 _meta 行），应在客户端拦截，避免服务端创建空问卷。
  */
 export declare function validateSurveyHasQuestions(jsonl: string): void;
+/**
+ * qtypes that remain readable in existing surveys but are rejected by the
+ * current JSONL create endpoint. Keep these explicit so Agents can route to
+ * the web editor instead of retrying a deterministic server rejection.
+ */
+export declare const JSONL_READ_ONLY_OR_WEB_EDITOR_QTYPES: ReadonlySet<string>;
+/**
+ * Normalize accepted JSONL qtype aliases before they reach the create API.
+ * The service accepts the canonical names only for table variants, while
+ * keeping aliases in the input contract is useful for novice callers.
+ * Malformed lines are left untouched so parseJsonl can retain its line error.
+ */
+export declare function canonicalizeJsonlQtypes(jsonlText: string): string;
 export declare const JSONL_SUPPORTED_QTYPES: ReadonlySet<string>;
 /**
  * qtypes whose minimal JSONL representation is only a shell. They need

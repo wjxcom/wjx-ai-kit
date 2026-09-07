@@ -36,16 +36,23 @@ export async function startFixture({
     for (const [name, value] of Object.entries(request.headers)) {
       if (value !== undefined) headers[name] = Array.isArray(value) ? value.join(", ") : value;
     }
-    recorded.push({
+    const requestRecord = {
       method: request.method ?? "GET",
       path: request.url ?? "/",
       headers,
       body: Buffer.concat(chunks).toString("utf8"),
-    });
+    };
+    recorded.push(requestRecord);
 
     responseStream.statusCode = 200;
     responseStream.setHeader("content-type", "application/json");
-    responseStream.end(JSON.stringify(response));
+    // A response factory lets contract tests model read-after-write state
+    // without replacing the recorder/server lifecycle. Static response
+    // objects retain the original behavior used by existing tests.
+    const payload = typeof response === "function"
+      ? await response({ request: requestRecord, requests: recorded.slice() })
+      : response;
+    responseStream.end(JSON.stringify(payload));
   });
 
   let tempDir;

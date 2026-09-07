@@ -24,6 +24,206 @@ import { handleError } from "../lib/errors.js";
 import { formatOutput } from "../lib/output.js";
 import { executeRuntimeAction, executeRuntimeCommand } from "../lib/runtime/executor.js";
 import { buildRequestPlan } from "../lib/runtime/request-plan.js";
+import { surveyIdentityMatches } from "../lib/runtime/identity.js";
+
+interface ResponseCountSnapshot {
+  count?: number;
+  empty: boolean;
+  known: boolean;
+}
+
+type ResponseRecord = Record<string, unknown>;
+
+interface AnswerLookup {
+  found: boolean;
+  value?: unknown;
+}
+
+function responseRecord(value: unknown): Record<string, unknown> | undefined {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? value as Record<string, unknown>
+    : undefined;
+}
+
+function responseNumber(value: unknown): number | undefined {
+  if (typeof value === "number" && Number.isFinite(value) && value >= 0) return value;
+  if (typeof value === "string" && /^\d+$/.test(value.trim())) {
+    const parsed = Number(value.trim());
+    if (Number.isFinite(parsed) && parsed >= 0) return parsed;
+  }
+  return undefined;
+}
+
+function responseMetric(data: Record<string, unknown> | undefined, keys: readonly string[]): number | null {
+  for (const key of keys) {
+    if (!data || !Object.hasOwn(data, key)) continue;
+    const value = responseNumber(data[key]);
+    if (value !== undefined) return value;
+  }
+  return null;
+}
+
+function responseList(data: unknown): unknown[] | undefined {
+  if (Array.isArray(data)) return data;
+  const record = responseRecord(data);
+  if (!record) return undefined;
+  for (const key of ["responses", "answers", "rows", "list", "items"]) {
+    if (Array.isArray(record[key])) return record[key] as unknown[];
+  }
+  return undefined;
+}
+
+function responseCountSnapshot(data: unknown): ResponseCountSnapshot {
+  const record = responseRecord(data);
+  for (const key of ["total_count", "totalCount", "count", "answer_total", "answerTotal"]) {
+    const count = responseNumber(record?.[key]);
+    if (count !== undefined) return { count, empty: count === 0, known: true };
+  }
+  const list = responseList(data);
+  if (list) return { count: list.length === 0 ? 0 : undefined, empty: list.length === 0, known: list.length === 0 };
+  return { empty: false, known: false };
+}
+
+function responseRows(data: unknown): ResponseRecord[] {
+  const record = responseRecord(data);
+  if (!record) return [];
+  for (const key of ["responses", "answers", "rows", "list", "records", "items", "data"]) {
+    const candidate = record[key];
+    if (Array.isArray(candidate)) {
+      return candidate.filter((value): value is ResponseRecord => Boolean(responseRecord(value)));
+    }
+    const candidateRecord = responseRecord(candidate);
+    if (candidateRecord) {
+      const values = Object.values(candidateRecord)
+        .filter((value): value is ResponseRecord => Boolean(responseRecord(value)));
+      if (values.length > 0) return values;
+    }
+  }
+  return responseJid(record) === undefined ? [] : [record];
+}
+
+function responseJid(row: ResponseRecord): string | undefined {
+  const raw = row.jid ?? row.id ?? row.response_id ?? row.responseId;
+  return raw === undefined || raw === null ? undefined : String(raw);
+}
+
+const ANSWER_VALUE_KEYS = [
+  "answer_score", "answerScore", "answer_value", "answerValue", "item_value", "itemValue",
+  "score", "score_value", "scoreValue", "value", "answer", "answer_text", "answerText", "content",
+] as const;
+
+function answerValue(value: unknown): AnswerLookup {
+  if (value === null || typeof value !== "object" || Array.isArray(value)) return { found: true, value };
+  const record = value as ResponseRecord;
+  for (const key of ANSWER_VALUE_KEYS) {
+    if (Object.hasOwn(record, key)) return { found: true, value: record[key] };
+  }
+  return { found: false };
+}
+
+function sameQuestionKey(value: unknown, key: string): boolean {
+  if (value === undefined || value === null) return false;
+  const text = String(value).trim();
+  return text === key || (Number.isFinite(Number(text)) && Number(text) === Number(key));
+}
+
+function findAnswerInContainer(container: unknown, key: string): AnswerLookup {
+  if (Array.isArray(container)) {
+    for (const item of container) {
+      const record = responseRecord(item);
+      if (!record) continue;
+      if (sameQuestionKey(record.q_index ?? record.qid ?? record.q_id ?? record.question_id ?? record.questionId, key)) {
+        const direct = answerValue(record);
+        if (direct.found) return direct;
+      }
+    }
+    return { found: false };
+  }
+  const record = responseRecord(container);
+  if (!record) return { found: false };
+  if (Object.hasOwn(record, key)) return answerValue(record[key]);
+  for (const item of Object.values(record)) {
+    const itemRecord = responseRecord(item);
+    if (!itemRecord) continue;
+    if (sameQuestionKey(itemRecord.q_index ?? itemRecord.qid ?? itemRecord.q_id ?? itemRecord.question_id ?? itemRecord.questionId, key)) {
+      const direct = answerValue(itemRecord);
+      if (direct.found) return direct;
+    }
+  }
+  return { found: false };
+}
+
+function responseAnswer(row: ResponseRecord, key: string): AnswerLookup {
+  const candidateKeys = [key];
+  const numericKey = Number(key);
+  // Some API deployments expose q_index while the modify endpoint documents
+  // the internal q_index * 10000 key. Try both representations when useful.
+  if (Number.isSafeInteger(numericKey) && numericKey > 0 && numericKey < 10000) {
+    candidateKeys.push(String(numericKey * 10000));
+  }
+  for (const candidate of candidateKeys) {
+    if (Object.hasOwn(row, candidate)) {
+      const direct = answerValue(row[candidate]);
+      if (direct.found) return direct;
+    }
+    for (const containerKey of ["answer_items", "answerItems", "answers", "answer", "items"]) {
+      const nested = findAnswerInContainer(row[containerKey], candidate);
+      if (nested.found) return nested;
+    }
+  }
+  return { found: false };
+}
+
+function comparableAnswer(value: unknown): string {
+  if (typeof value === "string") return value.trim();
+  if (typeof value === "number" && Number.isFinite(value)) return String(value);
+  if (typeof value === "boolean" || value === null) return String(value);
+  try { return JSON.stringify(value); } catch { return String(value); }
+}
+
+/** Accept the documented JSON patch and the legacy q$answer wire shorthand. */
+function parseModifyAnswers(value: unknown): ResponseRecord {
+  if (typeof value !== "string" || value.trim() === "") {
+    throw new CliError("INPUT_ERROR", "--answers 必须是非空 JSON 对象（格式：{\"10000\":\"85\"}）");
+  }
+  try {
+    const parsed: unknown = JSON.parse(value);
+    const record = responseRecord(parsed);
+    if (record && Object.keys(record).length > 0) return record;
+  } catch {
+    // Keep accepting the pre-0.4 q$answer shorthand for compatibility.
+  }
+  const legacy: ResponseRecord = {};
+  for (const segment of value.split("}")) {
+    if (!segment) continue;
+    const separator = segment.indexOf("$");
+    if (separator <= 0) {
+      throw new CliError("INPUT_ERROR", "--answers 必须是合法 JSON 对象（或 q$answer 格式）");
+    }
+    const key = segment.slice(0, separator).trim();
+    if (!key) throw new CliError("INPUT_ERROR", "--answers 中存在空题号");
+    legacy[key] = segment.slice(separator + 1);
+  }
+  if (Object.keys(legacy).length > 0) return legacy;
+  throw new CliError("INPUT_ERROR", "--answers 必须是非空 JSON 对象（格式：{\"10000\":\"85\"}）");
+}
+
+function findResponseByJid(data: unknown, jid: unknown): ResponseRecord | undefined {
+  const expected = String(jid);
+  return responseRows(data).find((row) => responseJid(row) === expected);
+}
+
+async function readResponseCount(
+  input: Record<string, unknown>,
+  credentials: WjxCredentials,
+): Promise<ResponseCountSnapshot> {
+  const result = await queryResponses(
+    { vid: input.vid as number, page_index: 1, page_size: 1 },
+    credentials,
+  );
+  ensureApiSuccess(result);
+  return responseCountSnapshot(result.data);
+}
 
 /** 规范化 submitdata 中的题号、矩阵题和排序题答案格式 */
 export { buildSubmitTemplate } from "wjx-api-sdk";
@@ -42,10 +242,10 @@ export function registerResponseCommands(program: Command): void {
         return { vid: m.vid, page_size: 1 };
       }, {
         transformResult: (result) => {
-          const data = (result as unknown as Record<string, unknown>).data as Record<string, unknown> | undefined;
+          const data = responseRecord((result as unknown as Record<string, unknown>).data);
           return {
-            total_count: data?.total_count ?? 0,
-            join_times: data?.join_times ?? 0,
+            total_count: responseMetric(data, ["total_count", "totalCount"]),
+            join_times: responseMetric(data, ["join_times", "joinTimes"]),
           };
         },
       });
@@ -255,6 +455,10 @@ export function registerResponseCommands(program: Command): void {
             throw new CliError("API_ERROR", "自动获取问卷版本失败：API 响应缺少有效的正整数 version");
           }
 
+          if (survey && !surveyIdentityMatches(data, input.vid as number)) {
+            throw new CliError("API_ERROR", `问卷 ${String(input.vid)} 读回身份不匹配或缺少可验证编号，已停止提交`);
+          }
+
           const result: Record<string, unknown> = { ...input };
           // 不要把内部 autoVersion 透到 SDK
           delete result.autoVersion;
@@ -289,7 +493,87 @@ export function registerResponseCommands(program: Command): void {
         requireField(m, "vid");
         requireField(m, "jid");
         requireField(m, "answers");
+        // Parse before the confirmation/transport boundary so malformed score
+        // patches cannot trigger an unsafe write.
+        parseModifyAnswers(m.answers);
         return { vid: m.vid, jid: m.jid, type: 1 as const, answers: m.answers };
+      }, {
+        // A score update is unsafe and must establish that the target exists
+        // before sending the write. The same target is read again afterwards
+        // to prove the requested fields reached the server.
+        preRead: async (input, credentials) => {
+          const result = await queryResponses({
+            vid: input.vid as number,
+            jid: String(input.jid),
+            page_index: 1,
+            page_size: 50,
+          }, credentials as WjxCredentials);
+          ensureApiSuccess(result);
+          const target = findResponseByJid(result.data, input.jid);
+          if (!target) {
+            throw new CliError("API_ERROR", `未找到答卷 jid=${String(input.jid)}，已停止修改`);
+          }
+          return { target };
+        },
+        requiredVerification: ["structure", "status"],
+        postVerify: async (_result, input, credentials) => {
+          const requested = parseModifyAnswers(input.answers);
+          let readBack;
+          try {
+            readBack = await queryResponses({
+              vid: input.vid as number,
+              jid: String(input.jid),
+              page_index: 1,
+              page_size: 50,
+            }, credentials as WjxCredentials);
+            ensureApiSuccess(readBack);
+          } catch (error) {
+            return {
+              jid: input.jid,
+              outcome: "unknown",
+              verification: { structure: false, status: false, link: true },
+              warnings: [
+                "修改后的答卷读取失败，结果未知",
+                error instanceof Error ? error.message : String(error),
+              ],
+            };
+          }
+
+          const target = findResponseByJid(readBack.data, input.jid);
+          if (!target) {
+            return {
+              jid: input.jid,
+              outcome: "unknown",
+              verification: { structure: false, status: false, link: true },
+              warnings: [`修改后的答卷读回未找到 jid=${String(input.jid)}，结果未知`],
+            };
+          }
+
+          const missing: string[] = [];
+          const mismatched: string[] = [];
+          const verifiedAnswers: ResponseRecord = {};
+          for (const [key, expected] of Object.entries(requested)) {
+            const actual = responseAnswer(target, key);
+            if (!actual.found) {
+              missing.push(key);
+              continue;
+            }
+            verifiedAnswers[key] = actual.value;
+            if (comparableAnswer(actual.value) !== comparableAnswer(expected)) mismatched.push(key);
+          }
+          const structure = responseJid(target) === String(input.jid);
+          const status = structure && missing.length === 0 && mismatched.length === 0;
+          const warnings: string[] = [];
+          if (missing.length > 0) warnings.push(`读回缺少可验证的分数/答案字段：${missing.join(", ")}`);
+          if (mismatched.length > 0) warnings.push(`读回分数/答案与请求不一致：${mismatched.join(", ")}`);
+          return {
+            jid: input.jid,
+            answers: verifiedAnswers,
+            outcome: status ? "verified" : "unknown",
+            verification: { structure, status, link: true },
+            warnings,
+          };
+        },
       });
     });
 
@@ -309,6 +593,45 @@ export function registerResponseCommands(program: Command): void {
           vid: m.vid,
           reset_to_zero: m.reset_to_zero ?? false,
         };
+      }, {
+        preRead: async (input, credentials) => readResponseCount(input, credentials as WjxCredentials),
+        postVerify: async (_result, input, credentials, preReadResult) => {
+          const before = preReadResult as ResponseCountSnapshot | undefined;
+          let after: ResponseCountSnapshot;
+          try {
+            after = await readResponseCount(input, credentials as WjxCredentials);
+          } catch (error) {
+            return {
+              ...(before?.count !== undefined ? { beforeCount: before.count } : {}),
+              verification: { structure: false, status: false, link: true },
+              outcome: "unknown",
+              warnings: [
+                "清空后的答卷计数读取失败，结果未知",
+                error instanceof Error ? error.message : String(error),
+              ],
+            };
+          }
+
+          const verified = after.count === 0 || after.empty;
+          const warnings: string[] = [];
+          if (!verified) {
+            warnings.push(
+              after.known
+                ? "清空后仍检测到答卷"
+                : "清空后的 API 响应缺少可验证的答卷计数，结果未知",
+            );
+          }
+          if (before && !before.known) {
+            warnings.push("清空前的 API 响应缺少可验证的答卷计数");
+          }
+          return {
+            ...(before?.count !== undefined ? { beforeCount: before.count } : {}),
+            ...(after.count !== undefined ? { afterCount: after.count } : {}),
+            verification: { structure: after.known || after.empty, status: verified, link: true },
+            outcome: verified ? "verified" : "unknown",
+            warnings,
+          };
+        },
       });
     });
 

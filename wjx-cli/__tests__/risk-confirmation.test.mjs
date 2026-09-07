@@ -41,14 +41,25 @@ test("high-risk commands reject non-interactive execution without --yes before a
 });
 
 test("--yes permits a high-risk command to reach the transport", async () => {
-  const fixture = await startFixture({ env });
+  const fixture = await startFixture({
+    env,
+    // The destructive lifecycle now reads the target before and after the
+    // write. Returning a deleted state keeps this reachability test green
+    // while still exercising the verification callback.
+    response: { result: true, data: { vid: 7, status: 3 } },
+  });
   try {
     const result = await fixture.run([
       "--yes", "survey", "delete", "--vid", "7", "--username", "alice",
     ]);
 
     assert.equal(result.exitCode, 0);
-    assert.equal(fixture.requests().length, 1);
+    const requests = fixture.requests();
+    assert.equal(requests.length, 3);
+    assert.deepEqual(
+      requests.map((request) => JSON.parse(request.body).action),
+      ["1000001", "1000301", "1000001"],
+    );
     assert.match(result.stdout, /result|data/);
   } finally {
     await fixture.close();
@@ -72,7 +83,43 @@ test("dry-run takes precedence over high-risk confirmation and remains network-f
 });
 
 test("read and ordinary write commands are not blocked by the high-risk gate", async () => {
-  const fixture = await startFixture({ env });
+  let created = { title: "ordinary write", questionCount: 1 };
+  const fixture = await startFixture({
+    env,
+    response: ({ request }) => {
+      let body = {};
+      try { body = JSON.parse(request.body || "{}"); } catch { /* recorder keeps malformed requests visible */ }
+      const action = String(body.action ?? "");
+      if (action === "1000106") {
+        const lines = typeof body.surveydatajson === "string"
+          ? body.surveydatajson.split(/\r?\n/).filter(Boolean)
+          : [];
+        let metadata = {};
+        try { metadata = JSON.parse(lines[0] ?? "{}"); } catch { /* CLI validates JSONL before transport */ }
+        created = {
+          title: typeof body.title === "string" ? body.title : metadata.title,
+          questionCount: Math.max(1, lines.length - 1),
+        };
+        return { result: true, data: { vid: 700001 } };
+      }
+      if (action === "1000001") {
+        const origin = `http://${request.headers.host}`;
+        return {
+          result: true,
+          data: {
+            vid: 700001,
+            title: created.title,
+            status: 1,
+            sid: "ordinaryReadbackSid",
+            questions: Array.from({ length: created.questionCount }, () => ({ q_type: 3, q_subtype: 3 })),
+            activity_domain: origin,
+            pc_path: "/vm/ordinaryReadbackSid.aspx",
+          },
+        };
+      }
+      return { result: true, data: {} };
+    },
+  });
   try {
     const read = await fixture.run(["survey", "list"]);
     assert.equal(read.exitCode, 0);
@@ -83,7 +130,11 @@ test("read and ordinary write commands are not blocked by the high-risk gate", a
       '{"qtype":"问卷基础信息","title":"ordinary write"}\n{"qtype":"单选","title":"Q","select":["A","B"]}',
     ]);
     assert.equal(write.exitCode, 0);
-    assert.equal(fixture.requests().length, 2);
+    assert.equal(fixture.requests().length, 3);
+    assert.deepEqual(
+      fixture.requests().map((request) => JSON.parse(request.body).action),
+      ["1000002", "1000106", "1000001"],
+    );
   } finally {
     await fixture.close();
   }
@@ -93,8 +144,8 @@ test("all declared destructive shortcuts require confirmation", async () => {
   const cases = [
     ["survey", "clear-bin", "--username", "alice"],
     ["survey", "status", "--vid", "7", "--state", "1"],
-    ["survey", "update-settings", "--vid", "7"],
-    ["response", "modify", "--vid", "7", "--jid", "8", "--answers", "ok"],
+    ["survey", "update-settings", "--vid", "7", "--api_setting", "{}"],
+    ["response", "modify", "--vid", "7", "--jid", "8", "--answers", '{"10000":"1"}'],
     ["response", "clear", "--username", "alice", "--vid", "7"],
     ["contacts", "delete", "--uids", "u1"],
     ["department", "delete", "--type", "1", "--depts", "[\"dept-1\"]"],

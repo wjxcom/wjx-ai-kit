@@ -17,6 +17,9 @@ NC='\033[0m'
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 MIN_WJX_CLI_VERSION="0.4.1"
 DEFAULT_WJX_BASE_URL="https://www.wjx.cn"
+NODE_BIN=""
+NPM_BIN=""
+WJX_BIN=""
 
 # 打印函数
 print_info()    { echo -e "${BLUE}[INFO]${NC} $1"; }
@@ -38,12 +41,111 @@ trim_whitespace() {
 config_has_api_key() {
     local path="$1"
     [ -f "$path" ] || return 1
-    node -e 'const fs = require("node:fs"); try { const value = JSON.parse(fs.readFileSync(process.argv[1], "utf8")); process.exit(value && typeof value.apiKey === "string" && value.apiKey.trim() ? 0 : 1); } catch { process.exit(1); }' "$path"
+    [ -n "$NODE_BIN" ] || return 1
+    "$NODE_BIN" -e 'const fs = require("node:fs"); try { const value = JSON.parse(fs.readFileSync(process.argv[1], "utf8")); process.exit(value && typeof value.apiKey === "string" && value.apiKey.trim() ? 0 : 1); } catch { process.exit(1); }' "$path"
 }
 
 # Compare semantic versions without relying on GNU sort (the script also runs on macOS).
 version_at_least() {
-    node -e 'const [actual, minimum] = process.argv.slice(1); const parse = value => value.replace(/^v/, "").split(".").map(part => Number.parseInt(part, 10) || 0); const a = parse(actual); const b = parse(minimum); process.exit(a[0] > b[0] || (a[0] === b[0] && (a[1] > b[1] || (a[1] === b[1] && a[2] >= b[2]))) ? 0 : 1);' "$1" "$2"
+    [ -n "$NODE_BIN" ] || return 1
+    "$NODE_BIN" -e 'const [actual, minimum] = process.argv.slice(1); const parse = value => value.replace(/^v/, "").split(".").map(part => Number.parseInt(part, 10) || 0); const a = parse(actual); const b = parse(minimum); process.exit(a[0] > b[0] || (a[0] === b[0] && (a[1] > b[1] || (a[1] === b[1] && a[2] >= b[2]))) ? 0 : 1);' "$1" "$2"
+}
+
+# A shell can keep an old PATH after Node/npm was installed. Resolve binaries
+# independently so a stale PATH never turns into a false "not installed" claim.
+to_shell_path() {
+    local value="$1"
+    if command -v cygpath >/dev/null 2>&1; then
+        cygpath -u "$value"
+    else
+        printf '%s' "$value"
+    fi
+}
+
+first_where_path() {
+    local command_name="$1"
+    local found=""
+    if command -v where.exe >/dev/null 2>&1; then
+        found="$(where.exe "$command_name" 2>/dev/null | tr -d '\r' | awk 'NF { print; exit }')"
+    fi
+    [ -n "$found" ] && to_shell_path "$found"
+}
+
+resolve_node_bin() {
+    local candidate=""
+    if command -v node >/dev/null 2>&1; then
+        command -v node
+        return 0
+    fi
+    candidate="$(first_where_path node || true)"
+    if [ -n "$candidate" ] && [ -f "$candidate" ]; then
+        printf '%s' "$candidate"
+        return 0
+    fi
+    for candidate in \
+        "/c/Program Files/nodejs/node.exe" \
+        "/c/Program Files (x86)/nodejs/node.exe" \
+        "${PROGRAMFILES:-}/nodejs/node.exe" \
+        "${LOCALAPPDATA:-}/Programs/nodejs/node.exe"; do
+        [ -n "$candidate" ] || continue
+        candidate="$(to_shell_path "$candidate")"
+        if [ -f "$candidate" ]; then
+            printf '%s' "$candidate"
+            return 0
+        fi
+    done
+    return 1
+}
+
+resolve_npm_bin() {
+    local candidate=""
+    if command -v npm >/dev/null 2>&1; then
+        candidate="$(command -v npm)"
+        if "$candidate" --version >/dev/null 2>&1; then
+            printf '%s' "$candidate"
+            return 0
+        fi
+    fi
+    [ -n "$NODE_BIN" ] || return 1
+    for candidate in "$(dirname "$NODE_BIN")/npm" "$(dirname "$NODE_BIN")/npm.cmd"; do
+        if [ -f "$candidate" ] && "$candidate" --version >/dev/null 2>&1; then
+            printf '%s' "$candidate"
+            return 0
+        fi
+    done
+    return 1
+}
+
+resolve_wjx_bin() {
+    local candidate=""
+    local prefix=""
+    if command -v wjx >/dev/null 2>&1; then
+        command -v wjx
+        return 0
+    fi
+    [ -n "$NPM_BIN" ] || return 1
+    prefix="$("$NPM_BIN" prefix -g 2>/dev/null || true)"
+    prefix="$(to_shell_path "$(trim_whitespace "$prefix")")"
+    for candidate in "$prefix/wjx" "$prefix/wjx.cmd" "$prefix/bin/wjx"; do
+        if [ -f "$candidate" ]; then
+            printf '%s' "$candidate"
+            return 0
+        fi
+    done
+    return 1
+}
+
+run_wjx() {
+    [ -n "$WJX_BIN" ] || return 127
+    local cli_entry="$(dirname "$WJX_BIN")/node_modules/wjx-cli/dist/index.js"
+    # npm's Windows shim may fall back to the literal `node` command. When
+    # PATH is stale, invoke the installed entry point with the Node binary we
+    # already verified instead of letting the shim report a false failure.
+    if [ -n "$NODE_BIN" ] && [ -f "$cli_entry" ]; then
+        "$NODE_BIN" "$cli_entry" "$@"
+        return $?
+    fi
+    "$WJX_BIN" "$@"
 }
 
 print_cli_source_guide() {
@@ -58,7 +160,7 @@ print_cli_source_guide() {
 }
 
 check_cli_version() {
-    if ! WJX_VERSION="$(wjx --version 2>/dev/null)"; then
+    if ! WJX_VERSION="$(run_wjx --version 2>/dev/null)"; then
         print_error "无法执行 wjx --version"
         print_cli_source_guide
         return 1
@@ -77,7 +179,7 @@ install_core_skill() {
     print_info "安装 wjx-cli-use 技能..."
     local root
     root="$(resolve_install_root)"
-    if wjx skill install --force --target-dir "$root"; then
+    if run_wjx skill install --force --target-dir "$root"; then
         print_success "wjx-cli-use 技能已安装"
         return 0
     fi
@@ -130,10 +232,10 @@ check_core_skill() {
 
 upgrade_cli() {
     print_info "正在升级 wjx-cli 到最新版本..."
-    if npm install -g wjx-cli@latest; then
+    if "$NPM_BIN" install -g wjx-cli@latest; then
         return 0
     fi
-    if command -v sudo &> /dev/null && sudo npm install -g wjx-cli@latest; then
+    if command -v sudo &> /dev/null && sudo "$NPM_BIN" install -g wjx-cli@latest; then
         return 0
     fi
     print_error "wjx-cli 升级失败"
@@ -163,21 +265,39 @@ detect_os() {
 check_node() {
     print_info "Step 1/5: 检测 Node.js 环境..."
 
-    if command -v node &> /dev/null; then
-        NODE_VERSION=$(node --version)
-        NODE_MAJOR=$(echo "$NODE_VERSION" | cut -d'v' -f2 | cut -d'.' -f1)
-
-        if [ "$NODE_MAJOR" -ge 20 ]; then
-            print_success "Node.js $NODE_VERSION"
-            return 0
-        else
-            print_error "Node.js 版本过低: $NODE_VERSION（需要 20+）"
-            return 1
-        fi
-    else
-        print_error "未检测到 Node.js"
+    NODE_BIN="$(resolve_node_bin || true)"
+    if [ -z "$NODE_BIN" ]; then
+        print_error "当前 shell 未找到 Node.js；常见安装路径和 where.exe 也未找到可执行文件"
+        print_warning "请先安装 Node.js 20+，不要仅凭当前 shell 的 command not found 判断安装状态"
         return 1
     fi
+
+    if ! NODE_VERSION="$("$NODE_BIN" --version 2>/dev/null)"; then
+        print_error "找到 Node.js 路径但无法执行: $NODE_BIN"
+        return 1
+    fi
+    NODE_VERSION="$(printf '%s' "$NODE_VERSION" | awk 'NR == 1 { print; exit }')"
+    NODE_MAJOR="$(printf '%s' "$NODE_VERSION" | sed -n 's/^v\([0-9][0-9]*\)\..*/\1/p')"
+    if ! printf '%s' "$NODE_MAJOR" | grep -Eq '^[0-9]+$'; then
+        print_error "无法解析 Node.js 版本: ${NODE_VERSION:-unknown}（需要 20+）"
+        return 1
+    fi
+    if [ "$NODE_MAJOR" -lt 20 ]; then
+        print_error "Node.js 版本过低: $NODE_VERSION（需要 20+）"
+        return 1
+    fi
+
+    NPM_BIN="$(resolve_npm_bin || true)"
+    if [ -z "$NPM_BIN" ] || ! "$NPM_BIN" --version >/dev/null 2>&1; then
+        print_error "Node.js 可执行，但 npm 不可用；请修复 npm/PATH 后重新运行"
+        return 1
+    fi
+    if ! command -v node >/dev/null 2>&1 || ! command -v npm >/dev/null 2>&1; then
+        print_warning "Node.js/npm 已安装但当前 shell PATH 未刷新，将使用已解析路径；建议重新打开终端"
+    fi
+    print_success "Node.js $NODE_VERSION"
+    print_success "npm $("$NPM_BIN" --version)"
+    return 0
 }
 
 # 打印 Node.js 安装指引
@@ -197,9 +317,11 @@ print_node_install_guide() {
 install_cli() {
     print_info "Step 2/5: 安装 wjx-cli..."
 
-    if command -v wjx &> /dev/null; then
+    WJX_BIN="$(resolve_wjx_bin || true)"
+    if [ -n "$WJX_BIN" ]; then
         if ! check_cli_version; then
             upgrade_cli || return 1
+            WJX_BIN="$(resolve_wjx_bin || true)"
             check_cli_version || return 1
         fi
         install_core_skill
@@ -208,8 +330,9 @@ install_cli() {
 
     print_info "正在全局安装 wjx-cli..."
     NPM_ERR=$(mktemp)
-    if npm install -g wjx-cli@latest 2>"$NPM_ERR"; then
+    if "$NPM_BIN" install -g wjx-cli@latest 2>"$NPM_ERR"; then
         rm -f "$NPM_ERR"
+        WJX_BIN="$(resolve_wjx_bin || true)"
         if check_cli_version; then
             if ! install_core_skill; then return 1; fi
             print_success "wjx-cli 与 wjx-cli-use 安装成功"
@@ -222,7 +345,8 @@ install_cli() {
         rm -f "$NPM_ERR"
         print_info "尝试 sudo..."
         if command -v sudo &> /dev/null; then
-            if sudo npm install -g wjx-cli@latest; then
+            if sudo "$NPM_BIN" install -g wjx-cli@latest; then
+                WJX_BIN="$(resolve_wjx_bin || true)"
                 if check_cli_version; then
                     if ! install_core_skill; then return 1; fi
                     print_success "wjx-cli 与 wjx-cli-use 安装成功（sudo）"
@@ -337,7 +461,7 @@ configure_cli() {
         if has_nonblank "${WJX_CORP_ID:-}"; then
             args+=(--corp-id "$WJX_CORP_ID")
         fi
-        wjx init "${args[@]}"
+        run_wjx init "${args[@]}"
         return $?
     fi
     echo ""
@@ -345,16 +469,16 @@ configure_cli() {
     echo ""
     # install_cli already installs the core skill; avoid asking the user to
     # install the same Skill a second time during this setup flow.
-    wjx init --no-install-skill
+    run_wjx init --no-install-skill
 }
 
 # Step 5: 验证
 verify_setup() {
     print_info "Step 5/5: 验证连接..."
-    wjx doctor
+    run_wjx doctor
     echo ""
     print_info "人工验收：列出问卷..."
-    wjx survey list --format table
+    run_wjx survey list --format table
 }
 
 # 仅检查环境
@@ -370,16 +494,15 @@ check_only() {
     # Node.js
     if check_node; then true; else PASS=0; fi
 
-    # npm
-    if command -v npm &> /dev/null; then
-        print_success "npm $(npm --version)"
-    else
+    # check_node already validates npm; report it only when that precheck failed.
+    if [ -z "$NPM_BIN" ]; then
         print_error "未检测到 npm"
         PASS=0
     fi
 
     # wjx-cli
-    if command -v wjx &> /dev/null; then
+    WJX_BIN="$(resolve_wjx_bin || true)"
+    if [ -n "$WJX_BIN" ]; then
         check_cli_version || PASS=0
         check_core_skill || PASS=0
     else
@@ -418,7 +541,8 @@ verify_only() {
 
     check_node || exit 1
 
-    if command -v wjx &> /dev/null; then
+    WJX_BIN="$(resolve_wjx_bin || true)"
+    if [ -n "$WJX_BIN" ]; then
         check_cli_version || exit 1
     else
         print_error "wjx-cli 未安装"
@@ -428,9 +552,9 @@ verify_only() {
     check_core_skill || exit 1
 
     echo ""
-    wjx doctor
+    run_wjx doctor
     echo ""
-    wjx survey list --format table
+    run_wjx survey list --format table
 }
 
 # 显示帮助

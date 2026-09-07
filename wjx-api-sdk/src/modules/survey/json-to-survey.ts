@@ -66,6 +66,10 @@ export interface JsonSurveyQuestion {
   aigoal?: string;
   /** MaxDiff / BWS / 图片PK */
   mdattr?: string[];
+  /** BWS / MaxDiff / 图片PK / 联合分析 每个任务抽取的对象数。 */
+  pertaskcount?: number | string;
+  /** BWS / MaxDiff / 图片PK / 联合分析 任务数。 */
+  tasklength?: number | string;
   /** 联合分析；表格/自增表格也可用作列标题 */
   columntitle?: string[];
   /** 表格题字段类型（与 rowtitle 一一对应） */
@@ -624,6 +628,52 @@ const QTYPE_ALIAS_MAP: Record<string, string> = {
   "表格自增题": "自增表格",
 };
 
+/**
+ * qtypes that remain readable in existing surveys but are rejected by the
+ * current JSONL create endpoint. Keep these explicit so Agents can route to
+ * the web editor instead of retrying a deterministic server rejection.
+ */
+export const JSONL_READ_ONLY_OR_WEB_EDITOR_QTYPES: ReadonlySet<string> = new Set([
+  "矩阵数值题",
+  "VlookUp问卷关联",
+  "多项文件题",
+  "多项简答题",
+  "当前语音",
+]);
+
+const TASK_PARAMETER_QTYPES = new Set(["BWS", "MaxDiff", "Maxdiff", "图片PK"]);
+
+function isPositiveInteger(value: unknown): boolean {
+  if (typeof value === "number") return Number.isSafeInteger(value) && value > 0;
+  return typeof value === "string" && /^[1-9]\d*$/.test(value.trim());
+}
+
+/**
+ * Normalize accepted JSONL qtype aliases before they reach the create API.
+ * The service accepts the canonical names only for table variants, while
+ * keeping aliases in the input contract is useful for novice callers.
+ * Malformed lines are left untouched so parseJsonl can retain its line error.
+ */
+export function canonicalizeJsonlQtypes(jsonlText: string): string {
+  return jsonlText.split("\n").map((line) => {
+    const trimmed = line.trim();
+    if (!trimmed) return line;
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(trimmed);
+    } catch {
+      return line;
+    }
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return line;
+    const row = parsed as Record<string, unknown>;
+    if (typeof row.qtype !== "string") return line;
+    const canonical = QTYPE_ALIAS_MAP[row.qtype];
+    if (!canonical) return line;
+    row.qtype = canonical;
+    return JSON.stringify(row);
+  }).join("\n");
+}
+
 export const JSONL_SUPPORTED_QTYPES: ReadonlySet<string> = new Set([
   ...DOCUMENTED_JSONL_QTYPES,
   ...ADDITIONAL_JSONL_QTYPES,
@@ -866,6 +916,29 @@ export function preflightJsonl(jsonlText: string): void {
         `常见值："单选"、"多选"、"填空"、"量表题"、"矩阵单选"、"矩阵量表"、"投票单选"、"投票多选"、"表格数值"、"表格填空"、"问卷基础信息"。` +
         `完整列表见 references/question-types.md，或运行 \`wjx survey jsonl-template\` 获取骨架。`,
       );
+    }
+
+    if (JSONL_READ_ONLY_OR_WEB_EDITOR_QTYPES.has(normalized)) {
+      throw new Error(
+        `JSONL 第 ${i + 1} 行题型 "${obj.qtype}" 当前不支持通过问卷星 JSONL 创建接口创建。` +
+        `请改用 Web 编辑器创建，或读取已有问卷；不要重复重试该请求。`,
+      );
+    }
+
+    if (TASK_PARAMETER_QTYPES.has(normalized)) {
+      const attrs = obj.mdattr;
+      if (!Array.isArray(attrs) || attrs.length < 3 || attrs.some((value) => typeof value !== "string" || !value.trim())) {
+        throw new Error(
+          `JSONL 第 ${i + 1} 行题型 "${obj.qtype}" 的 mdattr 必须是至少 3 个非空字符串。` +
+          `图片PK 的每个值还必须是问卷星上传接口返回的图片地址。`,
+        );
+      }
+      if (!isPositiveInteger(obj.pertaskcount) || !isPositiveInteger(obj.tasklength)) {
+        throw new Error(
+          `JSONL 第 ${i + 1} 行题型 "${obj.qtype}" 必须提供正整数 pertaskcount 和 tasklength。` +
+          `示例："pertaskcount":2,"tasklength":3。`,
+        );
+      }
     }
 
     // NPS is a protocol-level question shape, not a generic 0-10 scale.

@@ -4,6 +4,12 @@
 
 > 说明：以下 0.x 条目保留为历史记录。条目中出现的 `create_survey`、`create_survey_by_text` 或 DSL 创建能力已移除，不属于当前 Server，也不得据此恢复工具。当前问卷创建唯一使用 `create_survey_by_json`。
 
+## [0.4.3] - 2026-09-07
+
+- 增加 `get_short_link` 工具，支持将问卷填写长链接转换为短信短链接。
+- 发布 Agent contract、状态/题型/设置枚举资源和高风险队列消费确认规则。
+- 完善 MCP 写操作的前置身份检查、读回验证和 `unknown` 结果报告。
+
 ## [0.4.2] - 2026-09-02
 
 - 升级 MCP SDK 传递依赖中的 Hono、Express、`qs`、`fast-uri`、`ip-address` 等安全修复版本。

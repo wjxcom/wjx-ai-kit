@@ -26,6 +26,7 @@ export async function main() {
         const { close } = await startHttpTransport(server, {
             port,
             authToken: process.env.MCP_AUTH_TOKEN,
+            upstreamApiKey: process.env.WJX_API_KEY,
             stateful: process.env.MCP_SESSION !== "stateless",
         }, createServer);
         // HTTP sessions use fresh servers from serverFactory; close the unused

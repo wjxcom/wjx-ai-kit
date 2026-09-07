@@ -12,27 +12,108 @@
       "nodeMajor": 24,
       "platform": "win32",
       "arch": "x64",
-      "commit": "380fd4356cf3939303fa3a9986aac7c618c94664",
-      "nodeP50Ms": 73.712,
-      "nodeP95Ms": 76.349,
-      "nodeMinMs": 72.04,
-      "nodeMaxMs": 76.774,
-      "cliP50Ms": 202.391,
-      "cliP95Ms": 218.388,
-      "cliMinMs": 196.59,
-      "cliMaxMs": 225.635,
-      "deltaP95Ms": 142.039,
+      "commit": "a0c0db58bde7e480ef33366c352e15d2cc57b784",
+      "nodeP50Ms": 81.752,
+      "nodeP95Ms": 90.567,
+      "nodeMinMs": 77.857,
+      "nodeMaxMs": 94.561,
+      "cliP50Ms": 93.827,
+      "cliP95Ms": 101.848,
+      "cliMinMs": 89.139,
+      "cliMaxMs": 108.81,
+      "deltaP95Ms": 11.281,
       "nodeStats": {
-        "p50Ms": 73.712,
-        "p95Ms": 76.349,
-        "minMs": 72.04,
-        "maxMs": 76.774
+        "p50Ms": 81.752,
+        "p95Ms": 90.567,
+        "minMs": 77.857,
+        "maxMs": 94.561
       },
       "cliStats": {
-        "p50Ms": 202.391,
-        "p95Ms": 218.388,
-        "minMs": 196.59,
-        "maxMs": 225.635
+        "p50Ms": 93.827,
+        "p95Ms": 101.848,
+        "minMs": 89.139,
+        "maxMs": 108.81
+      },
+      "scenarios": {
+        "version": {
+          "args": [
+            "--version"
+          ],
+          "nodeP50Ms": 81.752,
+          "nodeP95Ms": 90.567,
+          "nodeMinMs": 77.857,
+          "nodeMaxMs": 94.561,
+          "cliP50Ms": 93.827,
+          "cliP95Ms": 101.848,
+          "cliMinMs": 89.139,
+          "cliMaxMs": 108.81,
+          "deltaP95Ms": 11.281,
+          "nodeStats": {
+            "p50Ms": 81.752,
+            "p95Ms": 90.567,
+            "minMs": 77.857,
+            "maxMs": 94.561
+          },
+          "cliStats": {
+            "p50Ms": 93.827,
+            "p95Ms": 101.848,
+            "minMs": 89.139,
+            "maxMs": 108.81
+          }
+        },
+        "help": {
+          "args": [
+            "--help"
+          ],
+          "nodeP50Ms": 81.443,
+          "nodeP95Ms": 94.184,
+          "nodeMinMs": 79.385,
+          "nodeMaxMs": 106.067,
+          "cliP50Ms": 255.427,
+          "cliP95Ms": 276.9,
+          "cliMinMs": 236.583,
+          "cliMaxMs": 321.827,
+          "deltaP95Ms": 182.716,
+          "nodeStats": {
+            "p50Ms": 81.443,
+            "p95Ms": 94.184,
+            "minMs": 79.385,
+            "maxMs": 106.067
+          },
+          "cliStats": {
+            "p50Ms": 255.427,
+            "p95Ms": 276.9,
+            "minMs": 236.583,
+            "maxMs": 321.827
+          }
+        },
+        "completion": {
+          "args": [
+            "completion",
+            "bash"
+          ],
+          "nodeP50Ms": 85.356,
+          "nodeP95Ms": 144.099,
+          "nodeMinMs": 77.881,
+          "nodeMaxMs": 149.782,
+          "cliP50Ms": 246.946,
+          "cliP95Ms": 319.153,
+          "cliMinMs": 234.617,
+          "cliMaxMs": 459.24,
+          "deltaP95Ms": 175.054,
+          "nodeStats": {
+            "p50Ms": 85.356,
+            "p95Ms": 144.099,
+            "minMs": 77.881,
+            "maxMs": 149.782
+          },
+          "cliStats": {
+            "p50Ms": 246.946,
+            "p95Ms": 319.153,
+            "minMs": 234.617,
+            "maxMs": 459.24
+          }
+        }
       }
     },
     "default": {
@@ -44,27 +125,108 @@
       "nodeMajor": 24,
       "platform": "win32",
       "arch": "x64",
-      "commit": "5c40166359a77ba6a31e8b33ba88916db0ea4da3",
-      "nodeP50Ms": 76.047,
-      "nodeP95Ms": 81.429,
-      "nodeMinMs": 72.958,
-      "nodeMaxMs": 89.496,
-      "cliP50Ms": 173.297,
-      "cliP95Ms": 188.64,
-      "cliMinMs": 169.156,
-      "cliMaxMs": 191.249,
-      "deltaP95Ms": 107.211,
+      "commit": "a0c0db58bde7e480ef33366c352e15d2cc57b784",
+      "nodeP50Ms": 81.752,
+      "nodeP95Ms": 90.567,
+      "nodeMinMs": 77.857,
+      "nodeMaxMs": 94.561,
+      "cliP50Ms": 93.827,
+      "cliP95Ms": 101.848,
+      "cliMinMs": 89.139,
+      "cliMaxMs": 108.81,
+      "deltaP95Ms": 11.281,
       "nodeStats": {
-        "p50Ms": 76.047,
-        "p95Ms": 81.429,
-        "minMs": 72.958,
-        "maxMs": 89.496
+        "p50Ms": 81.752,
+        "p95Ms": 90.567,
+        "minMs": 77.857,
+        "maxMs": 94.561
       },
       "cliStats": {
-        "p50Ms": 173.297,
-        "p95Ms": 188.64,
-        "minMs": 169.156,
-        "maxMs": 191.249
+        "p50Ms": 93.827,
+        "p95Ms": 101.848,
+        "minMs": 89.139,
+        "maxMs": 108.81
+      },
+      "scenarios": {
+        "version": {
+          "args": [
+            "--version"
+          ],
+          "nodeP50Ms": 81.752,
+          "nodeP95Ms": 90.567,
+          "nodeMinMs": 77.857,
+          "nodeMaxMs": 94.561,
+          "cliP50Ms": 93.827,
+          "cliP95Ms": 101.848,
+          "cliMinMs": 89.139,
+          "cliMaxMs": 108.81,
+          "deltaP95Ms": 11.281,
+          "nodeStats": {
+            "p50Ms": 81.752,
+            "p95Ms": 90.567,
+            "minMs": 77.857,
+            "maxMs": 94.561
+          },
+          "cliStats": {
+            "p50Ms": 93.827,
+            "p95Ms": 101.848,
+            "minMs": 89.139,
+            "maxMs": 108.81
+          }
+        },
+        "help": {
+          "args": [
+            "--help"
+          ],
+          "nodeP50Ms": 81.443,
+          "nodeP95Ms": 94.184,
+          "nodeMinMs": 79.385,
+          "nodeMaxMs": 106.067,
+          "cliP50Ms": 255.427,
+          "cliP95Ms": 276.9,
+          "cliMinMs": 236.583,
+          "cliMaxMs": 321.827,
+          "deltaP95Ms": 182.716,
+          "nodeStats": {
+            "p50Ms": 81.443,
+            "p95Ms": 94.184,
+            "minMs": 79.385,
+            "maxMs": 106.067
+          },
+          "cliStats": {
+            "p50Ms": 255.427,
+            "p95Ms": 276.9,
+            "minMs": 236.583,
+            "maxMs": 321.827
+          }
+        },
+        "completion": {
+          "args": [
+            "completion",
+            "bash"
+          ],
+          "nodeP50Ms": 85.356,
+          "nodeP95Ms": 144.099,
+          "nodeMinMs": 77.881,
+          "nodeMaxMs": 149.782,
+          "cliP50Ms": 246.946,
+          "cliP95Ms": 319.153,
+          "cliMinMs": 234.617,
+          "cliMaxMs": 459.24,
+          "deltaP95Ms": 175.054,
+          "nodeStats": {
+            "p50Ms": 85.356,
+            "p95Ms": 144.099,
+            "minMs": 77.881,
+            "maxMs": 149.782
+          },
+          "cliStats": {
+            "p50Ms": 246.946,
+            "p95Ms": 319.153,
+            "minMs": 234.617,
+            "maxMs": 459.24
+          }
+        }
       }
     }
   }

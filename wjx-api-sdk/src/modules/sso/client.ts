@@ -121,6 +121,9 @@ export function buildPreviewUrl(input: BuildPreviewUrlInput, baseUrl?: string): 
     throw new Error("buildPreviewUrl 的 vid 必须是正整数");
   }
   const target = sid || (hasValidVid ? vid.toString() : "");
+  if (!sid && input.allowVidFallback === false) {
+    throw new Error("verified sid unavailable: numeric vid fallback is disabled");
+  }
   if (!target) {
     throw new Error("buildPreviewUrl 需要提供 sid 或 vid");
   }

@@ -3,9 +3,17 @@ import { registerAnalysisPrompts } from "./analysis.js";
 import { registerSurveyGenerationJsonPrompts } from "./survey-generation-json.js";
 export function registerPrompts(server) {
     server.prompt("design-survey", "引导 AI 设计问卷结构，包含题型选择、逻辑跳转和选项设计", {
-        topic: z.string().describe("问卷主题（如：员工满意度、客户反馈、产品调研、年度评选投票）"),
-        target_audience: z.string().optional().describe("目标受众（如：企业员工、消费者、学生）"),
-        survey_type: z.string().optional().describe("问卷类型：调查/投票/测评/考试/表单"),
+        topic: z
+            .string()
+            .describe("问卷主题（如：员工满意度、客户反馈、产品调研、年度评选投票）"),
+        target_audience: z
+            .string()
+            .optional()
+            .describe("目标受众（如：企业员工、消费者、学生）"),
+        survey_type: z
+            .string()
+            .optional()
+            .describe("问卷类型：调查/投票/测评/考试/表单"),
     }, async ({ topic, target_audience, survey_type }) => {
         const resolvedSurveyType = survey_type ?? "调查";
         const isVoteSurvey = resolvedSurveyType.includes("投票");
@@ -13,7 +21,8 @@ export function registerPrompts(server) {
             ? "\n\n投票题专用 qtype：「投票单选」/「投票多选」（作答页会显示每选项票数和百分比）。调用 create_survey_by_json 时请显式传 atype=3。"
             : "";
         return {
-            messages: [{
+            messages: [
+                {
                     role: "user",
                     content: {
                         type: "text",
@@ -25,7 +34,7 @@ export function registerPrompts(server) {
 1. 问卷标题和描述
 2. 题目列表（每题包含：题型、标题、选项/填空说明、是否必填）
 3. 建议的逻辑跳转规则
-4. 最终输出 JSONL 格式（供 create_survey_by_json 工具直接使用，推荐，支持 70+ 题型）
+4. 最终输出 JSONL 格式预览（用户明确授权后可供 create_survey_by_json 使用，支持 70+ 题型）
 
 JSONL 格式说明（每行一个 JSON 对象）：
 - 首行为问卷元数据：{"qtype":"问卷基础信息","title":"问卷标题","introduction":"问卷描述"}
@@ -39,16 +48,21 @@ JSONL 格式说明（每行一个 JSON 对象）：
 - 多项填空必须在 title 中用 {_} 占位符表示每个子填空位，如 {"qtype":"多项填空","title":"电话 {_}，邮箱 {_}"}；**不要用 rowtitle 数组**（那是矩阵题字段，多项填空不支持，会导致只生成 1 个空位）
 - 更多 qtype 及字段请参考 generate-survey-json prompt
 
-所有问卷都必须使用 create_survey_by_json；即使只有简单题型，也要按 JSONL 逐行提供。${voteNotice}`,
+先展示完整 JSONL 预览以及标题、题数、题型、必答项和 atype。只有用户明确授权创建后，才调用 create_survey_by_json；即使只有简单题型，也要按 JSONL 逐行提供。${voteNotice}`,
                     },
-                }],
+                },
+            ],
         };
     });
     server.prompt("analyze-results", "引导 AI 获取并分析问卷数据，生成洞察报告", {
         survey_id: z.string().describe("问卷编号 (vid)"),
-        focus_areas: z.string().optional().describe("关注重点（如：满意度趋势、NPS 分析、交叉分析）"),
+        focus_areas: z
+            .string()
+            .optional()
+            .describe("关注重点（如：满意度趋势、NPS 分析、交叉分析）"),
     }, async ({ survey_id, focus_areas }) => ({
-        messages: [{
+        messages: [
+            {
                 role: "user",
                 content: {
                     type: "text",
@@ -66,43 +80,47 @@ ${focus_areas ? `关注重点：${focus_areas}` : ""}
    - 关键发现与洞察
    - 改进建议`,
                 },
-            }],
+            },
+        ],
     }));
-    server.prompt("create-nps-survey", "一键创建标准 NPS（净推荐值）问卷", {
+    server.prompt("create-nps-survey", "生成标准 NPS（净推荐值）问卷草案", {
         product_name: z.string().describe("产品或服务名称"),
         language: z.string().optional().describe("问卷语言：zh（默认）或 en"),
     }, async ({ product_name, language }) => {
         const isEn = language === "en";
         return {
-            messages: [{
+            messages: [
+                {
                     role: "user",
                     content: {
                         type: "text",
                         text: isEn
-                            ? `Please create a standard NPS survey for "${product_name}" using the create_survey_by_json tool.
+                            ? `Draft a standard NPS survey for "${product_name}" and show the complete JSONL preview first. Use the create_survey_by_json tool only after the user explicitly authorizes creation.
 
 The survey should include:
 1. NPS Question: "How likely are you to recommend ${product_name} to a friend or colleague?" (use qtype="NPS量表" with the 11 string options "0" through "10")
 2. Follow-up: "What is the primary reason for your score?" (qtype="单项填空")
 3. "What could we improve?" (qtype="单项填空", required by default)
 
-Use survey type 1 (survey) and pass a JSONL string to create_survey_by_json. The first line must be the metadata object.`
-                            : `请使用 create_survey_by_json 工具为「${product_name}」创建一份标准 NPS 问卷。
+Use survey type 1 (survey) and prepare a JSONL string for create_survey_by_json. The first line must be the metadata object. Show the title, question count, qtypes, required fields, atype, and expected publish state before any tool call.`
+                            : `请先为「${product_name}」生成标准 NPS 问卷的完整 JSONL 预览。
 
 问卷应包含：
 1. NPS 核心题：「您有多大可能向朋友或同事推荐${product_name}？」（使用 qtype="NPS量表"，select 必须是字符串 "0" 到 "10" 共 11 项）
 2. 跟进题：「您给出这个评分的主要原因是什么？」（qtype="单项填空"）
 3. 「您觉得我们还可以在哪些方面改进？」（qtype="单项填空"，默认必答）
 
-使用问卷类型 1（调查），将首行元数据和题目逐行组成 JSONL 字符串，传给 create_survey_by_json 的 jsonl 参数。`,
+使用问卷类型 1（调查），将首行元数据和题目逐行组成 JSONL 字符串。先展示标题、题数、题型、必答项、atype 和预计发布状态；只有用户明确授权创建后，才将 JSONL 传给 create_survey_by_json 的 jsonl 参数。`,
                     },
-                }],
+                },
+            ],
         };
     });
     server.prompt("configure-webhook", "引导配置问卷星数据推送（Webhook），包括推送URL设置、加密配置、签名验证和测试", {
         vid: z.string().describe("问卷编号 (vid)"),
     }, async ({ vid }) => ({
-        messages: [{
+        messages: [
+            {
                 role: "user",
                 content: {
                     type: "text",
@@ -115,11 +133,13 @@ Use survey type 1 (survey) and pass a JSONL string to create_survey_by_json. The
 
 **第二步：配置推送参数**
 调用 update_survey_settings 工具，通过 msg_setting 字段配置以下推送参数：
-- push_url：接收推送数据的 HTTPS URL（必填）
-- is_encrypt：是否启用 AES-128-CBC 加密（建议开启，设为 1）
-- push_custom_params：需要附加的自定义参数（可选）
+- post_url：接收推送数据的 HTTPS URL（必填）
+- quick_post：是否快速推送（按用户要求设置）
+- retry：推送失败时是否重试（按用户要求设置）
 
-请向我确认推送 URL 和是否需要加密后再执行配置。
+msg_setting 是全量覆盖字段：必须保留第一步读取到的其他字段，只修改用户确认的键，并在提交后再次读取设置验证。当前 API 没有通过 msg_setting 配置 is_encrypt 或 push_custom_params 的字段，不要自行添加。
+
+请向我确认推送 URL、是否快速推送以及是否启用失败重试后再执行配置。
 
 **第三步：了解推送数据格式**
 参考资源 wjx://reference/push-format 了解推送载荷的完整字段说明：
@@ -128,12 +148,12 @@ Use survey type 1 (survey) and pass a JSONL string to create_survey_by_json. The
 - submitdata 的编码格式：题号$答案}题号$答案
 
 **第四步：解密测试**
-如果启用了加密，需要在接收端实现 AES 解密逻辑来验证推送密文：
+如果实际收到的推送载荷是加密密文，需要在接收端实现 AES 解密逻辑来验证：
 - 加密算法：AES-128-CBC
 - 密钥派生：MD5(appKey) 取前 16 字符
 - 填充方式：PKCS7
 - 密文格式：前 16 字节为 IV，其余为加密数据，整体 Base64 编码
-（可调用 decode_push_payload 工具解密；SDK 也提供 decodePushPayload() 编程接口，无需手动实现）
+（可调用 decode_push_payload 工具解密；SDK 也提供 decodePushPayload() 编程接口，无需手动实现。不要把未在当前设置 schema 中出现的加密字段写回 msg_setting。）
 
 **第五步：签名验证**
 推送请求在 HTTP 头中携带 X-Wjx-Signature 签名，验证方法：
@@ -143,14 +163,19 @@ Use survey type 1 (survey) and pass a JSONL string to create_survey_by_json. The
 
 请告诉我你的推送接收 URL 以及是否需要开启加密，我来帮你完成配置。`,
                 },
-            }],
+            },
+        ],
     }));
     // ═══ Anomaly Detection ═══════════════════════════════════════════════
     server.prompt("anomaly-detection", "检测问卷答卷中的异常数据：刷票、机器人、规律性作答、极短用时等", {
         vid: z.string().describe("问卷编号 (vid)"),
-        threshold: z.string().optional().describe("异常阈值灵敏度：low/medium/high（默认 medium）"),
+        threshold: z
+            .string()
+            .optional()
+            .describe("异常阈值灵敏度：low/medium/high（默认 medium）"),
     }, async ({ vid, threshold }) => ({
-        messages: [{
+        messages: [
+            {
                 role: "user",
                 content: {
                     type: "text",
@@ -165,7 +190,7 @@ Use survey type 1 (survey) and pass a JSONL string to create_survey_by_json. The
 2. 用 query_responses 获取答卷明细（需要 submitdata、submittime、inputcosttime、ip 等字段）
 
 **第二步：检测以下异常模式**
-- **速度异常**：答题用时（inputcosttime）低于正常范围（如 < 题目数 × 3秒）
+- **速度异常**：仅在至少 3 个正时长样本且中位数大于 0 时，将答题用时低于中位数 30% 的记录标记为速度异常；样本不足时跳过并报告 warning
 - **规律性作答**：所有选择题答案相同（如全选A）或呈固定模式（如 ABCABC）
 - **IP 集中**：大量答卷来自同一 IP 或同一 IP 段
 - **时间集中**：短时间内出现大量提交（如 1分钟内 > 10 份）
@@ -180,13 +205,18 @@ Use survey type 1 (survey) and pass a JSONL string to create_survey_by_json. The
 
 如需使用 SDK 的 detectAnomalies 函数，请参考 wjx://reference/analysis-methods 资源。`,
                 },
-            }],
+            },
+        ],
     }));
     // ═══ Legacy User System Workflow ════════════════════════════════════
     server.prompt("user-system-workflow", "用户体系兼容工作流指导（已过时）：维护已有系统的参与者、绑定和参与状态", {
-        scenario: z.string().optional().describe("使用场景（如：员工考核、培训评估、学生测评）"),
+        scenario: z
+            .string()
+            .optional()
+            .describe("使用场景（如：员工考核、培训评估、学生测评）"),
     }, async ({ scenario }) => ({
-        messages: [{
+        messages: [
+            {
                 role: "user",
                 content: {
                     type: "text",
@@ -233,7 +263,8 @@ Use survey type 1 (survey) and pass a JSONL string to create_survey_by_json. The
 
 请先说明已有系统 ID 和要执行的兼容操作，我再帮你评估影响并逐步完成。`,
                 },
-            }],
+            },
+        ],
     }));
     // ═══ Analysis Prompts ══════════════════════════════════════════════════
     registerAnalysisPrompts(server);

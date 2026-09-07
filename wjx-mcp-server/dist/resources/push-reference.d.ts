@@ -3,9 +3,9 @@ export declare const PUSH_FORMAT_GUIDE: {
     configuration: {
         method: string;
         fields: {
-            push_url: string;
-            is_encrypt: string;
-            push_custom_params: string;
+            post_url: string;
+            quick_post: string;
+            retry: string;
         };
     };
     payload: {

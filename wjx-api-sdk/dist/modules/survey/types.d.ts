@@ -44,6 +44,7 @@ export interface ListSurveysInput {
 }
 export interface UpdateSurveyStatusInput {
     vid: number;
+    /** 1=发布, 2=暂停, 3=删除并进入回收站（可恢复）。彻底删除使用 DeleteSurveyInput.completely_delete 或 ClearRecycleBinInput。 */
     state: number;
 }
 export interface GetSurveySettingsInput {
@@ -134,6 +135,7 @@ export interface SurveyDetail {
     version: number;
     answer_valid: number;
     answer_total: number;
+    /** 0=未发布, 1=已发布, 2=已暂停, 3=已删除（回收站，可恢复）, 4=彻底删除（不可恢复）, 5=被审核。 */
     status: number;
     verify_status: number;
     creater: string;

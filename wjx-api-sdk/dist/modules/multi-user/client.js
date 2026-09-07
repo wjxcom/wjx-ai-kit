@@ -6,7 +6,7 @@ export async function addSubAccount(input, credentials = getWjxCredentials(), fe
         subuser: input.subuser,
     };
     assignDefined(params, input, ["password", "mobile", "email", "role", "group"]);
-    return callWjxSubuserApi(params, { credentials, fetchImpl, maxRetries: 0 });
+    return callWjxSubuserApi(params, { credentials, fetchImpl, maxRetries: 0, idempotency: "unsafe", httpRetryable: false });
 }
 export async function modifySubAccount(input, credentials = getWjxCredentials(), fetchImpl = fetch) {
     const params = {
@@ -14,13 +14,13 @@ export async function modifySubAccount(input, credentials = getWjxCredentials(),
         subuser: input.subuser,
     };
     assignDefined(params, input, ["mobile", "email", "role", "group"]);
-    return callWjxSubuserApi(params, { credentials, fetchImpl, maxRetries: 0 });
+    return callWjxSubuserApi(params, { credentials, fetchImpl, maxRetries: 0, idempotency: "unsafe", httpRetryable: false });
 }
 export async function deleteSubAccount(input, credentials = getWjxCredentials(), fetchImpl = fetch) {
     return callWjxSubuserApi({
         action: Action.DELETE_SUB_ACCOUNT,
         subuser: input.subuser,
-    }, { credentials, fetchImpl, maxRetries: 0 });
+    }, { credentials, fetchImpl, maxRetries: 0, idempotency: "unsafe", httpRetryable: false });
 }
 export async function restoreSubAccount(input, credentials = getWjxCredentials(), fetchImpl = fetch) {
     const params = {
@@ -28,13 +28,13 @@ export async function restoreSubAccount(input, credentials = getWjxCredentials()
         subuser: input.subuser,
     };
     assignDefined(params, input, ["mobile", "email"]);
-    return callWjxSubuserApi(params, { credentials, fetchImpl, maxRetries: 0 });
+    return callWjxSubuserApi(params, { credentials, fetchImpl, maxRetries: 0, idempotency: "unsafe", httpRetryable: false });
 }
 export async function querySubAccounts(input, credentials = getWjxCredentials(), fetchImpl = fetch) {
     const params = {
         action: Action.QUERY_SUB_ACCOUNTS,
     };
     assignDefined(params, input, ["subuser", "name_like", "role", "group", "status", "mobile", "page_index", "page_size"]);
-    return callWjxSubuserApi(params, { credentials, fetchImpl });
+    return callWjxSubuserApi(params, { credentials, fetchImpl, idempotency: "safe", httpRetryable: true });
 }
 //# sourceMappingURL=client.js.map

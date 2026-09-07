@@ -1,4 +1,4 @@
-import type { WjxApiResponse } from "wjx-api-sdk";
+import { WjxAmbiguousOutcomeError, type WjxApiResponse } from "wjx-api-sdk";
 export type ErrorCode = "API_ERROR" | "INPUT_ERROR" | "AUTH_ERROR" | "CONFIRMATION_REQUIRED" | "POLICY_DENIED" | "UPGRADE_REQUIRED";
 
 const EXIT_CODES: Record<ErrorCode, number> = {
@@ -61,6 +61,16 @@ export function stderrJson(code: ErrorCode, message: string, details?: ErrorDeta
  */
 function classifyError(err: unknown): CliError {
   if (err instanceof CliError) return err;
+
+  if (err instanceof WjxAmbiguousOutcomeError) {
+    return new CliError("API_ERROR", err.message, {
+      outcome: err.outcome,
+      action: err.action,
+      traceid: err.traceId,
+      attempts: err.attempts,
+      recommendation: "read-after-write verification",
+    });
+  }
 
   if (err instanceof SyntaxError) {
     return new CliError("INPUT_ERROR", err.message);

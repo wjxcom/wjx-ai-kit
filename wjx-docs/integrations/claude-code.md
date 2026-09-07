@@ -1,6 +1,6 @@
 # Claude Code
 
-Claude Code 能执行 shell，也支持 MCP、Agent 和 Skill。CLI `0.4.2` 已发布到 npm，直接安装：
+Claude Code 能执行 shell，也支持 MCP、Agent 和 Skill。CLI `0.4.3` 已发布到 npm，直接安装：
 
 ```bash
 npm install -g wjx-cli@latest

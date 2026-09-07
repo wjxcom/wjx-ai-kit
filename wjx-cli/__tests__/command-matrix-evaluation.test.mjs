@@ -82,7 +82,7 @@ const REMOTE_CASES = [
   { id: "response.realtime", path: ["response", "realtime"], action: Action.QUERY_RESPONSES_REALTIME, required: ["--vid"], args: ["--vid", "42", "--count", "10"], stdin: { vid: 42, count: 10 } },
   { id: "response.download", path: ["response", "download"], action: Action.DOWNLOAD_RESPONSES, required: ["--vid"], args: ["--vid", "42", "--suffix", "0"], stdin: { vid: 42, suffix: 0 } },
   { id: "response.submit", path: ["response", "submit"], action: Action.SUBMIT_RESPONSE, required: ["--vid", "--inputcosttime", "--submitdata"], args: ["--vid", "42", "--inputcosttime", "30", "--submitdata", "1$1", "--jpmversion", "1", "--no-auto-version"], stdin: { vid: 42, inputcosttime: 30, submitdata: "1$1", jpmversion: 1, autoVersion: false } },
-  { id: "response.modify", path: ["response", "modify"], action: Action.MODIFY_RESPONSE, highRisk: true, required: ["--vid", "--jid", "--answers"], args: ["--vid", "42", "--jid", "7", "--answers", "1$1"], stdin: { vid: 42, jid: 7, answers: "1$1" } },
+  { id: "response.modify", path: ["response", "modify"], action: Action.MODIFY_RESPONSE, highRisk: true, required: ["--vid", "--jid", "--answers"], args: ["--vid", "42", "--jid", "7", "--answers", '{"10000":"1"}'], stdin: { vid: 42, jid: 7, answers: '{"10000":"1"}' } },
   { id: "response.clear", path: ["response", "clear"], action: Action.CLEAR_RESPONSES, highRisk: true, required: ["--username", "--vid"], args: ["--username", "owner", "--vid", "42"], stdin: { username: "owner", vid: 42 } },
   { id: "response.report", path: ["response", "report"], action: Action.GET_REPORT, required: ["--vid"], args: ["--vid", "42"], stdin: { vid: 42 } },
   { id: "response.winners", path: ["response", "winners"], action: Action.GET_WINNERS, required: ["--vid"], args: ["--vid", "42"], stdin: { vid: 42 } },
@@ -126,7 +126,7 @@ const LEAF_COMMANDS = [
   "reference", "response.count", "response.query", "response.realtime", "response.download", "response.submit", "response.modify", "response.clear", "response.report", "response.winners", "response.submit-template", "response.360-report",
   "schema", "skill.install", "skill.update", "skill.install-ppt", "skill.update-ppt",
   "sso.subaccount-url", "sso.user-system-url", "sso.partner-url",
-  "survey.list", "survey.get", "survey.create", "survey.delete", "survey.status", "survey.settings", "survey.update-settings", "survey.tags", "survey.tag-details", "survey.clear-bin", "survey.upload", "survey.export-text", "survey.jsonl-template", "survey.url", "survey.preview-url",
+  "survey.list", "survey.get", "survey.create", "survey.delete", "survey.status", "survey.settings", "survey.update-settings", "survey.tags", "survey.tag-details", "survey.clear-bin", "survey.upload", "survey.export-text", "survey.jsonl-template", "survey.url", "survey.preview-url", "survey.shortlink",
   "tag.list", "tag.add", "tag.modify", "tag.delete",
   "update", "user-system.add-participants", "user-system.modify-participants", "user-system.delete-participants", "user-system.bind", "user-system.query-binding", "user-system.query-surveys", "whoami",
 ].sort();
@@ -155,6 +155,7 @@ const LOCAL_DRY_RUN_CASES = [
   { id: "sso.user-system-url", args: ["sso", "user-system-url", "--u", "owner", "--system_id", "9", "--uid", "u-1"] },
   { id: "sso.partner-url", args: ["sso", "partner-url", "--username", "partner-1"] },
   { id: "survey.jsonl-template", args: ["survey", "jsonl-template", "--type", "1"] },
+  { id: "survey.shortlink", args: ["survey", "shortlink", "--url", "https://www.wjx.cn/vm/abc.aspx"] },
   { id: "survey.url", args: ["survey", "url", "--mode", "create", "--name", "dry-run survey"] },
   { id: "survey.preview-url", args: ["survey", "preview-url", "--sid", "short-code", "--source", "matrix"] },
   { id: "update", args: ["update", "--silent"] },
@@ -239,7 +240,7 @@ const INTEGER_COVERAGE_VALUES = new Map([
   ["survey.list:--status", "1"],
   ["survey.list:--atype", "1"],
   ["survey.list:--sort", "0"],
-  ["survey.list:--verify_status", "0"],
+  ["survey.list:--verify_status", "1"],
   ["survey.list:--time_type", "0"],
   ["response.download:--suffix", "0"],
   ["response.download:--query_type", "0"],
@@ -276,6 +277,8 @@ async function coverageValue(command, option, tempDir) {
   const semanticValues = new Map([
     ["analytics.csat:--scale", "5-point"],
     ["survey.url:--mode", "create"],
+    ["survey.shortlink:--url", "https://www.wjx.cn/vm/coverage.aspx?source=matrix"],
+    ["response.modify:--answers", '{"10000":"1"}'],
     ["department.delete:--type", "1"],
     ["tag.delete:--type", "1"],
     ["account.list:--role", "1"],
@@ -457,7 +460,7 @@ describe("complete CLI command contract matrix", () => {
 
   test("leaf command inventory is exhaustive and every leaf is discoverable", async () => {
     assert.equal(new Set(LEAF_COMMANDS).size, LEAF_COMMANDS.length);
-    assert.equal(LEAF_COMMANDS.length, 75);
+    assert.equal(LEAF_COMMANDS.length, 76);
     for (const command of LEAF_COMMANDS) {
       const result = await runCli([...command.split("."), "--help"]);
       assert.equal(result.exitCode, 0, `${command}: ${result.stderr}`);
@@ -816,8 +819,10 @@ describe("complete CLI command contract matrix", () => {
 
   test("update fails closed when npm reports an older installed version after a successful install", async () => {
     const bin = await mkdtemp(resolve(process.env.TEMP ?? ".", "wjx-update-verify-bin-"));
+    const currentParts = CLI_VERSION.split(".").map(Number);
+    const newerVersion = `${currentParts[0]}.${currentParts[1]}.${currentParts[2] + 1}`;
     try {
-      await writeFile(resolve(bin, "npm.cmd"), `@echo off\r\nif "%~1"=="view" (echo "0.4.3" & exit /b 0)\r\nif "%~1"=="install" (exit /b 0)\r\nif "%~1"=="list" (echo {"name":"wjx-cli","version":"0.4.1"} & exit /b 0)\r\nexit /b 1\r\n`, "utf8");
+      await writeFile(resolve(bin, "npm.cmd"), `@echo off\r\nif "%~1"=="view" (echo "${newerVersion}" & exit /b 0)\r\nif "%~1"=="install" (exit /b 0)\r\nif "%~1"=="list" (echo {"name":"wjx-cli","version":"0.4.1"} & exit /b 0)\r\nexit /b 1\r\n`, "utf8");
       const result = await runCli(["update", "--silent"], { env: { PATH: `${bin};${process.env.PATH ?? ""}` } });
       assert.equal(result.exitCode, 1, result.stdout);
       assert.equal(result.stdout.trim(), "");
@@ -830,14 +835,21 @@ describe("complete CLI command contract matrix", () => {
   });
 
   test("local analytics reject empty and structurally invalid datasets", async () => {
-    const cases = [
+    const noDataCases = [
       ["analytics", "nps", "--scores", "[]"],
       ["analytics", "csat", "--scores", "[]"],
+    ];
+    for (const args of noDataCases) {
+      const result = await runCli(args);
+      assert.equal(result.exitCode, 0, `${args.join(" ")} unexpectedly failed`);
+      assert.equal(JSON.parse(result.stdout).data.dataStatus, "no-data");
+    }
+    const invalidCases = [
       ["analytics", "anomalies", "--responses", "[1]"],
       ["analytics", "compare", "--set_a", "[]", "--set_b", "{}"],
       ["analytics", "decode", "--submitdata", ""],
     ];
-    for (const args of cases) {
+    for (const args of invalidCases) {
       const result = await runCli(args);
       assert.equal(result.exitCode, 2, `${args.join(" ")} unexpectedly succeeded`);
       assert.equal(parseProblem(result).error.code, "INPUT_ERROR");
@@ -877,6 +889,18 @@ describe("complete CLI command contract matrix", () => {
     }
   });
 
+  test("survey update-settings rejects an empty patch before reading or writing", async () => {
+    const fixture = await startFixture({ env: { WJX_API_KEY: "empty-settings-key" } });
+    try {
+      const result = await fixture.run(["--yes", "survey", "update-settings", "--vid", "42"]);
+      assert.equal(result.exitCode, 2);
+      assert.equal(parseProblem(result).error.code, "INPUT_ERROR");
+      assert.equal(fixture.requests().length, 0);
+    } finally {
+      await fixture.close();
+    }
+  });
+
   test("SSO rejects blank required identities and non-positive ids", async () => {
     const cases = [
       ["sso", "subaccount-url", "--subuser", ""],
@@ -892,8 +916,120 @@ describe("complete CLI command contract matrix", () => {
   });
 
   test("all remote commands execute the expected action and preserve success envelope", async () => {
+    let survey = {
+      title: "矩阵问卷",
+      status: 1,
+      questionCount: 1,
+      sid: "matrixReadbackSid",
+    };
+    let recycleBinCount = 1;
+    let responseCount = 3;
+    let responseAnswers = { "10000": "1" };
+    const settings = {
+      api_setting: {},
+      after_submit_setting: {},
+      msg_setting: {},
+      sojumpparm_setting: {},
+      time_setting: {},
+    };
     const fixture = await startFixture({
-      response: { result: true, data: { title: "矩阵问卷", description: "", questions: [] } },
+      response: ({ request }) => {
+        let body = {};
+        try { body = JSON.parse(request.body || "{}"); } catch { /* malformed bodies are covered by input tests */ }
+        const action = String(body.action ?? "");
+        if (action === "1000001") {
+          const origin = `http://${request.headers.host}`;
+          return {
+            result: true,
+            data: {
+              vid: 42,
+              title: survey.title,
+              description: "",
+              status: survey.status,
+              sid: survey.sid,
+              questions: Array.from({ length: survey.questionCount }, (_, index) => ({
+                q_type: 3,
+                q_subtype: 3,
+                q_title: `题目 ${index + 1}`,
+                is_requir: true,
+                items: [],
+              })),
+              activity_domain: origin,
+              pc_path: `/vm/${survey.sid}.aspx`,
+            },
+          };
+        }
+        if (action === "1000002") {
+          return {
+            result: true,
+            data: {
+              total_count: recycleBinCount,
+              activitys: recycleBinCount
+                ? { "42": { vid: 42, status: 3, sid: "matrixRecycleSid" } }
+                : {},
+            },
+          };
+        }
+        if (action === "1000003") return { result: true, data: structuredClone(settings) };
+        if (action === "1000106") {
+          const lines = typeof body.surveydatajson === "string"
+            ? body.surveydatajson.split(/\r?\n/).filter(Boolean)
+            : [];
+          let metadata = {};
+          try { metadata = JSON.parse(lines[0] ?? "{}"); } catch { /* local CLI validation owns malformed JSONL */ }
+          survey = {
+            title: typeof body.title === "string" ? body.title : metadata.title,
+            status: body.publish === true ? 1 : 0,
+            questionCount: Math.max(1, lines.length - 1),
+            sid: "matrixReadbackSid",
+          };
+          return { result: true, data: { vid: 42 } };
+        }
+        if (action === "1000102") {
+          const nextStatus = Number(body.state);
+          if (Number.isFinite(nextStatus)) survey.status = nextStatus;
+          return { result: true, data: {} };
+        }
+        if (action === "1000103") {
+          for (const key of Object.keys(settings)) {
+            if (typeof body[key] !== "string") continue;
+            try { settings[key] = JSON.parse(body[key]); } catch { /* API would reject malformed JSON */ }
+          }
+          return { result: true, data: { saved: true } };
+        }
+        if (action === "1000301") {
+          survey.status = 3;
+          return { result: true, data: { deleted: true } };
+        }
+        if (action === "1000302") {
+          recycleBinCount = 0;
+          return { result: true, data: { cleared: 1 } };
+        }
+        if (action === "1001002") {
+          return {
+            result: true,
+            data: {
+              total_count: responseCount,
+              join_times: responseCount,
+              responses: responseCount
+                ? [{ jid: 7, answer_items: Object.entries(responseAnswers).map(([q_index, answer_value]) => ({ q_index, answer_value })) }]
+                : [],
+            },
+          };
+        }
+        if (action === "1001007") {
+          try {
+            const patch = JSON.parse(String(body.answers ?? "{}"));
+            if (patch && typeof patch === "object" && !Array.isArray(patch)) responseAnswers = { ...responseAnswers, ...patch };
+          } catch { /* local CLI validation owns malformed answer patches */ }
+          return { result: true, data: { modified: true } };
+        }
+        if (action === "1001201") {
+          responseCount = 0;
+          return { result: true, data: { cleared: true } };
+        }
+        return { result: true, data: {} };
+      },
       env: { WJX_API_KEY: "matrix-key" },
     });
     try {
@@ -906,13 +1042,101 @@ describe("complete CLI command contract matrix", () => {
         assert.equal(successEnvelope.ok, true, `${item.id} did not emit ResultEnvelope`);
         const requests = fixture.requests().slice(before);
         assert.ok(requests.length >= 1, `${item.id} did not reach transport`);
-        const finalBody = JSON.parse(requests.at(-1).body);
-        assert.equal(String(finalBody.action), String(item.action), `${item.id} sent wrong action`);
+        const actions = requests.map((request) => String(JSON.parse(request.body).action));
+        assert.ok(actions.includes(String(item.action)), `${item.id} sent wrong action: ${actions.join(", ")}`);
         assert.equal(requests.at(-1).headers.authorization, "Bearer matrix-key", `${item.id} did not send credentials`);
         if (item.id === "response.submit") assert.equal(requests.length, 1, "explicit jpmversion should submit without metadata prefetch");
       }
     } finally {
       await fixture.close();
+    }
+  });
+
+  test("response modify verifies the target before and after the write", async () => {
+    const answers = JSON.stringify({ "10000": "85" });
+    let storedAnswer = "1";
+    const fixture = await startFixture({
+      response: ({ request }) => {
+        const body = JSON.parse(request.body || "{}");
+        const action = String(body.action ?? "");
+        if (action === "1001002") {
+          return {
+            result: true,
+            data: {
+              total_count: 1,
+              responses: [{
+                jid: 7,
+                answer_items: [{ q_index: "10000", answer_value: storedAnswer }],
+              }],
+            },
+          };
+        }
+        if (action === "1001007") {
+          const patch = JSON.parse(String(body.answers));
+          storedAnswer = String(patch["10000"]);
+          return { result: true, data: { modified: true } };
+        }
+        return { result: true, data: {} };
+      },
+      env: { WJX_API_KEY: "modify-verify-key" },
+    });
+    try {
+      const result = await fixture.run(["--yes", "response", "modify", "--vid", "42", "--jid", "7", "--answers", answers]);
+      assert.equal(result.exitCode, 0, result.stderr);
+      const envelope = parseSuccess(result);
+      assert.equal(envelope.data.outcome, "verified");
+      assert.deepEqual(envelope.data.verification, { structure: true, status: true, link: true });
+      assert.deepEqual(fixture.requests().map((request) => String(JSON.parse(request.body).action)), ["1001002", "1001007", "1001002"]);
+    } finally {
+      await fixture.close();
+    }
+
+    const missingFixture = await startFixture({
+      response: ({ request }) => String(JSON.parse(request.body || "{}").action) === "1001002"
+        ? { result: true, data: { total_count: 0, responses: [] } }
+        : { result: true, data: {} },
+      env: { WJX_API_KEY: "modify-missing-key" },
+    });
+    try {
+      const result = await missingFixture.run(["--yes", "response", "modify", "--vid", "42", "--jid", "7", "--answers", answers]);
+      assert.equal(result.exitCode, 1);
+      const problem = parseProblem(result);
+      assert.match(problem.error.message, /未找到答卷/);
+      assert.deepEqual(missingFixture.requests().map((request) => String(JSON.parse(request.body).action)), ["1001002"]);
+    } finally {
+      await missingFixture.close();
+    }
+
+    let mismatchReadCount = 0;
+    const mismatchFixture = await startFixture({
+      response: ({ request }) => {
+        const body = JSON.parse(request.body || "{}");
+        const action = String(body.action ?? "");
+        if (action === "1001002") {
+          mismatchReadCount += 1;
+          return {
+            result: true,
+            data: {
+              total_count: 1,
+              responses: [{ jid: 7, answer_items: [{ q_index: "10000", answer_value: mismatchReadCount > 1 ? "wrong" : "1" }] }],
+            },
+          };
+        }
+        if (action === "1001007") return { result: true, data: { modified: true } };
+        return { result: true, data: {} };
+      },
+      env: { WJX_API_KEY: "modify-mismatch-key" },
+    });
+    try {
+      const result = await mismatchFixture.run(["--yes", "response", "modify", "--vid", "42", "--jid", "7", "--answers", answers]);
+      assert.equal(result.exitCode, 1);
+      const problem = parseProblem(result);
+      assert.equal(problem.error.outcome, "unknown");
+      assert.equal(problem.error.verification.status, false);
+      assert.match(problem.error.warnings.join(" "), /不一致/);
+      assert.deepEqual(mismatchFixture.requests().map((request) => String(JSON.parse(request.body).action)), ["1001002", "1001007", "1001002"]);
+    } finally {
+      await mismatchFixture.close();
     }
   });
 
@@ -1363,7 +1587,7 @@ describe("complete CLI command contract matrix", () => {
         `option matrix did not execute every command-local option (covered ${covered.size}, expected ${expectedLocalOptions.size})`);
       // This is the current command-local occurrence denominator. Keep it
       // explicit so a help/parser drift cannot silently shrink the matrix.
-      assert.equal(expectedLocalOptions.size, 254,
+      assert.equal(expectedLocalOptions.size, 255,
         "update the command-local option denominator only when the public surface intentionally changes");
     } finally {
       await rm(tempDir, { recursive: true, force: true });

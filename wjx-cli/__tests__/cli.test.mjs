@@ -5,6 +5,7 @@ import { resolve, dirname, join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { startFixture } from "./fixtures/http-fixture.mjs";
+import { JSONL_READ_ONLY_OR_WEB_EDITOR_QTYPES } from "wjx-api-sdk";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const CLI = resolve(__dirname, "..", "dist", "index.js");
@@ -72,6 +73,45 @@ function parseProblem(serialized) {
   return { ...envelope.error, exitCode: envelope.exitCode };
 }
 
+function createReadbackResponseFactory() {
+  let latest;
+  return ({ request }) => {
+    let body = {};
+    try { body = JSON.parse(request.body || "{}"); } catch { /* non-JSON request */ }
+    const action = String(body.action ?? "");
+    if (action === "1000106") {
+      const lines = typeof body.surveydatajson === "string"
+        ? body.surveydatajson.split(/\r?\n/).filter(Boolean)
+        : [];
+      let metadata = {};
+      try { metadata = JSON.parse(lines[0] ?? "{}"); } catch { /* validation is covered by the CLI */ }
+      latest = {
+        title: typeof body.title === "string" ? body.title : metadata.title,
+        status: body.publish === true ? 1 : 0,
+        questionCount: Math.max(0, lines.length - 1),
+      };
+      return { result: true, data: { vid: 700001 } };
+    }
+    if (action === "1000001") {
+      const state = latest ?? { title: "问卷", status: 0, questionCount: 1 };
+      const origin = `http://${request.headers.host}`;
+      return {
+        result: true,
+        data: {
+          vid: 700001,
+          sid: "cliReadbackSid",
+          title: state.title,
+          status: state.status,
+          questions: Array.from({ length: state.questionCount }, () => ({ q_type: 3, q_subtype: 3 })),
+          activity_domain: origin,
+          pc_path: "/vm/cliReadbackSid.aspx",
+        },
+      };
+    }
+    return { result: true, data: {} };
+  };
+}
+
 async function withTempCwd(name, callback) {
   const cwd = resolve(__dirname, `__tmp_${name}__`);
   rmSync(cwd, { recursive: true, force: true });
@@ -101,7 +141,7 @@ describe("wjx CLI", () => {
 
   it("survey --help lists all subcommands", () => {
     const out = run(["survey", "--help"]);
-    for (const cmd of ["list", "get", "create", "jsonl-template", "delete", "status", "settings", "update-settings", "tags", "tag-details", "clear-bin", "upload", "url", "preview-url"]) {
+    for (const cmd of ["list", "get", "create", "jsonl-template", "delete", "status", "settings", "update-settings", "tags", "tag-details", "clear-bin", "upload", "url", "preview-url", "shortlink"]) {
       assert.match(out, new RegExp(cmd), `missing subcommand: ${cmd}`);
     }
   });
@@ -123,6 +163,111 @@ describe("wjx CLI", () => {
     assert.equal(result.exitCode, 2);
     const error = parseProblem(result.stderr);
     assert.match(error.message, /--sid|--vid/);
+  });
+
+  it("survey shortlink dry-run encodes the full survey URL", async () => {
+    const longUrl = "https://www.wjx.cn/vm/abc.aspx?source=agent&name=中文值";
+    const result = await runFull(["survey", "shortlink", "--url", longUrl, "--dry-run"]);
+    assert.equal(result.exitCode, 0);
+    const data = parseDryRunData(result.stdout);
+    const plan = data.plans[0];
+    assert.equal(plan.method, "GET");
+    assert.match(plan.url, /\/openapi\/shortlink\.aspx\?url=/);
+    assert.match(plan.url, /%E4%B8%AD%E6%96%87%E5%80%BC/);
+    assert.doesNotMatch(plan.url, /source=agent&name=/);
+    assert.equal(data.input.url, longUrl);
+  });
+
+  it("survey shortlink rejects non-WJX URLs", async () => {
+    const result = await runFull(["survey", "shortlink", "--url", "https://example.com/form"]);
+    assert.equal(result.exitCode, 2);
+    const error = parseProblem(result.stderr);
+    assert.equal(error.code, "INPUT_ERROR");
+    assert.match(error.message, /问卷星|wjx/i);
+  });
+
+  it("survey shortlink dry-run preserves a profile path prefix", async () => {
+    const profilesPath = resolve(__dirname, `__shortlink-profile-${Date.now()}.json`);
+    writeFileSync(profilesPath, JSON.stringify({
+      version: 1,
+      profiles: { tenant: { baseUrl: "https://tenant.example/wjx" } },
+    }), "utf8");
+    try {
+      const result = await runFull(["--profile", "tenant", "--dry-run", "survey", "shortlink", "--url", "https://tenant.example/vm/abc.aspx"], {
+        env: {
+          ...NO_CONFIG,
+          WJX_PROFILES_PATH: profilesPath,
+          WJX_BASE_URL: "",
+          WJX_API_URL: "",
+        },
+      });
+      assert.equal(result.exitCode, 0, result.stderr);
+      const plan = parseDryRunData(result.stdout).plans[0];
+      assert.equal(new URL(plan.url).pathname, "/wjx/openapi/shortlink.aspx");
+    } finally {
+      rmSync(profilesPath, { force: true });
+    }
+  });
+
+  it("survey shortlink execution uses the selected profile base URL", async () => {
+    const fixture = await startFixture({
+      response: { success: true, msg: null, data: "http://short.example/s/abc" },
+    });
+    const profilesPath = resolve(__dirname, `__shortlink-exec-profile-${Date.now()}.json`);
+    writeFileSync(profilesPath, JSON.stringify({
+      version: 1,
+      profiles: { tenant: { baseUrl: `${fixture.baseUrl}/wjx` } },
+    }), "utf8");
+    try {
+      const result = await fixture.run([
+        "--profile", "tenant", "survey", "shortlink", "--url", `${fixture.baseUrl}/vm/abc.aspx`,
+      ], {
+        env: {
+          WJX_PROFILES_PATH: profilesPath,
+          WJX_BASE_URL: "",
+          WJX_API_URL: "",
+          WJX_SHORTLINK_URL: "",
+        },
+      });
+      assert.equal(result.exitCode, 0, result.stderr);
+      assert.equal(JSON.parse(result.stdout).data.data, "http://short.example/s/abc");
+      assert.equal(new URL(fixture.requests()[0].path, fixture.baseUrl).pathname, "/wjx/openapi/shortlink.aspx");
+    } finally {
+      rmSync(profilesPath, { force: true });
+      await fixture.close();
+    }
+  });
+
+  it("survey shortlink execution uses the selected profile endpoint without an API key", async () => {
+    const fixture = await startFixture({
+      response: { success: true, msg: null, data: "https://short.example/s/abc" },
+      env: { WJX_API_KEY: "" },
+    });
+    const profilesPath = join(fixture.tempDir, "profiles.json");
+    writeFileSync(profilesPath, JSON.stringify({
+      version: 1,
+      profiles: { tenant: { baseUrl: `${fixture.baseUrl}/wjx` } },
+    }), "utf8");
+    try {
+      const result = await fixture.run(["--profile", "tenant", "survey", "shortlink", "--url", "https://www.wjx.cn/vm/abc.aspx"], {
+        env: {
+          WJX_PROFILES_PATH: profilesPath,
+          WJX_BASE_URL: "",
+          WJX_API_URL: "",
+          WJX_SHORTLINK_URL: "",
+        },
+      });
+      assert.equal(result.exitCode, 0, result.stderr);
+      const plan = JSON.parse(result.stdout);
+      assert.equal(plan.ok, true);
+      assert.equal(plan.data.success, true);
+      const request = fixture.requests()[0];
+      assert.equal(request.method, "GET");
+      assert.match(request.path, /^\/wjx\/openapi\/shortlink\.aspx\?url=/);
+      assert.equal(request.headers.authorization, undefined);
+    } finally {
+      await fixture.close();
+    }
   });
 
   it("exits with error when no api-key provided", async () => {
@@ -328,6 +473,21 @@ describe("required field validation (post-merge)", () => {
     assert.equal(sentBody.vid, 123);
   });
 
+  it("survey list accepts status=4 for hard-deleted surveys (--dry-run)", async () => {
+    const result = await runFull(["--dry-run", "survey", "list", "--status", "4"]);
+    assert.equal(result.exitCode, 0, result.stderr);
+  });
+
+  it("survey list rejects an invalid verify_status before transport", async () => {
+    const result = await runFull(["--dry-run", "survey", "list", "--verify_status", "0"], {
+      env: { WJX_API_KEY: "fake-key-1234567890", ...NO_CONFIG },
+    });
+    assert.equal(result.exitCode, 2, result.stderr);
+    const error = JSON.parse(result.stderr).error;
+    assert.equal(error.code, "INPUT_ERROR");
+    assert.match(error.message, /verify_status/);
+  });
+
   it("--stdin can satisfy required fields", async () => {
     // survey get requires --vid, provide it via stdin
     // This will fail with API_ERROR (bad vid) or AUTH_ERROR, but NOT INPUT_ERROR
@@ -493,6 +653,22 @@ describe("response count", () => {
     assert.equal(result.exitCode, 2);
     const err = parseProblem(result.stderr);
     assert.equal(err.code, "INPUT_ERROR");
+  });
+
+  it("response count preserves unknown counters when the API omits them", async () => {
+    const fixture = await startFixture({
+      response: { result: true, data: {} },
+      env: { WJX_API_KEY: "response-count-unknown-key" },
+    });
+    try {
+      const result = await fixture.run(["response", "count", "--vid", "42"]);
+      assert.equal(result.exitCode, 0, result.stderr);
+      const envelope = JSON.parse(result.stdout);
+      assert.equal(envelope.ok, true);
+      assert.deepEqual(envelope.data, { total_count: null, join_times: null });
+    } finally {
+      await fixture.close();
+    }
   });
 
   it("response --help lists count", () => {
@@ -1075,10 +1251,23 @@ describe("analytics", () => {
     assert.ok(parsed.total > 0);
   });
 
+  it("analytics nps with empty scores reports no-data", () => {
+    const parsed = parseResultData(run(["analytics", "nps", "--scores", "[]"]));
+    assert.equal(parsed.dataStatus, "no-data");
+    assert.equal(parsed.score, null);
+    assert.equal(parsed.rating, null);
+  });
+
   it("analytics csat with --scores returns CSAT result", () => {
     const out = run(["analytics", "csat", "--scores", "[4,5,3,5,2]"]);
     const parsed = parseResultData(out);
     assert.equal(typeof parsed.csat, "number");
+  });
+
+  it("analytics csat with empty scores reports no-data", () => {
+    const parsed = parseResultData(run(["analytics", "csat", "--scores", "[]"]));
+    assert.equal(parsed.dataStatus, "no-data");
+    assert.equal(parsed.csat, null);
   });
 
   it("analytics anomalies accepts API response fields", () => {
@@ -1155,7 +1344,10 @@ describe("survey create", () => {
   });
 
   it("普通题型默认发布，所有纯框架题型默认草稿", async () => {
-    const fixture = await startFixture({ env: { WJX_API_KEY: "publish-default-key" } });
+    const fixture = await startFixture({
+      response: createReadbackResponseFactory(),
+      env: { WJX_API_KEY: "publish-default-key" },
+    });
     try {
       const ordinary = [
         { qtype: "问卷基础信息", title: "普通题型发布测试" },
@@ -1163,7 +1355,8 @@ describe("survey create", () => {
       ].map(JSON.stringify).join("\n");
       const ordinaryResult = await fixture.run(["--yes", "survey", "create", "--jsonl", ordinary]);
       assert.equal(ordinaryResult.exitCode, 0, ordinaryResult.stderr);
-      assert.equal(JSON.parse(fixture.requests().at(-1).body).publish, true);
+      const createRequests = fixture.requests().filter((request) => JSON.parse(request.body).action === "1000106");
+      assert.equal(JSON.parse(createRequests.at(-1).body).publish, true);
 
       for (const qtype of ["折叠栏目", "轮播图", "AI追问", "AI处理", "AI访谈", "图片OCR", "VlookUp问卷关联", "分页计时器"]) {
         const framework = [
@@ -1171,16 +1364,73 @@ describe("survey create", () => {
           { qtype, title: "待编辑的题型" },
         ].map(JSON.stringify).join("\n");
         const frameworkResult = await fixture.run(["--yes", "survey", "create", "--jsonl", framework]);
+        if (JSONL_READ_ONLY_OR_WEB_EDITOR_QTYPES.has(qtype)) {
+          assert.equal(frameworkResult.exitCode, 2, `${qtype} should route to the Web editor boundary`);
+          const boundary = parseProblem(frameworkResult.stderr);
+          assert.match(boundary.message, /不支持.*创建接口|Web 编辑器/);
+          continue;
+        }
         assert.equal(frameworkResult.exitCode, 0, `${qtype}: ${frameworkResult.stderr}`);
-        assert.equal(JSON.parse(fixture.requests().at(-1).body).publish, false, `${qtype} should default to draft`);
+        const frameworkCreates = fixture.requests().filter((request) => JSON.parse(request.body).action === "1000106");
+        assert.equal(JSON.parse(frameworkCreates.at(-1).body).publish, false, `${qtype} should default to draft`);
       }
     } finally {
       await fixture.close();
     }
   });
 
+  it("accepts a numeric-string vid from the create response and verifies it", async () => {
+    const fixture = await startFixture({
+      env: { WJX_API_KEY: "string-vid-create-key" },
+      response: ({ request }) => {
+        let body = {};
+        try { body = JSON.parse(request.body || "{}"); } catch { /* validation owns malformed requests */ }
+        const action = String(body.action ?? "");
+        if (action === "1000106") {
+          return { result: true, data: { vid: "700001", sid: "stringVidReadbackSid" } };
+        }
+        if (action === "1000001") {
+          const origin = `http://${request.headers.host}`;
+          return {
+            result: true,
+            data: {
+              vid: 700001,
+              sid: "stringVidReadbackSid",
+              title: "字符串编号兼容测试",
+              status: 1,
+              questions: [{ q_type: 3, q_subtype: 3 }],
+              activity_domain: origin,
+              pc_path: "/vm/stringVidReadbackSid.aspx",
+            },
+          };
+        }
+        return { result: true, data: {} };
+      },
+    });
+    try {
+      const jsonl = [
+        { qtype: "问卷基础信息", title: "字符串编号兼容测试" },
+        { qtype: "单选", title: "请选择", select: ["是", "否"] },
+      ].map(JSON.stringify).join("\n");
+      const result = await fixture.run(["--yes", "survey", "create", "--jsonl", jsonl]);
+      assert.equal(result.exitCode, 0, result.stderr);
+      const envelope = JSON.parse(result.stdout);
+      assert.equal(envelope.ok, true, result.stdout);
+      assert.equal(envelope.data.vid, 700001);
+      assert.equal(envelope.data.verification.structure, true);
+      assert.equal(envelope.data.verification.status, true);
+      assert.equal(envelope.data.verification.link, true);
+      assert.ok(fixture.requests().some((entry) => JSON.parse(entry.body).action === "1000001"));
+    } finally {
+      await fixture.close();
+    }
+  });
+
   it("纯框架题型显式 --publish 时允许发布", async () => {
-    const fixture = await startFixture({ env: { WJX_API_KEY: "publish-explicit-key" } });
+    const fixture = await startFixture({
+      response: createReadbackResponseFactory(),
+      env: { WJX_API_KEY: "publish-explicit-key" },
+    });
     try {
       const jsonl = [
         { qtype: "问卷基础信息", title: "显式发布测试" },
@@ -1188,7 +1438,8 @@ describe("survey create", () => {
       ].map(JSON.stringify).join("\n");
       const result = await fixture.run(["--yes", "survey", "create", "--jsonl", jsonl, "--publish"]);
       assert.equal(result.exitCode, 0, result.stderr);
-      assert.equal(JSON.parse(fixture.requests().at(-1).body).publish, true);
+      const createRequest = fixture.requests().find((request) => JSON.parse(request.body).action === "1000106");
+      assert.equal(JSON.parse(createRequest.body).publish, true);
     } finally {
       await fixture.close();
     }

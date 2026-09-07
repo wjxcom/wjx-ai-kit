@@ -6,6 +6,11 @@ import {
   QUESTION_TYPES,
   SURVEY_STATUSES,
   VERIFY_STATUSES,
+  STATUS_TRANSITIONS,
+  TEXT_VALIDATION_TYPES,
+  MATRIX_DISPLAY_TYPES,
+  TABLE_DISPLAY_TYPES,
+  SURVEY_SETTING_TYPES,
 } from "../dist/resources.js";
 
 test("SURVEY_TYPES", async (t) => {
@@ -62,8 +67,8 @@ test("SURVEY_STATUSES", async (t) => {
     assert.equal(SURVEY_STATUSES[0], "未发布");
     assert.equal(SURVEY_STATUSES[1], "已发布");
     assert.equal(SURVEY_STATUSES[2], "已暂停");
-    assert.equal(SURVEY_STATUSES[3], "已删除");
-    assert.equal(SURVEY_STATUSES[4], "彻底删除");
+    assert.equal(SURVEY_STATUSES[3], "已删除（回收站，可恢复）");
+    assert.equal(SURVEY_STATUSES[4], "彻底删除（不可恢复）");
     assert.equal(SURVEY_STATUSES[5], "被审核");
   });
 });
@@ -74,5 +79,39 @@ test("VERIFY_STATUSES", async (t) => {
     assert.equal(VERIFY_STATUSES[2], "审核中");
     assert.equal(VERIFY_STATUSES[3], "未通过");
     assert.equal(VERIFY_STATUSES[4], "待实名");
+  });
+});
+
+test("status transitions distinguish recoverable deletion from hard deletion", () => {
+  assert.deepEqual(STATUS_TRANSITIONS[3], {
+    targets: [4],
+    description: "已删除（回收站，可恢复） → 彻底删除（不可恢复）",
+  });
+  assert.deepEqual(STATUS_TRANSITIONS[4], {
+    targets: [],
+    description: "彻底删除（终态，不可恢复）",
+  });
+});
+
+test("field and setting enum references", async (t) => {
+  await t.test("contains text validation types", () => {
+    assert.equal(TEXT_VALIDATION_TYPES[0], "不验证/单行文本");
+    assert.equal(TEXT_VALIDATION_TYPES[8], "Email");
+    assert.equal(TEXT_VALIDATION_TYPES[26], "多行文本");
+    assert.equal(Object.keys(TEXT_VALIDATION_TYPES).length, 27);
+  });
+
+  await t.test("contains matrix and table display types", () => {
+    assert.equal(MATRIX_DISPLAY_TYPES[101], "矩阵量表");
+    assert.equal(MATRIX_DISPLAY_TYPES[303], "表格下拉框");
+    assert.equal(TABLE_DISPLAY_TYPES[1], "表格组合");
+    assert.equal(TABLE_DISPLAY_TYPES[2], "表格自增");
+  });
+
+  await t.test("contains all survey setting types", () => {
+    assert.equal(SURVEY_SETTING_TYPES[1000], "问卷时间设置");
+    assert.equal(SURVEY_SETTING_TYPES[1006], "数据推送设置");
+    assert.equal(SURVEY_SETTING_TYPES[1007], "问卷所在文件夹");
+    assert.equal(Object.keys(SURVEY_SETTING_TYPES).length, 8);
   });
 });

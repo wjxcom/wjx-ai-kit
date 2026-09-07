@@ -87,7 +87,8 @@ export interface GetWinnersInput {
 
 export interface ModifyResponseInput {
   vid: number;
-  jid: number;
+  /** Response IDs are returned as large integers; serialize them as strings on the wire. */
+  jid: number | string;
   type: 1;
   answers: string;
 }

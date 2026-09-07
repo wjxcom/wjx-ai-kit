@@ -77,7 +77,9 @@
         ],
         "targetFields": [
           "subuser"
-        ]
+        ],
+        "httpRetryable": true,
+        "idempotent": true
       }
     },
     {
@@ -234,7 +236,9 @@
           "user",
           "bot"
         ],
-        "targetFields": []
+        "targetFields": [],
+        "httpRetryable": false,
+        "idempotent": true
       }
     },
     {
@@ -259,7 +263,9 @@
           "user",
           "bot"
         ],
-        "targetFields": []
+        "targetFields": [],
+        "httpRetryable": false,
+        "idempotent": true
       }
     },
     {
@@ -284,7 +290,9 @@
           "user",
           "bot"
         ],
-        "targetFields": []
+        "targetFields": [],
+        "httpRetryable": false,
+        "idempotent": true
       }
     },
     {
@@ -309,7 +317,9 @@
           "user",
           "bot"
         ],
-        "targetFields": []
+        "targetFields": [],
+        "httpRetryable": false,
+        "idempotent": true
       }
     },
     {
@@ -334,7 +344,9 @@
           "user",
           "bot"
         ],
-        "targetFields": []
+        "targetFields": [],
+        "httpRetryable": false,
+        "idempotent": true
       }
     },
     {
@@ -359,7 +371,9 @@
           "user",
           "bot"
         ],
-        "targetFields": []
+        "targetFields": [],
+        "httpRetryable": false,
+        "idempotent": true
       }
     },
     {
@@ -567,7 +581,9 @@
         "targetFields": [
           "uid",
           "corpid"
-        ]
+        ],
+        "httpRetryable": true,
+        "idempotent": true
       }
     },
     {
@@ -648,7 +664,9 @@
         ],
         "targetFields": [
           "corpid"
-        ]
+        ],
+        "httpRetryable": true,
+        "idempotent": true
       }
     },
     {
@@ -801,7 +819,9 @@
         "targetFields": [
           "vid",
           "taskid"
-        ]
+        ],
+        "httpRetryable": false,
+        "idempotent": false
       }
     },
     {
@@ -828,7 +848,9 @@
         "targetFields": [
           "username",
           "vid"
-        ]
+        ],
+        "preRead": true,
+        "postVerify": true
       }
     },
     {
@@ -855,7 +877,9 @@
         ],
         "targetFields": [
           "vid"
-        ]
+        ],
+        "httpRetryable": true,
+        "idempotent": true
       }
     },
     {
@@ -883,7 +907,9 @@
         "targetFields": [
           "vid",
           "taskid"
-        ]
+        ],
+        "httpRetryable": false,
+        "idempotent": false
       }
     },
     {
@@ -910,7 +936,9 @@
         "targetFields": [
           "vid",
           "jid"
-        ]
+        ],
+        "preRead": true,
+        "postVerify": true
       }
     },
     {
@@ -938,7 +966,9 @@
         "targetFields": [
           "vid",
           "jid"
-        ]
+        ],
+        "httpRetryable": true,
+        "idempotent": true
       }
     },
     {
@@ -965,7 +995,9 @@
         ],
         "targetFields": [
           "vid"
-        ]
+        ],
+        "httpRetryable": false,
+        "idempotent": false
       }
     },
     {
@@ -993,7 +1025,9 @@
         "targetFields": [
           "vid",
           "jid"
-        ]
+        ],
+        "httpRetryable": false,
+        "idempotent": false
       }
     },
     {
@@ -1020,7 +1054,8 @@
         ],
         "targetFields": [
           "vid"
-        ]
+        ],
+        "preRead": true
       }
     },
     {
@@ -1047,7 +1082,9 @@
         ],
         "targetFields": [
           "vid"
-        ]
+        ],
+        "httpRetryable": true,
+        "idempotent": true
       }
     },
     {
@@ -1074,7 +1111,9 @@
         ],
         "targetFields": [
           "vid"
-        ]
+        ],
+        "httpRetryable": true,
+        "idempotent": true
       }
     },
     {
@@ -1312,7 +1351,9 @@
         "targetFields": [
           "username",
           "vid"
-        ]
+        ],
+        "preRead": true,
+        "postVerify": true
       }
     },
     {
@@ -1339,7 +1380,8 @@
         ],
         "targetFields": [
           "title"
-        ]
+        ],
+        "postVerify": true
       }
     },
     {
@@ -1366,7 +1408,9 @@
         "targetFields": [
           "vid",
           "username"
-        ]
+        ],
+        "preRead": true,
+        "postVerify": true
       }
     },
     {
@@ -1393,7 +1437,9 @@
         ],
         "targetFields": [
           "vid"
-        ]
+        ],
+        "httpRetryable": true,
+        "idempotent": true
       }
     },
     {
@@ -1420,7 +1466,9 @@
         ],
         "targetFields": [
           "vid"
-        ]
+        ],
+        "httpRetryable": true,
+        "idempotent": true
       }
     },
     {
@@ -1472,7 +1520,9 @@
           "user",
           "bot"
         ],
-        "targetFields": []
+        "targetFields": [],
+        "httpRetryable": true,
+        "idempotent": true
       }
     },
     {
@@ -1500,7 +1550,9 @@
         "targetFields": [
           "sid",
           "vid"
-        ]
+        ],
+        "httpRetryable": false,
+        "idempotent": true
       }
     },
     {
@@ -1527,7 +1579,39 @@
         ],
         "targetFields": [
           "vid"
-        ]
+        ],
+        "httpRetryable": true,
+        "idempotent": true
+      }
+    },
+    {
+      "id": "survey.shortlink",
+      "command": "survey.shortlink",
+      "service": "default",
+      "action": "shortcut:survey.shortlink",
+      "input": {
+        "type": "object",
+        "properties": {}
+      },
+      "risk": "read",
+      "identities": [
+        "user",
+        "bot"
+      ],
+      "source": "shortcut",
+      "metadata": {
+        "path": "survey.shortlink",
+        "risk": "read",
+        "identities": [
+          "user",
+          "bot"
+        ],
+        "targetFields": [
+          "url"
+        ],
+        "httpRetryable": false,
+        "idempotent": true,
+        "ambiguousTimeout": "stop-and-report"
       }
     },
     {
@@ -1554,7 +1638,9 @@
         "targetFields": [
           "vid",
           "state"
-        ]
+        ],
+        "preRead": true,
+        "postVerify": true
       }
     },
     {
@@ -1581,7 +1667,9 @@
         ],
         "targetFields": [
           "tag_id"
-        ]
+        ],
+        "httpRetryable": true,
+        "idempotent": true
       }
     },
     {
@@ -1608,7 +1696,9 @@
         ],
         "targetFields": [
           "username"
-        ]
+        ],
+        "httpRetryable": true,
+        "idempotent": true
       }
     },
     {
@@ -1634,7 +1724,9 @@
         ],
         "targetFields": [
           "vid"
-        ]
+        ],
+        "preRead": true,
+        "postVerify": true
       }
     },
     {
@@ -1689,7 +1781,9 @@
         "targetFields": [
           "activity",
           "mode"
-        ]
+        ],
+        "httpRetryable": false,
+        "idempotent": true
       }
     },
     {
@@ -1770,7 +1864,9 @@
         ],
         "targetFields": [
           "corpid"
-        ]
+        ],
+        "httpRetryable": true,
+        "idempotent": true
       }
     },
     {
@@ -1955,7 +2051,9 @@
         "targetFields": [
           "vid",
           "sysid"
-        ]
+        ],
+        "httpRetryable": true,
+        "idempotent": true
       }
     },
     {
@@ -1983,7 +2081,9 @@
         "targetFields": [
           "uid",
           "sysid"
-        ]
+        ],
+        "httpRetryable": true,
+        "idempotent": true
       }
     }
   ]
