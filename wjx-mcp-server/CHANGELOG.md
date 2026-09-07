@@ -4,6 +4,12 @@
 
 > 说明：以下 0.x 条目保留为历史记录。条目中出现的 `create_survey`、`create_survey_by_text` 或 DSL 创建能力已移除，不属于当前 Server，也不得据此恢复工具。当前问卷创建唯一使用 `create_survey_by_json`。
 
+## [0.4.4] - 2026-09-07
+
+- Required standalone AI homepage creation without implicit survey linkage.
+- Added draft source retrieval guidance for in-place AI homepage updates.
+- Removed page type conversion from the AI homepage update tool schema.
+
 ## [0.4.3] - 2026-09-04
 
 - Aligned AI homepage tool schemas with SDK limits and traditional vid validation.

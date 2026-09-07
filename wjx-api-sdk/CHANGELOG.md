@@ -4,6 +4,11 @@
 
 > 说明：以下 0.x 条目保留为历史记录。条目中出现的 `createSurvey`、`createSurveyByText`、`textToSurvey` 创建相关能力已移除，不属于当前 SDK，也不得据此恢复或新增兼容入口。当前问卷创建唯一使用 `createSurveyByJson`。
 
+## [0.4.4] - 2026-09-07
+
+- Exposed AI homepage source HTML and fixed page type in survey details.
+- Rejected AI homepage page type changes before sending an update request.
+
 ## [0.4.3] - 2026-09-04
 
 - Hardened AI homepage input validation and centralized shared page constraints.

@@ -4,7 +4,7 @@
 
 ## 安装
 
-当前稳定版本为 `0.4.3`，已发布到 npm，registry 的 `latest` 指向 `0.4.3`：
+当前源码版本为 `0.4.4`。发布到 npm 后，registry 的 `latest` 将指向 `0.4.4`：
 
 > 通过 AI 安装并启用 wjx-cli：先执行 `npm install -g wjx-cli@latest`，成功后再执行 `wjx skill install --force`；安装后命令名是 `wjx`，请用 `wjx --version` 验证，不要运行 `wjx-cli --version`。
 

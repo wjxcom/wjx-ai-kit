@@ -209,7 +209,7 @@ node --version
 
 如果 Node.js 未安装或版本 < 20，需要先安装。参见 [references/install-nodejs.md](references/install-nodejs.md)，根据操作系统选择安装方式。
 
-Node.js 就绪后，当前稳定版本为 `0.4.3`。如果本机版本低于兼容最低版本 `0.4.1`，直接安装或升级：
+Node.js 就绪后，当前源码版本为 `0.4.4`。如果本机版本低于兼容最低版本 `0.4.1`，直接安装或升级：
 
 ```bash
 npm install -g wjx-cli@latest

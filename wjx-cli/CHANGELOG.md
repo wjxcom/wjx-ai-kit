@@ -2,6 +2,12 @@
 
 > 说明：以下 0.x 条目保留为历史记录。条目中出现的旧创建能力仅用于历史追溯，不属于当前 CLI，也不得据此恢复入口。当前问卷创建唯一使用 `survey create`。
 
+## [0.4.4] - 2026-09-07
+
+- Added standalone AI homepage create/update commands to the complete CLI surface.
+- Removed page type conversion from AI homepage updates.
+- Updated the bundled Skill to require paginated PPTs and prohibit implicit survey creation.
+
 ## [0.4.3] - 2026-09-04
 
 - Reused SDK AI homepage constraints in CLI validation and rejected blank HTML early.
