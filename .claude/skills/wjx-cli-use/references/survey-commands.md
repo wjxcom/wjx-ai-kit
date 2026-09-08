@@ -47,7 +47,7 @@ wjx survey create --file survey.jsonl --dry-run    # 预览解析结果
 
 ### 发布策略
 
-普通题型在未指定 `--publish` 时默认立即发布。下列纯框架题型只有骨架，必须在问卷星编辑页补充素材或配置，未指定 `--publish` 时 SDK 会以草稿创建：`折叠栏目`、`轮播图`、`AI追问`、`AI处理`、`AI访谈`、`图片OCR`、`VlookUp问卷关联`、`分页计时器`。
+普通题型在未指定 `--publish` 时默认立即发布。下列纯框架题型只有骨架，必须在问卷星编辑页补充素材或配置，未指定 `--publish` 时 SDK 会以草稿创建：`折叠栏目`、`轮播图`、`AI追问`、`AI处理`、`AI访谈`、`图片OCR`、`VlookUp问卷关联`、`分页计时器`。其中 `VlookUp问卷关联` 目前还会被 JSONL 创建接口拒绝，遇到它应转 Web 编辑器，不要重试。
 
 创建后请先获取问卷详情和编辑入口，完成二次编辑并由用户明确要求发布时，再使用发布操作；AI 不得为这些题型自行追加 `--publish`。
 
@@ -105,11 +105,11 @@ wjx survey list --name_like "满意度" --status 1
 |------|------|
 | `--page <n>` | 页码（默认 1） |
 | `--page_size <n>` | 每页数量（默认 10） |
-| `--status <n>` | 状态筛选：0=未发布, 1=已发布, 2=已暂停, 3=已删除, 5=被审核 |
+| `--status <n>` | 状态筛选：0=未发布, 1=已发布, 2=已暂停, 3=已删除（回收站，可恢复）, 4=彻底删除（不可恢复）, 5=被审核 |
 | `--atype <n>` | 类型筛选：1=调查, 2=测评, 3=投票, 4=360度评估, 5=360评估无测评关系, 6=考试, 7=表单, 8=用户体系, 9=教学评估, 10=量表, 11=民主评议 |
 | `--name_like <s>` | 名称模糊搜索（最多 10 字符） |
 
-**--stdin 可用的额外参数**: `sort`(0-5 排序), `creater`(子账号筛选), `folder`(文件夹), `is_xingbiao`(星标), `query_all`(包含子账号问卷，仍然分页), `verify_status`(审核状态), `time_type`(0=不按时间查询（默认）/1=按问卷开始时间/2=按问卷创建时间), `begin_time`/`end_time`(毫秒时间戳)
+**--stdin 可用的额外参数**: `sort`(0-5 排序), `creater`(子账号筛选), `folder`(文件夹), `is_xingbiao`(星标), `query_all`(包含子账号问卷，仍然分页), `verify_status`(1=已通过/2=审核中/3=未通过/4=待实名), `time_type`(0=不按时间查询（默认）/1=按问卷开始时间/2=按问卷创建时间), `begin_time`/`end_time`(毫秒时间戳)
 
 ### 分页响应与 AI 处理规则
 
@@ -205,52 +205,45 @@ wjx survey update-settings --vid 12345 --time_setting '{"exam_min_seconds":60,"e
 | Flag | 说明 |
 |------|------|
 | `--vid <n>` | 问卷编号（必填） |
-| `--api_setting <json>` | API 限制：`{"max_times":100,"pass_score":60,"pass_no_allow":true}` |
-| `--after_submit_setting <json>` | 提交后跳转：`{"type":1,"url":"https://..."}` (type: 0=感谢信息, 1=跳转) |
-| `--msg_setting <json>` | 数据推送：`{"push_url":"https://...","quick_post":true,"retry":true}` |
-| `--sojumpparm_setting <json>` | 自定义参数：`{"params":[{"name":"source","type":0}]}` |
-| `--time_setting <json>` | 时间设置：`{"start_time":"2026-04-01 00:00","exam_min_seconds":60}` |
+| `--api_setting <json>` | API 限制设置 JSON；字段以 `wjx survey settings` 的当前返回为准 |
+| `--after_submit_setting <json>` | 提交后处理设置 JSON；字段以当前返回为准 |
+| `--msg_setting <json>` | 数据推送设置 JSON，例如 `{"post_url":"https://...","quick_post":true,"retry":true}` |
+| `--sojumpparm_setting <json>` | 自定义参数设置 JSON；字段以当前返回为准 |
+| `--time_setting <json>` | 问卷时间设置 JSON；字段以当前返回为准 |
 
-### 候选字段速查（按业务模块猜值）
+更新设置是全量替换操作。先读取完整设置，只修改用户明确要求的字段，再把完整 JSON 传回；写入后再次读取并核对修改字段。不要把未出现在当前返回中的字段名自行加入请求。`msg_setting` 当前可写字段使用 `post_url`、`quick_post`、`retry`；旧文档中的 `push_url`、`is_encrypt`、`push_custom_params` 不属于当前 CLI/MCP schema。
 
-OpenAPI 没有正式公开 settings 各 JSON 的全部字段。下表是从问卷星管理后台 / 公开抓包总结的常见字段，**不保证服务端一定接受**——遇到不生效时按"调试方法"自行确认：
+### 设置字段与验证
 
-| 业务诉求 | 字段所在 setting | 候选字段（按推测可能性排序） |
-|----------|------------------|------------------------------|
-| 开启验证码（防机器答卷） | `api_setting` 或 `msg_setting` | `is_open_yzm` / `yzm_enable` / `open_captcha` / `captcha_enable` |
-| 开启智能验证（无感） | `api_setting` | `nv_enable` / `enable_nvc` / `smart_verify` |
-| 限制单 IP 答卷次数 | `api_setting` | `ip_limit` / `ip_max_times` / `ip_limit_count` |
-| 限制单微信号 | `api_setting` | `wx_limit` / `weixin_limit` |
-| 防多次提交 | `api_setting` | `cookie_limit` / `device_limit` |
-| 隐藏问卷星 logo | `api_setting` | `hide_logo` / `is_hide_logo` |
-| 强制必答 | `api_setting` | `must_answer` / `force_required` |
-| 答题进度条 | `api_setting` | `show_process` / `show_progress` |
-| 微信 OA 推送通知 | `msg_setting` | `oa_enable` / `wx_notify` |
-| 提交后发邮件 | `msg_setting` | `email_enable` / `notify_email` |
+OpenAPI 没有公开 settings 各 JSON 的全部字段。可用字段必须以同一问卷的 `settings` 读回结果为准；技能不会根据网页字段或抓包结果猜测可写名称。
+
+| 业务诉求 | 建议动作 |
+|----------|----------|
+| 需要修改设置 | 先运行 `wjx survey settings --vid <vid>`，确认字段存在后再提交对应完整 JSON |
+| 需要配置推送 | 只使用当前返回中的 `post_url`、`quick_post`、`retry`，并在写后复读核对 |
+| 需要网页端才有的能力 | 停止并说明当前 OpenAPI/CLI 未验证该能力，转人工网页验收 |
 
 **调试方法**：
 ```bash
-# 1) 在问卷星网页端先把目标功能打开/调好；
-# 2) 用 settings 查当前值，找出与默认不同的字段：
+# 1) 先用 settings 查当前值：
 wjx survey settings --vid 12345
 
-# 3) 把那个字段对应的 JSON 整段塞回 update-settings：
-wjx survey update-settings --vid 12345 --api_setting '{"is_open_yzm":1,"nv_enable":1}'
+# 2) 复制要修改的完整 setting JSON，只改已确认的键：
+wjx survey update-settings --vid 12345 --msg_setting '{"post_url":"https://example.test/hook","quick_post":true,"retry":true}'
 
-# 4) 再 settings 一次确认服务端是否落库；如果没生效，多半是字段名不对——
-#    再回到第 2 步对比，或换上表的候选名重试。
+# 3) 再读一次 settings，确认修改字段已经落库；无法读回时报告 unknown。
 ```
-
-> 同一业务在不同问卷类型/账户版本下字段名可能不同；上表只是候选，真实接受的字段以服务端 settings 返回为准。如果有命中的字段值，欢迎提 PR 补到这里。
 
 ## wjx survey delete
 
-删除问卷（**不可逆**）。
+删除问卷。普通删除进入回收站（status=3，可恢复）；追加 `--completely` 才会彻底删除（status=4，不可恢复）。
 
 ```bash
 wjx survey delete --vid 12345 --username admin
 wjx survey delete --vid 12345 --username admin --completely   # 彻底删除，不进回收站
 ```
+
+删除请求只发送一次。CLI 会在写后以有界只读轮询等待服务端状态收敛：普通删除必须读回 `status=3`，`--completely` 必须读回 `status=4`。仅返回“问卷不存在”不能证明任一删除状态，结果会报告为 `unknown`。
 
 | Flag | 必填 | 说明 |
 |------|------|------|
@@ -283,14 +276,24 @@ wjx survey url --mode edit --activity 12345
 
 ## wjx survey preview-url
 
-生成答卷人使用的填写/预览链接。优先传 API 返回的 `sid`；只有没有 `sid` 时才传正整数 `vid`，同时传入两者时以 `sid` 为准。
+生成答卷人使用的填写/预览链接。优先传 API 返回的 `sid`，同时传入两者时以 `sid` 为准。`--vid` 仅是为旧脚本保留的兼容 fallback：CLI 会推导一个 `/vm/<vid>.aspx` 地址，但它没有经过服务端 `sid` 或填写路径验证，必须标注为未验证的兼容预览地址，不能作为已确认的公开填写链接交付。
 
 ```bash
 wjx survey preview-url --sid <sid>
-wjx survey preview-url --vid 12345
+wjx survey preview-url --vid 12345  # 仅兼容 fallback，结果未经过服务端验证
 ```
 
 该命令不是后台编辑链接；编辑问卷请使用 `wjx survey url --mode edit --activity <vid>`。不要自行用数字 `vid` 拼接 `/m/`、`/vm/` 或 `/jq/` 路径。
+
+## wjx survey shortlink
+
+将问卷填写长链接转换为适合短信发送的短链接。`--url` 必须是问卷填写地址，支持带查询参数的 URL；参数会由 SDK 使用标准 URL 编码后传给问卷星短链接接口。自定义域名可用，但路径必须是 `/m/<sid>.aspx`、`/vm/<sid>.aspx` 或 `/jq/<sid>.aspx`。
+
+```bash
+wjx survey shortlink --url "https://www.wjx.cn/vm/w4GZh.aspx?source=短信&campaign=春季"
+```
+
+该命令不需要 API Key；使用 `--dry-run` 可查看 GET 请求和编码后的 `url` 参数，不会访问接口。
 
 ## 其他 Survey 命令
 
@@ -298,5 +301,5 @@ wjx survey preview-url --vid 12345
 |------|------|
 | `wjx survey tags --username user` | 获取题目标签列表 |
 | `wjx survey tag-details --tag_id 123` | 获取标签下的题目详情 |
-| `wjx survey clear-bin --username user` | 清空回收站（可选 `--vid N` 指定问卷） |
+| `wjx survey clear-bin --username user` | 清空回收站；不传 `--vid` 执行批量清理，传 `--vid N` 使用彻底删除动作并验证该问卷进入 `status=4` |
 | `wjx survey upload --file_name img.png --file <base64>` | 上传文件（png/jpg/gif/bmp/webp，~4MB） |

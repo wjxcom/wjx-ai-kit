@@ -20,6 +20,18 @@ coverage/
 **/coverage/
 .nyc_output/
 
+# First-party acceptance tests are part of the source tree.  The repository
+# keeps a broad test ignore rule for generated/consumer copies, so explicitly
+# reopen only the workspace test directories used by package scripts.
+!wjx-api-sdk/__tests__/
+!wjx-api-sdk/__tests__/*.test.mjs
+!wjx-cli/__tests__/
+!wjx-cli/__tests__/*.test.mjs
+!wjx-mcp-server/__tests__/
+!wjx-mcp-server/__tests__/*.test.mjs
+!wjx-mcp-server/tests/*.test.mjs
+wjx-cli/__tests__/__tmp_sync_bundled__/
+
 # 环境变量
 .env
 .env.*

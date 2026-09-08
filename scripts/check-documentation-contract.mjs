@@ -7,6 +7,12 @@
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import {
+  SYNC_DIRS,
+  collectSourceSnapshot,
+  collectBundleSnapshot,
+  compareSnapshots,
+} from "../wjx-cli/scripts/sync-bundled.mjs";
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const failures = [];
@@ -17,6 +23,7 @@ const markdownRoots = [
   "wjx-skills/wjx-mcp-use",
   "wjx-skills/wjx-survey-ppt",
   "skills/wjx-cli-use",
+  ".claude/skills/wjx-cli-use",
   "wjx-cli/bundled",
   "wjx-agents",
   ".claude/agents",
@@ -111,6 +118,13 @@ const installationPromptFiles = [
 const installationPromptRequirements = [
   "请帮我安装并配置问卷星 CLI（wjx-cli）",
   "node --version",
+  "npm --version",
+  "Get-Command node,npm,wjx",
+  "where.exe node",
+  "npm prefix -g",
+  "PATH 未刷新",
+  "npm 退出码为 0 不等于安装完成",
+  "不要在证据不足时运行 winget",
   "等我把 Key 发给你",
   "私有化部署用户",
   "wjx doctor",
@@ -125,15 +139,47 @@ for (const file of installationPromptFiles) {
       failures.push(`${file}: AI installation prompt is missing required step: ${required}`);
     }
   }
+  const promptStart = text.indexOf("请帮我安装并配置问卷星 CLI（wjx-cli）");
+  const promptEnd = promptStart >= 0 ? text.indexOf("\n```", promptStart) : -1;
+  if (promptStart >= 0 && promptEnd > promptStart) {
+    const prompt = text.slice(promptStart, promptEnd);
+    const probeIndex = prompt.indexOf("wjx --version");
+    const installIndex = prompt.indexOf("npm install -g wjx-cli@latest");
+    if (probeIndex < 0 || installIndex < 0 || probeIndex > installIndex) {
+      failures.push(`${file}: AI installation prompt must probe wjx --version before npm install`);
+    }
+  }
 }
 
 // These copies are consumed by different installation paths. A stale setup
-// script or agent mirror is a functional documentation bug, not just a diff
-// cleanliness issue, so compare them after normalizing EOLs.
+// script, nested reference, or agent mirror is a functional documentation bug,
+// so compare complete directory snapshots using the same EOL-normalized rules
+// as sync-bundled.mjs. Target-specific excludes are intentional: npm bundled
+// and .claude contain runtime Skill files, while skills/ also carries setup and
+// packaging helpers.
+const cliSkillSource = resolve(ROOT, "wjx-skills/wjx-cli-use");
+for (const target of SYNC_DIRS.filter((entry) => entry.src === cliSkillSource)) {
+  const sourceExists = existsSync(target.src) && statSync(target.src).isDirectory();
+  const mirrorExists = existsSync(target.dest) && statSync(target.dest).isDirectory();
+  if (!sourceExists || !mirrorExists) {
+    failures.push(`documentation mirror missing: ${target.src} -> ${target.dest}`);
+    continue;
+  }
+  const differences = compareSnapshots(
+    collectSourceSnapshot(target.src, target),
+    collectBundleSnapshot(target.dest),
+  );
+  if (differences.length) {
+    failures.push(
+      `documentation mirror drift: ${relative(ROOT, target.src).replaceAll("\\", "/")} != ` +
+      `${relative(ROOT, target.dest).replaceAll("\\", "/")} (${differences.join(", ")})`,
+    );
+  }
+}
+
+// Expert-agent cards are single-file mirrors and remain separate from the
+// directory targets above.
 const mirrorPairs = [
-  ["wjx-skills/wjx-cli-use/SKILL.md", "skills/wjx-cli-use/SKILL.md"],
-  ["wjx-skills/wjx-cli-use/setup.sh", "skills/wjx-cli-use/setup.sh"],
-  ["wjx-skills/wjx-cli-use/SKILL.md", "wjx-cli/bundled/wjx-cli-use/SKILL.md"],
   ["wjx-agents/wjx-cli-expert/wjx-cli-expert.md", ".claude/agents/wjx-cli-expert.md"],
   ["wjx-agents/wjx-cli-expert/wjx-cli-expert.md", "wjx-cli/bundled/wjx-cli-expert.md"],
 ];
@@ -142,6 +188,46 @@ for (const [source, mirror] of mirrorPairs) {
     failures.push(`documentation mirror missing: ${source} -> ${mirror}`);
   } else if (readNormalized(source) !== readNormalized(mirror)) {
     failures.push(`documentation mirror drift: ${source} != ${mirror}`);
+  }
+}
+
+// Host onboarding is shared by the four named workstations. Keep the
+// handshake host-neutral: capability discovery and an explicit target
+// directory are portable, while guessed host-specific variables are not.
+const hostRoutingDocs = [
+  "wjx-skills/wjx-cli-use/references/host-routing.md",
+  "wjx-skills/wjx-mcp-use/references/host-routing.md",
+];
+const requiredHostNames = ["WorkBuddy", "Cowork", "Codex Work", "Qianwen Work"];
+const requiredHandshakeTerms = [
+  "MCP tools",
+  "resources",
+  "wjx --version",
+  "--target-dir",
+  "capability failure",
+];
+const forbiddenHostGuesses = /\b(?:WORKBUDDY_[A-Z0-9_]+|COWORK_[A-Z0-9_]+|CODEX_WORK(?:_[A-Z0-9_]+)?|QIANWEN_[A-Z0-9_]+)\b/i;
+for (const file of hostRoutingDocs) {
+  const absolute = join(ROOT, file);
+  if (!existsSync(absolute)) {
+    failures.push(`host routing reference missing: ${file}`);
+    continue;
+  }
+  const text = readNormalized(file);
+  for (const required of requiredHostNames) {
+    if (!text.includes(required)) failures.push(`${file}: missing host name ${required}`);
+  }
+  for (const required of requiredHandshakeTerms) {
+    if (!text.includes(required)) failures.push(`${file}: host-neutral handshake is missing ${required}`);
+  }
+  if (forbiddenHostGuesses.test(text)) {
+    failures.push(`${file}: host routing contains an unverified host-specific variable`);
+  }
+}
+for (const file of ["wjx-skills/wjx-cli-use/SKILL.md", "wjx-skills/wjx-mcp-use/SKILL.md"]) {
+  const text = readNormalized(file);
+  if (!text.includes("references/host-routing.md")) {
+    failures.push(`${file}: front door does not link the host-neutral routing reference`);
   }
 }
 

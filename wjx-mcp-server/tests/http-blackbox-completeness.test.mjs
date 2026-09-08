@@ -16,6 +16,7 @@ let mcpHttpServer;
 let apiHttpServer;
 let previousApiUrl;
 let previousApiKey;
+let previousTenantMode;
 
 function listen(server) {
   return new Promise((resolve, reject) => {
@@ -38,6 +39,8 @@ after(async () => {
   else process.env.WJX_API_URL = previousApiUrl;
   if (previousApiKey === undefined) delete process.env.WJX_API_KEY;
   else process.env.WJX_API_KEY = previousApiKey;
+  if (previousTenantMode === undefined) delete process.env.MCP_TENANT_MODE;
+  else process.env.MCP_TENANT_MODE = previousTenantMode;
   await close(mcpHttpServer);
   await close(apiHttpServer);
 });
@@ -61,12 +64,16 @@ test("HTTP MCP calls reach the WJX API with isolated per-session credentials", a
   const apiPort = await listen(apiHttpServer);
   previousApiUrl = process.env.WJX_API_URL;
   previousApiKey = process.env.WJX_API_KEY;
+  previousTenantMode = process.env.MCP_TENANT_MODE;
   process.env.WJX_API_URL = `http://127.0.0.1:${apiPort}/openapi/default.aspx`;
   process.env.WJX_API_KEY = "global-config-key";
+  process.env.MCP_TENANT_MODE = "1";
 
   const { httpServer } = await startHttpTransport(createServer(), {
     port: 0,
     stateful: true,
+    authToken: "transport-token",
+    legacyBearerApiKey: false,
   }, createServer);
   mcpHttpServer = httpServer;
   const mcpAddress = httpServer.address();
@@ -78,7 +85,8 @@ test("HTTP MCP calls reach the WJX API with isolated per-session credentials", a
     const transport = new StreamableHTTPClientTransport(endpoint, {
       requestInit: {
         headers: {
-          Authorization: `Bearer ${apiKey}`,
+          Authorization: "Bearer transport-token",
+          "X-WJX-API-Key": apiKey,
           "X-Forwarded-For": clientIp,
         },
       },

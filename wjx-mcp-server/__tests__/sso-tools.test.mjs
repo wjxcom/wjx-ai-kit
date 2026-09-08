@@ -3,6 +3,7 @@ import { describe, it, before } from "node:test";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 import { createServer } from "../dist/server.js";
+import { credentialStore } from "../dist/core/context.js";
 
 // Set dummy env vars
 process.env.WJX_APP_ID = process.env.WJX_APP_ID || "test-app-id";
@@ -524,6 +525,92 @@ describe("SSO tools via MCP", () => {
         arguments: { vid: -1 },
       });
       assert.equal(result.isError, true, "负数 vid 应报错");
+    });
+  });
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // 6. get_short_link
+  // ═══════════════════════════════════════════════════════════════════════════
+  describe("get_short_link", () => {
+    it("6.1 将问卷长链接编码后请求并返回短链接", async () => {
+      const longUrl = "https://www.wjx.cn/vm/abc123.aspx?sojumpparm=中文&foo=a+b";
+      const originalFetch = globalThis.fetch;
+      let requestedUrl = "";
+      globalThis.fetch = async (input) => {
+        requestedUrl = String(input);
+        return new Response(JSON.stringify({
+          success: true,
+          msg: null,
+          data: "https://www.wjx.cn/s/jv",
+        }), { status: 200, headers: { "content-type": "application/json" } });
+      };
+      try {
+        const result = await client.callTool({
+          name: "get_short_link",
+          arguments: { url: longUrl },
+        });
+        assert.equal(result.isError, false);
+        const data = JSON.parse(result.content[0].text);
+        assert.equal(data.success, true);
+        assert.equal(data.data, "https://www.wjx.cn/s/jv");
+        assert.ok(requestedUrl.includes("/openapi/shortlink.aspx?url="));
+        assert.ok(requestedUrl.includes(encodeURIComponent(longUrl)));
+      } finally {
+        globalThis.fetch = originalFetch;
+      }
+    });
+
+    it("6.2 非问卷填写路径应拒绝且不发请求", async () => {
+      const originalFetch = globalThis.fetch;
+      let called = false;
+      globalThis.fetch = async () => {
+        called = true;
+        throw new Error("unexpected network call");
+      };
+      try {
+        const result = await client.callTool({
+          name: "get_short_link",
+          arguments: { url: "https://example.com/newwjx/design/editquestionnaire.aspx" },
+        });
+        assert.equal(result.isError, true);
+        assert.equal(called, false);
+      } finally {
+        globalThis.fetch = originalFetch;
+      }
+    });
+
+    it("6.3 缺少或空 url 应报错", async () => {
+      const missing = await client.callTool({ name: "get_short_link", arguments: {} });
+      assert.equal(missing.isError, true);
+      const blank = await client.callTool({ name: "get_short_link", arguments: { url: "  " } });
+      assert.equal(blank.isError, true);
+    });
+
+    it("6.4 HTTP 请求上下文凭据会传递给短链接客户端", async () => {
+      const originalFetch = globalThis.fetch;
+      let request;
+      globalThis.fetch = async (input, init) => {
+        request = { url: String(input), headers: init?.headers };
+        return new Response(JSON.stringify({
+          success: true,
+          msg: null,
+          data: "https://tenant.example/s/abc",
+        }), { status: 200, headers: { "content-type": "application/json" } });
+      };
+      try {
+        const result = await credentialStore.run(
+          { apiKey: "tenant-secret", baseUrl: "https://tenant.example" },
+          () => client.callTool({
+            name: "get_short_link",
+            arguments: { url: "https://tenant.example/vm/abc123.aspx" },
+          }),
+        );
+        assert.equal(result.isError, false);
+        assert.equal(request.url.startsWith("https://tenant.example/openapi/shortlink.aspx?url="), true);
+        assert.equal(request.headers.Authorization, "Bearer tenant-secret");
+      } finally {
+        globalThis.fetch = originalFetch;
+      }
     });
   });
 });

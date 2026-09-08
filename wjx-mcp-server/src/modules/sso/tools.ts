@@ -6,8 +6,10 @@ import {
   buildSsoPartnerUrl,
   buildSurveyUrl,
   buildPreviewUrl,
+  getShortLink,
 } from "./client.js";
 import { toolResult, toolError } from "../../helpers.js";
+import { getRequestCredentials } from "../../core/context.js";
 
 export function registerSsoTools(server: McpServer): void {
   // ─── sso_subaccount_url ───────────────────────────────────────────
@@ -273,6 +275,38 @@ export function registerSsoTools(server: McpServer): void {
             })
             : (() => { throw new Error("build_preview_url 需要提供 sid 或 vid"); })();
         return toolResult({ result: true, url }, false);
+      } catch (error) {
+        return toolError(error);
+      }
+    },
+  );
+
+  // ─── get_short_link ───────────────────────────────────────────────
+  server.registerTool(
+    "get_short_link",
+    {
+      title: "获取问卷短链接",
+      description:
+        "将问卷星问卷长链接转换为短链接，适合短信等场景发送。url 必须是问卷星问卷地址；链接中的查询参数会由接口自动编码。",
+      inputSchema: {
+        url: z
+          .string()
+          .trim()
+          .min(1)
+          .url()
+          .describe("问卷星问卷长链接（必须是有效 URL）"),
+      },
+      annotations: {
+        destructiveHint: false,
+        idempotentHint: true,
+        openWorldHint: true,
+        title: "获取问卷短链接",
+      },
+    },
+    async (args) => {
+      try {
+        const result = await getShortLink({ url: args.url }, getRequestCredentials());
+        return toolResult(result, result.success !== true);
       } catch (error) {
         return toolError(error);
       }

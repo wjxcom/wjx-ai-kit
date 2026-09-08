@@ -1,11 +1,12 @@
 export const PUSH_FORMAT_GUIDE = {
-  overview: "问卷星数据推送（Webhook）在每次收到新答卷时，向配置的 URL 发送 HTTP POST 请求",
+  overview:
+    "问卷星数据推送（Webhook）在每次收到新答卷时，向配置的 URL 发送 HTTP POST 请求",
   configuration: {
     method: "通过 update_survey_settings 工具的 msg_setting 字段配置",
     fields: {
-      push_url: "接收推送的 HTTPS URL",
-      is_encrypt: "是否启用 AES 加密（0=关闭, 1=开启）",
-      push_custom_params: "自定义推送参数（附加在推送数据中）",
+      post_url: "接收推送的 HTTPS URL",
+      quick_post: "是否快速推送",
+      retry: "推送失败时是否重试",
     },
   },
   payload: {
@@ -13,18 +14,20 @@ export const PUSH_FORMAT_GUIDE = {
     fields: {
       vid: "问卷编号",
       jid: "答卷编号",
-      submitdata: "答卷数据（明文或加密密文，取决于 is_encrypt 设置）",
+      submitdata: "答卷数据（以服务端实际推送格式为准，可能是明文或加密密文）",
       submittime: "提交时间（格式：yyyy-MM-dd HH:mm:ss）",
       source: "答卷来源（1=链接, 2=扫码, 3=SDK, 4=微信, 5=企微, ...）",
       ip: "提交者 IP 地址",
       remark: "备注信息",
-      custom_params: "自定义参数（与 push_custom_params 配置对应）",
+      custom_params: "服务端推送附带的自定义参数（如有）",
     },
-    submitdata_format: "题号$答案}题号$答案（与 wjx://reference/response-format 一致）",
+    submitdata_format:
+      "题号$答案}题号$答案（与 wjx://reference/response-format 一致）",
   },
   encryption: {
     algorithm: "AES-128-CBC",
-    key_derivation: "MD5(appKey).substring(0, 16) — 取 appKey 的 MD5 哈希前16字符作为密钥",
+    key_derivation:
+      "MD5(appKey).substring(0, 16) — 取 appKey 的 MD5 哈希前16字符作为密钥",
     padding: "PKCS7",
     iv: "密文的前 16 字节为 IV（初始化向量）",
     encoding: "密文整体经过 Base64 编码",
@@ -49,8 +52,10 @@ export const PUSH_FORMAT_GUIDE = {
     ],
   },
   tools: {
-    decrypt_note: "可直接调用 MCP decode_push_payload 工具解密推送密文；SDK 同时提供 decodePushPayload() 编程接口",
+    decrypt_note:
+      "可直接调用 MCP decode_push_payload 工具解密推送密文；SDK 同时提供 decodePushPayload() 编程接口",
     get_survey_settings: "使用 get_survey_settings 查看当前推送配置",
-    update_survey_settings: "使用 update_survey_settings 的 msg_setting 字段修改推送配置",
+    update_survey_settings:
+      "使用 update_survey_settings 的 msg_setting 字段修改推送配置",
   },
 };

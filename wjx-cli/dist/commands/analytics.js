@@ -20,9 +20,6 @@ function parseScoreArray(value, field, min, max) {
     if (!Array.isArray(parsed)) {
         throw new CliError("INPUT_ERROR", `${field} 必须是数字数组`);
     }
-    if (parsed.length === 0) {
-        throw new CliError("INPUT_ERROR", `${field} 不能是空数组`);
-    }
     for (const [index, score] of parsed.entries()) {
         if (!Number.isFinite(score) || !Number.isInteger(score) || score < min || score > max) {
             throw new CliError("INPUT_ERROR", `${field} 第 ${index + 1} 项必须是 ${min}-${max} 范围内的整数`);

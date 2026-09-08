@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { callWjxApi, callWjxContactsApi, callWjxSubuserApi, callWjxUserSystemApi, getWjxApiUrl, getWjxBaseUrl, getWjxCredentials, listSurveys, submitResponse } from "../dist/index.js";
+import { callWjxApi, callWjxContactsApi, callWjxSubuserApi, callWjxUserSystemApi, downloadResponses, get360Report, getWjxApiUrl, getWjxBaseUrl, getWjxCredentials, listSurveys, submitResponse } from "../dist/index.js";
 
 test("SDK accepts additive retryBudget and traceId options", async () => {
   let calls = 0;
@@ -106,6 +106,130 @@ test("SDK retries ordinary Error network failures and AbortError values", async 
   }
 });
 
+test("SDK only retries retryable HTTP responses when the endpoint opts in", async () => {
+  let calls = 0;
+  await assert.rejects(
+    () => callWjxApi({ action: "http-gate-default" }, {
+      credentials: { apiKey: "key" },
+      retryBudget: 2,
+      fetchImpl: async () => {
+        calls += 1;
+        return new Response("unavailable", { status: 503, statusText: "Unavailable" });
+      },
+    }),
+    /503/,
+  );
+  assert.equal(calls, 1, "HTTP retries require an explicit endpoint declaration");
+
+  calls = 0;
+  await assert.rejects(
+    () => callWjxApi({ action: "http-gate-opt-in" }, {
+      credentials: { apiKey: "key" },
+      retryBudget: 1,
+      idempotency: "safe",
+      httpRetryable: true,
+      fetchImpl: async () => {
+        calls += 1;
+        return new Response("unavailable", { status: 503, statusText: "Unavailable" });
+      },
+    }),
+    /503/,
+  );
+  assert.equal(calls, 2, "an explicitly retryable safe endpoint keeps its bounded budget");
+});
+
+test("unsafe SDK calls do not retry network failures and expose an ambiguous outcome", async () => {
+  let calls = 0;
+  await assert.rejects(
+    () => callWjxApi({ action: "unsafe-test" }, {
+      credentials: { apiKey: "key" },
+      idempotency: "unsafe",
+      retryBudget: 2,
+      fetchImpl: async () => {
+        calls += 1;
+        throw Object.assign(new Error("ECONNRESET"), { code: "ECONNRESET" });
+      },
+    }),
+    (error) => {
+      assert.equal(error.outcome, "unknown");
+      assert.equal(error.action, "unsafe-test");
+      assert.equal(error.attempts, 1);
+      assert.match(error.traceId, /^[a-f0-9-]+$/i);
+      return true;
+    },
+  );
+  assert.equal(calls, 1);
+});
+
+test("unsafe SDK calls classify undici socket failures as ambiguous", async () => {
+  for (const error of [
+    Object.assign(new Error("other side closed"), { code: "UND_ERR_SOCKET" }),
+    new Error("socket hang up"),
+  ]) {
+    let calls = 0;
+    await assert.rejects(
+      () => callWjxApi({ action: "unsafe-socket" }, {
+        credentials: { apiKey: "key" },
+        idempotency: "unsafe",
+        retryBudget: 2,
+        fetchImpl: async () => {
+          calls += 1;
+          throw error;
+        },
+      }),
+      (caught) => {
+        assert.equal(caught.outcome, "unknown");
+        assert.equal(caught.action, "unsafe-socket");
+        assert.equal(caught.attempts, 1);
+        return true;
+      },
+    );
+    assert.equal(calls, 1);
+  }
+});
+
+test("unsafe SDK calls do not retry timeout failures and expose an ambiguous outcome", async () => {
+  let calls = 0;
+  await assert.rejects(
+    () => callWjxApi({ action: "unsafe-timeout" }, {
+      credentials: { apiKey: "key" },
+      idempotency: "unsafe",
+      retryBudget: 2,
+      timeoutMs: 5,
+      fetchImpl: async () => {
+        calls += 1;
+        return new Promise(() => {});
+      },
+    }),
+    (error) => error.outcome === "unknown" && error.action === "unsafe-timeout" && error.attempts === 1,
+  );
+  assert.equal(calls, 1);
+});
+
+test("download without taskid is treated as an unsafe async trigger", async () => {
+  let calls = 0;
+  await assert.rejects(
+    () => downloadResponses({ vid: 7 }, { apiKey: "key" }, async () => {
+      calls += 1;
+      throw new Error("fetch failed");
+    }),
+    (error) => error.outcome === "unknown" && error.action === "1001004" && error.attempts === 1,
+  );
+  assert.equal(calls, 1);
+});
+
+test("existing 360-report task polling opts into bounded HTTP retries", async () => {
+  let calls = 0;
+  await assert.rejects(
+    () => get360Report({ vid: 7, taskid: "report-task" }, { apiKey: "key" }, async () => {
+      calls += 1;
+      return new Response("unavailable", { status: 503, statusText: "Unavailable" });
+    }),
+    /503/,
+  );
+  assert.equal(calls, 3);
+});
+
 test("SDK retries network errors identified only by their standard error code", async () => {
   let calls = 0;
   const error = Object.assign(new Error("socket hang up"), { code: "ECONNRESET" });
@@ -146,7 +270,13 @@ test("SDK releases non-2xx response bodies before retrying", async () => {
 
   const response = await callWjxApi(
     { action: "test" },
-    { credentials: { apiKey: "key" }, fetchImpl, retryBudget: 1 },
+    {
+      credentials: { apiKey: "key" },
+      fetchImpl,
+      retryBudget: 1,
+      idempotency: "safe",
+      httpRetryable: true,
+    },
   );
 
   assert.equal(response.result, true);

@@ -14,8 +14,8 @@
     "node": ">=20"
   },
   "scripts": {
-    "build": "node scripts/clean-dist.mjs && npx tsc -p tsconfig.json",
-    "test": "npm run build && node --test __tests__/*.test.mjs",
+    "build": "node scripts/build.mjs",
+    "test": "node scripts/test.mjs",
     "perf:startup": "node scripts/benchmark-startup.mjs --enforce",
     "manifest:export": "node scripts/export-manifest.mjs",
     "manifest:check": "node scripts/export-manifest.mjs --check",

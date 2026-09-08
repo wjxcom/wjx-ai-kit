@@ -8,7 +8,7 @@ export async function addParticipants(input, credentials = getWjxCredentials(), 
     };
     if (input.auto_create_udept !== undefined)
         params.auto_create_udept = input.auto_create_udept;
-    return callWjxUserSystemApi(params, { credentials, fetchImpl, maxRetries: 0 });
+    return callWjxUserSystemApi(params, { credentials, fetchImpl, maxRetries: 0, idempotency: "unsafe", httpRetryable: false });
 }
 export async function modifyParticipants(input, credentials = getWjxCredentials(), fetchImpl = fetch) {
     const params = {
@@ -18,14 +18,14 @@ export async function modifyParticipants(input, credentials = getWjxCredentials(
     };
     if (input.auto_create_udept !== undefined)
         params.auto_create_udept = input.auto_create_udept;
-    return callWjxUserSystemApi(params, { credentials, fetchImpl, maxRetries: 0 });
+    return callWjxUserSystemApi(params, { credentials, fetchImpl, maxRetries: 0, idempotency: "unsafe", httpRetryable: false });
 }
 export async function deleteParticipants(input, credentials = getWjxCredentials(), fetchImpl = fetch) {
     return callWjxUserSystemApi({
         action: Action.DELETE_PARTICIPANTS,
         uids: input.uids,
         sysid: input.sysid,
-    }, { credentials, fetchImpl, maxRetries: 0 });
+    }, { credentials, fetchImpl, maxRetries: 0, idempotency: "unsafe", httpRetryable: false });
 }
 export async function bindActivity(input, credentials = getWjxCredentials(), fetchImpl = fetch) {
     const params = {
@@ -35,7 +35,7 @@ export async function bindActivity(input, credentials = getWjxCredentials(), fet
         uids: input.uids,
     };
     assignDefined(params, input, ["answer_times", "can_chg_answer", "can_view_result", "can_hide_qlist"]);
-    return callWjxUserSystemApi(params, { credentials, fetchImpl, maxRetries: 0 });
+    return callWjxUserSystemApi(params, { credentials, fetchImpl, maxRetries: 0, idempotency: "unsafe", httpRetryable: false });
 }
 export async function querySurveyBinding(input, credentials = getWjxCredentials(), fetchImpl = fetch) {
     const params = {
@@ -44,7 +44,13 @@ export async function querySurveyBinding(input, credentials = getWjxCredentials(
         sysid: input.sysid,
     };
     assignDefined(params, input, ["join_status", "day", "week", "month", "force_join_times"]);
-    return callWjxUserSystemApi(params, { credentials, fetchImpl, timeoutMs: LONG_TIMEOUT_MS });
+    return callWjxUserSystemApi(params, {
+        credentials,
+        fetchImpl,
+        timeoutMs: LONG_TIMEOUT_MS,
+        idempotency: "safe",
+        httpRetryable: true,
+    });
 }
 export async function queryUserSurveys(input, credentials = getWjxCredentials(), fetchImpl = fetch) {
     const params = {
@@ -52,6 +58,6 @@ export async function queryUserSurveys(input, credentials = getWjxCredentials(),
         uid: input.uid,
         sysid: input.sysid,
     };
-    return callWjxUserSystemApi(params, { credentials, fetchImpl });
+    return callWjxUserSystemApi(params, { credentials, fetchImpl, idempotency: "safe", httpRetryable: true });
 }
 //# sourceMappingURL=client.js.map

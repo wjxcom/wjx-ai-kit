@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-wjx-mcp-server is a Model Context Protocol (MCP) server wrapping the Wenjuanxing (问卷星) OpenAPI. It exposes 59 tools, 8 resources, and 15 prompts to AI clients (Claude, Cursor, etc.). It is secondary/maintenance-mode and intentionally covers the CLI's core business subset; workstation features remain CLI-only. Pure TypeScript, ESM-only, minimal dependencies (`@modelcontextprotocol/sdk` + `zod`).
+wjx-mcp-server is a Model Context Protocol (MCP) server wrapping the Wenjuanxing (问卷星) OpenAPI. It exposes 60 tools, 13 resources, and 15 prompts to AI clients (Claude, Cursor, etc.). It is secondary/maintenance-mode and intentionally covers the CLI's core business subset; workstation features remain CLI-only. Pure TypeScript, ESM-only, minimal dependencies (`@modelcontextprotocol/sdk` + `zod`).
 
 ## Commands
 
@@ -37,7 +37,7 @@ Each of the 7 modules (survey, response, contacts, sso, user-system, multi-user,
 - **types.ts** — Shared types (WjxCredentials, WjxApiResponse, etc.)
 
 ### Resources & Prompts
-- `src/resources/` — 8 resources registered via `wjx://reference/<name>` URI scheme
+- `src/resources/` — 13 resources registered via `wjx://reference/<name>` URI scheme
 - `src/prompts/` — 15 prompts (6 general/operational, 6 analysis, and 3 JSON-survey generation)
 
 ### Backward Compat Barrel Files
@@ -72,6 +72,8 @@ All handlers use `toolResult()`/`toolError()` from `src/helpers.ts`.
 | `MCP_TRANSPORT` | No | `stdio` (default) or `http` |
 | `PORT` | No | HTTP mode port (default 3000) |
 | `MCP_AUTH_TOKEN` | No | Bearer token for HTTP mode |
+| `MCP_TENANT_MODE` | No | `1` requires per-request `X-WJX-API-Key`; no process-wide fallback |
+| `MCP_LEGACY_BEARER_API_KEY` | No | `1` enables legacy Bearer-as-upstream-key compatibility |
 
 The server has its own .env parser in `src/core/load-env.ts` (no dotenv dependency). Resolution: `cwd/.env` first, then package root fallback.
 

@@ -65,7 +65,7 @@ wjx response query --vid 12345 --page_size 50 --sort 1 --begin_time 170000000000
 
 答卷数据使用编码格式 `题号$答案}题号$答案`：
 
-**题号**：服务端按 `getSurvey` 返回的原始 `q_index` 严格校验——"问卷基础信息"元数据占 `q_index=1`，真实题目从 2 开始。**手算很容易错**，直接用 `wjx response submit-template --vid <问卷ID>` 拿模板，里面给的就是服务端认可的题号。
+**题号**：服务端按 `getSurvey` 返回的原始 `q_index` 严格校验。不同问卷的题号可能从 1、2 或其他服务端分配值开始，不能假设元数据占 1。**手算很容易错**，直接用 `wjx response submit-template --vid <问卷ID>` 拿模板，里面给的就是服务端认可的题号。
 
 **选项序号**：1-based（从 1 数到 N）。
 
@@ -78,7 +78,7 @@ wjx response query --vid 12345 --page_size 50 --sort 1 --begin_time 170000000000
 | `!` | 矩阵题的「行号!列号」内部分隔 |
 
 **1-based 速记**：
-- 题号一律用 `submit-template` 返回值——服务端要的是 raw `q_index`，元数据占 1，真实题目从 2 起。
+- 题号一律用 `submit-template` 返回值——服务端要的是 raw `q_index`，实际编号以模板读回值为准。
 - 选项序号 1-based：第 1 个选项是 1，以此类推。即使问卷里删过某个选项导致 item_index 不连续，模板生成时也会按 1, 2, 3... 重排——直接按你看到的 placeholder 顺序填。
 
 示例（单题）：
@@ -233,7 +233,7 @@ wjx response submit-template --vid 12345 --raw > submitdata.txt
 
 ## wjx response modify
 
-修改答卷。当前仅支持修改考试主观题分数。
+修改答卷。当前仅支持修改考试主观题分数。这是高风险写入：CLI 会先用 `query_responses` 按 `vid + jid` 确认目标存在，再发送修改请求，最后再次读回目标并逐项核对答案；只有输出中的 `outcome` 为 `verified` 才能报告修改成功。
 
 ```bash
 wjx response modify --vid 12345 --jid 67890 --answers '{"10000":"85","20000":"90"}'
@@ -244,6 +244,13 @@ wjx response modify --vid 12345 --jid 67890 --answers '{"10000":"85","20000":"90
 | `--vid <n>` | 是 | 问卷编号 |
 | `--jid <n>` | 是 | 答卷编号 |
 | `--answers <json>` | 是 | 分数 JSON：`{"题号":"分数"}`。**重要**：题号是内部编号（q_index × 10000），如第1题=10000，第2题=20000 |
+
+运行时规则：
+
+- 非交互调用必须显式加 `--yes`；缺少 `--yes` 时不会发出读请求或写请求。
+- 目标不存在时只执行写前查询并停止，绝不发送 `1001007` 修改请求。
+- 写后读回缺少答案字段或值不一致时返回 `ok:false`、`outcome:"unknown"`，需要人工复核；不要重试同一写入。
+- `--answers` 推荐使用 JSON 对象（例如 `{"10000":"85"}`）；旧版 `q$answer` 形式仅为兼容保留。
 
 ## wjx response clear
 
@@ -271,7 +278,7 @@ wjx response count --vid 12345
 |------|------|------|
 | `--vid <n>` | 是 | 问卷编号 |
 
-输出格式：`{ "ok": true, "data": { "total_count": N, "join_times": N } }`。该命令不接受时间、条件或去重筛选；筛选查询的总数以 `response query` 返回值为准。
+输出格式：`{ "ok": true, "data": { "total_count": N|null, "join_times": N|null } }`。只有 API 返回可验证的非负数值时才填入 `N`；字段缺失或值无效时保留为 `null`，不得把未知计数当成 0。该命令不接受时间、条件或去重筛选；筛选查询的总数以 `response query` 返回值为准。
 
 ## 其他 Response 命令
 

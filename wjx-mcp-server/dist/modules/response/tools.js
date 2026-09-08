@@ -2,6 +2,164 @@ import { z } from "zod";
 import { queryResponses, queryResponsesRealtime, downloadResponses, getReport, submitResponse, getWinners, modifyResponse, get360Report, clearResponses, buildSubmitTemplate, } from "./client.js";
 import { getSurvey, normalizeSubmitdata } from "wjx-api-sdk";
 import { wrapToolHandler, assertJson, toolResult, toolError } from "../../helpers.js";
+import { surveyIdentityMatches } from "../survey/identity.js";
+import { parseNonNegativeCount, runVerifiedWrite, unknownVerification, } from "../../write-verification.js";
+function asRecord(value) {
+    return value && typeof value === "object" && !Array.isArray(value)
+        ? value
+        : undefined;
+}
+function responseData(value) {
+    return asRecord(asRecord(value)?.data);
+}
+function recordValues(value) {
+    if (Array.isArray(value)) {
+        return value.filter((row) => Boolean(asRecord(row)));
+    }
+    const record = asRecord(value);
+    return record
+        ? Object.values(record).filter((row) => Boolean(asRecord(row)))
+        : [];
+}
+function responseRows(value) {
+    const data = responseData(value);
+    for (const key of ["responses", "answers", "rows", "list", "records", "items", "data"]) {
+        const candidate = data?.[key];
+        const rows = recordValues(candidate);
+        if (rows.length > 0 || Array.isArray(candidate))
+            return rows;
+    }
+    // Some deployments return one filtered answer record directly under data.
+    if (responseJid(data ?? {}) !== undefined)
+        return [data];
+    return [];
+}
+function responseCount(value) {
+    const data = responseData(value);
+    for (const key of ["total_count", "totalCount", "count", "join_times"]) {
+        const raw = data?.[key];
+        const count = parseNonNegativeCount(raw);
+        if (count !== undefined)
+            return count;
+    }
+    const rows = responseRows(value);
+    return rows.length > 0 ? rows.length : undefined;
+}
+function responseJid(row) {
+    const raw = row.jid ?? row.id ?? row.response_id ?? row.responseId;
+    return raw === undefined || raw === null ? undefined : String(raw);
+}
+const ANSWER_VALUE_KEYS = [
+    "answer_score",
+    "answerScore",
+    "answer_value",
+    "answerValue",
+    "item_value",
+    "itemValue",
+    "score",
+    "score_value",
+    "scoreValue",
+    "value",
+    "answer",
+    "answer_text",
+    "answerText",
+    "content",
+];
+function answerValue(value) {
+    if (value === null || typeof value !== "object")
+        return { found: true, value };
+    if (Array.isArray(value))
+        return { found: true, value };
+    const record = value;
+    for (const key of ANSWER_VALUE_KEYS) {
+        if (Object.hasOwn(record, key))
+            return { found: true, value: record[key] };
+    }
+    return { found: false };
+}
+function sameQuestionKey(value, key) {
+    if (value === undefined || value === null)
+        return false;
+    const text = String(value).trim();
+    return text === key || (Number.isFinite(Number(text)) && Number(text) === Number(key));
+}
+function findAnswerInContainer(container, key) {
+    if (Array.isArray(container)) {
+        for (const item of container) {
+            const record = asRecord(item);
+            if (!record)
+                continue;
+            if (sameQuestionKey(record.q_index ?? record.qid ?? record.q_id ?? record.question_id ?? record.questionId, key)) {
+                const direct = answerValue(record);
+                if (direct.found)
+                    return direct;
+            }
+        }
+        return { found: false };
+    }
+    const record = asRecord(container);
+    if (!record)
+        return { found: false };
+    if (Object.hasOwn(record, key))
+        return answerValue(record[key]);
+    for (const item of Object.values(record)) {
+        const itemRecord = asRecord(item);
+        if (!itemRecord)
+            continue;
+        if (sameQuestionKey(itemRecord.q_index ?? itemRecord.qid ?? itemRecord.q_id ?? itemRecord.question_id ?? itemRecord.questionId, key)) {
+            const direct = answerValue(itemRecord);
+            if (direct.found)
+                return direct;
+        }
+    }
+    return { found: false };
+}
+function responseAnswer(row, key) {
+    // A few API deployments flatten score fields onto the response record.
+    if (Object.hasOwn(row, key))
+        return answerValue(row[key]);
+    for (const containerKey of ["answer_items", "answerItems", "answers", "answer", "items"]) {
+        const lookup = findAnswerInContainer(row[containerKey], key);
+        if (lookup.found)
+            return lookup;
+    }
+    return { found: false };
+}
+function comparableAnswer(value) {
+    if (typeof value === "string")
+        return value.trim();
+    if (typeof value === "number" && Number.isFinite(value))
+        return String(value);
+    if (typeof value === "boolean" || value === null)
+        return String(value);
+    try {
+        return JSON.stringify(value);
+    }
+    catch {
+        return String(value);
+    }
+}
+function parseAnswerPatch(value) {
+    let parsed;
+    try {
+        parsed = JSON.parse(value);
+    }
+    catch {
+        throw new Error("answers 必须是合法的 JSON 字符串");
+    }
+    const record = asRecord(parsed);
+    if (!record || Object.keys(record).length === 0) {
+        throw new Error("answers 必须是非空 JSON 对象");
+    }
+    return record;
+}
+function findResponseByJid(value, jid) {
+    const expected = String(jid);
+    return responseRows(value).find((row) => responseJid(row) === expected);
+}
+function verificationFailure(message, required = ["read-after-write"]) {
+    return unknownVerification(message, { link: true }, required);
+}
 /** 规范化 submitdata 中的题号、矩阵题和排序题答案格式。 */
 export function registerResponseTools(server) {
     // ─── count_responses ─────────────────────────────────────────────
@@ -24,8 +182,8 @@ export function registerResponseTools(server) {
         const data = response.data;
         return {
             result: response.result,
-            total_count: data?.total_count ?? 0,
-            join_times: data?.join_times ?? 0,
+            total_count: data?.total_count ?? data?.totalCount ?? null,
+            join_times: data?.join_times ?? data?.joinTimes ?? null,
         };
     }));
     // ─── query_responses ──────────────────────────────────────────────
@@ -158,7 +316,9 @@ export function registerResponseTools(server) {
         },
         annotations: {
             destructiveHint: false,
-            idempotentHint: true,
+            // Report generation is classified as unknown by the SDK: the server
+            // may start aggregation work, so hosts must not replay it blindly.
+            idempotentHint: false,
             openWorldHint: true,
             title: "默认报告查询",
         },
@@ -194,7 +354,7 @@ export function registerResponseTools(server) {
             udsid: z.number().int().optional().describe("自定义来源编号"),
             sojumpparm: z.string().optional().describe("自定义链接参数"),
             submittime: z.string().optional().describe("答卷提交时间，日期时间字符串，默认当前时间"),
-            jpmversion: z.number().int().optional().describe("问卷版本号；始终尽量获取问卷结构来规范化答卷。不传时必须成功取得最新 version；显式传入时，即使元数据获取失败也可继续提交。"),
+            jpmversion: z.number().int().positive().optional().describe("问卷版本号（正整数）；始终尽量获取问卷结构来规范化答卷。不传时必须成功取得最新 version；显式传入时，即使元数据获取失败也可继续提交。"),
         },
         annotations: {
             destructiveHint: false,
@@ -202,48 +362,118 @@ export function registerResponseTools(server) {
             openWorldHint: true,
             title: "答卷提交",
         },
-    }, wrapToolHandler(async (args) => {
-        // 尽量获取题目结构来规范化答卷；显式版本只放宽元数据获取失败时的阻塞。
-        let submitdata = args.submitdata;
-        let jpmversion = args.jpmversion;
-        let survey;
+    }, async (args) => {
         try {
-            survey = await getSurvey({ vid: args.vid });
+            return runVerifiedWrite({
+                operation: "submit_response",
+                // This read supplies both the current survey version and the
+                // question metadata used for answer normalization. An explicit
+                // jpmversion keeps the historical compatibility escape hatch.
+                preRead: async () => {
+                    let survey;
+                    try {
+                        survey = await getSurvey({ vid: args.vid });
+                    }
+                    catch (error) {
+                        if (args.jpmversion !== undefined)
+                            return undefined;
+                        throw error;
+                    }
+                    if (survey.result === false && args.jpmversion === undefined) {
+                        throw new Error(survey.errormsg || "获取问卷版本失败");
+                    }
+                    // Keep the historical version diagnostic for automatic-version
+                    // requests. Once a positive version is present, the identity
+                    // guard runs before any write. Explicit jpmversion may bypass an
+                    // unavailable metadata read, but never a successful read tied to
+                    // another (or unnamed) survey.
+                    if (survey.result === true) {
+                        const version = responseData(survey)?.version;
+                        if (args.jpmversion === undefined
+                            && (typeof version !== "number" || !Number.isSafeInteger(version) || version <= 0)) {
+                            throw new Error("自动获取问卷版本失败：API 响应缺少有效的正整数 version");
+                        }
+                        if (!surveyIdentityMatches(responseData(survey), args.vid)) {
+                            throw new Error(`问卷 ${args.vid} 读回身份不匹配或缺少可验证编号，已停止提交`);
+                        }
+                    }
+                    return survey;
+                },
+                write: async (preRead) => {
+                    let submitdata = args.submitdata;
+                    let jpmversion = args.jpmversion;
+                    const survey = preRead;
+                    if (survey?.result === true) {
+                        const data = survey.data;
+                        const questions = data?.questions ?? [];
+                        if (questions.length > 0)
+                            submitdata = normalizeSubmitdata(submitdata, questions);
+                        const version = data?.version;
+                        if (jpmversion === undefined) {
+                            if (typeof version !== "number" || !Number.isSafeInteger(version) || version <= 0) {
+                                throw new Error("自动获取问卷版本失败：API 响应缺少有效的正整数 version");
+                            }
+                            jpmversion = version;
+                        }
+                    }
+                    else if (jpmversion === undefined) {
+                        const message = survey?.result === false
+                            ? survey.errormsg || "获取问卷版本失败"
+                            : "获取问卷版本返回了无效响应";
+                        throw new Error(message);
+                    }
+                    return submitResponse({
+                        vid: args.vid,
+                        inputcosttime: args.inputcosttime,
+                        submitdata,
+                        udsid: args.udsid,
+                        sojumpparm: args.sojumpparm,
+                        submittime: args.submittime,
+                        jpmversion,
+                    });
+                },
+                verify: async ({ writeResult, phase }) => {
+                    const submitted = responseData(writeResult);
+                    const rawJid = submitted?.jid ?? submitted?.id ?? submitted?.response_id;
+                    if (rawJid === undefined || rawJid === null || String(rawJid).trim() === "") {
+                        return verificationFailure("答卷提交响应缺少可验证的答卷编号，无法确认是否落库", ["response-id", "query_responses"]);
+                    }
+                    let readBack;
+                    try {
+                        readBack = await queryResponses({
+                            vid: args.vid,
+                            jid: String(rawJid),
+                            page_index: 1,
+                            page_size: 50,
+                        });
+                    }
+                    catch (error) {
+                        return verificationFailure(`提交后的答卷读取失败：${error instanceof Error ? error.message : String(error)}`, ["response-id", "query_responses"]);
+                    }
+                    if (readBack.result !== true) {
+                        return verificationFailure(readBack.errormsg || "提交后的答卷读取失败，结果未知", ["response-id", "query_responses"]);
+                    }
+                    const rows = responseRows(readBack);
+                    const found = rows.some((row) => responseJid(row) === String(rawJid));
+                    const structure = found;
+                    const status = found;
+                    const warnings = found
+                        ? (phase === "ambiguous" ? ["写入传输结果不明确，但答卷已读回"] : [])
+                        : ["答卷提交响应的编号未在读回结果中出现，结果未知"];
+                    return {
+                        jid: rawJid,
+                        outcome: found ? "verified" : "unknown",
+                        verification: { structure, status, count: found, link: true },
+                        warnings,
+                        ...(found ? {} : { verificationRequired: ["response-id", "query_responses"] }),
+                    };
+                },
+            });
         }
         catch (error) {
-            if (jpmversion === undefined)
-                throw error;
+            return toolError(error);
         }
-        if (survey?.result === true) {
-            const data = survey.data;
-            const questions = data?.questions ?? [];
-            if (questions.length > 0) {
-                submitdata = normalizeSubmitdata(submitdata, questions);
-            }
-            const version = data?.version;
-            if (jpmversion === undefined) {
-                if (typeof version !== "number" || !Number.isSafeInteger(version) || version <= 0) {
-                    throw new Error("自动获取问卷版本失败：API 响应缺少有效的正整数 version");
-                }
-                jpmversion = version;
-            }
-        }
-        else if (jpmversion === undefined) {
-            const message = survey?.result === false
-                ? survey.errormsg || "获取问卷版本失败"
-                : "获取问卷版本返回了无效响应";
-            throw new Error(message);
-        }
-        return submitResponse({
-            vid: args.vid,
-            inputcosttime: args.inputcosttime,
-            submitdata,
-            udsid: args.udsid,
-            sojumpparm: args.sojumpparm,
-            submittime: args.submittime,
-            jpmversion,
-        });
-    }));
+    });
     // ─── build_submit_template ───────────────────────────────────────
     server.registerTool("build_submit_template", {
         title: "生成答卷模板",
@@ -312,19 +542,100 @@ export function registerResponseTools(server) {
         },
         annotations: {
             destructiveHint: true,
-            idempotentHint: true,
+            // The SDK treats score updates as an unsafe write and disables
+            // retries; an MCP host must not infer replay safety from the verb.
+            idempotentHint: false,
             openWorldHint: true,
             title: "修改答卷",
         },
-    }, wrapToolHandler(async (args) => {
-        assertJson(args.answers, "answers");
-        return modifyResponse({
-            vid: args.vid,
-            jid: args.jid,
-            type: args.type,
-            answers: args.answers,
-        });
-    }));
+    }, async (args) => {
+        try {
+            const requestedAnswers = parseAnswerPatch(args.answers);
+            return runVerifiedWrite({
+                operation: "modify_response",
+                // A missing target must stop before the unsafe score update. The
+                // filtered read also gives us an identity anchor for post-read.
+                preRead: async () => {
+                    const result = await queryResponses({
+                        vid: args.vid,
+                        jid: String(args.jid),
+                        page_index: 1,
+                        page_size: 50,
+                    });
+                    if (result.result !== true) {
+                        throw new Error(result.errormsg || "修改前答卷读取失败");
+                    }
+                    const target = findResponseByJid(result, args.jid);
+                    if (!target) {
+                        throw new Error(`未找到答卷 jid=${args.jid}，已停止修改`);
+                    }
+                    return { result, target };
+                },
+                write: () => modifyResponse({
+                    vid: args.vid,
+                    jid: args.jid,
+                    type: args.type,
+                    answers: args.answers,
+                }),
+                verify: async ({ phase }) => {
+                    let readBack;
+                    try {
+                        readBack = await queryResponses({
+                            vid: args.vid,
+                            jid: String(args.jid),
+                            page_index: 1,
+                            page_size: 50,
+                        });
+                    }
+                    catch (error) {
+                        return unknownVerification(`修改后的答卷读取失败：${error instanceof Error ? error.message : String(error)}`, { link: true }, ["response-id", "response-answers", "query_responses"]);
+                    }
+                    if (readBack.result !== true) {
+                        return unknownVerification(readBack.errormsg || "修改后的答卷读取失败，结果未知", { link: true }, ["response-id", "response-answers", "query_responses"]);
+                    }
+                    const target = findResponseByJid(readBack, args.jid);
+                    if (!target) {
+                        return unknownVerification(`修改后的答卷读回未找到 jid=${args.jid}，结果未知`, { link: true }, ["response-id", "response-answers", "query_responses"]);
+                    }
+                    const missing = [];
+                    const mismatched = [];
+                    const verifiedAnswers = {};
+                    for (const [key, expected] of Object.entries(requestedAnswers)) {
+                        const actual = responseAnswer(target, key);
+                        if (!actual.found) {
+                            missing.push(key);
+                            continue;
+                        }
+                        verifiedAnswers[key] = actual.value;
+                        if (comparableAnswer(actual.value) !== comparableAnswer(expected))
+                            mismatched.push(key);
+                    }
+                    const structure = responseJid(target) === String(args.jid);
+                    const status = structure && missing.length === 0 && mismatched.length === 0;
+                    const warnings = [];
+                    if (missing.length > 0)
+                        warnings.push(`读回缺少可验证的分数/答案字段：${missing.join(", ")}`);
+                    if (mismatched.length > 0)
+                        warnings.push(`读回分数/答案与请求不一致：${mismatched.join(", ")}`);
+                    if (phase === "ambiguous" && status)
+                        warnings.unshift("写入传输结果不明确，但答卷修改已读回确认");
+                    if (!status && warnings.length === 0)
+                        warnings.push("答卷修改结果无法通过读回验证");
+                    return {
+                        jid: args.jid,
+                        answers: verifiedAnswers,
+                        outcome: status ? "verified" : "unknown",
+                        verification: { structure, status, count: false, link: true },
+                        warnings,
+                        ...(status ? {} : { verificationRequired: ["response-id", "response-answers", "query_responses"] }),
+                    };
+                },
+            });
+        }
+        catch (error) {
+            return toolError(error);
+        }
+    });
     // ─── get_360_report ───────────────────────────────────────────────
     server.registerTool("get_360_report", {
         title: "360度评估报告下载",
@@ -358,10 +669,54 @@ export function registerResponseTools(server) {
             openWorldHint: true,
             title: "清空答卷数据",
         },
-    }, wrapToolHandler(async (args) => clearResponses({
-        username: args.username,
-        vid: args.vid,
-        reset_to_zero: args.reset_to_zero,
-    })));
+    }, async (args) => {
+        try {
+            let beforeCount;
+            return runVerifiedWrite({
+                operation: "clear_responses",
+                preRead: async () => {
+                    const result = await queryResponses({ vid: args.vid, page_index: 1, page_size: 1 });
+                    if (result.result !== true)
+                        throw new Error(result.errormsg || "清空前答卷计数读取失败");
+                    beforeCount = responseCount(result);
+                    if (beforeCount === undefined)
+                        throw new Error("清空前无法读取答卷总数，已停止清空");
+                    return result;
+                },
+                write: () => clearResponses({
+                    username: args.username,
+                    vid: args.vid,
+                    reset_to_zero: args.reset_to_zero,
+                }),
+                verify: async ({ phase }) => {
+                    let after;
+                    try {
+                        after = await queryResponses({ vid: args.vid, page_index: 1, page_size: 1 });
+                    }
+                    catch (error) {
+                        return verificationFailure(`清空后的答卷计数读取失败：${error instanceof Error ? error.message : String(error)}`, ["response-count"]);
+                    }
+                    if (after.result !== true)
+                        return verificationFailure(after.errormsg || "清空后的答卷计数读取失败", ["response-count"]);
+                    const afterCount = responseCount(after);
+                    const knownEmpty = afterCount === 0 || (afterCount === undefined && responseRows(after).length === 0 && responseData(after)?.responses !== undefined);
+                    const warnings = knownEmpty
+                        ? (phase === "ambiguous" ? ["写入传输结果不明确，但答卷计数已读回为 0"] : [])
+                        : ["清空后的答卷计数无法证明为 0，结果未知"];
+                    return {
+                        beforeCount,
+                        ...(afterCount !== undefined ? { afterCount } : {}),
+                        outcome: knownEmpty ? "verified" : "unknown",
+                        verification: { structure: afterCount !== undefined || knownEmpty, status: knownEmpty, count: knownEmpty, link: true },
+                        warnings,
+                        ...(knownEmpty ? {} : { verificationRequired: ["response-count"] }),
+                    };
+                },
+            });
+        }
+        catch (error) {
+            return toolError(error);
+        }
+    });
 }
 //# sourceMappingURL=tools.js.map

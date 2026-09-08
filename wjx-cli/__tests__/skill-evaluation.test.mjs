@@ -250,7 +250,10 @@ describe("Skill rule 5-7: credentials and response submission", () => {
   });
 
   test("submitdata-file preserves dollar delimiters through the real request", async () => {
-    const fixture = await startFixture({ env: { WJX_API_KEY: "submit-file-key" } });
+    const fixture = await startFixture({
+      response: { result: true, data: { vid: 42, version: 1, questions: [] } },
+      env: { WJX_API_KEY: "submit-file-key" },
+    });
     try {
       const file = await writeSkillFixture(fixture, "submitdata.txt", "1$1}2$3|4");
       const result = await fixture.run([
@@ -272,7 +275,7 @@ describe("Skill rule 5-7: credentials and response submission", () => {
       const fixture = await startFixture({ response, env: { WJX_API_KEY: "batch-test-key" } });
       try {
         const result = await fixture.run([
-          "--yes", "response", "submit", "--vid", "42", "--inputcosttime", "30", "--submitdata", "1$1", "--jpmversion", "1",
+          "--yes", "response", "submit", "--vid", "42", "--inputcosttime", "30", "--submitdata", "1$1", "--jpmversion", "1", "--no-auto-version",
         ]);
         if (result.exitCode === 0) {
           const envelope = JSON.parse(result.stdout);
@@ -407,9 +410,9 @@ describe("Skill workflow edge cases and local analytics", () => {
     ]);
     const data = parseResult(result);
     const byMetric = Object.fromEntries(data.comparisons.map((item) => [item.metric, item]));
-    assert.deepEqual(byMetric.nps, { metric: "nps", valueA: 50, valueB: 60, delta: 10, changeRate: 0.2, significant: true });
-    assert.deepEqual(byMetric.csat, { metric: "csat", valueA: 0.8, valueB: 0.8, delta: 0, changeRate: 0, significant: false });
-    assert.deepEqual(byMetric.added, { metric: "added", valueA: 0, valueB: 2, delta: 2, changeRate: 1, significant: true });
+    assert.deepEqual(byMetric.nps, { metric: "nps", valueA: 50, valueB: 60, delta: 10, changeRate: 0.2, significant: true, significanceBasis: "heuristic-threshold" });
+    assert.deepEqual(byMetric.csat, { metric: "csat", valueA: 0.8, valueB: 0.8, delta: 0, changeRate: 0, significant: false, significanceBasis: "heuristic-threshold" });
+    assert.deepEqual(byMetric.added, { metric: "added", valueA: 0, valueB: 2, delta: 2, changeRate: 1, significant: true, significanceBasis: "heuristic-threshold" });
   });
 
   test("analytics stdin accepts structured CSAT input", async () => {

@@ -128,9 +128,16 @@ describe("calculateNps", () => {
 
   it("should handle empty array", () => {
     const result = calculateNps([]);
-    assert.equal(result.score, 0);
+    assert.equal(result.dataStatus, "no-data");
+    assert.equal(result.score, null);
     assert.equal(result.total, 0);
-    assert.equal(result.rating, "一般");
+    assert.equal(result.rating, null);
+  });
+
+  it("should reject non-integer or out-of-range scores", () => {
+    assert.throws(() => calculateNps([10.5]), /integer/);
+    assert.throws(() => calculateNps([-1]), /0-10/);
+    assert.throws(() => calculateNps([11]), /0-10/);
   });
 
   it("should compute correct ratios", () => {
@@ -185,9 +192,17 @@ describe("calculateCsat", () => {
 
   it("should handle empty array", () => {
     const result = calculateCsat([]);
-    assert.equal(result.csat, 0);
+    assert.equal(result.dataStatus, "no-data");
+    assert.equal(result.csat, null);
     assert.equal(result.total, 0);
     assert.equal(result.satisfiedCount, 0);
+  });
+
+  it("should reject scores outside the selected scale", () => {
+    assert.throws(() => calculateCsat([0], "5-point"), /1-5/);
+    assert.throws(() => calculateCsat([6], "5-point"), /1-5/);
+    assert.throws(() => calculateCsat([8], "7-point"), /1-7/);
+    assert.throws(() => calculateCsat([1.5], "7-point"), /integer/);
   });
 
   it("should handle all satisfied", () => {
@@ -289,6 +304,15 @@ describe("detectAnomalies", () => {
     assert.equal(result.flagged.length, 0);
   });
 
+  it("should warn and skip speed flags with fewer than three durations", () => {
+    const result = detectAnomalies([
+      { id: 1, answers: [1, 2, 3], duration_seconds: 100 },
+      { id: 2, answers: [2, 3, 4], duration_seconds: 10 },
+    ]);
+    assert.deepEqual(result.flagged, []);
+    assert.match(result.warnings?.join(" ") ?? "", /duration|样本|speed/i);
+  });
+
   it("should accept API response fields submitdata and inputcosttime", () => {
     const result = detectAnomalies([
       { jid: 1, submitdata: "1$1}2$1}3$1", inputcosttime: 100, ip: "192.168.1.1" },
@@ -322,6 +346,7 @@ describe("compareMetrics", () => {
     assert.ok(Math.abs(cr.delta - 0.1) < 0.001);
     assert.ok(Math.abs(cr.changeRate - 0.125) < 0.001);
     assert.equal(cr.significant, true); // 12.5% > 10%
+    assert.equal(cr.significanceBasis, "heuristic-threshold");
   });
 
   it("should flag significant changes (>10%)", () => {

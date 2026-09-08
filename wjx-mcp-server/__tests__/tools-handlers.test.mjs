@@ -71,13 +71,16 @@ describe("analytics tools via MCP", () => {
       assert.equal(data.score, 100);
     });
 
-    it("with empty scores returns NPS 0", async () => {
+    it("with empty scores returns an explicit no-data result", async () => {
       const result = await client.callTool({
         name: "calculate_nps",
         arguments: { scores: [] },
       });
       const data = JSON.parse(result.content[0].text);
-      assert.equal(data.score, 0);
+      assert.equal(result.isError, false);
+      assert.equal(data.dataStatus, "no-data");
+      assert.equal(data.score, null);
+      assert.equal(data.rating, null);
     });
 
     it("rejects missing scores", async () => {
@@ -128,14 +131,23 @@ describe("analytics tools via MCP", () => {
       assert.equal(data.satisfiedCount, 3);
     });
 
-    it("with empty scores", async () => {
+    it("with empty scores returns an explicit no-data result", async () => {
       const result = await client.callTool({
         name: "calculate_csat",
         arguments: { scores: [] },
       });
       assert.equal(result.isError, false);
       const data = JSON.parse(result.content[0].text);
-      assert.equal(data.csat, 0);
+      assert.equal(data.dataStatus, "no-data");
+      assert.equal(data.csat, null);
+    });
+
+    it("rejects a 6 on the 5-point scale", async () => {
+      const result = await client.callTool({
+        name: "calculate_csat",
+        arguments: { scores: [6], scale_type: "5-point" },
+      });
+      assert.equal(result.isError, true);
     });
 
     it("rejects missing scores", async () => {
@@ -824,6 +836,30 @@ describe("response tools validation via MCP", () => {
         arguments: { vid: 1, inputcosttime: 1, submitdata: "1$2" },
       });
       assert.equal(result.isError, true);
+    });
+
+    it("rejects non-positive jpmversion values", async () => {
+      const previousFetch = globalThis.fetch;
+      let requests = 0;
+      globalThis.fetch = async () => {
+        requests += 1;
+        return new Response(JSON.stringify({ result: true, data: {} }), {
+          status: 200,
+          headers: { "content-type": "application/json" },
+        });
+      };
+      try {
+        for (const jpmversion of [0, -1]) {
+          const result = await client.callTool({
+            name: "submit_response",
+            arguments: { vid: 1, inputcosttime: 5, submitdata: "1$2", jpmversion },
+          });
+          assert.equal(result.isError, true, `jpmversion=${jpmversion} should be rejected`);
+        }
+        assert.equal(requests, 0, "invalid jpmversion must be rejected before transport");
+      } finally {
+        globalThis.fetch = previousFetch;
+      }
     });
   });
 

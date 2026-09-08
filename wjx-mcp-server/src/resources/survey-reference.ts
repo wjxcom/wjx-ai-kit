@@ -62,8 +62,8 @@ export const SURVEY_STATUSES: Record<number, string> = {
   0: "未发布",
   1: "已发布",
   2: "已暂停",
-  3: "已删除",
-  4: "彻底删除",
+  3: "已删除（回收站，可恢复）",
+  4: "彻底删除（不可恢复）",
   5: "被审核",
 };
 
@@ -75,6 +75,74 @@ export const VERIFY_STATUSES: Record<number, string> = {
 };
 
 /**
+ * 文本题校验类型（OpenAPI 文档 3.5）。
+ * 这些编码用于题目设置/读取结果，不是 JSONL qtype 名称。
+ */
+export const TEXT_VALIDATION_TYPES: Record<number, string> = {
+  0: "不验证/单行文本",
+  1: "数字",
+  2: "小数",
+  3: "日期",
+  4: "手机",
+  5: "指定选项",
+  6: "固话",
+  7: "电话",
+  8: "Email",
+  9: "密码",
+  10: "城市单选",
+  11: "省市区",
+  12: "高校",
+  13: "地图",
+  14: "网址",
+  15: "身份证号",
+  16: "学号",
+  17: "QQ",
+  18: "汉字",
+  19: "姓名",
+  20: "英文",
+  21: "英文数字",
+  22: "文件上传",
+  23: "多项简答",
+  24: "多级下拉",
+  25: "单行文本",
+  26: "多行文本",
+};
+
+/** 矩阵题的展现形式（OpenAPI 文档 3.6）。 */
+export const MATRIX_DISPLAY_TYPES: Record<number, string> = {
+  0: "无",
+  101: "矩阵量表",
+  102: "矩阵多选",
+  103: "矩阵单选",
+  201: "矩阵填空",
+  202: "矩阵滑动条",
+  203: "多项文件",
+  204: "多项简答",
+  301: "表格数值",
+  302: "表格填空",
+  303: "表格下拉框",
+};
+
+/** 表格题的展现形式（OpenAPI 文档 3.7）。 */
+export const TABLE_DISPLAY_TYPES: Record<number, string> = {
+  0: "无",
+  1: "表格组合",
+  2: "表格自增",
+};
+
+/** 问卷设置内容类型（OpenAPI 文档 3.10）。 */
+export const SURVEY_SETTING_TYPES: Record<number, string> = {
+  1000: "问卷时间设置",
+  1001: "问卷提交后处理",
+  1002: "成绩单设置",
+  1003: "维度设置",
+  1004: "自定义链接参数问卷答题设置",
+  1005: "奖品设置",
+  1006: "数据推送设置",
+  1007: "问卷所在文件夹",
+};
+
+/**
  * 问卷状态合法转换路径
  * 键: 当前状态编码，值: 可转换到的目标状态编码列表
  */
@@ -82,5 +150,6 @@ export const STATUS_TRANSITIONS: Record<number, { targets: number[]; description
   0: { targets: [1], description: "未发布 → 已发布" },
   1: { targets: [2, 3], description: "已发布 → 已暂停 | 已删除" },
   2: { targets: [1, 3], description: "已暂停 → 已发布 | 已删除" },
-  3: { targets: [], description: "已删除（终态，不可恢复）" },
+  3: { targets: [4], description: "已删除（回收站，可恢复） → 彻底删除（不可恢复）" },
+  4: { targets: [], description: "彻底删除（终态，不可恢复）" },
 };

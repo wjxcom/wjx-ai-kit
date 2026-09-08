@@ -74,6 +74,8 @@ export type BuildPreviewUrlInput = {
     sid?: string;
     /** Optional source tracking parameter. */
     source?: string;
+    /** Disable numeric vid fallback when a verified respondent link is required. */
+    allowVidFallback?: boolean;
 } | {
     /** Survey vid. When both vid and sid exist, sid should be preferred. */
     vid?: number;
@@ -81,4 +83,6 @@ export type BuildPreviewUrlInput = {
     sid: string;
     /** Optional source tracking parameter. */
     source?: string;
+    /** Disable numeric vid fallback when a verified respondent link is required. */
+    allowVidFallback?: boolean;
 };

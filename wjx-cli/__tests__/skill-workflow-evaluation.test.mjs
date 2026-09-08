@@ -96,7 +96,7 @@ test("create applies documented source precedence and rejects missing files", as
 
 test("submit auto-version has a metadata prefetch, while --no-auto-version sends exactly one request", async () => {
   const autoFixture = await startFixture({
-    response: { result: true, data: { version: 17, questions: [] } },
+    response: { result: true, data: { vid: 42, version: 17, questions: [] } },
     env: { WJX_API_KEY: "submit-workflow-key" },
   });
   try {
@@ -112,7 +112,10 @@ test("submit auto-version has a metadata prefetch, while --no-auto-version sends
     await autoFixture.close();
   }
 
-  const explicitFixture = await startFixture({ env: { WJX_API_KEY: "submit-workflow-key" } });
+  const explicitFixture = await startFixture({
+    response: { result: true, data: { vid: 42, version: 1, questions: [] } },
+    env: { WJX_API_KEY: "submit-workflow-key" },
+  });
   try {
     const result = await explicitFixture.run([
       "--yes", "response", "submit", "--vid", "42", "--inputcosttime", "30",

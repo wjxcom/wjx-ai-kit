@@ -20,5 +20,8 @@ export {
   extractJsonlMetadata,
   normalizeJsonl,
   MAX_JSONL_SIZE,
+  extractJsonlQuestionTypeExpectations,
+  compareJsonlQuestionTypes,
+  filterJsonlVerificationQuestions,
 } from "wjx-api-sdk";
 export type { SurveyDetail } from "wjx-api-sdk";
