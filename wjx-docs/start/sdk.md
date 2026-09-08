@@ -4,7 +4,7 @@
 
 ## 安装
 
-当前稳定版本为 `0.4.3`，已发布到 npm，registry 的 `latest` 指向 `0.4.3`。直接安装：
+当前源码版本为 `0.4.4`。发布到 npm 后，registry 的 `latest` 将指向 `0.4.4`。直接安装：
 
 ```bash
 npm install wjx-api-sdk

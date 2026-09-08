@@ -8,6 +8,10 @@ export { getJsonlQuestionTypeCode, extractJsonlQuestionTypeExpectations, compare
 export type { JsonSurveyMetadata, JsonSurveyQuestion, JsonParsedSurvey, } from "./modules/survey/json-to-survey.js";
 export type { JsonlQuestionTypeExpectation, JsonlQuestionTypeCheck, } from "./modules/survey/qtype-mapping.js";
 export type { CreateSurveyByJsonInput, GetSurveyInput, ListSurveysInput, UpdateSurveyStatusInput, GetSurveySettingsInput, UpdateSurveySettingsInput, DeleteSurveyInput, GetQuestionTagsInput, GetTagDetailsInput, ClearRecycleBinInput, UploadFileInput, SurveyQuestionItem, SurveyQuestion, SurveyDetail, } from "./modules/survey/types.js";
+export { createAiPage, updateAiPage } from "./modules/ai-page/client.js";
+export { AI_PAGE_MAX_HTML_LENGTH, AI_PAGE_MAX_TITLE_LENGTH, AI_PAGE_PAGE_TYPES, } from "./modules/ai-page/constants.js";
+export type { AiPageType } from "./modules/ai-page/constants.js";
+export type { AiPageResult, CreateAiPageInput, UpdateAiPageInput } from "./modules/ai-page/types.js";
 export { queryResponses, queryResponsesRealtime, downloadResponses, getReport, submitResponse, getFileLinks, getWinners, modifyResponse, get360Report, clearResponses, } from "./modules/response/client.js";
 export { normalizeSubmitdata } from "./modules/response/submitdata.js";
 export { buildSubmitTemplate } from "./modules/response/submit-template.js";

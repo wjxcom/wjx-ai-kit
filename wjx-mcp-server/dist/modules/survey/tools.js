@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { createSurveyByJson, CREATABLE_SURVEY_ATYPES, getSurvey, listSurveys, updateSurveyStatus, getSurveySettings, updateSurveySettings, deleteSurvey, getQuestionTags, getTagDetails, clearRecycleBin, uploadFile, surveyToText, MAX_JSONL_SIZE, extractJsonlQuestionTypeExpectations, compareJsonlQuestionTypes, filterJsonlVerificationQuestions, } from "./client.js";
+import { createSurveyByJson, createAiPage, updateAiPage, AI_PAGE_MAX_HTML_LENGTH, AI_PAGE_MAX_TITLE_LENGTH, AI_PAGE_PAGE_TYPES, CREATABLE_SURVEY_ATYPES, getSurvey, listSurveys, updateSurveyStatus, getSurveySettings, updateSurveySettings, deleteSurvey, getQuestionTags, getTagDetails, clearRecycleBin, uploadFile, surveyToText, MAX_JSONL_SIZE, extractJsonlQuestionTypeExpectations, compareJsonlQuestionTypes, filterJsonlVerificationQuestions, } from "./client.js";
 import { buildPreviewUrl, getWjxBaseUrl, getWjxCredentials } from "wjx-api-sdk";
 import { assertApiResponse, toolApiResult, toolResult, toolError } from "../../helpers.js";
 import { QUESTION_TYPES } from "../../resources/survey-reference.js";
@@ -377,10 +377,48 @@ async function verifyDeletedSurvey(vid, completely, phase) {
     return last;
 }
 export function registerSurveyTools(server) {
+    server.registerTool("create_ai_page", {
+        title: "创建 AI 主页",
+        description: "调用 OpenAPI A1000107 创建一个独立的纯展示 AI 主页。只调用本工具，不要额外创建或关联表单、问卷。html_content（或兼容字段 html）必填。page_type=2 时必须生成逐页 PPT：每张幻灯片占一个固定画布并逐页切换，禁止把全部内容做成单个纵向长页面。",
+        inputSchema: {
+            html_content: z.string().max(AI_PAGE_MAX_HTML_LENGTH).refine((value) => value.trim().length > 0, "HTML 内容不能为空").optional().describe(`AI 主页 HTML 内容，最长 ${AI_PAGE_MAX_HTML_LENGTH} 字符`),
+            html: z.string().max(AI_PAGE_MAX_HTML_LENGTH).refine((value) => value.trim().length > 0, "HTML 内容不能为空").optional().describe("html_content 的兼容字段"),
+            title: z.string().max(AI_PAGE_MAX_TITLE_LENGTH).optional().describe("AI 主页标题，不能包含问卷星"),
+            page_type: z.number().int().refine((value) => AI_PAGE_PAGE_TYPES.includes(value)).optional().describe("页面类型：0=网页, 1=海报, 2=PPT"),
+            publish: z.boolean().optional().describe("是否创建后立即发布"),
+            creater: z.string().optional().describe("创建者子账号用户名"),
+        },
+        annotations: { destructiveHint: false, idempotentHint: false, openWorldHint: true, title: "创建 AI 主页" },
+    }, async (args) => {
+        try {
+            return toolApiResult(await createAiPage(args));
+        }
+        catch (error) {
+            return toolError(error);
+        }
+    });
+    server.registerTool("update_ai_page", {
+        title: "更新 AI 主页",
+        description: "调用 OpenAPI A1000108 原位更新 AI 主页。先用 get_survey 读取目标的 html_content 和 page_type，再基于完整原 HTML 做修改；草稿也能读取，不要访问公开页或重做整页。vid 必须是传统数字编号，html_content（或兼容字段 html）必填。页面类型不可修改；若用户要求在网页、海报、PPT之间转换，直接说明不支持，不得创建替代主页，也不得删除原主页。",
+        inputSchema: {
+            vid: z.union([z.number().int().positive(), z.string().regex(/^(?:0*[1-9]\d*)$/)]).describe("传统数字 AI 主页 vid，不接受 sid"),
+            html_content: z.string().max(AI_PAGE_MAX_HTML_LENGTH).refine((value) => value.trim().length > 0, "HTML 内容不能为空").optional().describe(`AI 主页 HTML 内容，最长 ${AI_PAGE_MAX_HTML_LENGTH} 字符`),
+            html: z.string().max(AI_PAGE_MAX_HTML_LENGTH).refine((value) => value.trim().length > 0, "HTML 内容不能为空").optional().describe("html_content 的兼容字段"),
+            title: z.string().max(AI_PAGE_MAX_TITLE_LENGTH).optional().describe("AI 主页标题，不能包含问卷星"),
+        },
+        annotations: { destructiveHint: true, idempotentHint: false, openWorldHint: true, title: "更新 AI 主页" },
+    }, async (args) => {
+        try {
+            return toolApiResult(await updateAiPage(args));
+        }
+        catch (error) {
+            return toolError(error);
+        }
+    });
     // ─── get_survey ───────────────────────────────────────────────────
     server.registerTool("get_survey", {
         title: "获取问卷内容",
-        description: "根据问卷编号获取问卷详情，包括题目和选项信息。支持 format 参数选择返回格式：json（结构化）、dsl（人类可读文本）、both（两者都返回）。",
+        description: "根据问卷编号获取问卷详情，包括题目和选项信息。AI 主页（atype=12）会直接返回 html_content 和固定的 page_type，草稿无需访问公开页也可读取。支持 format 参数选择返回格式：json（结构化）、dsl（人类可读文本）、both（两者都返回）。",
         inputSchema: {
             vid: z.number().int().positive().describe("问卷编号"),
             format: z

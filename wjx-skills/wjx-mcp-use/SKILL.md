@@ -1,6 +1,6 @@
 ---
 name: wjx-mcp-use
-description: "Guide for using wjx-mcp-server MCP tools to interact with the Wenjuanxing (问卷星) platform. Use when the user mentions: 问卷, 调查, 收集, 表单, 投票, 考试, 测评, 满意度, NPS, 问卷星, wjx, survey, questionnaire — or wants to create surveys, query responses, analyze data, manage contacts, or generate SSO links via MCP protocol. Tool, resource, and prompt counts are discovered from source at build time."
+description: "Guide for using wjx-mcp-server tools to create or update AI homepages, posters, PPTs, and surveys, query responses, and analyze data. Use when the user mentions: AI主页, AI海报, AI PPT, 问卷, 调查, 收集, 表单, 投票, 考试, 测评, 满意度, NPS, 问卷星, wjx, survey, or questionnaire. Tool, resource, and prompt counts are discovered from source at build time."
 ---
 
 # wjx-mcp-server Usage Guide
@@ -46,6 +46,16 @@ MCP 任务遵循“发现意图 -> 预检 -> 计划 -> 确认 -> 执行 -> 读�
 
 当前 MCP Server 只注册 `create_survey_by_json` 作为问卷创建工具。`create_survey_by_text` 与 `create_survey` 已移除；历史 DSL/JSON 必须在 MCP 外部转换为 JSONL。所有当前可创建题型、投票、考试、表单都走 `create_survey_by_json`；JSONL 不承诺覆盖读取接口的全部数字 `q_type/q_subtype` 编码。
 
+### AI 主页
+
+AI 主页是独立的纯展示内容，与表单/问卷创建互斥：
+
+- 用户只要求创建 AI 主页、AI 海报或 AI PPT 时，只调用一次 `create_ai_page`；不得调用 `create_survey_by_json`，不得额外创建、复制或关联任何表单/问卷。
+- `page_type=2` 时，HTML 必须是逐页幻灯片：每页使用独立、固定比例的画布并提供逐页切换，首屏只展示一页，禁止单个纵向长页面。
+- 修改前先用 `get_survey` 读取草稿或已发布主页的 `html_content` 与 `page_type`，基于完整原 HTML 局部修改后再调用 `update_ai_page`；不得抓取公开页，也不得无原稿重做整页。
+- 页面类型不可修改。网页、海报、PPT之间的转换请求应直接说明不支持，不得新建替代主页或删除原主页。
+- 创建必须提供 `html_content` 或 `html`；更新必须提供传统数字 `vid`，不接受 `sid`；HTML 最长 200000 字符。详细参数见 [references/tools-survey.md](references/tools-survey.md)。
+
 ### 规则 1：一个需求 = 一个问卷
 
 无论用户要求多少种题型，**必须在一次 `create_survey_by_json` 调用中包含所有题目**。一个问卷可包含任意数量、任意类型的题目。
@@ -75,7 +85,7 @@ MCP 任务遵循“发现意图 -> 预检 -> 计划 -> 确认 -> 执行 -> 读�
 - **已返回 API Key 相关错误**：如果工具返回 `API Key is required`、`Invalid API Key`、`appkey error` 或类似鉴权错误，必须立刻向用户说明需要处理 API Key，并给出获取/更新 `WJX_API_KEY` 的下一步；不要只复述错误信息，也不要继续调用其他业务工具反复尝试
 - **base_url 与用户域名不符**：引导添加 `WJX_BASE_URL` 环境变量（如 `https://xxx.sojump.cn`）
 - **获取 API Key**：让用户访问 `https://<域名>/weixinlogin.aspx?redirecturl=%2Fnewwjx%2Fmanage%2Fuserinfo.aspx%3FshowApiKey%3D1`，微信扫码登录后复制 Key
-- **cli_version 未安装**：可选；CLI `0.4.3` 已发布到 npm，先执行 `npm install -g wjx-cli@latest`，成功后再执行 `wjx skill install --force`，然后用 `wjx init --api-key <key>` 统一配置
+- **cli_version 未安装**：可选；CLI 当前源码版本为 `0.4.4`，发布后先执行 `npm install -g wjx-cli@latest`，成功后再执行 `wjx skill install --force`，然后用 `wjx init --api-key <key>` 统一配置
 
 收到 API Key 相关错误后的用户提醒应使用自然语言，不暴露 MCP 工具调用细节，例如：
 
@@ -87,14 +97,13 @@ https://www.wjx.cn/weixinlogin.aspx?redirecturl=%2Fnewwjx%2Fmanage%2Fuserinfo.as
 ### 规则 6：提交答卷的几个易错点
 
 - **jpmversion 默认自动管理**：`submit_response` 每次提交前会尽量 `get_survey` 获取题目结构，规范化矩阵/排序等答卷格式；未显式传入时还必须成功取得最新 `version` 并注入。显式传入 `jpmversion` 时，元数据获取失败不会阻塞提交，但元数据可用仍会执行规范化。问卷被发布/编辑后服务端 `version` 自增，不带最新版本号会被拒绝并报"问卷已被修改请刷新"。
-- **submitdata 题号用 `get_survey` 返回的原始 `q_index`**：服务端严格按读回值校验；不同问卷的真实题号可能从 `1`、`2` 或其他服务端分配值开始，不能假设元数据一定占 `q_index=1`。AI 自己按"第 N 题"顺序数（`1$..., 2$...`）极易错位，被拒"5〒答案不符合要求"。**正确流程**：先 `get_survey({ vid, get_questions: true })` 拿 `questions[].q_index`，再按每题 q_index 拼 submitdata。选项序号仍是 1-based（从 1 数到 N）。
+- **submitdata 题号用 `get_survey` 返回的原始 `q_index`**：服务端严格按此校验——"问卷基础信息"元数据占 `q_index=1`，真实题目从 2 开始。AI 自己按"第 N 题"顺序数（`1$..., 2$...`）极易与服务端 q_index 错位，被拒"5〒答案不符合要求"。**正确流程**：先 `get_survey({ vid, get_questions: true })` 拿 `questions[].q_index`，再按每题 q_index 拼 submitdata。选项序号仍是 1-based（从 1 数到 N）。
 - **矩阵题用行号!列号，行用 `,` 分隔**（每题 3 条可复制示例）：
   - 矩阵单选（q_subtype=702）3 行：`3$1!1,2!3,3!2` — 第 3 题第 1 行选第 1 列、第 2 行选第 3 列、第 3 行选第 2 列
   - 矩阵多选（q_subtype=703）3 行：`4$1!1|2,2!3,3!1|4` — 同一行多个列用 `|` 拼
   - 矩阵量表（q_subtype=701）3 行：`5$1!5,2!4,3!3` — 行号!分值
   - 矩阵题的"行数"来自 `get_survey` 返回的 `item_rows.length`；`items` 数组是**列头**（列选项），不是行。
 - **考试题分值/答案字段**：JSONL 创建路径支持 `correctselect`、`quizscore` 和 `answeranalysis`；旧 DSL 兼容路径不支持。`submit_response` 仅用于答题端提交，不能修改考试配置。
-- **修改答卷**：这是高风险写入。先确认 `vid`、`jid` 和内部题号，再执行一次修改；系统会自动在写前确认目标、写后读回答案。只有 `outcome: "verified"` 才算成功；目标不存在或读回不一致时返回 `outcome: "unknown"`，停止重试并报告证据。
 
 ### 规则 7：填写链接优先使用短编号
 
@@ -115,7 +124,6 @@ https://www.wjx.cn/weixinlogin.aspx?redirecturl=%2Fnewwjx%2Fmanage%2Fuserinfo.as
 | 看问卷结果 | `get_report({ vid })` 统计概览，`query_responses({ vid })` 明细 |
 | 导出答卷数据 | `download_responses({ vid })` |
 | 查看填写链接 | 列表中的 `sid` / `mobile_path`；创建后优先用 `build_preview_url({ sid })`，无 sid 时才用 `build_preview_url({ vid })` 并说明暴露风险 |
-| 获取短信短链接 | `get_short_link({ url })`，将问卷填写长链接转换为短链接 |
 | 查看编辑链接 | `build_survey_url({ mode: "edit", activity: vid })` |
 | 分析 NPS | `calculate_nps({ scores: [...] })` |
 | 查当前配置 | `get_config({})` |
@@ -124,11 +132,11 @@ https://www.wjx.cn/weixinlogin.aspx?redirecturl=%2Fnewwjx%2Fmanage%2Fuserinfo.as
 
 | 模块 | 工具数 | 说明 |
 |------|--------|------|
-| 问卷管理 | 11 | create_survey_by_json, get_survey, list_surveys, update_survey_status, get/update_survey_settings, delete_survey, get_question_tags, get_tag_details, upload_file, clear_recycle_bin |
+| 问卷管理 | 13 | create_survey_by_json, get_survey, list_surveys, update_survey_status, get/update_survey_settings, delete_survey, get_question_tags, get_tag_details, upload_file, clear_recycle_bin, create_ai_page, update_ai_page |
 | 答卷数据 | 11 | query_responses, count_responses, query_responses_realtime, download_responses, get_report, submit_response, build_submit_template, get_winners, modify_response, get_360_report, clear_responses |
 | 通讯录 | 14 | query/add/delete_contacts, add/delete/restore_admin, list/add/modify/delete_departments, list/add/modify/delete_tags |
 | 子账号 | 5 | add/modify/delete/restore/query_sub_accounts |
-| SSO | 6 | sso_subaccount_url, sso_user_system_url, sso_partner_url, build_survey_url, build_preview_url, get_short_link |
+| SSO | 5 | sso_subaccount_url, sso_user_system_url, sso_partner_url, build_survey_url, build_preview_url |
 | 分析计算 | 6 | decode_responses, decode_push_payload, calculate_nps, calculate_csat, detect_anomalies, compare_metrics |
 | 用户体系（兼容/已过时） | 6 | add/modify/delete_participants, bind_activity, query_survey_binding, query_user_surveys；仅维护已有系统 |
 | 诊断 | 1 | get_config — API Key（脱敏）、Base URL、CLI 版本、配置来源 |
@@ -141,8 +149,6 @@ https://www.wjx.cn/weixinlogin.aspx?redirecturl=%2Fnewwjx%2Fmanage%2Fuserinfo.as
 
 **唯一推荐**：所有问卷创建一律使用 `create_survey_by_json`。JSONL 使用中文 `qtype` 名称；`get_survey` 等读取接口返回的数字 `q_type/q_subtype` 是另一套结果编码。`wjx://reference/question-types` 仅提供读取结果的编码映射；创建白名单以 SDK 的 `JSONL_SUPPORTED_QTYPES` 与服务端校验为准。
 
-`矩阵数值题`、`VlookUp问卷关联`、`多项文件题`、`多项简答题`、`当前语音` 当前只能读取既有问卷或在 Web 编辑器配置；JSONL 创建接口会明确拒绝它们。遇到时转 Web 编辑器，不要重试或伪造为其他题型；需要多文件或多段文字采集时，改用多个普通文件上传/简答题并重新生成完整 JSONL。
-
 ```
 1. 使用 prompt 模板生成题目 JSON（如 generate-survey-json、generate-exam-json 等）
 2. create_survey_by_json({ jsonl: "{\"qtype\":\"问卷基础信息\",...}\\n{\"qtype\":\"单选\",...}", atype: 1 })
@@ -152,7 +158,7 @@ https://www.wjx.cn/weixinlogin.aspx?redirecturl=%2Fnewwjx%2Fmanage%2Fuserinfo.as
 
 `create_survey_by_json` 是唯一创建工具。其 `jsonl` 参数必须是每行一个 JSON 对象的字符串，不是 JSON 数组；当前 Server 不接受旧 DSL 或 JSON 数组创建参数。
 
-普通题型未传 `publish` 时默认立即发布；若 JSONL 包含纯框架题型 `折叠栏目`、`轮播图`、`AI追问`、`AI处理`、`AI访谈`、`图片OCR` 或 `分页计时器`，则默认创建为草稿。`VlookUp问卷关联` 虽属于框架能力，但当前创建接口直接拒绝，必须转 Web 编辑器。对可创建的框架题型先调用 `get_survey` 并提供编辑入口，待用户明确授权后再传 `publish: true`。
+普通题型未传 `publish` 时默认立即发布；若 JSONL 包含纯框架题型 `折叠栏目`、`轮播图`、`AI追问`、`AI处理`、`AI访谈`、`图片OCR`、`VlookUp问卷关联` 或 `分页计时器`，则默认创建为草稿。先调用 `get_survey` 并提供编辑入口，待用户明确授权后再传 `publish: true`。
 
 **考试问卷（atype=6）注意**：JSONL 路径支持 `correctselect`、`quizscore` 和 `answeranalysis`；DSL 兼容路径不支持这些字段。创建后仍可提供编辑链接补充未覆盖的高级设置。
 
@@ -210,14 +216,9 @@ submitdata 题号必须与 `get_survey` 返回的原始 `q_index` 对齐——**
 | 资源 URI | 内容 |
 |----------|------|
 | `wjx://reference/dsl-syntax` | DSL 文本语法（仅读取、审阅和离线迁移） |
-| `wjx://reference/jsonl-qtypes` | 生成的 JSONL qtype 白名单、atype 分层与 NPS/CSAT 约束（区别于读取编码） |
 | `wjx://reference/question-types` | `get_survey` 读取结果的 q_type/q_subtype 映射（不是 JSONL 创建白名单） |
 | `wjx://reference/survey-types` | 问卷类型编码及创建限制（1/2/3/4/5/6/7/9/10/11 可创建，8 用户体系不能新建） |
 | `wjx://reference/survey-statuses` | 问卷状态码 |
-| `wjx://reference/text-validation-types` | 文本题校验类型编码 |
-| `wjx://reference/matrix-display-types` | 矩阵题展现形式编码 |
-| `wjx://reference/table-display-types` | 表格题展现形式编码 |
-| `wjx://reference/survey-setting-types` | 问卷设置内容类型编码（`additional_setting`） |
 | `wjx://reference/response-format` | submitdata 编码格式 |
 | `wjx://reference/analysis-methods` | NPS/CSAT/CES 公式和行业基准 |
 | `wjx://reference/user-roles` | 子账号角色编码 |
@@ -236,18 +237,12 @@ submitdata 题号必须与 `get_survey` 返回的原始 `q_index` 对齐——**
 | 参数 | 值 |
 |------|-----|
 | 问卷类型 (atype) | 1=调查, 2=测评, 3=投票, 4=360度评估, 5=360评估无测评关系, 6=考试, 7=表单, 9=教学评估, 10=量表, 11=民主评议；8 用户体系不能新建 |
-| 问卷状态 (status) | 0=未发布, 1=已发布, 2=已暂停, 3=已删除（回收站，可恢复）, 4=彻底删除（不可恢复）, 5=被审核 |
-| 审核状态 (verify_status) | 1=已通过, 2=审核中, 3=未通过, 4=待实名 |
-| 状态变更 (state) | 1=发布, 2=暂停, 3=删除 |
-| 文本校验类型 | 0=不验证, 1=数字, 2=小数, 3=日期, 4=手机，完整映射见 `wjx://reference/text-validation-types` |
-| 矩阵/表格展现形式 | 完整映射见 `wjx://reference/matrix-display-types`、`wjx://reference/table-display-types` |
-| 问卷设置类型 | 1000=时间, 1001=提交后处理, 1002=成绩单, 1003=维度, 1004=自定义参数, 1005=奖品, 1006=推送, 1007=文件夹 |
+| 问卷状态 (state) | 1=发布, 2=暂停, 3=删除 |
 | 下载格式 (suffix) | 0=CSV, 1=SAV, 2=Word |
 | 角色 (roleid) | 1=系统管理员, 2=问卷管理员, 3=统计查看, 4=全部查看 |
 
 ## Reference 文件（按需查阅）
 
-- [宿主中立握手与路由](references/host-routing.md) — WorkBuddy、Cowork、Codex Work、Qianwen Work 的能力探测和协议选择
 - [DSL 语法与题型](references/dsl-and-types.md) — DSL 格式、25+ 题型标签、q_type/q_subtype 映射表
 - [问卷工具详解](references/tools-survey.md) — 11 个问卷管理工具的完整参数
 - [答卷工具详解](references/tools-response.md) — 11 个答卷数据工具的完整参数

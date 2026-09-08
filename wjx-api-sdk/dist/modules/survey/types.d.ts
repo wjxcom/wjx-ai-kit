@@ -140,6 +140,10 @@ export interface SurveyDetail {
     verify_status: number;
     creater: string;
     total_score: number;
+    /** Complete source HTML for AI homepages (atype=12), including drafts. */
+    html_content?: string;
+    /** Fixed AI homepage type: 0=web, 1=poster, 2=PPT. Present when atype=12. */
+    page_type?: number;
     /**
      * Flat array of questions. Page breaks are represented as q_type=1 entries.
      * Present when get_questions=true.
