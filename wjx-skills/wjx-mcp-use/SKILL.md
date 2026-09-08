@@ -11,6 +11,27 @@ wjx-mcp-server 提供 MCP 工具、参考资源和 prompt 模板，覆盖问卷�
 
 本地优先使用 stdio，并通过 `WJX_API_KEY` 提供上游凭据。HTTP 模式中，`MCP_AUTH_TOKEN` 只保护 `/mcp` 的 `Authorization: Bearer` 访问 gate；单租户上游仍使用 `WJX_API_KEY`。启用 `MCP_TENANT_MODE=1` 时，每个请求必须提供 `X-WJX-API-Key`，服务端按 session 隔离且不回退进程级 key。只有显式设置 `MCP_LEGACY_BEARER_API_KEY=1` 才允许 Bearer 兼作上游 API Key；`/health` 不要求 Bearer。不要在消息、日志或 URL 中输出完整凭据。
 
+### HTTP 服务配置
+
+如果使用已部署的 MCP HTTP 服务，无需在本机安装 `wjx-mcp-server` 或配置本地
+`WJX_API_KEY`。在支持 MCP HTTP 的客户端配置中添加：
+
+```json
+{
+  "mcpServers": {
+    "wjx": {
+      "type": "http",
+      "url": "https://alifc.wjx.cn/mcp/latest",
+      "headers": {
+        "Authorization": "Bearer sk-wjx-xxx"
+      }
+    }
+  }
+}
+```
+
+将 `sk-wjx-xxx` 替换为服务端分配的 HTTP 访问令牌。保存配置后完全重启客户端；启用多租户模式时，还需按服务端要求提供 `X-WJX-API-Key`。
+
 ## Agent 前门
 
 MCP 任务遵循“发现意图 -> 预检 -> 计划 -> 确认 -> 执行 -> 读回验证 -> 报告”。Prompt 只提供指导，不执行工具也不保证验证；Agent 必须根据工具返回的 `isError` 和 `result` 字段判断成功。WorkBuddy、Cowork、Codex Work、Qianwen Work 都先按 [宿主中立握手与路由](references/host-routing.md) 检查真实能力，不根据宿主名称猜测配置或 API。创建、发布、提交、设置替换、清理和凭据相关操作先说明副作用，高风险和队列消费操作需要确认；网络超时后的结果按 `unknown` 处理并优先读回。风险、重试、验证和 JSONL 题型以生成的 `agent-contract`/`jsonl-qtypes` 资料及对应只读资源为准。
