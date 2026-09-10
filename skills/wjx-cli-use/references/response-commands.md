@@ -196,6 +196,8 @@ wjx response submit --vid 12345 --submitdata '1$1}2$hello' --inputcosttime 30
 | `--jpmversion <n>` | 否 | 问卷版本号；不传时自动从 getSurvey 取 |
 | `--no-auto-version` | 否 | 关闭自动获取 jpmversion |
 
+CLI 会在 OpenAPI 1001001 请求中自动携带 `submit_channel=wjx-cli`，用于标记答卷提交来源。
+
 **$ sanity check**：CLI 会在提交前检查 submitdata 里至少含一个 `$`。如果一个都没有，立即报 INPUT_ERROR——这几乎必然意味着 shell 把 `$1/$2` 当变量吞掉了，请改用 `--submitdata-file` 或单引号包裹。
 
 ## wjx response submit-template

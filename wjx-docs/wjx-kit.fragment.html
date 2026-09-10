@@ -73,9 +73,10 @@ wjx survey create --file survey.jsonl --publish</code></pre>
 <section id="doc-start--mcp" style="margin-bottom:48px;padding-top:20px;"><h1 style="font-size:24px;color:#222;margin:14px 0 10px;padding-bottom:8px;border-bottom:2px solid #f0f0f0;">MCP 快速开始</h1>
 <p style="margin:0 0 8px;line-height:1.7;">MCP 适用于原生支持 Model Context Protocol 的客户端。若客户端只能执行 shell，请使用 <a href="#doc-start--cli" style="color:#1677ff;text-decoration:none;">CLI 快速开始</a>。</p>
 <h2 style="font-size:20px;color:#222;margin:18px 0 8px;padding-bottom:4px;border-bottom:1px solid #f0f0f0;">前置条件</h2>
-<ul style="margin:0 0 8px;padding-left:24px;"><li style="margin:2px 0;">Node.js 20 或更高版本</li>
-<li style="margin:2px 0;">问卷星 OpenAPI API Key</li>
-<li style="margin:2px 0;">Claude Desktop、Claude Code、Cursor 等 MCP 客户端</li></ul>
+<ul style="margin:0 0 8px;padding-left:24px;"><li style="margin:2px 0;">Node.js 20 或更高版本（仅本地 stdio 模式）</li>
+<li style="margin:2px 0;">问卷星 OpenAPI API Key（仅本地 stdio 模式）</li>
+<li style="margin:2px 0;">Claude Desktop、Claude Code、Cursor 等 MCP 客户端</li>
+<li style="margin:2px 0;">已部署 HTTP 服务分配的访问令牌（HTTP 模式）</li></ul>
 <p style="margin:0 0 8px;line-height:1.7;">当前稳定版本为 <code style="font:13px Consolas,monospace;background:#f6f8fa;padding:2px 5px;border-radius:3px;">0.4.3</code>，已发布到 npm，registry 的 <code style="font:13px Consolas,monospace;background:#f6f8fa;padding:2px 5px;border-radius:3px;">latest</code> 指向
 <code style="font:13px Consolas,monospace;background:#f6f8fa;padding:2px 5px;border-radius:3px;">wjx-mcp-server@0.4.3</code>。直接安装：</p>
 <pre style="background:#f6f8fa;border:1px solid #e8e8e8;border-radius:6px;padding:12px;overflow-x:auto;font:13px/1.5 Consolas,monospace;white-space:pre;"><code>npm install -g wjx-mcp-server</code></pre>
@@ -83,6 +84,21 @@ wjx survey create --file survey.jsonl --publish</code></pre>
 <p style="margin:0 0 8px;line-height:1.7;">本地 stdio 启动命令：</p>
 <pre style="background:#f6f8fa;border:1px solid #e8e8e8;border-radius:6px;padding:12px;overflow-x:auto;font:13px/1.5 Consolas,monospace;white-space:pre;"><code>WJX_API_KEY=&quot;你的 API Key&quot; npx wjx-mcp-server</code></pre>
 <p style="margin:0 0 8px;line-height:1.7;">客户端配置中的 <code style="font:13px Consolas,monospace;background:#f6f8fa;padding:2px 5px;border-radius:3px;">command</code> 应指向 <code style="font:13px Consolas,monospace;background:#f6f8fa;padding:2px 5px;border-radius:3px;">wjx-mcp-server</code> 启动入口；不同客户端的示例见 <a href="#doc-tasks--configure-client" style="color:#1677ff;text-decoration:none;">配置 AI 客户端</a>。配置后完全重启客户端，并让 AI 调用 <code style="font:13px Consolas,monospace;background:#f6f8fa;padding:2px 5px;border-radius:3px;">list_surveys</code> 验证。需要源码开发时，可按仓库 README 构建。</p>
+<h2 style="font-size:20px;color:#222;margin:18px 0 8px;padding-bottom:4px;border-bottom:1px solid #f0f0f0;">HTTP 服务配置</h2>
+<p style="margin:0 0 8px;line-height:1.7;">如果使用已部署的 MCP HTTP 服务，无需在本机安装 <code style="font:13px Consolas,monospace;background:#f6f8fa;padding:2px 5px;border-radius:3px;">wjx-mcp-server</code> 或配置本地
+<code style="font:13px Consolas,monospace;background:#f6f8fa;padding:2px 5px;border-radius:3px;">WJX_API_KEY</code>。在 MCP 客户端配置中添加：</p>
+<pre style="background:#f6f8fa;border:1px solid #e8e8e8;border-radius:6px;padding:12px;overflow-x:auto;font:13px/1.5 Consolas,monospace;white-space:pre;"><code>{
+  &quot;mcpServers&quot;: {
+    &quot;wjx&quot;: {
+      &quot;type&quot;: &quot;http&quot;,
+      &quot;url&quot;: &quot;https://alifc.wjx.cn/mcp/latest&quot;,
+      &quot;headers&quot;: {
+        &quot;Authorization&quot;: &quot;Bearer sk-wjx-xxx&quot;
+      }
+    }
+  }
+}</code></pre>
+<p style="margin:0 0 8px;line-height:1.7;">将 <code style="font:13px Consolas,monospace;background:#f6f8fa;padding:2px 5px;border-radius:3px;">sk-wjx-xxx</code> 替换为服务端分配的 HTTP 访问令牌。保存后完全重启客户端。</p>
 <h2 style="font-size:20px;color:#222;margin:18px 0 8px;padding-bottom:4px;border-bottom:1px solid #f0f0f0;">能力发现</h2>
 <p style="margin:0 0 8px;line-height:1.7;">当前版本提供 60 个 Tool、13 个 Resource、15 个 Prompt。MCP 是 CLI 的核心业务子集入口；初始化、补全、Skill 安装等工作站能力保持 CLI-only。完整名称和差异见 <a href="#doc-reference--mcp-tools" style="color:#1677ff;text-decoration:none;">MCP 工具参考</a> 与仓库 capability matrix。</p>
 <h2 style="font-size:20px;color:#222;margin:18px 0 8px;padding-bottom:4px;border-bottom:1px solid #f0f0f0;">凭据安全</h2>

@@ -396,6 +396,7 @@ export function registerResponseCommands(program) {
                         vid: input.vid,
                         inputcosttime: input.inputcosttime,
                         submitdata: input.submitdata,
+                        submit_channel: "wjx-cli",
                         udsid: input.udsid,
                         sojumpparm: input.sojumpparm,
                         submittime: input.submittime,
@@ -447,6 +448,7 @@ export function registerResponseCommands(program) {
             execute: (input, credentials, requestOptions) => {
                 const finalInput = { ...input };
                 delete finalInput.autoVersion;
+                finalInput.submit_channel = "wjx-cli";
                 return submitResponse(finalInput, credentials, undefined, requestOptions);
             },
         });

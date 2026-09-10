@@ -7,6 +7,7 @@
 ## [0.4.3] - 2026-09-07
 
 - 增加 `get_short_link` 工具，支持将问卷填写长链接转换为短信短链接。
+- `submit_response` 默认携带 `submit_channel=wjx-mcp`，用于标记答卷提交来源。
 - 发布 Agent contract、状态/题型/设置枚举资源和高风险队列消费确认规则。
 - 完善 MCP 写操作的前置身份检查、读回验证和 `unknown` 结果报告。
 

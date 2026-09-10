@@ -255,6 +255,7 @@ test("MCP golden response workflow reports pagination, queue consumption, pollin
       assert.equal(submitted.data.jid, 99);
       const submitCall = calls.find((call) => call.action === "1001001");
       assert.equal(submitCall.body.jpmversion, 9, "submit should use read-back survey version");
+      assert.equal(submitCall.body.submit_channel, "wjx-mcp");
 
       const clear = parseTool(await client.callTool({
         name: "clear_responses",

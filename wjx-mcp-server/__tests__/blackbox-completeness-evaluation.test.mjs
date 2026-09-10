@@ -378,6 +378,7 @@ test("submit_response normalizes data when metadata is available even with expli
     assert.equal(requests[1].action, Action.SUBMIT_RESPONSE);
     assert.equal(requests[1].jpmversion, 23);
     assert.equal(requests[1].submitdata, "1$1!2");
+    assert.equal(requests[1].submit_channel, "wjx-mcp");
     assert.equal(requests[2].action, Action.QUERY_RESPONSES);
   } finally {
     await client.close();

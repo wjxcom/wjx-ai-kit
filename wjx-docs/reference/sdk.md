@@ -53,6 +53,8 @@ await createSurveyByJson(input, credentials, fetch, {
 
 `buildSubmitTemplate` 是纯本地辅助函数：输入 `getSurvey` 返回的题目结构，输出按服务端原始 `q_index` 组织的 `submitdata` 占位模板和逐题提示，不发起网络请求。分页栏和段落说明会被跳过；生成后应由 AI 或用户替换占位答案，再交给 `submitResponse`。
 
+`submitResponse` 支持可选的 `submit_channel` 字段，用于向 OpenAPI 1001001 标记提交来源；问卷星服务端只接受白名单值。CLI 和 MCP 会分别自动发送 `wjx-cli` 与 `wjx-mcp`。
+
 `decodePushPayload` 是纯本地推送解密与验签函数：输入问卷星推送的加密载荷和 `appKey`，可选 `signature`、`rawBody`，输出解密后的 JSON/文本及验签结果，不发起网络请求。
 
 `getShortLink` 用于把问卷填写长链接转换为短信短链接：

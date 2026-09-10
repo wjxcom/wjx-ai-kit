@@ -77,7 +77,7 @@ export async function submitResponse(input, credentials = getWjxCredentials(), f
         inputcosttime: input.inputcosttime,
         submitdata: input.submitdata,
     };
-    assignDefined(params, input, ["udsid", "sojumpparm", "submittime", "jpmversion"]);
+    assignDefined(params, input, ["submit_channel", "udsid", "sojumpparm", "submittime", "jpmversion"]);
     return callWjxApi(params, {
         ...requestOptions,
         credentials,

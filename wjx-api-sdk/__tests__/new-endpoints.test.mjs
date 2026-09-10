@@ -429,6 +429,18 @@ test("submitResponse", async (t) => {
     assert.equal(body.sojumpparm, "custom123");
   });
 
+  await t.test("should forward submit_channel when provided", async () => {
+    const mock = mockFetch({ result: true, data: {} });
+    await submitResponse(
+      { vid: 800, inputcosttime: 30, submitdata: "1$1", submit_channel: "wjx-cli" },
+      credentials,
+      mock.impl,
+    );
+
+    const body = parsedBody(mock);
+    assert.equal(body.submit_channel, "wjx-cli");
+  });
+
   await t.test("should forward jpmversion when provided (defends against 『问卷已被修改』）", async () => {
     const mock = mockFetch({ result: true, data: {} });
     await submitResponse(

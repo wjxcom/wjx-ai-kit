@@ -467,6 +467,7 @@ export function registerResponseTools(server: McpServer): void {
               vid: args.vid,
               inputcosttime: args.inputcosttime,
               submitdata,
+              submit_channel: "wjx-mcp",
               udsid: args.udsid,
               sojumpparm: args.sojumpparm,
               submittime: args.submittime,

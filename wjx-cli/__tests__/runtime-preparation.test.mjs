@@ -131,6 +131,7 @@ test("submit dry-run emits an unresolved version without fetching survey metadat
     assert.equal(readFileSync(resolve(PACKAGE_ROOT, "dist/lib/runtime/dry-run.js"), "utf8").includes("fetch("), false);
     assert.equal(result.stderr, "");
     assert.deepEqual(envelope.data.plans[0].unresolved, ["jpmversion"]);
+    assert.equal(JSON.parse(envelope.data.plans[0].body).submit_channel, "wjx-cli");
   } finally {
     await fixture.close();
   }

@@ -54,6 +54,8 @@ export interface SubmitResponseInput {
   vid: number;
   inputcosttime: number;
   submitdata: string;
+  /** 提交通道标记，由调用方按服务端白名单传入。 */
+  submit_channel?: string;
   udsid?: number;
   sojumpparm?: string;
   submittime?: string;
