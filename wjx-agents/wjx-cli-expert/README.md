@@ -24,7 +24,7 @@ Agent 不重复 Skill 中的命令参数内容，而是在需要时读取对应�
 
 ### 一键安装（推荐）
 
-当前稳定版本 `0.4.3` 已发布到 npm，直接安装 CLI：
+当前源码版本为 `0.4.4`。发布到 npm 后可直接安装 CLI：
 
 > 通过 AI 安装并启用 wjx-cli：先执行 `npm install -g wjx-cli@latest`，成功后再执行 `wjx skill install --force`；安装后命令名是 `wjx`，请用 `wjx --version` 验证，不要运行 `wjx-cli --version`。
 
@@ -35,10 +35,10 @@ wjx init
 wjx doctor
 ```
 
-需要 AI 自动完成安装时，可直接发送下面的完整任务提示；AI 应按可验证的状态机执行，在拿到 API Key 前暂停等待，并执行最后的列表验收：
+需要 AI 自动完成安装时，可直接发送下面的完整任务提示；AI 应按顺序执行，在拿到 API Key 前暂停等待，并执行最后的列表验收：
 
 ```text
-请帮我安装并配置问卷星 CLI（wjx-cli）。严格按下面状态机执行；每一步都要拿到可验证结果后再继续：
+请帮我安装并配置问卷星 CLI（wjx-cli）：
 
 0. 预检当前操作系统和 shell。检查 `node --version`、`npm --version`，并在命令可用时先检查 `wjx --version`。Windows 还要用 `Get-Command node,npm,wjx -ErrorAction SilentlyContinue`、`where.exe node`、`where.exe npm`、`where.exe wjx`，并检查 `C:\Program Files\nodejs\node.exe` 和 `%LOCALAPPDATA%\Programs\nodejs\node.exe`。同时记录 `npm prefix -g`，确认 npm 全局 bin 在当前 PATH。一个 shell 报“找不到命令”不能证明软件未安装。
 

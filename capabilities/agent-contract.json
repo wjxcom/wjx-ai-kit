@@ -16,7 +16,7 @@
     "wjx-mcp-server/src/modules/survey/tools.ts",
     "wjx-mcp-server/src/modules/user-system/tools.ts"
   ],
-  "sourceRevision": "2cdf6a78211f7ff0a411bc6e8a6119736a160ced2d125b279a44f37d43f7be33",
+  "sourceRevision": "356510d4f2583c3fcd033efc0fe6a855b7752b10634412257b1db34e137ab7f2",
   "mergeRules": {
     "scope": "Agent contract safety policy only; does not change CLI metadata or exit codes",
     "risk": "max(cli-metadata-risk, high-risk-write when any mapped MCP destructiveHint is true)",
@@ -159,6 +159,12 @@
       "title": "答卷计数",
       "destructiveHint": false,
       "idempotentHint": true,
+      "openWorldHint": true
+    },
+    "create_ai_page": {
+      "title": "创建 AI 主页",
+      "destructiveHint": false,
+      "idempotentHint": false,
       "openWorldHint": true
     },
     "create_survey_by_json": {
@@ -404,6 +410,12 @@
     "submit_response": {
       "title": "答卷提交",
       "destructiveHint": false,
+      "idempotentHint": false,
+      "openWorldHint": true
+    },
+    "update_ai_page": {
+      "title": "更新 AI 主页",
+      "destructiveHint": true,
       "idempotentHint": false,
       "openWorldHint": true
     },

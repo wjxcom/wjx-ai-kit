@@ -68,6 +68,8 @@ const REMOTE_CASES = [
   { id: "survey.list", path: ["survey", "list"], action: Action.LIST_SURVEYS, args: ["--page", "1", "--page_size", "10"], stdin: {} },
   { id: "survey.get", path: ["survey", "get"], action: Action.GET_SURVEY, required: ["--vid"], args: ["--vid", "42"], stdin: { vid: 42 } },
   { id: "survey.create", path: ["survey", "create"], action: Action.CREATE_SURVEY_BY_JSON, required: ["--jsonl"], args: ["--jsonl", JSONL], stdin: { jsonl: JSONL } },
+  { id: "survey.create-ai-page", path: ["survey", "create-ai-page"], action: Action.CREATE_AI_PAGE, required: ["--html_content"], args: ["--html_content", "<!doctype html><title>AI主页</title><main>内容</main>", "--title", "AI主页", "--page_type", "0"], stdin: { html_content: "<!doctype html><title>AI主页</title><main>内容</main>", title: "AI主页", page_type: 0 } },
+  { id: "survey.update-ai-page", path: ["survey", "update-ai-page"], action: Action.UPDATE_AI_PAGE, highRisk: true, required: ["--vid", "--html_content"], args: ["--vid", "42", "--html_content", "<!doctype html><title>AI主页</title><main>更新内容</main>"], stdin: { vid: 42, html_content: "<!doctype html><title>AI主页</title><main>更新内容</main>" } },
   { id: "survey.delete", path: ["survey", "delete"], action: Action.DELETE_SURVEY, highRisk: true, required: ["--vid", "--username"], args: ["--vid", "42", "--username", "owner"], stdin: { vid: 42, username: "owner" } },
   { id: "survey.status", path: ["survey", "status"], action: Action.UPDATE_STATUS, highRisk: true, required: ["--vid", "--state"], args: ["--vid", "42", "--state", "1"], stdin: { vid: 42, state: 1 } },
   { id: "survey.settings", path: ["survey", "settings"], action: Action.GET_SETTINGS, required: ["--vid"], args: ["--vid", "42"], stdin: { vid: 42 } },
@@ -126,7 +128,7 @@ const LEAF_COMMANDS = [
   "reference", "response.count", "response.query", "response.realtime", "response.download", "response.submit", "response.modify", "response.clear", "response.report", "response.winners", "response.submit-template", "response.360-report",
   "schema", "skill.install", "skill.update", "skill.install-ppt", "skill.update-ppt",
   "sso.subaccount-url", "sso.user-system-url", "sso.partner-url",
-  "survey.list", "survey.get", "survey.create", "survey.delete", "survey.status", "survey.settings", "survey.update-settings", "survey.tags", "survey.tag-details", "survey.clear-bin", "survey.upload", "survey.export-text", "survey.jsonl-template", "survey.url", "survey.preview-url", "survey.shortlink",
+  "survey.list", "survey.get", "survey.create", "survey.create-ai-page", "survey.update-ai-page", "survey.delete", "survey.status", "survey.settings", "survey.update-settings", "survey.tags", "survey.tag-details", "survey.clear-bin", "survey.upload", "survey.export-text", "survey.jsonl-template", "survey.url", "survey.preview-url", "survey.shortlink",
   "tag.list", "tag.add", "tag.modify", "tag.delete",
   "update", "user-system.add-participants", "user-system.modify-participants", "user-system.delete-participants", "user-system.bind", "user-system.query-binding", "user-system.query-surveys", "whoami",
 ].sort();
@@ -380,7 +382,9 @@ function optionExpectedValue(command, flag, value) {
 }
 
 function optionWireKeys(command, flag) {
-  if (flag === "--file" && command === "survey.create") return ["surveydatajson", "jsonl"];
+  if (flag === "--file" && ["survey.create", "survey.create-ai-page", "survey.update-ai-page"].includes(command)) {
+    return ["file", "surveydatajson", "jsonl", "html_content"];
+  }
   const aliases = {
     "--page": ["page", "page_index"],
     "--type": ["type", "atype"],
@@ -433,7 +437,8 @@ function assertOptionReflected(command, flag, value, envelope) {
   // there is no surviving `params`/`body` wrapper to target.
   const flattenedApiInput = command === "api" && (flag === "--params" || flag === "--body")
     && sources.some((source) => expectedValues.some((candidate) => hasDeepValue(source, candidate)));
-  const transformed = (flag === "--file" && command === "survey.create") || flag === "--jsonl";
+  const transformed = (flag === "--file" && ["survey.create", "survey.create-ai-page", "survey.update-ai-page"].includes(command))
+    || flag === "--jsonl";
   const hasTransformedField = transformed && sources.some((source) => {
     if (!source || typeof source !== "object") return false;
     return optionWireKeys(command, flag).some((key) => key in source && source[key] !== undefined && source[key] !== "");
@@ -460,7 +465,7 @@ describe("complete CLI command contract matrix", () => {
 
   test("leaf command inventory is exhaustive and every leaf is discoverable", async () => {
     assert.equal(new Set(LEAF_COMMANDS).size, LEAF_COMMANDS.length);
-    assert.equal(LEAF_COMMANDS.length, 76);
+    assert.equal(LEAF_COMMANDS.length, 78);
     for (const command of LEAF_COMMANDS) {
       const result = await runCli([...command.split("."), "--help"]);
       assert.equal(result.exitCode, 0, `${command}: ${result.stderr}`);
@@ -1587,7 +1592,7 @@ describe("complete CLI command contract matrix", () => {
         `option matrix did not execute every command-local option (covered ${covered.size}, expected ${expectedLocalOptions.size})`);
       // This is the current command-local occurrence denominator. Keep it
       // explicit so a help/parser drift cannot silently shrink the matrix.
-      assert.equal(expectedLocalOptions.size, 255,
+      assert.equal(expectedLocalOptions.size, 265,
         "update the command-local option denominator only when the public surface intentionally changes");
     } finally {
       await rm(tempDir, { recursive: true, force: true });

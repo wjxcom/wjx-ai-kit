@@ -98,6 +98,7 @@ test("MCP idempotent hints fail closed for every unsafe or unknown SDK operation
     "modify_response",
     "get_360_report",
     "clear_responses",
+    "create_ai_page",
     // Contacts and account-management writes.
     "add_contacts",
     "delete_contacts",
@@ -120,6 +121,7 @@ test("MCP idempotent hints fail closed for every unsafe or unknown SDK operation
     "modify_sub_account",
     "delete_sub_account",
     "restore_sub_account",
+    "update_ai_page",
   ]);
   const actualNonIdempotent = new Set(
     listed.tools

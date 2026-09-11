@@ -11,7 +11,7 @@
 
 ## 安装与配置
 
-当前稳定版本为 `0.4.3`，已发布到 npm，registry 的 `latest` 指向 `0.4.3`。直接安装：
+当前源码版本为 `0.4.4`。发布到 npm 后，registry 的 `latest` 将指向 `0.4.4`。直接安装：
 
 > 通过 AI 安装并启用 wjx-cli：先执行 `npm install -g wjx-cli@latest`，成功后再执行 `wjx skill install --force`；安装后命令名是 `wjx`，请用 `wjx --version` 验证，不要运行 `wjx-cli --version`。
 
@@ -23,10 +23,10 @@ wjx init --api-key "你的 API Key"
 
 ## 让 AI 自动完成安装
 
-如果希望由 AI 代为执行安装、配置和验收，把下面整段提示发给 AI。AI 应按可验证的状态机执行：先确认实际环境，再按需安装；拿到 API Key 前暂停等待，不要跳过最后的列表验收：
+如果希望由 AI 代为执行安装、配置和验收，把下面整段提示发给 AI。AI 应按顺序执行，拿到 API Key 前暂停等待，不要跳过最后的列表验收：
 
 ```text
-请帮我安装并配置问卷星 CLI（wjx-cli）。严格按下面状态机执行；每一步都要拿到可验证结果后再继续：
+请帮我安装并配置问卷星 CLI（wjx-cli）：
 
 0. 预检当前操作系统和 shell。检查 `node --version`、`npm --version`，并在命令可用时先检查 `wjx --version`。Windows 还要用 `Get-Command node,npm,wjx -ErrorAction SilentlyContinue`、`where.exe node`、`where.exe npm`、`where.exe wjx`，并检查 `C:\Program Files\nodejs\node.exe` 和 `%LOCALAPPDATA%\Programs\nodejs\node.exe`。同时记录 `npm prefix -g`，确认 npm 全局 bin 在当前 PATH。一个 shell 报“找不到命令”不能证明软件未安装。
 
@@ -77,7 +77,7 @@ wjx survey create --file survey.jsonl --publish
 
 创建请求会携带当前 CLI 名称和版本。若服务端以结构化信号要求升级，CLI 会返回 `UPGRADE_REQUIRED`；服务端提供最低版本或升级命令时，`error.hint` 才会包含对应信息。低于 `0.4.1` 的旧 CLI 需要先更新后再创建。
 
-创建成功后优先使用 `wjx survey preview-url --sid <sid>` 或创建/列表响应中的服务端填写路径生成答卷人链接。`wjx survey preview-url --vid <vid>` 只为旧脚本保留兼容 fallback，输出是未经过服务端 `sid`/路径验证的推导地址，不能作为已确认的公开填写链接；编辑链接仍使用 `wjx survey url --mode edit --activity <vid>`。
+创建成功后可用 `wjx survey preview-url --sid <sid>` 生成答卷人填写/预览链接；只有没有 `sid` 时才使用正整数 `vid`，编辑链接仍使用 `wjx survey url --mode edit --activity <vid>`。
 
 ## Windows 提示
 

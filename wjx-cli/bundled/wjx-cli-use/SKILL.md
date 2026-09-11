@@ -4,22 +4,14 @@ display_name: 问卷星cli
 display_name_en: wjx-cli-use
 displayName: 问卷星cli
 name_en: wjx-cli-use
-description: "Guide for using wjx-cli (Wenjuanxing CLI) to create surveys, query responses, and analyze data. Use when the user mentions: 问卷, 调查, 收集, 表单, 投票, 考试, 测评, 满意度, NPS, 问卷星, wjx, survey, questionnaire, or wants to create surveys, view responses, export data, analyze NPS/CSAT, or manage contacts, departments, and sub-accounts."
-description_zh: "使用 wjx-cli(问卷星命令行工具)创建问卷、查询问卷回复及分析数据的指南。当用户提到以下内容时使用:问卷、调查、收集、表单、投票、考试、测评、满意度、NPS、问卷星，或想要创建问卷、查看回复、导出数据、分析 NPS/CSAT,或管理联系人、部门和子账号。"
-description_en: "Guide for using wjx-cli (Wenjuanxing CLI) to create surveys, query responses, and analyze data. Use when the user mentions: 问卷, 调查, 收集, 表单, 投票, 考试, 测评, 满意度, NPS, 问卷星, wjx, survey, questionnaire, or wants to create surveys, view responses, export data, analyze NPS/CSAT, or manage contacts, departments, and sub-accounts."
-version: 0.4.3
+description: "Guide for using wjx-cli (Wenjuanxing CLI) to create AI homepages, posters, PPTs, and surveys, query responses, and analyze data. Use when the user mentions: AI主页, AI海报, AI PPT, 问卷, 调查, 收集, 表单, 投票, 考试, 测评, 满意度, NPS, 问卷星, wjx, survey, questionnaire, or wants to create or update those resources."
+description_zh: "使用 wjx-cli 创建或修改 AI主页、AI海报、AI PPT、问卷，查询回复及分析数据的指南。当用户提到 AI主页、AI海报、AI PPT、问卷、调查、收集、表单、投票、考试、测评、满意度、NPS、问卷星时使用。"
+description_en: "Guide for using wjx-cli (Wenjuanxing CLI) to create AI homepages, posters, PPTs, and surveys, query responses, and analyze data. Use when the user mentions AI homepages, AI posters, AI PPTs, surveys, forms, exams, NPS, Wenjuanxing, wjx, or related creation and update tasks."
+version: 0.4.4
 author: 问卷星
 ---
 
 # wjx-cli 使用指南
-
-## Agent 前门
-
-问卷任务按“发现意图 -> 预检 -> 计划 -> 确认 -> 执行 -> 读回验证 -> 报告”处理。本技能提供 CLI 执行面；若当前宿主同时提供 MCP 业务工具，选择一个协议完成本次任务并明确说明。WorkBuddy、Cowork、Codex Work、Qianwen Work 都先按 [宿主中立握手与路由](references/host-routing.md) 检查真实能力，不根据宿主名称猜测配置或 API。创建、发布、提交、设置替换、清理和凭据相关操作先展示目标与副作用；删除、发布状态变更和清空等高风险操作需要确认。成功证据必须来自结构化 `ok/data/meta` 结果和必要的读回状态、计数及经校验的链接；超时或网络错误导致结果不明时报告 `unknown`，先读回再决定后续动作。
-
-风险、重试、验证和可创建题型以生成的能力资料为准：`capabilities/agent-contract.json` 与 `capabilities/jsonl-qtypes.json`。这些文件按需读取，不影响帮助和补全启动。
-
-外部问卷产品的常见入口可这样映射：question builder 对应 `survey create` 的 JSONL；preview 对应 `survey preview-url`；publish 对应 `survey status`；collect 对应 `response query`/`response download`；analyze 对应 `analytics`。分支、随机、配额和 piping 只有在生成 profile 明确列出并通过 SDK 校验时才可使用，否则视为未验证能力。
 
 wjx-cli 是问卷星 OpenAPI 的命令行工具。命令格式：`wjx <模块> <操作> [选项]`。
 
@@ -27,10 +19,10 @@ wjx-cli 是问卷星 OpenAPI 的命令行工具。命令格式：`wjx <模块> <
 
 ## AI 安装与配置任务模板
 
-需要 AI 自动完成安装和配置时，把下面整段话发给 AI；AI 应按可验证的状态机执行：先确认实际环境，再按需安装；拿到 API Key 前暂停等待，不要跳过连接验收：
+需要 AI 自动完成安装和配置时，把下面整段话发给 AI；AI 应按顺序执行，拿到 API Key 前暂停等待，不要跳过连接验收：
 
 ```text
-请帮我安装并配置问卷星 CLI（wjx-cli）。严格按下面状态机执行；每一步都要拿到可验证结果后再继续：
+请帮我安装并配置问卷星 CLI（wjx-cli）：
 
 0. 预检当前操作系统和 shell。检查 `node --version`、`npm --version`，并在命令可用时先检查 `wjx --version`。Windows 还要用 `Get-Command node,npm,wjx -ErrorAction SilentlyContinue`、`where.exe node`、`where.exe npm`、`where.exe wjx`，并检查 `C:\Program Files\nodejs\node.exe` 和 `%LOCALAPPDATA%\Programs\nodejs\node.exe`。同时记录 `npm prefix -g`，确认 npm 全局 bin 在当前 PATH。一个 shell 报“找不到命令”不能证明软件未安装。
 
@@ -66,6 +58,17 @@ wjx-cli 是问卷星 OpenAPI 的命令行工具。命令格式：`wjx <模块> <
 
 不要把旧接口的 `_meta`、`q_type`、`q_subtype`、`q_title`、`items` 结构传给 `create`；CLI 会将其判为输入错误。
 
+### AI 主页
+
+AI 主页是独立的纯展示内容，与表单/问卷创建互斥：
+
+- 用户只要求创建 AI 主页、AI 海报或 AI PPT 时，只调用一次 `wjx survey create-ai-page`；不得再调用 `survey create`，不得额外创建、复制或关联任何表单/问卷。只有用户明确同时要求收集信息时，才另行确认表单需求。
+- 创建调用 OpenAPI `A1000107`，必须提供 `--html_content` 或 `--file`，需要立即发布时使用 `--publish`。
+- `--page_type` 可为 `0`（网页）、`1`（海报）或 `2`（PPT）。PPT 必须默认生成真正的逐页幻灯片结构：每页使用独立、固定比例的画布并提供逐页切换，首屏只展示一页；禁止将所有幻灯片拼成单个纵向长页面。
+- 修改前先调用 `wjx survey get --vid <vid>` 读取返回的 `html_content` 与 `page_type`；草稿也能直接读取，不得尝试抓取公开页。基于完整原 HTML 做局部修改，再调用 `wjx survey update-ai-page` 提交完整 HTML，不得因读取公开页失败而按主题重做整页。
+- 更新调用 OpenAPI `A1000108`，只接受传统数字 `--vid`，不接受 `sid`。页面类型不可修改；如果用户要求在网页、海报、PPT之间转换，直接说明接口不支持，不得新建替代主页，也不得删除原主页。
+- HTML 最长 200000 字符。更新已发布主页前，按服务端要求先暂停发布状态。
+
 ### 规则 1：一个需求 = 一个问卷
 
 无论用户要求多少种题型，**必须在一次 `create` 调用中包含所有题目**。一个问卷可包含任意数量、任意类型的题目。
@@ -76,9 +79,7 @@ wjx-cli 是问卷星 OpenAPI 的命令行工具。命令格式：`wjx <模块> <
 
 ### 规则 3：不支持的题型要明确告知
 
-只使用 [references/question-types.md](references/question-types.md) 列出的 JSONL `qtype`，不要自行发明题型名。地区题使用 `qtype:"多级下拉"` 并提供 `leveldata`。若当前 JSONL 格式确实无法表达用户要求，明确说明限制和替代方案，先完整重新生成一份可支持的 JSONL，获得确认后再创建，**不要**部分创建或反复尝试。
-
-`矩阵数值题`、`VlookUp问卷关联`、`多项文件题`、`多项简答题`、`当前语音` 属于读取/Web 编辑器能力边界：当前 JSONL 创建接口明确拒绝它们。遇到这些题型时停止创建，提示使用 Web 编辑器或读取已有问卷；需要多文件或多段文字采集时，可在用户确认后改用多个普通 `文件上传`/`简答题`，并重新生成完整 JSONL，不要部分创建或重试必拒请求。
+只使用 [references/question-types.md](references/question-types.md) 列出的 JSONL `qtype`，不要自行发明题型名。地区题使用 `qtype:"多级下拉"` 并提供 `leveldata`。若当前 JSONL 格式确实无法表达用户要求，明确说明限制和替代方案，继续创建其余题目，**不要**反复尝试或拆分多个问卷。
 
 ### 规则 3.2：纯框架题型默认保持草稿
 
@@ -122,9 +123,9 @@ https://www.wjx.cn/weixinlogin.aspx?redirecturl=%2Fnewwjx%2Fmanage%2Fuserinfo.as
 
 ### 规则 6：发布与提交答卷的几个易错点
 
-- **发布问卷状态参数**：用 `wjx survey status --vid <vid> --state 1`（1=发布、2=暂停、3=删除并进入回收站，可恢复）。查询结果中的问卷 `status` 还可能是 0=未发布、4=彻底删除（不可恢复）、5=被审核；`verify_status` 是独立的审核状态：1=已通过、2=审核中、3=未通过、4=待实名。`--status` 是兼容别名，但默认参数名是 `--state`。
+- **发布问卷状态参数**：用 `wjx survey status --vid <vid> --state 1`（1=发布、2=暂停、3=删除）。`--status` 是兼容别名，但默认参数名是 `--state`。
 - **提交答卷必须带版本号**：问卷被发布/编辑后 `version` 自增，提交时不带最新 `jpmversion` 会被服务端拒绝并报"问卷已被修改请刷新"。`wjx response submit` 默认会自动获取最新版本注入，请**不要**加 `--no-auto-version`，也不需要手动算版本号。
-- **submitdata 题号一律用 `submit-template` 返回的 q_index**：问卷星服务端严格按 `getSurvey` 返回的原始 `q_index` 校验提交的题号；不同问卷的题号可能从 1、2 或其他服务端分配值开始，不能假设元数据一定占 1。**手算很容易搞错**——直接跑 `wjx response submit-template --vid <问卷ID>`，每题的 `placeholder` 就是正确格式，改成真实答案即可。选项序号仍然是 1-based（从 1 数到 N）。
+- **submitdata 题号一律用 `submit-template` 返回的 q_index**：问卷星服务端严格按 `getSurvey` 返回的原始 `q_index` 校验提交的题号（"问卷基础信息"元数据占 q_index=1，真实题目从 2 开始编号）。**手算很容易搞错**——直接跑 `wjx response submit-template --vid <问卷ID>`，每题的 `placeholder` 就是正确格式，改成真实答案即可。选项序号仍然是 1-based（从 1 数到 N）。
 - **避开 shell `$` 转义陷阱**：submitdata 含 `$` 分隔符，PowerShell 双引号会把 `$1/$3` 当变量吞掉。**首选** `--submitdata-file <path>`（从文件读，彻底绕开 shell）；其次用 PowerShell 单引号 `--submitdata '1$1}2$3'`。CLI 会在提交前做 `$` sanity check：一个 `$` 都没有时立刻报 INPUT_ERROR。
 
 ### 规则 7：批量 submit 必须逐次确认成功/失败（强制）
@@ -159,7 +160,6 @@ https://www.wjx.cn/weixinlogin.aspx?redirecturl=%2Fnewwjx%2Fmanage%2Fuserinfo.as
 ### 规则 8：填写链接必须来自 API 返回的短路径（强制）
 
 - `vid` 是后台问卷编号，**禁止**自行拼成 `https://<域名>/m/<vid>.aspx`、`/vm/<vid>.aspx` 或 `/jq/<vid>.aspx` 后提供给用户。数字 `vid` 不能被当作公开填写地址的标识。
-- `wjx survey preview-url --vid <vid>` 是为旧脚本保留的兼容辅助命令；它会按当前 profile 推导一个地址，但该地址没有经过服务端 `sid`/路径验证，必须明确标注为“未验证的兼容预览地址”，不能当作已确认的公开填写链接。面向用户交付时优先获取 API 返回的 `sid` 或填写路径，再使用 `--sid` 或原始服务端链接。
 - 填写地址只允许使用 API 返回并通过校验的域名和路径：优先使用响应中已经提供且可验证的 `fill_url`；当前 CLI 不会自动从原始字段派生 `fill_url`，通常只返回 `sid`、`activity_domain`、`pc_path`、`mobile_path`，此时用 `new URL(pc_path || mobile_path, activity_domain)`（或等价的结构化 URL API）组合，原样保留服务端路径，并核对路径中的标识是短 `sid`。
 - 组合前必须确认域名、路径都来自同一条 API 记录，路径以允许的填写路由（例如 `/m/`、`/vm/` 或 `/jq/`）开头，且不是由 `vid` 推导出的猜测路径。字段缺失、域名/路径校验失败时，明确报告“服务端未提供可验证的填写路径”，不要静默猜测或替换成默认域名。
 - 三类地址不能混用：填写地址面向答卷人并使用服务端短 `sid`/路径；`wjx survey url --mode edit --activity <vid>` 生成后台编辑地址；`wjx survey url --mode create` 生成建卷页面地址。后两者都不是填写地址。
@@ -197,7 +197,6 @@ https://www.wjx.cn/weixinlogin.aspx?redirecturl=%2Fnewwjx%2Fmanage%2Fuserinfo.as
 | 分析 NPS | `wjx analytics nps --scores "[9,10,7,3]"` |
 | 导入联系人 | `wjx contacts add --users '[...]'`（需 `WJX_CORP_ID`） |
 | 查看填写链接 | 优先使用创建响应中规范化的 `fill_url` 或经校验的 `activity_domain` + `pc_path`/`mobile_path`；路径缺失时按 `vid` 分页解析 `wjx survey list` |
-| 获取短信短链接 | `wjx survey shortlink --url <填写长链接>`；支持带查询参数的 `/m/`、`/vm/` 或 `/jq/` 地址并自动编码 |
 | 查看编辑链接 | `wjx survey url --mode edit --activity <vid>` |
 
 ## 安装与配置
@@ -206,9 +205,19 @@ https://www.wjx.cn/weixinlogin.aspx?redirecturl=%2Fnewwjx%2Fmanage%2Fuserinfo.as
 
 ### 步骤 1：检查并安装 Node.js 和 wjx-cli
 
-先按上方安装任务模板完成预检。尤其要区分“当前 shell 找不到命令”和“机器没有安装”：Windows 必须复核 `Get-Command`、`where.exe`、常见绝对路径，并检查 `npm prefix -g`；发现绝对路径后先刷新 PATH 或用绝对路径验证，不要直接启动安装器。
+```bash
+node --version
+```
 
-如果确认 Node.js 不存在或版本低于 20，参见 [references/install-nodejs.md](references/install-nodejs.md) 并停止当前流程，待新进程验证 `node --version` 和 `npm --version` 后再继续。Node.js 就绪后，只有 wjx 缺失、低于 `0.4.1` 或执行失败时才运行 `npm install -g wjx-cli@latest`；安装后必须运行 `wjx --version`，确认 CLI 可执行后再运行 `wjx skill install --force`。
+如果 Node.js 未安装或版本 < 20，需要先安装。参见 [references/install-nodejs.md](references/install-nodejs.md)，根据操作系统选择安装方式。
+
+Node.js 就绪后，当前源码版本为 `0.4.4`。如果本机版本低于兼容最低版本 `0.4.1`，直接安装或升级：
+
+```bash
+npm install -g wjx-cli@latest
+wjx skill install --force
+wjx --version
+```
 
 从源码开发时才执行：
 
@@ -271,7 +280,7 @@ wjx doctor
 
 | 模块 | 命令 | 说明 |
 |------|------|------|
-| `survey` | list, get, create, jsonl-template, delete, status, settings, update-settings, tags, tag-details, clear-bin, upload, export-text, url, preview-url, shortlink | 问卷增删改查、配置、预览链接与短信短链接 |
+| `survey` | list, get, create, create-ai-page, update-ai-page, jsonl-template, delete, status, settings, update-settings, tags, tag-details, clear-bin, upload, export-text, url, preview-url, shortlink | 问卷增删改查、AI 主页、配置、预览链接与短信短链接 |
 | `response` | query, realtime, download, submit-template, submit, modify, clear, report, count, winners, 360-report | 答卷数据操作 |
 | `contacts` | query, add, delete | 联系人管理（需 WJX_CORP_ID） |
 | `department` | list, add, modify, delete | 部门管理 |
@@ -314,8 +323,6 @@ JSONL 每个非空行放一个 JSON 对象，且首行必须是问卷基础信�
 ### 答卷与分析
 
 先获取 vid（`wjx survey list`），再用 `wjx response` 子命令。下载格式：`--suffix 0` CSV，`1` SAV，`2` Word。详见 [references/response-commands.md](references/response-commands.md)。
-
-修改答卷属于高风险操作。使用 `wjx response modify` 时先确认 `vid` 和 `jid` 指向同一条答卷，再在命令中显式加 `--yes`；CLI 会自动写前读取目标、执行一次修改、写后读回并核对每个答案。只有结果 `outcome:"verified"` 才算成功，目标不存在时不会写入，读回不一致时必须报告 `outcome:"unknown"` 并停止重试。
 
 ### 通讯录与账号
 

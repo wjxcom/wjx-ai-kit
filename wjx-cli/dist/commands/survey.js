@@ -1,5 +1,5 @@
 import { readFileSync } from "node:fs";
-import { createSurveyByJson, CREATABLE_SURVEY_ATYPES, getSurvey, listSurveys, updateSurveyStatus, getSurveySettings, updateSurveySettings, deleteSurvey, getQuestionTags, getTagDetails, clearRecycleBin, uploadFile, buildSurveyUrl, buildPreviewUrl, getShortLink, getWjxShortLinkUrl, surveyToText, MAX_JSONL_SIZE, preflightJsonl, parseJsonl, jsonToSurvey, extractJsonlQuestionTypeExpectations, getJsonlQuestionTypeCode, Action, } from "wjx-api-sdk";
+import { createSurveyByJson, createAiPage, updateAiPage, AI_PAGE_MAX_HTML_LENGTH, AI_PAGE_PAGE_TYPES, CREATABLE_SURVEY_ATYPES, getSurvey, listSurveys, updateSurveyStatus, getSurveySettings, updateSurveySettings, deleteSurvey, getQuestionTags, getTagDetails, clearRecycleBin, uploadFile, buildSurveyUrl, buildPreviewUrl, getShortLink, getWjxShortLinkUrl, surveyToText, MAX_JSONL_SIZE, preflightJsonl, parseJsonl, jsonToSurvey, extractJsonlQuestionTypeExpectations, getJsonlQuestionTypeCode, Action, } from "wjx-api-sdk";
 import { enrichSurveyListOutput, formatOutput } from "../lib/output.js";
 import { CliError, ensureApiSuccess, handleError } from "../lib/errors.js";
 import { applyProfileCredentials, getCredentials, getProfileBaseUrl } from "../lib/auth.js";
@@ -10,6 +10,21 @@ import { verifySurveyPostWrite } from "../lib/runtime/post-verify.js";
 import { surveyIdentityMatches } from "../lib/runtime/identity.js";
 import { buildRequestPlan } from "../lib/runtime/request-plan.js";
 import { CLI_CLIENT_NAME, CLI_CLIENT_VERSION } from "../lib/client-info.js";
+function resolveAiPageHtml(values) {
+    if (typeof values.html_content === "string" && values.html_content.trim().length > 0)
+        return values.html_content;
+    if (typeof values.html === "string" && values.html.trim().length > 0)
+        return values.html;
+    if (typeof values.file === "string" && values.file.length > 0) {
+        try {
+            return readFileSync(values.file, "utf8");
+        }
+        catch {
+            throw new CliError("INPUT_ERROR", `无法读取 AI 主页 HTML 文件: ${values.file}`);
+        }
+    }
+    throw new CliError("INPUT_ERROR", "必须提供 --html_content 或 --file 参数");
+}
 const SETTING_KEYS = [
     "api_setting",
     "after_submit_setting",
@@ -422,6 +437,67 @@ export function registerSurveyCommands(program) {
                     listSurveysFn: (listInput, listCredentials, listFetch) => listSurveys(listInput, listCredentials, listFetch),
                 });
             },
+        });
+    });
+    // --- create-ai-page ---
+    survey
+        .command("create-ai-page")
+        .description("创建 AI 主页")
+        .option("--title <s>", "AI 主页标题")
+        .option("--html_content <s>", "AI 主页 HTML 内容")
+        .option("--file <path>", "从文件读取 AI 主页 HTML 内容")
+        .option("--page_type <n>", "页面类型：0=网页, 1=海报, 2=PPT", strictInt)
+        .option("--publish", "创建后立即发布")
+        .option("--creater <s>", "创建者子账号")
+        .action(async (_opts, cmd) => {
+        await executeRuntimeCommand(program, cmd, {
+            normalize: ({ values }) => {
+                const html = resolveAiPageHtml(values);
+                if (values.page_type !== undefined)
+                    requireEnum(values, "page_type", AI_PAGE_PAGE_TYPES);
+                return { html_content: html, title: values.title, page_type: values.page_type, publish: values.publish, creater: values.creater };
+            },
+            validate: (input) => {
+                if (typeof input.html_content !== "string" || input.html_content.trim().length === 0)
+                    throw new CliError("INPUT_ERROR", "必须提供 --html_content 或 --file 参数");
+                if (input.html_content.length > AI_PAGE_MAX_HTML_LENGTH)
+                    throw new CliError("INPUT_ERROR", `AI 主页 HTML 不能超过 ${AI_PAGE_MAX_HTML_LENGTH} 个字符`);
+            },
+            buildPlans: (input, context) => [buildRequestPlan({
+                    service: "default", action: Action.CREATE_AI_PAGE, url: context?.apiUrl,
+                    body: Object.fromEntries(Object.entries({ action: Action.CREATE_AI_PAGE, html_content: input.html_content, title: input.title, page_type: input.page_type, publish: input.publish, creater: input.creater }).filter(([, value]) => value !== undefined)),
+                })],
+            execute: (input, credentials, requestOptions) => createAiPage(input, credentials, undefined, requestOptions),
+        });
+    });
+    // --- update-ai-page ---
+    survey
+        .command("update-ai-page")
+        .description("更新 AI 主页（已发布主页需先显式暂停）")
+        .option("--vid <n>", "传统 AI 主页 vid", strictInt)
+        .option("--html_content <s>", "AI 主页 HTML 内容")
+        .option("--file <path>", "从文件读取 AI 主页 HTML 内容")
+        .option("--title <s>", "AI 主页标题")
+        .action(async (_opts, cmd) => {
+        await executeRuntimeCommand(program, cmd, {
+            normalize: ({ values }) => {
+                requireField(values, "vid");
+                const html = resolveAiPageHtml(values);
+                return { vid: values.vid, html_content: html, title: values.title };
+            },
+            validate: (input) => {
+                if (!/^[0-9]+$/.test(String(input.vid)) || Number(input.vid) <= 0)
+                    throw new CliError("INPUT_ERROR", "--vid 必须是正整数传统问卷编号，不能使用 sid");
+                if (typeof input.html_content !== "string" || input.html_content.trim().length === 0)
+                    throw new CliError("INPUT_ERROR", "必须提供 --html_content 或 --file 参数");
+                if (input.html_content.length > AI_PAGE_MAX_HTML_LENGTH)
+                    throw new CliError("INPUT_ERROR", `AI 主页 HTML 不能超过 ${AI_PAGE_MAX_HTML_LENGTH} 个字符`);
+            },
+            buildPlans: (input, context) => [buildRequestPlan({
+                    service: "default", action: Action.UPDATE_AI_PAGE, url: context?.apiUrl,
+                    body: Object.fromEntries(Object.entries({ action: Action.UPDATE_AI_PAGE, vid: input.vid, html_content: input.html_content, title: input.title }).filter(([, value]) => value !== undefined)),
+                })],
+            execute: (input, credentials, requestOptions) => updateAiPage(input, credentials, undefined, requestOptions),
         });
     });
     // --- delete ---

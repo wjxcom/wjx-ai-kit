@@ -16,7 +16,7 @@ CLI 是默认入口：它不要求客户端支持 MCP，适合 AI Agent、自动
 
 ## 安装
 
-当前稳定版本为 `0.4.3`，三个工作区包均已发布到 npm，registry 的 `latest` 指向 `0.4.3`。直接安装 CLI：
+当前源码版本为 `0.4.4`。发布到 npm 后，registry 的 `latest` 将指向 `0.4.4`。直接安装 CLI：
 
 > 通过 AI 安装并启用 wjx-cli：先执行 `npm install -g wjx-cli@latest`，成功后再执行 `wjx skill install --force`；安装后命令名是 `wjx`，请用 `wjx --version` 验证，不要运行 `wjx-cli --version`。
 
@@ -29,10 +29,10 @@ wjx doctor
 
 ### 让 AI 自动完成安装
 
-把下面整段话发给你的 AI 助手。它应按可验证的状态机执行：先确认实际环境，再按需安装；拿到 API Key 前暂停等待，不要跳过最后的连接验收：
+把下面整段话发给你的 AI 助手。它应按顺序执行，拿到 API Key 前暂停等待，不要跳过最后的连接验收：
 
 ```text
-请帮我安装并配置问卷星 CLI（wjx-cli）。严格按下面状态机执行；每一步都要拿到可验证结果后再继续：
+请帮我安装并配置问卷星 CLI（wjx-cli）：
 
 0. 预检当前操作系统和 shell。检查 `node --version`、`npm --version`，并在命令可用时先检查 `wjx --version`。Windows 还要用 `Get-Command node,npm,wjx -ErrorAction SilentlyContinue`、`where.exe node`、`where.exe npm`、`where.exe wjx`，并检查 `C:\Program Files\nodejs\node.exe` 和 `%LOCALAPPDATA%\Programs\nodejs\node.exe`。同时记录 `npm prefix -g`，确认 npm 全局 bin 在当前 PATH。一个 shell 报“找不到命令”不能证明软件未安装。
 

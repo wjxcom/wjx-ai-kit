@@ -12,7 +12,7 @@ fn(input, credentials?, fetchImpl?, requestOptions?)
 
 | 模块 | 示例 |
 | --- | --- |
-| survey | `listSurveys`, `getSurvey`, `createSurveyByJson`, `updateSurveyStatus`, `getShortLink` |
+| survey | `listSurveys`, `getSurvey`, `createSurveyByJson`, `updateSurveyStatus` |
 | response | `queryResponses`, `downloadResponses`, `getReport`, `submitResponse`, `buildSubmitTemplate` |
 | analytics | `decodeResponses`, `decodePushPayload`, `calculateNps`, `calculateCsat`, `detectAnomalies`, `compareMetrics` |
 | contacts | `queryContacts`, `addContacts` |
@@ -43,7 +43,7 @@ await listSurveys(
 ```ts
 await createSurveyByJson(input, credentials, fetch, {
   clientName: "wjx-cli",
-  clientVersion: "0.4.3",
+  clientVersion: "0.4.4",
 });
 ```
 
@@ -51,22 +51,13 @@ await createSurveyByJson(input, credentials, fetch, {
 
 `surveyToText` 保留用于把已读取的问卷转换为可读 DSL 文本；读取/导出 DSL 不等于使用 DSL 创建新问卷。
 
+AI 主页通过 `createAiPage`（OpenAPI `A1000107`）创建，通过 `getSurvey` 读取草稿也可返回的 `html_content` 和固定 `page_type`，再由 `updateAiPage`（OpenAPI `A1000108`）基于完整原 HTML 原位更新。更新不支持修改页面类型。
+
 `buildSubmitTemplate` 是纯本地辅助函数：输入 `getSurvey` 返回的题目结构，输出按服务端原始 `q_index` 组织的 `submitdata` 占位模板和逐题提示，不发起网络请求。分页栏和段落说明会被跳过；生成后应由 AI 或用户替换占位答案，再交给 `submitResponse`。
 
 `submitResponse` 支持可选的 `submit_channel` 字段，用于向 OpenAPI 1001001 标记提交来源；问卷星服务端只接受白名单值。CLI 和 MCP 会分别自动发送 `wjx-cli` 与 `wjx-mcp`。
 
 `decodePushPayload` 是纯本地推送解密与验签函数：输入问卷星推送的加密载荷和 `appKey`，可选 `signature`、`rawBody`，输出解密后的 JSON/文本及验签结果，不发起网络请求。
-
-`getShortLink` 用于把问卷填写长链接转换为短信短链接：
-
-```ts
-const response = await getShortLink({
-  url: "https://www.wjx.cn/vm/AbC123.aspx?sojumpparm=customer-42",
-});
-if (response.success) console.log(response.data);
-```
-
-它调用公共 `GET /openapi/shortlink.aspx` 接口，并用标准 URL 查询编码保留长链接中的参数。输入必须是带 `/m/`、`/vm/` 或 `/jq/` 填写路径的 HTTP(S) 问卷 URL；接口返回 `success: false` 时保留 `msg`，不会伪造短链接。短链接接口不强制 API Key，但显式传入凭据时仍可复用 SDK 的凭据和部署地址配置。
 
 ## 错误处理
 
@@ -90,4 +81,4 @@ SDK 直接返回问卷星 OpenAPI 原始响应，业务失败通常返回 `resul
 
 CLI 会将该响应转换为 `UPGRADE_REQUIRED` 错误，并保留服务端实际提供的最低版本、升级命令和 trace id；未提供的可选升级字段不会由客户端臆造。旧于 `0.4.1` 的 CLI 不会发送版本请求头；服务端应同时将旧创建 action 或缺少客户端版本头的创建请求判定为升级场景。
 
-`wjx-cli@0.4.3` 已发布到 npm；CLI 用户可先执行 `npm install -g wjx-cli@latest`，成功后再执行 `wjx skill install --force` 获取 CLI 并启用 `wjx-cli-use`。npm 包名是 `wjx-cli`，安装后的命令名是 `wjx`，验证时运行 `wjx --version`。需要源码开发时，再按 [CLI 快速开始](../start/cli.md) 构建。
+`wjx-cli` 当前源码版本为 `0.4.4`；发布后 CLI 用户可先执行 `npm install -g wjx-cli@latest`，成功后再执行 `wjx skill install --force` 获取 CLI 并启用 `wjx-cli-use`。npm 包名是 `wjx-cli`，安装后的命令名是 `wjx`，验证时运行 `wjx --version`。发布前按 [CLI 快速开始](../start/cli.md) 从源码构建。

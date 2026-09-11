@@ -1,6 +1,6 @@
 # MCP 工具参考
 
-当前版本提供 {{MCP_TOOL_COUNT}} 个 Tool、{{MCP_RESOURCE_COUNT}} 个 Resource 和 {{MCP_PROMPT_COUNT}} 个 Prompt。输入 schema 和描述以运行时能力发现结果为最终契约；MCP 只保证 CLI 的核心业务子集，工作站能力和有意不暴露的通用 API 见仓库 capability matrix。
+当前版本提供 61 个 Tool、8 个 Resource 和 15 个 Prompt。输入 schema 和描述以运行时能力发现结果为最终契约；MCP 只保证 CLI 的核心业务子集，工作站能力和有意不暴露的通用 API 见仓库 capability matrix。
 
 ## Tool 模块
 
@@ -11,7 +11,7 @@
 | contacts（14） | `query_contacts`, `add_contacts`, `delete_contacts`, `add_admin`, `delete_admin`, `restore_admin`, `list_departments`, `add_department`, `modify_department`, `delete_department`, `list_tags`, `add_tag`, `modify_tag`, `delete_tag` | 通讯录、部门、标签和管理员 |
 | user-system（6，兼容/已过时） | `add_participants`, `modify_participants`, `delete_participants`, `bind_activity`, `query_survey_binding`, `query_user_surveys` | 仅用于已有用户体系的兼容操作；不能通过创建接口新建 `atype=8` 用户体系问卷 |
 | multi-user（5） | `add_sub_account`, `modify_sub_account`, `delete_sub_account`, `restore_sub_account`, `query_sub_accounts` | 子账号管理 |
-| sso（6） | `sso_subaccount_url`, `sso_user_system_url`, `sso_partner_url`, `build_survey_url`, `build_preview_url`, `get_short_link` | 生成登录、编辑、填写和短链接；用户系统 SSO 仅配合已有系统使用 |
+| sso（5） | `sso_subaccount_url`, `sso_user_system_url`, `sso_partner_url`, `build_survey_url`, `build_preview_url` | 生成登录、编辑和填写链接；用户系统 SSO 仅配合已有系统使用 |
 | analytics（6） | `decode_responses`, `decode_push_payload`, `calculate_nps`, `calculate_csat`, `detect_anomalies`, `compare_metrics` | 本地数据解码、推送解密和指标计算 |
 | server（1） | `get_config` | 查看脱敏配置与运行环境 |
 
@@ -23,19 +23,14 @@
 
 工具的输入 schema 是运行时契约；无法确定字段时先调用 `get_survey` 或读取 Resource，不要猜编码。
 
-## Resources（{{MCP_RESOURCE_COUNT}}）
+## Resources（8）
 
 | URI | 内容 |
 | --- | --- |
-| `wjx://reference/jsonl-qtypes` | JSONL 创建题型能力、草稿限制和来源版本 |
 | `wjx://reference/dsl-syntax` | DSL 文本语法（仅读取、审阅和离线迁移） |
 | `wjx://reference/question-types` | `get_survey` 读取结果的 `q_type/q_subtype` 映射；JSONL 创建白名单以 SDK 和 `create_survey_by_json` 校验为准 |
 | `wjx://reference/survey-types` | 问卷类型编码和创建限制 |
 | `wjx://reference/survey-statuses` | 问卷状态码和合法转换 |
-| `wjx://reference/text-validation-types` | 文本校验类型编码 |
-| `wjx://reference/matrix-display-types` | 矩阵展现形式编码 |
-| `wjx://reference/table-display-types` | 表格展现形式编码 |
-| `wjx://reference/survey-setting-types` | 问卷设置内容类型编码 |
 | `wjx://reference/response-format` | `submitdata` 编码格式 |
 | `wjx://reference/analysis-methods` | NPS、CSAT、CES 公式和行业基准 |
 | `wjx://reference/user-roles` | 子账号角色编码 |
@@ -52,3 +47,6 @@ Prompt 是可复用的工作流模板，不能替代工具权限检查。问卷�
 | JSONL 生成（3，推荐） | `generate-survey-json`, `generate-exam-json`, `generate-form-json` |
 
 不同 MCP 客户端可能只显示其支持的部分能力；需要完整列表时，请查看客户端的 `tools/list`、`resources/list` 和 `prompts/list` 结果。
+# AI 主页工具
+
+`create_ai_page` 调用 `A1000107` 创建独立的纯展示 HTML 主页，不联动创建表单/问卷；PPT 默认使用逐页展示。`get_survey` 对 AI 主页返回草稿也可读取的 `html_content` 和固定 `page_type`。`update_ai_page` 调用 `A1000108` 基于完整原 HTML 原位更新，只接受传统数字 `vid`，不支持修改页面类型。

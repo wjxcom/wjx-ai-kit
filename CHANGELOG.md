@@ -10,19 +10,21 @@
 
 ---
 
-## [0.4.3] - 2026-09-07
+## [0.4.4] - 2026-09-07
 
-### Added
+### Changed
 
-- 三个工作区包统一升级至 `0.4.3`。
-- SDK、CLI 和 MCP 增加问卷填写长链接转短信短链接能力及相关枚举资源。
+- Made AI PPT output use fixed, paginated slides by default.
+- Added draft AI homepage source retrieval for in-place updates.
+- Prevented AI homepage creation from creating or linking surveys.
+- Rejected AI homepage type conversion without replacing or deleting the original page.
 
-### Security and Reliability
+## [0.4.3] - 2026-09-04
 
-- 完善 Agent contract、高风险操作确认、一次性写请求、身份检查和读回验证。
-- 发布前继续执行依赖安全审计、能力合同、文档合同和打包安装 smoke 检查。
+### Changed
 
----
+- Unified the three workspace package versions at `0.4.3`.
+- Hardened AI homepage validation across SDK, CLI, and MCP.
 
 ## [0.4.2] - 2026-09-02
 

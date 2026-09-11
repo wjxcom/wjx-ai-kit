@@ -1,6 +1,6 @@
 # CLI 命令参考
 
-运行 `wjx <command> --help` 可查看当前命令和参数；本版本包含 {{CLI_COMMAND_COUNT}} 个叶子命令。
+运行 `wjx <command> --help` 可查看当前命令和参数；本版本包含 77 个叶子命令。
 
 ## 顶层命令
 
@@ -25,7 +25,6 @@
 | 查询单份答卷 | `wjx response query --jid <id>` |
 | 创建 JSONL 问卷 | `wjx survey create --file <path>` |
 | 生成填写/预览链接 | `wjx survey preview-url --sid <sid>` |
-| 获取短信短链接 | `wjx survey shortlink --url <填写长链接>` |
 
 旧参数 `--permanent`、`--base64`、`--filename`、`--response_id` 不属于当前 CLI 参考路径。需要确认本机版本时运行 `wjx --version` 和 `wjx <command> --help`。
 
@@ -35,14 +34,9 @@
 
 `survey preview-url` 优先接受 API 返回的 `sid`；只有没有 `sid` 时才接受正整数 `vid`，同时提供两者时以 `sid` 为准。它生成答卷人填写/预览链接，不是后台编辑链接；后台编辑请使用 `survey url --mode edit --activity <vid>`。
 
-`survey shortlink` 把填写长链接转换为可用于短信发送的短链接，并自动编码查询参数：
-
-```bash
-wjx survey shortlink --url "https://www.wjx.cn/vm/AbC123.aspx?sojumpparm=customer-42"
-```
-
-输入必须是 HTTP(S) 的 `/m/`、`/vm/` 或 `/jq/` 填写地址；该命令不会把后台编辑链接或任意外部 URL 发送到短链接口。接口业务失败时 CLI 返回结构化 `API_ERROR`，不会输出伪造的成功链接。
-
 `wjx update` 会先读取 npm registry 的 `latest` 版本；只有远端版本严格高于当前版本才执行安装。当前版本高于 registry 或 registry 检查失败时不会盲目更新，避免把本地版本降级或覆盖。
 
 `survey create` 请求会发送 `X-WJX-Client: wjx-cli` 和 `X-WJX-Client-Version: <当前版本>`。服务端若返回结构化的 `errorcode: "CLIENT_VERSION_TOO_OLD"`、`"CLI_VERSION_TOO_OLD"`、`"UPGRADE_REQUIRED"`，或 `data.upgrade_required: true`，CLI 会在 stderr 输出 `UPGRADE_REQUIRED`；服务端提供 `min_client_version`、`upgrade_command` 时，CLI 会原样保留并生成对应提示，未提供的字段不会臆造。stdout 不输出伪成功结果。低于 `0.4.1` 的旧 CLI 不会发送这些请求头，服务端需要按旧创建 action 或缺失版本头返回同一业务错误。
+# AI 主页
+
+`wjx survey create-ai-page --file homepage.html` 创建独立的纯展示 AI 主页；使用 `--html_content` 可直接传入 HTML，PPT 默认应采用逐页展示。修改前用 `wjx survey get --vid <vid>` 读取草稿也可返回的 `html_content` 和固定 `page_type`，再通过 `wjx survey update-ai-page --vid <vid> --file homepage.html` 原位更新。`vid` 必须为传统数字编号，更新不支持修改页面类型。
