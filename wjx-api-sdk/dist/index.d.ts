@@ -6,6 +6,9 @@ export { surveyToText, typeToLabel, stripHtml } from "./modules/survey/survey-to
 export { extractJsonlMetadata, normalizeJsonl, MAX_JSONL_SIZE, parseJsonl, jsonToSurvey, EXAM_QTYPES, preprocessExamJsonl, hasVoteJsonlQtype, injectDefaultRequir, injectAtypeIntoJsonl, inferAtypeFromTitle, validateSurveyTitle, validateSurveyHasQuestions, NON_QUESTION_QTYPE_SET, JSONL_SUPPORTED_QTYPES, FRAMEWORK_ONLY_JSONL_QTYPES, hasFrameworkOnlyJsonlQtype, resolveJsonlPublish, preflightJsonl, } from "./modules/survey/json-to-survey.js";
 export type { JsonSurveyMetadata, JsonSurveyQuestion, JsonParsedSurvey, } from "./modules/survey/json-to-survey.js";
 export type { CreateSurveyByJsonInput, GetSurveyInput, ListSurveysInput, UpdateSurveyStatusInput, GetSurveySettingsInput, UpdateSurveySettingsInput, DeleteSurveyInput, GetQuestionTagsInput, GetTagDetailsInput, ClearRecycleBinInput, UploadFileInput, SurveyQuestionItem, SurveyQuestion, SurveyDetail, } from "./modules/survey/types.js";
+export { queryWjxDsl, createSurveyByWjxDsl, updateWjxDsl, } from "./modules/dsl/client.js";
+export { generateWjxDsl, normalizeWjxDsl, validateWjxDsl, MAX_WJX_DSL_BYTES, } from "./modules/dsl/validate.js";
+export type { WjxDslStatus, WjxDslDiagnostic, WjxDslOperationData, WjxDslLimits, QueryWjxDslInput, QueryWjxDslResult, CreateWjxDslSurveyInput, CreateWjxDslSurveyResult, UpdateWjxDslInput, UpdateWjxDslResult, WjxDslFailureData, WjxDslValidationOptions, WjxDslGenerationResult, } from "./modules/dsl/types.js";
 export { queryResponses, queryResponsesRealtime, downloadResponses, getReport, submitResponse, getFileLinks, getWinners, modifyResponse, get360Report, clearResponses, } from "./modules/response/client.js";
 export { normalizeSubmitdata } from "./modules/response/submitdata.js";
 export { buildSubmitTemplate } from "./modules/response/submit-template.js";

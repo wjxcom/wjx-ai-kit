@@ -1,136 +1,95 @@
 export const DSL_SYNTAX_GUIDE = {
-    title: "问卷星 DSL 语法参考",
-    description: "surveyToText() 输出格式与 TxtToActivityService.cs 输入格式对照",
-    syntax: {
-        structure: [
-            "第一行：问卷标题",
-            "空行后：问卷描述（可选）",
-            "空行后：题目列表",
-            "题目之间用空行分隔",
-            "分页用 === 分页 === 标记",
-        ],
-        question_format: "序号. 题目标题[题型标记]",
-        option_format: "每个选项独占一行（无前缀）",
-        scale_format: "min~max（如 1~5）",
-        page_separator: "=== 分页 ===",
-        paragraph: "不带序号的段落为引导语/段落说明",
-        optional_mark: "（选填）标记非必填题",
+    title: "WJX XML DSL v1",
+    version: 1,
+    purpose: "AI 依据本规范生成完整 DSL；CLI、MCP、SDK 负责校验和传输，后端负责最终语义校验与写入。",
+    header: ["wjx-dsl 1;", "xml version = \"1.0\";", "xml encoding = \"utf-8\";"],
+    example: `wjx-dsl 1;
+xml version = "1.0";
+xml encoding = "utf-8";
+
+questionnaire {
+  attr "Title" = "员工满意度调查";
+  question radio {
+    attr "Topic" = "1";
+    attr "Title" = "整体满意度";
+    attr "Requir" = "true";
+    item { attr "ItemTitle" = "满意"; attr "ItemValue" = "1"; };
+  };
+};`,
+    grammar: {
+        statements: "块使用 { }，语句以 ; 结束；字符串使用双引号并支持反斜杠转义。",
+        root: "questionnaire { ... }",
+        attributes: "attr \"Name\" = \"Value\";",
+        question: "question <type> { attr ...; item { attr ...; }; };",
+        raw: "raw \"XmlName\" { ... }; 或 raw \"Attr\" = \"Value\";",
     },
-    type_labels: {
-        "[单选题]": "q_type=3, q_subtype=3（可省略，默认题型）",
-        "[多选题]": "q_type=4, q_subtype=4",
-        "[下拉框]": "q_type=3, q_subtype=301",
-        "[量表题]": "q_type=3, q_subtype=302",
-        "[反向量表题]": "量表题反向计分（API 层无独立编码）",
-        "[评分单选]": "q_type=3, q_subtype=303",
-        "[情景题]": "q_type=3, q_subtype=304",
-        "[判断题]": "q_type=3, q_subtype=305",
-        "[评分多选]": "q_type=4, q_subtype=401",
-        "[排序题]": "q_type=4, q_subtype=402",
-        "[商品题]": "q_type=4, q_subtype=403",
-        "[填空题]": "q_type=5, q_subtype=5",
-        "[多级下拉题]": "q_type=5, q_subtype=501",
-        "[简答题]": "q_type=5 的别名",
-        "[问答题]": "q_type=5 的别名",
-        "[多项填空题]": "q_type=6, q_subtype=6（q_title 须含填空符 {_}）",
-        "[矩阵题]": "q_type=7, q_subtype=7（通用矩阵）",
-        "[矩阵单选题]": "q_type=7, q_subtype=702",
-        "[矩阵多选题]": "q_type=7, q_subtype=703",
-        "[矩阵量表题]": "q_type=7, q_subtype=701",
-        "[矩阵填空题]": "q_type=7, q_subtype=704",
-        "[矩阵滑动条]": "q_type=7, q_subtype=705",
-        "[矩阵数值题]": "q_type=7, q_subtype=706",
-        "[表格填空题]": "q_type=7, q_subtype=707",
-        "[表格下拉框]": "q_type=7, q_subtype=708",
-        "[表格组合题]": "q_type=7, q_subtype=709",
-        "[表格自增题]": "q_type=7, q_subtype=710",
-        "[多项文件题]": "q_type=7, q_subtype=711",
-        "[多项简答题]": "q_type=7, q_subtype=712",
-        "[文件上传]": "q_type=8, q_subtype=8",
-        "[绘图题]": "q_type=8, q_subtype=801",
-        "[比重题]": "q_type=9, q_subtype=9",
-        "[滑动条]": "q_type=10, q_subtype=10",
-        "[考试多项填空]": "q_type=6, q_subtype=601（q_title 须含填空符 {_}）",
-        "[考试完形填空]": "q_type=6, q_subtype=602（q_title 须含填空符 {_}）",
-        "[完形填空]": "[考试完形填空] 的别名",
-        "[分页栏]": "q_type=1（不出现在 DSL 输出，用 === 分页 === 代替）",
-        "[段落说明]": "q_type=2（不带序号的纯文本段落）",
+    base_types: {
+        radio: "单选",
+        radio_down: "下拉（别名 dropdown）",
+        check: "多选（Mode=1 即排序，别名 sort）",
+        question: "简答/文本，题型由 Verify 决定",
+        gapfill: "填空/完形（GapCount + 每空一个 row）",
+        fileupload: "文件上传/签名（别名 signature、drawing）",
+        sum: "比重题（Total + 每行一个 row）",
+        slider: "滑动条",
+        matrix: "矩阵/表格系列，形态由 Mode 决定",
+        page: "分页",
+        cut: "段落说明",
     },
-    bracket_compatibility: "TxtToActivityService 支持 [] / 【】 / () / （）四种括号",
-    example: `员工满意度调查
-
-请根据您的实际体验填写以下问卷。
-
-1. 您的部门[下拉框]
-技术部
-市场部
-销售部
-人事部
-
-2. 您对工作环境的满意度[量表题]
-1~5
-
-3. 您认为最重要的福利是？[多选题]
-薪资
-假期
-培训机会
-健康保险
-
-=== 分页 ===
-
-4. 请对以下维度评分[矩阵量表题]
-行：
-- 沟通效率
-- 团队协作
-- 管理支持
-
-5. 您的改进建议[填空题]`,
-    matrix_column_format: {
-        description: "矩阵题支持自定义列标签（列头），有3种写法",
-        formats: [
-            {
-                name: "DSL 格式（推荐）",
-                description: "使用「行：」和「列：」明确分隔行列",
-                example: `1. 评价以下维度[矩阵单选题]
-行：
-- 沟通效率
-- 团队协作
-列：
-- 非常好
-- 好
-- 一般
-- 差`,
-            },
-            {
-                name: "AI 格式",
-                description: "第一行为空格分隔的列头，后续行为行标题",
-                example: `1. 评价以下维度[矩阵单选题]
-非常好 好 一般 差
-沟通效率
-团队协作`,
-            },
-            {
-                name: "纯行格式（默认）",
-                description: "不指定列标签时，所有行作为行标题，列使用默认编号",
-                example: `1. 评价以下维度[矩阵量表题]
-沟通效率
-团队协作
-管理支持`,
-            },
-        ],
-        notes: [
-            "列标签在 API 层对应 col_items 字段",
-            "如不指定列标签，问卷星前端显示默认列头",
-            "矩阵量表题建议使用纯行格式 + 在前端手动设置量表范围",
-        ],
-    },
-    limitations: [
-        "DSL 是问卷的「可读摘要」，不是完整序列化",
-        "分支逻辑（跳转规则）不在 DSL 中表示",
-        "验证规则（正则、长度限制）不在 DSL 中表示",
-        "评分规则和权重不在 DSL 中表示",
-        "随机化设置不在 DSL 中表示",
-        "以上高级设置需通过 get_survey 的 JSON 格式获取",
+    common_aliases: [
+        "dropdown", "scale", "sort", "scenario", "true_false", "commodity", "multi_level_dropdown",
+        "signature", "drawing", "matrix_single", "matrix_multi", "matrix_scale", "matrix_fill",
+        "matrix_slider", "matrix_numeric", "table_fill", "table_dropdown", "table_combo",
+        "multi_file", "multi_textarea", "exam_multi_fill", "exam_cloze",
     ],
+    invalid_types_note: "checkbox/text/multi_text/upload/weight/matrix_radio/matrix_checkbox/matrix_text 不是后端题型标识；对应能力分别用 check、question/gapfill、fileupload、sum、matrix_single、matrix_multi、matrix_fill。",
+    advanced_types_note: "别名未覆盖的高级题型用 Generic 别名 node \"Question\" 直接写：基础 Type + 后端读取的标识属性（Mode/Verify/HasValue/IsCeShi/IsSignature/IsQingJing/IsEvaluate/IsLadder/IsTouPiao/IsShop/IsShelf/IsAppointment/Relation/Height）。",
+    advanced_types_examples: {
+        NPS: "radio + Mode=\"6\" + HasValue=\"true\"",
+        评价星级: "radio + IsEvaluate=\"true\" + HasValue=\"true\"",
+        社会阶层: "radio + IsLadder=\"true\"",
+        性别学历等: "radio + Verify=\"性别\"（年龄段/学历/婚姻/职业/行业同理）",
+        手机日期邮箱: "question + Verify=\"手机\"（日期/Email 同理）",
+        矩阵高级模型: "matrix + Mode（如 302）+ Verify（conjoint/maxdiff/bpto/vlookup/ocr 等）",
+        考试题: "原题型 + IsCeShi=\"true\" + CeShiValue=\"<分值>\"",
+    },
+    advanced_types_caveat: "标识不在 <Question> 属性上的题型（热力图、折叠栏目、轮播图、知情同意书、品牌漏斗、部门/其它信息，以及 langv/clock 等渲染由后端决定的 Verify）不要用 raw node 硬凑，改用编辑器或 JSONL 创建（create_survey_by_json 传中文 qtype）。",
+    question_examples: {
+        check: `question check {
+  attr "Topic" = "2";
+  attr "Title" = "以下哪些功能你会使用";
+  attr "MinValue" = "1"; attr "MaxValue" = "3";
+  item { attr "ItemTitle" = "导出"; attr "ItemValue" = "1"; };
+  item { attr "ItemTitle" = "分享"; attr "ItemValue" = "2"; };
+};`,
+        gapfill: `question gapfill {
+  attr "Topic" = "3";
+  attr "Title" = "我最喜欢的城市是 ___，因为 ___";
+  attr "GapCount" = "2";
+  row { attr "Title" = "城市"; attr "ItemVerify" = "单行文本"; attr "IsRequir" = "true"; };
+  row { attr "Title" = "原因"; attr "ItemVerify" = "多行文本"; };
+};`,
+        matrix: `question matrix {
+  attr "Topic" = "5";
+  attr "Title" = "请对以下方面评分";
+  attr "Mode" = "2";
+  row { attr "Title" = "响应速度"; };
+  row { attr "Title" = "界面体验"; };
+  item { attr "ItemTitle" = "满意"; attr "ItemValue" = "1"; };
+  item { attr "ItemTitle" = "一般"; attr "ItemValue" = "2"; };
+};`,
+    },
+    logic: ["if", "show", "hide", "jump", "branch", "reference", "random", "raw"],
+    logic_rules: {
+        references: "使用 Topic/Item 引用；jump/branch 目标为 END 或有效 Topic。",
+        validation: "悬空引用、自循环和跳转环由后端最终校验。",
+    },
+    raw_policy: "未知属性或高级能力使用 raw 显式保留，客户端不得静默删除。",
+    api: {
+        query: "A1000006",
+        create: "A1000109",
+        update: "A1000110",
+        update_vid: "只接受传统 vid；提交修改后的完整 DSL，不使用增量 Patch DSL。",
+    },
 };
 //# sourceMappingURL=dsl-reference.js.map

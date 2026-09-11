@@ -5,6 +5,9 @@ export { setCredentialProvider, getWjxCredentials, callWjxApi, callWjxUserSystem
 export { createSurveyByJson, CREATABLE_SURVEY_ATYPES, getSurvey, listSurveys, updateSurveyStatus, getSurveySettings, updateSurveySettings, deleteSurvey, getQuestionTags, getTagDetails, clearRecycleBin, uploadFile, } from "./modules/survey/client.js";
 export { surveyToText, typeToLabel, stripHtml } from "./modules/survey/survey-to-text.js";
 export { extractJsonlMetadata, normalizeJsonl, MAX_JSONL_SIZE, parseJsonl, jsonToSurvey, EXAM_QTYPES, preprocessExamJsonl, hasVoteJsonlQtype, injectDefaultRequir, injectAtypeIntoJsonl, inferAtypeFromTitle, validateSurveyTitle, validateSurveyHasQuestions, NON_QUESTION_QTYPE_SET, JSONL_SUPPORTED_QTYPES, FRAMEWORK_ONLY_JSONL_QTYPES, hasFrameworkOnlyJsonlQtype, resolveJsonlPublish, preflightJsonl, } from "./modules/survey/json-to-survey.js";
+// WJX XML DSL module
+export { queryWjxDsl, createSurveyByWjxDsl, updateWjxDsl, } from "./modules/dsl/client.js";
+export { generateWjxDsl, normalizeWjxDsl, validateWjxDsl, MAX_WJX_DSL_BYTES, } from "./modules/dsl/validate.js";
 // Response module
 export { queryResponses, queryResponsesRealtime, downloadResponses, getReport, submitResponse, getFileLinks, getWinners, modifyResponse, get360Report, clearResponses, } from "./modules/response/client.js";
 export { normalizeSubmitdata } from "./modules/response/submitdata.js";

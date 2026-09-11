@@ -60,9 +60,9 @@ export function registerResources(server) {
                 text: formatResource(PUSH_FORMAT_GUIDE),
             }],
     }));
-    server.resource("dsl-syntax", "wjx://reference/dsl-syntax", { description: "问卷星 DSL 文本语法参考：题型标记、格式规范、与 TxtToActivityService 对齐", mimeType: "application/json" }, async () => ({
+    server.resource("dsl-syntax", "wjx://reference/wjx-xml-dsl", { description: "WJX XML DSL v1 生成、校验和 API 调用规范", mimeType: "application/json" }, async () => ({
         contents: [{
-                uri: "wjx://reference/dsl-syntax",
+                uri: "wjx://reference/wjx-xml-dsl",
                 mimeType: "application/json",
                 text: formatResource(DSL_SYNTAX_GUIDE),
             }],
