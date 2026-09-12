@@ -1466,33 +1466,6 @@
       }
     },
     {
-      "id": "survey.export-text",
-      "command": "survey.export-text",
-      "service": "default",
-      "action": "shortcut:survey.export-text",
-      "input": {
-        "type": "object",
-        "properties": {}
-      },
-      "risk": "read",
-      "identities": [
-        "user",
-        "bot"
-      ],
-      "source": "shortcut",
-      "metadata": {
-        "path": "survey.export-text",
-        "risk": "read",
-        "identities": [
-          "user",
-          "bot"
-        ],
-        "targetFields": [
-          "vid"
-        ]
-      }
-    },
-    {
       "id": "survey.get",
       "command": "survey.get",
       "service": "default",

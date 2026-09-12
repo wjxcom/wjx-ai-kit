@@ -43,7 +43,6 @@ tools:
 ### 创建问卷
 
 1. **强制要求**：所有问卷一律用当前唯一入口 `create_survey_by_json`（传入 `jsonl` 字符串，字段参考工具描述和 `references/tools-survey.md`；`wjx://reference/question-types` 只解释 `get_survey` 返回的数字 `q_type/q_subtype`）
-2. 当前 MCP Server 不提供 `create_survey_by_text` / `create_survey`；历史 DSL/旧 JSON 必须先在 MCP 外部转换为 JSONL
 3. 创建后调用 `get_survey` 验证问卷内容
 4. 主动使用 `build_preview_url` 提供预览链接，使用 `build_survey_url` 提供编辑链接
 
@@ -60,7 +59,6 @@ tools:
 ### 考试问卷注意事项
 
 - 创建考试问卷时使用 `atype=6`，并明确使用 `考试单选`、`考试判断`、`考试多选`、`考试单项填空` 等考试专用 qtype；普通单选/多选/填空不会因为 atype=6 自动转换为考试题型
-- **考试配置**：JSON 创建路径支持 `correctselect`、`quizscore` 和 `answeranalysis`；只有旧 DSL 路径不支持这些字段。需要补充高级考试设置时，再提供 `build_survey_url(mode=edit)` 编辑链接。
 - 创建考试后使用 `update_survey_settings` 的 `time_setting` 设置考试时间限制
 
 ### 查询数据

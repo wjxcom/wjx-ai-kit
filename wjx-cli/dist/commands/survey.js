@@ -1,10 +1,10 @@
 import { readFileSync } from "node:fs";
-import { createSurveyByJson, CREATABLE_SURVEY_ATYPES, getSurvey, listSurveys, updateSurveyStatus, getSurveySettings, updateSurveySettings, deleteSurvey, getQuestionTags, getTagDetails, clearRecycleBin, uploadFile, buildSurveyUrl, buildPreviewUrl, surveyToText, MAX_JSONL_SIZE, preflightJsonl, parseJsonl, Action, } from "wjx-api-sdk";
+import { createSurveyByJson, CREATABLE_SURVEY_ATYPES, getSurvey, listSurveys, updateSurveyStatus, getSurveySettings, updateSurveySettings, deleteSurvey, getQuestionTags, getTagDetails, clearRecycleBin, uploadFile, buildSurveyUrl, buildPreviewUrl, MAX_JSONL_SIZE, preflightJsonl, parseJsonl, Action, } from "wjx-api-sdk";
 import { enrichSurveyListOutput, formatOutput } from "../lib/output.js";
-import { CliError, ensureApiSuccess, handleError } from "../lib/errors.js";
-import { applyProfileCredentials, getCredentials, getProfileBaseUrl } from "../lib/auth.js";
+import { CliError, handleError } from "../lib/errors.js";
+import { getProfileBaseUrl } from "../lib/auth.js";
 import { resolveProfile } from "../lib/profiles.js";
-import { strictInt, requireField, requirePositiveInt, requireEnum, getMerged, createCapturingFetch, printDryRunPreview, ensureJsonObject, ensureStringArray } from "../lib/command-helpers.js";
+import { strictInt, requireField, requirePositiveInt, requireEnum, getMerged, ensureJsonObject, ensureStringArray } from "../lib/command-helpers.js";
 import { executeRuntimeAction, executeRuntimeCommand } from "../lib/runtime/executor.js";
 import { buildRequestPlan } from "../lib/runtime/request-plan.js";
 import { CLI_CLIENT_NAME, CLI_CLIENT_VERSION } from "../lib/client-info.js";
@@ -282,43 +282,6 @@ export function registerSurveyCommands(program) {
             requireField(m, "file");
             return { file_name: m.file_name, file: m.file };
         });
-    });
-    // --- export-text ---
-    survey
-        .command("export-text")
-        .description("导出问卷为纯文本（题目+选项）")
-        .option("--vid <n>", "问卷ID", strictInt)
-        .option("--raw", "输出纯文本（不包裹 JSON）")
-        .action(async (_opts, cmd) => {
-        try {
-            const merged = getMerged(cmd);
-            requireField(merged, "vid");
-            if (program.opts().dryRun) {
-                const { fetchImpl, getCapturedRequest } = createCapturingFetch();
-                const profile = resolveProfile({ profile: program.opts().profile });
-                await getSurvey({ vid: merged.vid }, applyProfileCredentials({ apiKey: "dry-run" }, profile), fetchImpl);
-                printDryRunPreview(getCapturedRequest(), program.opts());
-                return;
-            }
-            const creds = getCredentials(program.opts());
-            const result = await getSurvey({ vid: merged.vid }, creds);
-            ensureApiSuccess(result);
-            const data = result.data;
-            if (!data || typeof data !== "object" || !Array.isArray(data.questions)) {
-                throw new CliError("API_ERROR", "API 返回问卷数据缺少 questions 数组");
-            }
-            const text = surveyToText(data);
-            const globalOpts = program.opts();
-            if (merged.raw || globalOpts.format === "table") {
-                console.log(text);
-            }
-            else {
-                formatOutput({ vid: merged.vid, text }, globalOpts);
-            }
-        }
-        catch (e) {
-            handleError(e);
-        }
     });
     // --- jsonl-template ---
     survey

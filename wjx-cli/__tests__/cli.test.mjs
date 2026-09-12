@@ -502,40 +502,6 @@ describe("response count", () => {
 });
 
 // ═══════════════════════════════════════
-// Phase 2.5: survey export-text
-// ═══════════════════════════════════════
-
-describe("survey export-text", () => {
-  it("export-text without --vid → INPUT_ERROR exit 2", async () => {
-    const result = await runFull(["survey", "export-text"]);
-    assert.equal(result.exitCode, 2);
-    const err = parseProblem(result.stderr);
-    assert.equal(err.code, "INPUT_ERROR");
-    assert.ok(err.message.includes("vid"));
-  });
-
-  it("export-text --vid abc → INPUT_ERROR exit 2", async () => {
-    const result = await runFull(["survey", "export-text", "--vid", "abc"]);
-    assert.equal(result.exitCode, 2);
-  });
-
-  it("survey --help lists export-text", () => {
-    const out = run(["survey", "--help"]);
-    assert.match(out, /export-text/);
-  });
-
-  it("--stdin can provide vid for export-text", async () => {
-    // Will fail with API/AUTH error, but NOT INPUT_ERROR
-    const result = await runFull(["survey", "export-text", "--stdin"], {
-      input: JSON.stringify({ vid: 99999999 }),
-    });
-    if (result.exitCode !== 0) {
-      assert.notEqual(result.exitCode, 2, "stdin should satisfy required --vid");
-    }
-  });
-});
-
-// ═══════════════════════════════════════
 // Phase 3: response module (full)
 // ═══════════════════════════════════════
 
@@ -1356,11 +1322,6 @@ describe("reference", () => {
     assert.match(out, /analytics/);
   });
 
-  it("reference dsl is rejected after legacy creation removal", async () => {
-    const result = await runFull(["reference", "dsl"]);
-    assert.equal(result.exitCode, 2);
-    assert.match(result.stderr, /未知主题/);
-  });
 
   it("reference question-types outputs type mapping", () => {
     const out = run(["reference", "question-types"]);
@@ -1611,16 +1572,6 @@ describe("--dry-run", () => {
     assert.match(out, /dry-run/);
   });
 
-  it("export-text --dry-run outputs request preview", async () => {
-    const result = await runFull(
-      ["survey", "export-text", "--vid", "123", "--dry-run"],
-      { env: { WJX_API_KEY: "fake-key-1234567890", ...NO_CONFIG } },
-    );
-    assert.equal(result.exitCode, 0);
-    const preview = parseDryRunPlan(result);
-    assert.ok(preview);
-    assert.equal(preview.method, "POST");
-  });
 });
 
 // ═══════════════════════════════════════

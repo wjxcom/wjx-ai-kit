@@ -98,7 +98,6 @@ test("the MCP Skill documents every registered tool, resource, and prompt", asyn
     resolve(MCP_SKILL_ROOT, "references", "tools-survey.md"),
     resolve(MCP_SKILL_ROOT, "references", "tools-response.md"),
     resolve(MCP_SKILL_ROOT, "references", "tools-other.md"),
-    resolve(MCP_SKILL_ROOT, "references", "dsl-and-types.md"),
   ];
   const text = (await Promise.all(docs.map((path) => readFile(path, "utf8")))).join("\n");
   const [tools, resources, prompts] = await Promise.all([

@@ -52,7 +52,6 @@ export {
   clearRecycleBin,
   uploadFile,
 } from "./modules/survey/client.js";
-export { surveyToText, typeToLabel, stripHtml } from "./modules/survey/survey-to-text.js";
 export {
   extractJsonlMetadata,
   normalizeJsonl,

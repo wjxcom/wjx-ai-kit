@@ -24,4 +24,4 @@
 - 问卷创建唯一使用 action `1000106` 的 JSONL 链路；旧 JSON 数组和 DSL 创建入口已移除，DSL 仅用于读取、审阅和离线迁移。
 - 补充题型、MCP 工具、认证、HTTP 部署和迁移说明。
 - 标明已过时的用户体系能力和历史 `0.4.0` npm 发布方式。
-- 明确问卷创建入口统一为 CLI `survey create`、SDK `createSurveyByJson` 和 MCP `create_survey_by_json`；保留 `surveyToText` / DSL 读取与历史迁移说明，旧创建入口不再作为新项目工作流。
+- 明确问卷创建入口统一为 CLI `survey create`、SDK `createSurveyByJson` 和 MCP `create_survey_by_json`；XML DSL v1 通过独立的 query/generate/create/update 链路处理，不与 JSONL 互相转换。

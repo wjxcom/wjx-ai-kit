@@ -390,46 +390,9 @@ describe("Skill black-box completeness: install/update side effects", () => {
     }
   });
 
-  test("forced reinstall refreshes an existing .claude/skills mirror and removes legacy references", async () => {
-    const root = await mkdtemp(join(tmpdir(), "wjx-skill-legacy-mirror-"));
-    const bundled = resolve(HERE, "..", "bundled", "wjx-cli-use", "SKILL.md");
-    const legacyDir = join(root, ".claude", "skills", "wjx-cli-use");
-    const legacySkill = join(legacyDir, "SKILL.md");
-    const legacyDsl = join(legacyDir, "references", "dsl-syntax.md");
-    try {
-      await mkdir(join(legacyDir, "references"), { recursive: true });
-      await writeFile(legacySkill, "旧版仍推荐 create-by-json", "utf8");
-      await writeFile(legacyDsl, "旧 DSL 创建说明", "utf8");
 
-      const result = await runCli(["skill", "install", "--force", "--silent", "--target-dir", root]);
-      assert.ok(["installed", "updated"].includes(parseSuccess(result).data.status));
-      assert.equal(await readFile(legacySkill, "utf8"), await readFile(bundled, "utf8"));
-      await assert.rejects(() => stat(legacyDsl));
-    } finally {
-      await rm(root, { recursive: true, force: true });
-    }
-  });
 
-  test("skill update discovers a Claude-only legacy installation", async () => {
-    const root = await mkdtemp(join(tmpdir(), "wjx-skill-claude-only-"));
-    const bundled = resolve(HERE, "..", "bundled", "wjx-cli-use", "SKILL.md");
-    const claudeDir = join(root, ".claude", "skills", "wjx-cli-use");
-    const claudeSkill = join(claudeDir, "SKILL.md");
-    try {
-      await mkdir(join(claudeDir, "references"), { recursive: true });
-      await writeFile(claudeSkill, "旧版 Claude skill", "utf8");
-      await writeFile(join(claudeDir, "references", "dsl-syntax.md"), "旧 DSL", "utf8");
 
-      const result = await runCli(["skill", "update", "--silent", "--target-dir", root]);
-      assert.equal(parseSuccess(result).data.status, "updated");
-      const canonical = join(root, "skills", "wjx-cli-use", "SKILL.md");
-      assert.equal(await readFile(canonical, "utf8"), await readFile(bundled, "utf8"));
-      assert.equal(await readFile(claudeSkill, "utf8"), await readFile(bundled, "utf8"));
-      await assert.rejects(() => stat(join(claudeDir, "references", "dsl-syntax.md")));
-    } finally {
-      await rm(root, { recursive: true, force: true });
-    }
-  });
 
   test("non-force installs repair a missing mirror without overwriting existing skill content", async () => {
     const skillRoot = await mkdtemp(join(tmpdir(), "wjx-skill-mirror-repair-"));

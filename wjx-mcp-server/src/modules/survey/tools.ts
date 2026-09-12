@@ -13,7 +13,6 @@ import {
   getTagDetails,
   clearRecycleBin,
   uploadFile,
-  surveyToText,
   MAX_JSONL_SIZE,
 } from "./client.js";
 import type { SurveyDetail } from "./client.js";
@@ -27,14 +26,9 @@ export function registerSurveyTools(server: McpServer): void {
     {
       title: "获取问卷内容",
       description:
-        "根据问卷编号获取问卷详情，包括题目和选项信息。支持 format 参数选择返回格式：json（结构化）、dsl（人类可读文本）、both（两者都返回）。",
+        "根据问卷编号获取问卷详情，包括题目和选项信息。",
       inputSchema: {
         vid: z.number().int().positive().describe("问卷编号"),
-        format: z
-          .enum(["json", "dsl", "both"])
-          .optional()
-          .default("json")
-          .describe("返回格式：json=结构化 JSON（默认），dsl=人类可读 DSL 文本，both=两者都返回"),
         get_questions: z
           .boolean()
           .optional()
@@ -92,19 +86,6 @@ export function registerSurveyTools(server: McpServer): void {
           return toolApiResult(result);
         }
 
-        const fmt = args.format ?? "json";
-
-        if (fmt === "dsl") {
-          const dsl = surveyToText(result.data);
-          return toolResult({ dsl }, false);
-        }
-
-        if (fmt === "both") {
-          const dsl = surveyToText(result.data);
-          return toolResult({ ...result, dsl }, false);
-        }
-
-        // default: json
         return toolApiResult(result);
       } catch (error) {
         return toolError(error);

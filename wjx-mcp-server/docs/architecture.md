@@ -123,12 +123,11 @@ flowchart TD
 - `clear_recycle_bin`
 - `create_survey_by_json`（JSONL 创建入口）以及 `create_survey_from_definition`（XML DSL 创建入口）
 
-当前 Server 不注册 `create_survey`、`create_survey_by_text`、`create_survey_by_wjx_dsl` 或 `update_wjx_dsl`。XML DSL 通过 `query_wjx_dsl`、`generate_wjx_dsl`、`create_survey_from_definition` 和 `update_survey_from_definition` 完成查询、校验、创建和修改；JSONL 创建仍由 `create_survey_by_json` 提供。
+当前 Server 的问卷写入链路分为 JSONL 和 XML DSL：JSONL 使用 `create_survey_by_json`；XML DSL 使用 `query_wjx_dsl`、`generate_wjx_dsl`、`create_survey_from_definition` 和 `update_survey_from_definition` 完成查询、校验、创建和修改。
 
 特点：
 
 - `createSurveyByJson()` 在调用前校验 JSONL 元数据、题目行和题型字段。
-- `surveyToText()` 为读取路径提供可读 DSL 输出；DSL 文本只用于审阅和历史迁移，不作为新问卷创建入口。
 - 设置更新工具要求至少传入一个设置块，避免空写请求。
 
 ### 5.3 response 模块

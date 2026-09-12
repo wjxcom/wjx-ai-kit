@@ -71,7 +71,6 @@ wjx response report --vid 12345
 wjx response query --vid 12345 --page_size 50
 ```
 
-新项目只使用 JSONL 创建问卷；DSL 仅用于读取和离线迁移，见 [DSL 兼容](wjx-docs/legacy/dsl.md)。
 
 ## 开发
 

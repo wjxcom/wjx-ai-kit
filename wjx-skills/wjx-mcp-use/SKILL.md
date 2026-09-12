@@ -11,7 +11,7 @@ wjx-mcp-server 提供 MCP 工具、参考资源和 prompt 模板，覆盖问卷�
 
 ### 规则 0：按场景选择 JSONL 或 XML DSL
 
-问卷可通过 `create_survey_by_json`（JSONL，支持 70+ 题型）或 `create_survey_from_definition`（完整 XML DSL）创建。修改使用 `update_survey_from_definition`，查询 DSL 使用 `query_wjx_dsl`；旧的 `create_survey_by_text`、`create_survey_by_wjx_dsl` 和 `update_wjx_dsl` 不再注册。
+问卷可通过 `create_survey_by_json`（JSONL，支持 70+ 题型）或 `create_survey_from_definition`（完整 XML DSL）创建。修改使用 `update_survey_from_definition`，查询 DSL 使用 `query_wjx_dsl`；XML DSL 的生成与校验使用 `generate_wjx_dsl`。
 
 ### 规则 1：一个需求 = 一个问卷
 
@@ -19,11 +19,8 @@ wjx-mcp-server 提供 MCP 工具、参考资源和 prompt 模板，覆盖问卷�
 
 ### 规则 2：问卷类型 ≠ 题目类型
 
-"投票/考试/调查"是**问卷类型**（`atype` 参数）。JSONL 创建投票时使用 `qtype:"投票单选"` / `qtype:"投票多选"`，并显式传 `atype: 3`；只有旧 DSL 文本格式才使用普通 `[单选题]` / `[多选题]`，不存在 `[投票单选题]` 标签。
 
-### 规则 3：历史 DSL 不支持的题型要明确告知
 
-签名题（用 `[绘图题]` 替代）、地区题（用 `[多级下拉题]` 或网页端添加）、NPS 专用题（用 `[量表题]` + `0~10`）不在历史 DSL 支持范围内。新问卷应优先使用 JSONL 题型参考；只有读取或迁移 DSL 时才告知替代方案，**不要**反复尝试或拆分多个问卷。
 
 ### 规则 3.1：用户体系只允许兼容维护
 
@@ -60,7 +57,6 @@ https://www.wjx.cn/weixinlogin.aspx?redirecturl=%2Fnewwjx%2Fmanage%2Fuserinfo.as
   - 矩阵多选（q_subtype=703）3 行：`4$1!1|2,2!3,3!1|4` — 同一行多个列用 `|` 拼
   - 矩阵量表（q_subtype=701）3 行：`5$1!5,2!4,3!3` — 行号!分值
   - 矩阵题的"行数"来自 `get_survey` 返回的 `item_rows.length`；`items` 数组是**列头**（列选项），不是行。
-- **考试题分值/答案字段**：JSONL 创建路径支持 `correctselect`、`quizscore` 和 `answeranalysis`；旧 DSL 兼容路径不支持。`submit_response` 仅用于答题端提交，不能修改考试配置。
 
 ### 规则 7：填写链接优先使用短编号
 
@@ -166,7 +162,6 @@ submitdata 题号必须与 `get_survey` 返回的原始 `q_index` 对齐——**
 | "activity not found" | 问卷 vid 不存在 | `list_surveys` 确认正确 vid |
 | "corp_id required" | 通讯录操作缺企业 ID | 配置 `WJX_CORP_ID` 环境变量 |
 | 网络超时 | base_url 错误或网络不通 | `get_config` 检查 base_url |
-| 历史问卷迁移后题目丢失 | DSL 转换或 JSONL 字段错误 | 读取历史 DSL 时检查题号和题型映射；转换后先用 JSONL 预检，再重新获取问卷结构 |
 
 更多排查详见 [references/troubleshooting.md](references/troubleshooting.md)。
 

@@ -75,7 +75,6 @@
       { "surface": "sso.partner-url", "reason": "CLI SSO 便捷命令暂不纳入核心业务子集矩阵。" },
       { "surface": "sso.subaccount-url", "reason": "CLI SSO 便捷命令暂不纳入核心业务子集矩阵。" },
       { "surface": "sso.user-system-url", "reason": "CLI SSO 便捷命令暂不纳入核心业务子集矩阵。" },
-      { "surface": "survey.export-text", "reason": "DSL 导出仅用于历史读取/迁移，属于 CLI 扩展工作流。" },
       { "surface": "survey.jsonl-template", "reason": "本地 JSONL 模板生成属于 CLI Agent 工作站辅助能力。" },
       { "surface": "tag.add", "reason": "企业通讯录扩展命令暂不属于 MCP 核心业务子集矩阵。" },
       { "surface": "tag.delete", "reason": "企业通讯录扩展命令暂不属于 MCP 核心业务子集矩阵。" },

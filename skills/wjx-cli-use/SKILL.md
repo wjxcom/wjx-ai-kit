@@ -259,7 +259,7 @@ wjx doctor
 
 | 模块 | 命令 | 说明 |
 |------|------|------|
-| `survey` | list, get, create, jsonl-template, delete, status, settings, update-settings, tags, tag-details, clear-bin, upload, export-text, url, preview-url, dsl.query, dsl.create, dsl.update | 问卷增删改查、XML DSL、配置与预览链接 |
+| `survey` | list, get, create, jsonl-template, delete, status, settings, update-settings, tags, tag-details, clear-bin, upload, url, preview-url, dsl.query, dsl.create, dsl.update | 问卷增删改查、XML DSL、配置与预览链接 |
 | `response` | query, realtime, download, submit-template, submit, modify, clear, report, count, winners, 360-report | 答卷数据操作 |
 | `contacts` | query, add, delete | 联系人管理（需 WJX_CORP_ID） |
 | `department` | list, add, modify, delete | 部门管理 |

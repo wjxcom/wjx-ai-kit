@@ -80,7 +80,6 @@ const REMOTE_CASES = [
   { id: "survey.tag-details", path: ["survey", "tag-details"], action: Action.GET_TAG_DETAILS, required: ["--tag_id"], args: ["--tag_id", "7"], stdin: { tag_id: 7 } },
   { id: "survey.clear-bin", path: ["survey", "clear-bin"], action: Action.CLEAR_RECYCLE_BIN, highRisk: true, required: ["--username"], args: ["--username", "owner"], stdin: { username: "owner" } },
   { id: "survey.upload", path: ["survey", "upload"], action: Action.UPLOAD_FILE, required: ["--file_name", "--file"], args: ["--file_name", "avatar.txt", "--file", "aGVsbG8="], stdin: { file_name: "avatar.txt", file: "aGVsbG8=" } },
-  { id: "survey.export-text", path: ["survey", "export-text"], action: Action.GET_SURVEY, required: ["--vid"], args: ["--vid", "42"], stdin: { vid: 42 } },
   { id: "response.count", path: ["response", "count"], action: Action.QUERY_RESPONSES, required: ["--vid"], args: ["--vid", "42"], stdin: { vid: 42 } },
   { id: "response.query", path: ["response", "query"], action: Action.QUERY_RESPONSES, required: ["--vid"], args: ["--vid", "42", "--page_index", "1", "--page_size", "10"], stdin: { vid: 42, page_index: 1, page_size: 10 } },
   { id: "response.realtime", path: ["response", "realtime"], action: Action.QUERY_RESPONSES_REALTIME, required: ["--vid"], args: ["--vid", "42", "--count", "10"], stdin: { vid: 42, count: 10 } },
@@ -131,7 +130,7 @@ const LEAF_COMMANDS = [
   "reference", "response.count", "response.query", "response.realtime", "response.download", "response.submit", "response.modify", "response.clear", "response.report", "response.winners", "response.submit-template", "response.360-report",
   "schema", "skill.install", "skill.update", "skill.install-ppt", "skill.update-ppt",
   "sso.subaccount-url", "sso.user-system-url", "sso.partner-url",
-  "survey.list", "survey.get", "survey.create", "survey.delete", "survey.status", "survey.settings", "survey.update-settings", "survey.tags", "survey.tag-details", "survey.clear-bin", "survey.upload", "survey.export-text", "survey.jsonl-template", "survey.url", "survey.preview-url",
+  "survey.list", "survey.get", "survey.create", "survey.delete", "survey.status", "survey.settings", "survey.update-settings", "survey.tags", "survey.tag-details", "survey.clear-bin", "survey.upload", "survey.jsonl-template", "survey.url", "survey.preview-url",
   "tag.list", "tag.add", "tag.modify", "tag.delete",
   "update", "user-system.add-participants", "user-system.modify-participants", "user-system.delete-participants", "user-system.bind", "user-system.query-binding", "user-system.query-surveys", "whoami",
 ].sort();
@@ -470,7 +469,7 @@ describe("complete CLI command contract matrix", () => {
 
   test("leaf command inventory is exhaustive and every leaf is discoverable", async () => {
     assert.equal(new Set(LEAF_COMMANDS).size, LEAF_COMMANDS.length);
-    assert.equal(LEAF_COMMANDS.length, 79);
+    assert.equal(LEAF_COMMANDS.length, 78);
     for (const command of LEAF_COMMANDS) {
       const result = await runCli([...command.split("."), "--help"]);
       assert.equal(result.exitCode, 0, `${command}: ${result.stderr}`);
@@ -515,7 +514,7 @@ describe("complete CLI command contract matrix", () => {
   test("every metadata API command has exactly one valid matrix case", () => {
     // Two local-facing shortcuts still execute real API actions; survey.url is
     // the only shortcut that is entirely local and therefore belongs below.
-    const remoteShortcutIds = new Set(["survey.export-text", "response.submit-template"]);
+    const remoteShortcutIds = new Set(["response.submit-template"]);
     const metadataIds = CATALOG
       .filter((entry) => entry.source === "api" || remoteShortcutIds.has(entry.id))
       .map((entry) => entry.command)
@@ -596,7 +595,7 @@ describe("complete CLI command contract matrix", () => {
       ["survey", "list", "--page", "1"], ["survey", "get", "--vid", "42"],
       ["survey", "create", "--title", "x", "--type", "1", "--questions", "[]"],
       ["survey", "delete", "--vid", "42", "--username", "owner"], ["survey", "status", "--vid", "42", "--state", "1"],
-      ["survey", "settings", "--vid", "42"], ["survey", "tag-details", "--tag_id", "7"], ["survey", "export-text", "--vid", "42"],
+      ["survey", "settings", "--vid", "42"], ["survey", "tag-details", "--tag_id", "7"],
       ["response", "query", "--vid", "42", "--page_size", "10"], ["response", "realtime", "--vid", "42", "--count", "10"],
       ["response", "download", "--vid", "42", "--suffix", "0"], ["response", "submit", "--vid", "42", "--inputcosttime", "30", "--submitdata", "1$1"],
       ["response", "modify", "--vid", "42", "--jid", "7", "--answers", "1$1"], ["response", "clear", "--username", "owner", "--vid", "42"],
@@ -1175,18 +1174,6 @@ describe("complete CLI command contract matrix", () => {
     }
   });
 
-  test("export-text gives a specific API error for malformed survey payloads", async () => {
-    const fixture = await startFixture({ response: { result: true, data: {} }, env: { WJX_API_KEY: "export-key" } });
-    try {
-      const result = await fixture.run(["survey", "export-text", "--vid", "42"]);
-      assert.equal(result.exitCode, 1);
-      const problem = parseProblem(result);
-      assert.equal(problem.error.code, "API_ERROR");
-      assert.match(problem.error.message, /questions/i);
-    } finally {
-      await fixture.close();
-    }
-  });
 
   test("local and operational command matrix covers every non-API leaf", async () => {
     const appKey = "local-matrix-key";
@@ -1380,7 +1367,7 @@ describe("complete CLI command contract matrix", () => {
         `option matrix did not execute every command-local option (covered ${covered.size}, expected ${expectedLocalOptions.size})`);
       // This is the current command-local occurrence denominator. Keep it
       // explicit so a help/parser drift cannot silently shrink the matrix.
-      assert.equal(expectedLocalOptions.size, 267,
+      assert.equal(expectedLocalOptions.size, 265,
         "update the command-local option denominator only when the public surface intentionally changes");
     } finally {
       await rm(tempDir, { recursive: true, force: true });

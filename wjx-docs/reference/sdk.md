@@ -6,7 +6,6 @@ SDK 的导出入口是 `wjx-api-sdk`。远程 API 函数接受业务参数、可
 fn(input, credentials?, fetchImpl?, requestOptions?)
 ```
 
-本地辅助函数不遵循这个远程请求签名：`buildSubmitTemplate(questions)`、`decodePushPayload(encryptedData, appKey, signature?, rawBody?)`、`buildPreviewUrl(input, baseUrl?)`、`surveyToText(survey)`、`calculateNps(scores)` 和 `calculateCsat(scores, scaleType?)` 都不发起网络请求。
 
 ## 主要导出
 
@@ -49,7 +48,6 @@ await createSurveyByJson(input, credentials, fetch, {
 
 问卷创建支持 `createSurveyByJson`（JSONL）和 `createSurveyByWjxDsl`（完整 XML DSL）。修改使用 `updateWjxDsl`，查询使用 `queryWjxDsl`。SDK 只做 DSL 协议校验、规范化和传输，不把结构化业务对象转换成 DSL。
 
-`surveyToText` 保留用于旧查询结果的可读摘要；XML DSL API 返回/提交的是完整 `wjx-dsl 1` 文本。
 
 `buildSubmitTemplate` 是纯本地辅助函数：输入 `getSurvey` 返回的题目结构，输出按服务端原始 `q_index` 组织的 `submitdata` 占位模板和逐题提示，不发起网络请求。分页栏和段落说明会被跳过；生成后应由 AI 或用户替换占位答案，再交给 `submitResponse`。
 

@@ -64,7 +64,6 @@ export const CATALOG: readonly CatalogEntry[] = Object.freeze([
   apiEntry("survey.tag-details", Action.GET_TAG_DETAILS),
   apiEntry("survey.clear-bin", Action.CLEAR_RECYCLE_BIN, "high-risk-write"),
   apiEntry("survey.upload", Action.UPLOAD_FILE, "write"),
-  shortcutEntry("survey.export-text"),
   shortcutEntry("survey.url"),
   shortcutEntry("survey.preview-url"),
   builtinEntry("survey.jsonl-template"),

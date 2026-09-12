@@ -26,6 +26,3 @@
 | `--response_id` | `--jid` |
 | `--base64`（上传） | `--file` |
 
-## 从 DSL 迁移
-
-参阅 [DSL 兼容](legacy/dsl.md)，将文本转成 JSONL 后使用 `create`。

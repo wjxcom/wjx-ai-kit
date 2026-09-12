@@ -152,31 +152,15 @@ wjx survey list --name_like "满意度" --status 1
 
 ```bash
 wjx survey get --vid 12345
-# 获取 DSL 文本请使用独立的导出命令
-wjx survey export-text --vid 12345 --raw
 ```
 
 | Flag | 必填 | 说明 |
 |------|------|------|
 | `--vid <n>` | 是 | 问卷编号 |
 
-**--stdin 可用的额外参数**: `get_questions`(获取题目), `get_items`(获取选项), `get_exts`(获取问答选项), `get_setting`(获取题目设置), `get_page_cut`(获取分页信息), `get_tags`(获取标签), `showtitle`(返回标题)。`survey get` 只返回结构化 JSON；需要旧 DSL 文本时使用 `survey export-text --vid <vid> --raw`。
+**--stdin 可用的额外参数**: `get_questions`(获取题目), `get_items`(获取选项), `get_exts`(获取问答选项), `get_setting`(获取题目设置), `get_page_cut`(获取分页信息), `get_tags`(获取标签), `showtitle`(返回标题)。`survey get` 返回结构化 JSON。
 
 `survey get` 用于读取问卷内容、设置或题目详情，不是获取填写地址的必经步骤。填写地址应先使用创建响应或列表记录中的 `fill_url`/`activity_domain`/`pc_path`/`mobile_path`。
-
-## wjx survey export-text
-
-导出问卷为人类可读的 DSL 文本。
-
-```bash
-wjx survey export-text --vid 12345
-wjx survey export-text --vid 12345 --raw   # 纯文本输出（不包裹 JSON）
-```
-
-| Flag | 必填 | 说明 |
-|------|------|------|
-| `--vid <n>` | 是 | 问卷编号 |
-| `--raw` | 否 | 输出纯文本而非 JSON |
 
 ## wjx survey status
 

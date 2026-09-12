@@ -100,8 +100,8 @@ async function discoverLeaves() {
 
 test("CLI surface inventory discovers every leaf command", async () => {
   const leaves = await discoverLeaves();
-  assert.equal(leaves.length, 79, `unexpected leaf count: ${leaves.map((item) => item.join(" ")).join(", ")}`);
-  assert.equal(new Set(leaves.map((item) => item.join(".")).sort()).size, 79);
+  assert.equal(leaves.length, 78, `unexpected leaf count: ${leaves.map((item) => item.join(" ")).join(", ")}`);
+  assert.equal(new Set(leaves.map((item) => item.join(".")).sort()).size, 78);
 });
 
 test("every source-declared option is exposed by at least one command help", async () => {

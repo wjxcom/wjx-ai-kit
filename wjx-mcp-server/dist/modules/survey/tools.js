@@ -1,19 +1,14 @@
 import { z } from "zod";
-import { createSurveyByJson, CREATABLE_SURVEY_ATYPES, getSurvey, listSurveys, updateSurveyStatus, getSurveySettings, updateSurveySettings, deleteSurvey, getQuestionTags, getTagDetails, clearRecycleBin, uploadFile, surveyToText, MAX_JSONL_SIZE, } from "./client.js";
+import { createSurveyByJson, CREATABLE_SURVEY_ATYPES, getSurvey, listSurveys, updateSurveyStatus, getSurveySettings, updateSurveySettings, deleteSurvey, getQuestionTags, getTagDetails, clearRecycleBin, uploadFile, MAX_JSONL_SIZE, } from "./client.js";
 import { assertApiResponse, toolApiResult, toolResult, toolError } from "../../helpers.js";
 import { QUESTION_TYPES } from "../../resources/survey-reference.js";
 export function registerSurveyTools(server) {
     // ─── get_survey ───────────────────────────────────────────────────
     server.registerTool("get_survey", {
         title: "获取问卷内容",
-        description: "根据问卷编号获取问卷详情，包括题目和选项信息。支持 format 参数选择返回格式：json（结构化）、dsl（人类可读文本）、both（两者都返回）。",
+        description: "根据问卷编号获取问卷详情，包括题目和选项信息。",
         inputSchema: {
             vid: z.number().int().positive().describe("问卷编号"),
-            format: z
-                .enum(["json", "dsl", "both"])
-                .optional()
-                .default("json")
-                .describe("返回格式：json=结构化 JSON（默认），dsl=人类可读 DSL 文本，both=两者都返回"),
             get_questions: z
                 .boolean()
                 .optional()
@@ -67,16 +62,6 @@ export function registerSurveyTools(server) {
             if (result.result === false) {
                 return toolApiResult(result);
             }
-            const fmt = args.format ?? "json";
-            if (fmt === "dsl") {
-                const dsl = surveyToText(result.data);
-                return toolResult({ dsl }, false);
-            }
-            if (fmt === "both") {
-                const dsl = surveyToText(result.data);
-                return toolResult({ ...result, dsl }, false);
-            }
-            // default: json
             return toolApiResult(result);
         }
         catch (error) {

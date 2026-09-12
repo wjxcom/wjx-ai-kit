@@ -49,6 +49,3 @@ console.log(created.data);
 
 需要让服务端识别调用方时，在支持请求覆盖的函数第四参数传入 `clientName`、`clientVersion`；SDK 会发送对应的 `X-WJX-Client`、`X-WJX-Client-Version` 请求头。`wjx-cli` 的 `survey create` 已自动携带自身版本。
 
-## 创建入口与 DSL 兼容边界
-
-创建问卷只使用 `createSurveyByJson`。`decodePushPayload` 可在本地解密并可选验签问卷星推送载荷；`surveyToText` 继续用于把已读取的问卷转换为可读 DSL 文本。SDK 不再提供 `createSurvey`、`createSurveyByText` 或 `textToSurvey` 创建接口。历史 DSL 只能在外部转换为 JSONL 后提交，步骤见 [DSL 兼容](../legacy/dsl.md)。
