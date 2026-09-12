@@ -10,14 +10,11 @@ import { createServer } from "../dist/server.js";
 const LOCAL_TOOLS = new Set([
   "calculate_nps", "calculate_csat", "decode_responses", "detect_anomalies",
   "compare_metrics", "sso_subaccount_url", "sso_user_system_url", "sso_partner_url",
-  "build_survey_url", "build_preview_url", "decode_push_payload", "build_submit_template", "get_config",
+  "build_survey_url", "build_preview_url", "get_short_link", "decode_push_payload", "build_submit_template", "get_config",
   "generate_wjx_dsl",
 ]);
 
 const EXPECTED_ACTIONS = {
-  query_wjx_dsl: Action.QUERY_WJX_DSL,
-  create_survey_from_definition: Action.CREATE_SURVEY_BY_WJX_DSL,
-  update_survey_from_definition: Action.UPDATE_WJX_DSL,
   add_admin: Action.ADD_ADMIN,
   add_contacts: Action.ADD_CONTACTS,
   add_department: Action.ADD_DEPARTMENT,
@@ -27,7 +24,11 @@ const EXPECTED_ACTIONS = {
   bind_activity: Action.BIND_ACTIVITY,
   clear_recycle_bin: Action.CLEAR_RECYCLE_BIN,
   clear_responses: Action.CLEAR_RESPONSES,
+  create_ai_page: Action.CREATE_AI_PAGE,
   create_survey_by_json: Action.CREATE_SURVEY_BY_JSON,
+  query_wjx_dsl: Action.QUERY_WJX_DSL,
+  create_survey_from_definition: Action.CREATE_SURVEY_BY_WJX_DSL,
+  update_survey_from_definition: Action.UPDATE_WJX_DSL,
   count_responses: Action.QUERY_RESPONSES,
   delete_admin: Action.DELETE_ADMIN,
   delete_contacts: Action.MANAGE_CONTACTS,
@@ -63,14 +64,11 @@ const EXPECTED_ACTIONS = {
   submit_response: Action.SUBMIT_RESPONSE,
   update_survey_settings: Action.UPDATE_SETTINGS,
   update_survey_status: Action.UPDATE_STATUS,
+  update_ai_page: Action.UPDATE_AI_PAGE,
   upload_file: Action.UPLOAD_FILE,
 };
 
 const TOOL_ARGS = {
-  query_wjx_dsl: { vid: 42 },
-  generate_wjx_dsl: { dsl: "wjx-dsl 1; questionnaire { attr \"Title\" = \"黑盒问卷\"; };" },
-  create_survey_from_definition: { dsl: "wjx-dsl 1; questionnaire { attr \"Title\" = \"黑盒问卷\"; };" },
-  update_survey_from_definition: { vid: 42, dsl: "wjx-dsl 1; questionnaire { attr \"Title\" = \"黑盒问卷\"; };" },
   add_admin: { users: JSON.stringify([{ userid: "u-1", role: 2 }]), corpid: "corp-1" },
   add_contacts: { users: JSON.stringify([{ userid: "u-1", name: "Alice" }]), corpid: "corp-1" },
   add_department: { depts: JSON.stringify(["研发部/后端"]), corpid: "corp-1" },
@@ -79,6 +77,7 @@ const TOOL_ARGS = {
   add_tag: { child_names: JSON.stringify(["研发/后端"]), corpid: "corp-1" },
   bind_activity: { vid: 42, usid: 9, uids: JSON.stringify(["u-1"]) },
   build_preview_url: { sid: "short-code" },
+  get_short_link: { url: "https://www.wjx.cn/vm/short-code.aspx" },
   build_survey_url: { mode: "create", name: "黑盒测试" },
   calculate_csat: { scores: [1, 4, 5] },
   calculate_nps: { scores: [10, 8, 2] },
@@ -89,6 +88,11 @@ const TOOL_ARGS = {
     jsonl: `${JSON.stringify({ qtype: "问卷基础信息", title: "黑盒问卷", atype: 1 })}\n${JSON.stringify({ qtype: "单选", title: "满意度", select: ["是", "否"] })}`,
     atype: 1,
   },
+  query_wjx_dsl: { vid: 42 },
+  generate_wjx_dsl: { dsl: 'wjx-dsl 1; questionnaire { attr "Title" = "黑盒问卷"; };' },
+  create_survey_from_definition: { dsl: 'wjx-dsl 1; questionnaire { attr "Title" = "黑盒问卷"; };' },
+  update_survey_from_definition: { vid: 42, dsl: 'wjx-dsl 1; questionnaire { attr "Title" = "黑盒问卷"; };' },
+  create_ai_page: { html_content: "<h1>AI homepage</h1>", title: "Test homepage", page_type: 0 },
   count_responses: { vid: 42 },
   decode_push_payload: { encrypted_data: "BwcHBwcHBwcHBwcHBwcHB4KSQXEH8Oas/HhG7FXfJDo=", app_key: "blackbox-key" },
   decode_responses: { submitdata: "1$1}2$2" },
@@ -132,6 +136,7 @@ const TOOL_ARGS = {
   submit_response: { vid: 42, inputcosttime: 2, submitdata: "1$1", jpmversion: 1 },
   update_survey_settings: { vid: 42, api_setting: "{}" },
   update_survey_status: { vid: 42, state: 1 },
+  update_ai_page: { vid: 42, html_content: "<h1>Updated homepage</h1>" },
   upload_file: { file_name: "image.png", file: "aGVsbG8=" },
 };
 
@@ -160,12 +165,89 @@ test("every registered MCP tool has an executable success-path contract", async 
   process.env.WJX_CORP_ID = "corp-1";
   setCredentialProvider(() => ({ apiKey: "mcp-matrix-key" }));
   const requests = [];
+  let surveyStatus = 1;
+  let responseCount = 2;
+  let submittedJid = 7001;
+  let modifiedScore = "5";
+  const settings = {
+    api_setting: { limit_type: 0 },
+    after_submit_setting: { show_thanks: false },
+    msg_setting: { post_url: "https://example.test/hook", quick_post: false, retry: true },
+    sojumpparm_setting: { params: [] },
+    time_setting: { begin_time: "2026-01-01 00:00" },
+  };
   globalThis.fetch = async (url, init) => {
+    if (!init.body) {
+      return new Response(JSON.stringify({
+        success: true,
+        msg: null,
+        data: "https://www.wjx.cn/s/jv",
+      }), { status: 200, headers: { "content-type": "application/json" } });
+    }
     const body = JSON.parse(init.body);
     requests.push({ url: String(url), headers: init.headers, body });
-    const data = body.action === "1000001"
-      ? { title: "黑盒问卷", answer_valid: 1, version: 3, questions: [] }
-      : {};
+    let data = {};
+    if (body.action === Action.GET_SURVEY) {
+      data = {
+        vid: 42,
+        sid: "blackboxSid",
+        title: "黑盒问卷",
+        status: surveyStatus,
+        answer_valid: 1,
+        version: 3,
+        questions: [{ q_index: 1, q_type: 3, q_subtype: 3, q_title: "满意度" }],
+        activity_domain: "https://www.wjx.cn",
+        pc_path: "/vm/blackboxSid.aspx",
+      };
+    } else if (body.action === Action.CREATE_SURVEY_BY_JSON) {
+      data = { vid: 42 };
+    } else if (body.action === Action.UPDATE_STATUS) {
+      surveyStatus = body.state;
+      data = { saved: true };
+    } else if (body.action === Action.DELETE_SURVEY) {
+      // Scoped clear_recycle_bin is implemented with the hard-delete action;
+      // the ordinary delete_survey invocation still transitions to status 3.
+      surveyStatus = body.completely_delete === true || body.completely_delete === "1" ? 4 : 3;
+      data = { deleted: true };
+    } else if (body.action === Action.CLEAR_RECYCLE_BIN) {
+      surveyStatus = 4;
+      data = { cleared: true };
+    } else if (body.action === Action.GET_SETTINGS) {
+      data = structuredClone(settings);
+    } else if (body.action === Action.UPDATE_SETTINGS) {
+      for (const key of ["api_setting", "after_submit_setting", "msg_setting", "sojumpparm_setting", "time_setting"]) {
+        if (typeof body[key] === "string") settings[key] = JSON.parse(body[key]);
+      }
+      data = { saved: true };
+    } else if (body.action === Action.SUBMIT_RESPONSE) {
+      submittedJid += 1;
+      responseCount += 1;
+      data = { jid: submittedJid };
+    } else if (body.action === Action.QUERY_RESPONSES) {
+      const requestedJid = body.jid === undefined ? undefined : String(body.jid);
+      data = requestedJid === "7"
+        ? {
+            total_count: 1,
+            answers: {
+              "1": {
+                jid: 7,
+                answer_items: {
+                  "10000": { q_index: 1, item_value: modifiedScore },
+                },
+              },
+            },
+          }
+        : requestedJid === String(submittedJid)
+        ? { total_count: 1, responses: [{ jid: submittedJid }] }
+        : { total_count: responseCount, join_times: responseCount, responses: responseCount ? [{ jid: 1 }] : [] };
+    } else if (body.action === Action.MODIFY_RESPONSE) {
+      const answers = JSON.parse(body.answers);
+      modifiedScore = String(answers["10000"]);
+      data = { saved: true };
+    } else if (body.action === Action.CLEAR_RESPONSES) {
+      responseCount = 0;
+      data = { cleared: true };
+    }
     return new Response(JSON.stringify({ result: true, data }), {
       status: 200,
       headers: { "content-type": "application/json" },
@@ -178,7 +260,7 @@ test("every registered MCP tool has an executable success-path contract", async 
     const names = listed.tools.map((tool) => tool.name);
     const missing = names.filter((name) => !Object.hasOwn(TOOL_ARGS, name));
     assert.deepEqual(missing, [], "every tool must have a curated valid invocation");
-    assert.equal(names.length, 63, "update the tool denominator only when the MCP surface intentionally changes");
+    assert.equal(names.length, 66, "update the tool denominator only when the MCP surface intentionally changes");
 
     for (const name of names) {
       const before = requests.length;
@@ -190,10 +272,17 @@ test("every registered MCP tool has an executable success-path contract", async 
         assert.equal(payload.result, true, `${name} did not preserve an upstream success result`);
         const calls = requests.slice(before);
         assert.ok(calls.length >= 1, `${name} did not reach the API transport`);
-        assert.equal(String(calls.at(-1).body.action), String(EXPECTED_ACTIONS[name]), `${name} routed to the wrong API action`);
+        const expectedActions = name === "clear_recycle_bin"
+          ? [Action.CLEAR_RECYCLE_BIN, Action.DELETE_SURVEY].map(String)
+          : [String(EXPECTED_ACTIONS[name])];
+        assert.ok(
+          calls.some((call) => expectedActions.includes(String(call.body.action))),
+          `${name} routed to the wrong API action`,
+        );
         if (name === "query_sub_accounts") {
-          assert.equal(calls.at(-1).body.page_index, 2);
-          assert.equal(calls.at(-1).body.page_size, 25);
+          const queryCall = calls.findLast((call) => String(call.body.action) === expectedActions[0]);
+          assert.equal(queryCall.body.page_index, 2);
+          assert.equal(queryCall.body.page_size, 25);
         }
       }
     }
@@ -274,9 +363,16 @@ test("submit_response normalizes data when metadata is available even with expli
     globalThis.fetch = async (_url, init) => {
       const body = JSON.parse(init.body);
       requests.push(body);
-      const data = body.action === "1000001"
-        ? { version: 7, questions: [{ q_index: 1, q_type: 7, q_subtype: 7 }] }
-        : { submitted: true };
+      let data;
+      if (body.action === Action.GET_SURVEY) {
+        data = { vid: 42, version: 7, questions: [{ q_index: 1, q_type: 7, q_subtype: 7 }] };
+      } else if (body.action === Action.SUBMIT_RESPONSE) {
+        data = { submitted: true, jid: 501 };
+      } else if (body.action === Action.QUERY_RESPONSES) {
+        data = { responses: [{ jid: 501 }] };
+      } else {
+        data = { submitted: true };
+      }
       return new Response(JSON.stringify({ result: true, data }), {
       status: 200,
       headers: { "content-type": "application/json" },
@@ -289,11 +385,13 @@ test("submit_response normalizes data when metadata is available even with expli
       arguments: { vid: 42, inputcosttime: 2, submitdata: "1_1$2", jpmversion: 23 },
     });
     assert.equal(result.isError, false, JSON.stringify(result));
-    assert.equal(requests.length, 2);
+    assert.equal(requests.length, 3);
     assert.equal(requests[0].action, "1000001");
     assert.equal(requests[1].action, Action.SUBMIT_RESPONSE);
     assert.equal(requests[1].jpmversion, 23);
     assert.equal(requests[1].submitdata, "1$1!2");
+    assert.equal(requests[1].submit_channel, "wjx-mcp");
+    assert.equal(requests[2].action, Action.QUERY_RESPONSES);
   } finally {
     await client.close();
   }
@@ -308,7 +406,9 @@ test("submit_response continues with explicit jpmversion when metadata lookup fa
     requests.push(body);
     const response = body.action === "1000001"
       ? { result: false, errormsg: "metadata unavailable", errorcode: "TEMPORARY" }
-      : { result: true, data: { submitted: true } };
+      : body.action === Action.SUBMIT_RESPONSE
+        ? { result: true, data: { submitted: true, jid: 502 } }
+        : { result: true, data: { responses: [{ jid: 502 }] } };
     return new Response(JSON.stringify(response), {
       status: 200,
       headers: { "content-type": "application/json" },
@@ -321,9 +421,10 @@ test("submit_response continues with explicit jpmversion when metadata lookup fa
       arguments: { vid: 42, inputcosttime: 2, submitdata: "1$1_2", jpmversion: 23 },
     });
     assert.equal(result.isError, false, JSON.stringify(result));
-    assert.equal(requests.length, 2);
+    assert.equal(requests.length, 3);
     assert.equal(requests[1].action, Action.SUBMIT_RESPONSE);
     assert.equal(requests[1].submitdata, "1$1_2");
+    assert.equal(requests[2].action, Action.QUERY_RESPONSES);
   } finally {
     await client.close();
   }

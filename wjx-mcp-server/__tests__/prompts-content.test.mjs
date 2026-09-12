@@ -115,6 +115,7 @@ describe("prompts content correctness", () => {
       });
       const text = result.messages[0].content.text;
       assert.ok(text.includes("create_survey_by_json"));
+      assert.match(text, /明确授权|明确确认|用户.*授权/i);
     });
 
     it("includes the canonical qtype reference", async () => {
@@ -469,8 +470,13 @@ describe("prompts content correctness", () => {
         arguments: { vid: "1" },
       });
       const text = result.messages[0].content.text;
-      assert.ok(text.includes("push_url"));
+      assert.ok(text.includes("post_url"));
+      assert.ok(text.includes("quick_post"));
+      assert.ok(text.includes("retry"));
       assert.ok(text.includes("AES-128-CBC"));
+      assert.ok(!text.includes("push_url"));
+      assert.ok(!text.includes("- is_encrypt"));
+      assert.ok(!text.includes("- push_custom_params"));
     });
 
     it("references get_survey_settings and update_survey_settings", async () => {
@@ -534,5 +540,18 @@ describe("prompts listing", () => {
       "survey-health-check",
       "user-system-workflow",
     ]);
+  });
+  // ── 11. anomaly-detection ────────────────────────────────────────
+  describe("anomaly-detection", () => {
+    it("documents the median speed heuristic and sample threshold", async () => {
+      const result = await client.getPrompt({
+        name: "anomaly-detection",
+        arguments: { vid: "1" },
+      });
+      const text = result.messages[0].content.text;
+      assert.match(text, /中位数 30%/);
+      assert.match(text, /至少 3 个正时长样本/);
+      assert.doesNotMatch(text, /题目数\s*[×x*]\s*3/);
+    });
   });
 });

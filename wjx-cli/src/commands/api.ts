@@ -20,13 +20,18 @@ import { ensureConfirmation } from "../lib/runtime/confirmation.js";
 import { getCommandMetadata } from "../lib/command-metadata.js";
 import { resolveProfile } from "../lib/profiles.js";
 
+type CatalogRequestOptions = {
+  retryBudget?: number;
+  idempotency: "safe" | "unsafe" | "unknown";
+  httpRetryable: boolean;
+};
+
 async function callCatalogTransport(
   service: ApiService,
   params: Record<string, unknown>,
   credentials: WjxCredentials,
-  retryBudget: number | undefined,
+  requestOptions: CatalogRequestOptions,
 ): Promise<WjxApiResponse<unknown>> {
-  const requestOptions = retryBudget === undefined ? {} : { retryBudget };
   switch (service) {
     case "contacts": return callWjxContactsApi(params, { credentials, ...requestOptions });
     case "subuser": return callWjxSubuserApi(params, { credentials, ...requestOptions });
@@ -72,9 +77,10 @@ export function registerApiCommands(program: Command): void {
           profile: { ...resolveProfile({ profile: program.opts().profile }) },
         });
         const routedBody = applyProfileDefaults(body, context.profile);
+        const metadata = getCommandMetadata(commandPath);
         await ensureConfirmation({
           command: commandPath,
-          metadata: getCommandMetadata(commandPath),
+          metadata,
           input: routedBody,
           options: {
             yes: program.opts().yes === true,
@@ -96,13 +102,25 @@ export function registerApiCommands(program: Command): void {
           return;
         }
         const credentials = applyProfileCredentials(getCredentials(program.opts()), context.profile);
-        // Raw Catalog writes are not safe to replay after an ambiguous network
-        // failure; read actions retain the SDK's default retry policy.
+        const requestOptions: CatalogRequestOptions = found.risk === "read"
+          ? {
+            // A read risk alone does not prove replay safety. Keep endpoints
+            // without an explicit idempotency declaration fail-closed.
+            idempotency: metadata.idempotent === true ? "safe" : "unknown",
+            httpRetryable: metadata.httpRetryable === true,
+          }
+          : {
+            // Raw Catalog writes are never safe to replay after an ambiguous
+            // network failure, regardless of their HTTP response policy.
+            retryBudget: 0,
+            idempotency: "unsafe",
+            httpRetryable: false,
+          };
         const result = await callCatalogTransport(
           found.service,
           routedBody,
           credentials,
-          found.risk === "read" ? undefined : 0,
+          requestOptions,
         );
         ensureApiSuccess(result);
         formatOutput(result, program.opts());

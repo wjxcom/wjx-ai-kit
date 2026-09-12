@@ -4,6 +4,19 @@
 
 > 说明：以下 0.x 条目保留为历史记录。条目中出现的 `createSurvey`、`createSurveyByText`、`textToSurvey` 创建相关能力已移除，不属于当前 SDK，也不得据此恢复或新增兼容入口。当前问卷创建唯一使用 `createSurveyByJson`。
 
+## [0.4.4] - 2026-09-07
+
+- 增加问卷填写长链接转短信短链接的 `getShortLink` 能力。
+- `submitResponse` 支持透传 OpenAPI 1001001 的 `submit_channel` 字段。
+- 补充问卷类型、题型、状态、审核状态和设置参数枚举，并完善 JSONL 题型映射。
+- 强化写操作的一次性请求、身份校验、读回验证和不确定结果处理。
+- Exposed AI homepage source HTML and fixed page type in survey details.
+- Rejected AI homepage page type changes before sending an update request.
+
+## [0.4.3] - 2026-09-04
+
+- Hardened AI homepage input validation and centralized shared page constraints.
+
 ## [0.4.2] - 2026-09-02
 
 - 与 `wjx-mcp-server@0.4.2`、`wjx-cli@0.4.2` 对齐发布版本；本次安全修复集中在 monorepo 的 MCP 传递依赖锁定。

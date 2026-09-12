@@ -13,7 +13,7 @@ export interface NormalizedInput {
 export interface RequestPlan {
   service: string;
   action: string;
-  method: "POST";
+  method: "GET" | "POST";
   url: string;
   headers: Record<string, string>;
   body: string;
@@ -25,4 +25,3 @@ export interface RuntimePrepareContext {
   values: Record<string, unknown>;
   source: Record<string, string>;
 }
-

@@ -1,0 +1,870 @@
+{
+  "schemaVersion": 1,
+  "generatedFrom": [
+    "wjx-cli/src/lib/command-metadata.ts",
+    "wjx-cli/src/lib/runtime/risk.ts",
+    "wjx-cli/src/lib/runtime/confirmation.ts",
+    "wjx-cli/src/lib/runtime/retry.ts",
+    "wjx-cli/src/lib/policy.ts",
+    "capabilities/capability-matrix.json",
+    "wjx-mcp-server/src/server.ts",
+    "wjx-mcp-server/src/modules/analytics/tools.ts",
+    "wjx-mcp-server/src/modules/contacts/tools.ts",
+    "wjx-mcp-server/src/modules/multi-user/tools.ts",
+    "wjx-mcp-server/src/modules/response/tools.ts",
+    "wjx-mcp-server/src/modules/sso/tools.ts",
+    "wjx-mcp-server/src/modules/survey/tools.ts",
+    "wjx-mcp-server/src/modules/user-system/tools.ts"
+  ],
+  "sourceRevision": "8101c5e9ae38b8454dd5c2d508b0d1cda6fc0e5a6572a02061fe7f0f0036bd21",
+  "mergeRules": {
+    "scope": "Agent contract safety policy only; does not change CLI metadata or exit codes",
+    "risk": "max(cli-metadata-risk, high-risk-write when any mapped MCP destructiveHint is true)",
+    "idempotency": "false when CLI/SDK facts or any mapped MCP idempotentHint is false",
+    "confirmation": "required when CLI policy or any mapped MCP destructiveHint requires it"
+  },
+  "intentRoutes": {
+    "design": [
+      "survey.get",
+      "survey.settings"
+    ],
+    "create": [
+      "survey.create"
+    ],
+    "publish": [
+      "survey.status",
+      "survey.url",
+      "survey.preview-url",
+      "survey.shortlink"
+    ],
+    "collect": [
+      "response.query",
+      "response.realtime",
+      "response.submit",
+      "response.download"
+    ],
+    "analyze": [
+      "response.report",
+      "response.winners",
+      "analytics.nps",
+      "analytics.csat",
+      "analytics.anomalies",
+      "analytics.compare"
+    ],
+    "admin": [
+      "survey.delete",
+      "survey.update-settings",
+      "response.modify",
+      "response.clear",
+      "survey.clear-bin"
+    ],
+    "setup": [
+      "cli.init",
+      "cli.diagnostics",
+      "cli.schema-reference"
+    ]
+  },
+  "mcpAnnotations": {
+    "add_admin": {
+      "title": "添加或修改管理员",
+      "destructiveHint": false,
+      "idempotentHint": false,
+      "openWorldHint": true
+    },
+    "add_contacts": {
+      "title": "添加或更新通讯录成员",
+      "destructiveHint": false,
+      "idempotentHint": false,
+      "openWorldHint": true
+    },
+    "add_department": {
+      "title": "添加部门",
+      "destructiveHint": false,
+      "idempotentHint": false,
+      "openWorldHint": true
+    },
+    "add_participants": {
+      "title": "[已过时] 批量添加参与者",
+      "destructiveHint": false,
+      "idempotentHint": false,
+      "openWorldHint": true
+    },
+    "add_sub_account": {
+      "title": "创建子账号",
+      "destructiveHint": false,
+      "idempotentHint": false,
+      "openWorldHint": true
+    },
+    "add_tag": {
+      "title": "添加标签",
+      "destructiveHint": false,
+      "idempotentHint": false,
+      "openWorldHint": true
+    },
+    "bind_activity": {
+      "title": "[已过时] 绑定问卷到用户体系",
+      "destructiveHint": false,
+      "idempotentHint": false,
+      "openWorldHint": true
+    },
+    "build_preview_url": {
+      "title": "生成问卷预览链接",
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "build_submit_template": {
+      "title": "生成答卷模板",
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "build_survey_url": {
+      "title": "生成问卷创建/编辑链接",
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "calculate_csat": {
+      "title": "计算 CSAT",
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "calculate_nps": {
+      "title": "计算 NPS",
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "clear_recycle_bin": {
+      "title": "清空回收站",
+      "destructiveHint": true,
+      "idempotentHint": false,
+      "openWorldHint": true
+    },
+    "clear_responses": {
+      "title": "清空答卷数据",
+      "destructiveHint": true,
+      "idempotentHint": false,
+      "openWorldHint": true
+    },
+    "compare_metrics": {
+      "title": "对比指标数据",
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "count_responses": {
+      "title": "答卷计数",
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": true
+    },
+    "create_ai_page": {
+      "title": "创建 AI 主页",
+      "destructiveHint": false,
+      "idempotentHint": false,
+      "openWorldHint": true
+    },
+    "create_survey_by_json": {
+      "title": "用 JSON 创建问卷",
+      "destructiveHint": false,
+      "idempotentHint": false,
+      "openWorldHint": true
+    },
+    "create_survey_from_definition": {
+      "title": "使用 DSL 定义创建问卷",
+      "destructiveHint": false,
+      "idempotentHint": false,
+      "openWorldHint": true
+    },
+    "decode_push_payload": {
+      "title": "解密推送载荷",
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "decode_responses": {
+      "title": "解码答卷数据",
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "delete_admin": {
+      "title": "删除管理员",
+      "destructiveHint": true,
+      "idempotentHint": false,
+      "openWorldHint": true
+    },
+    "delete_contacts": {
+      "title": "删除通讯录成员",
+      "destructiveHint": true,
+      "idempotentHint": false,
+      "openWorldHint": true
+    },
+    "delete_department": {
+      "title": "删除部门",
+      "destructiveHint": true,
+      "idempotentHint": false,
+      "openWorldHint": true
+    },
+    "delete_participants": {
+      "title": "[已过时] 批量删除参与者",
+      "destructiveHint": true,
+      "idempotentHint": false,
+      "openWorldHint": true
+    },
+    "delete_sub_account": {
+      "title": "删除子账号",
+      "destructiveHint": true,
+      "idempotentHint": false,
+      "openWorldHint": true
+    },
+    "delete_survey": {
+      "title": "删除问卷",
+      "destructiveHint": true,
+      "idempotentHint": false,
+      "openWorldHint": true
+    },
+    "delete_tag": {
+      "title": "删除标签",
+      "destructiveHint": true,
+      "idempotentHint": false,
+      "openWorldHint": true
+    },
+    "detect_anomalies": {
+      "title": "检测异常答卷",
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "download_responses": {
+      "title": "答卷下载",
+      "destructiveHint": false,
+      "idempotentHint": false,
+      "openWorldHint": true
+    },
+    "generate_wjx_dsl": {
+      "title": "校验 WJX XML DSL",
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "get_360_report": {
+      "title": "360度评估报告下载",
+      "destructiveHint": false,
+      "idempotentHint": false,
+      "openWorldHint": true
+    },
+    "get_config": {
+      "title": "查看当前配置",
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "get_question_tags": {
+      "title": "获取题目标签",
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": true
+    },
+    "get_report": {
+      "title": "默认报告查询",
+      "destructiveHint": false,
+      "idempotentHint": false,
+      "openWorldHint": true
+    },
+    "get_short_link": {
+      "title": "获取问卷短链接",
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": true
+    },
+    "get_survey": {
+      "title": "获取问卷内容",
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": true
+    },
+    "get_survey_settings": {
+      "title": "获取问卷设置",
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": true
+    },
+    "get_tag_details": {
+      "title": "获取题目标签详情",
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": true
+    },
+    "get_winners": {
+      "title": "获取中奖者信息",
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": true
+    },
+    "list_departments": {
+      "title": "查询部门列表",
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": true
+    },
+    "list_surveys": {
+      "title": "获取问卷列表",
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": true
+    },
+    "list_tags": {
+      "title": "查询标签列表",
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": true
+    },
+    "modify_department": {
+      "title": "修改部门",
+      "destructiveHint": true,
+      "idempotentHint": false,
+      "openWorldHint": true
+    },
+    "modify_participants": {
+      "title": "[已过时] 批量修改参与者",
+      "destructiveHint": true,
+      "idempotentHint": false,
+      "openWorldHint": true
+    },
+    "modify_response": {
+      "title": "修改答卷",
+      "destructiveHint": true,
+      "idempotentHint": false,
+      "openWorldHint": true
+    },
+    "modify_sub_account": {
+      "title": "修改子账号",
+      "destructiveHint": true,
+      "idempotentHint": false,
+      "openWorldHint": true
+    },
+    "modify_tag": {
+      "title": "修改标签",
+      "destructiveHint": true,
+      "idempotentHint": false,
+      "openWorldHint": true
+    },
+    "query_contacts": {
+      "title": "查询通讯录成员",
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": true
+    },
+    "query_responses": {
+      "title": "答卷查询",
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": true
+    },
+    "query_responses_realtime": {
+      "title": "答卷实时查询",
+      "destructiveHint": true,
+      "idempotentHint": false,
+      "openWorldHint": true
+    },
+    "query_sub_accounts": {
+      "title": "查询子账号列表",
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": true
+    },
+    "query_survey_binding": {
+      "title": "[已过时] 查询问卷用户绑定",
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": true
+    },
+    "query_user_surveys": {
+      "title": "[已过时] 查询用户关联问卷",
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": true
+    },
+    "query_wjx_dsl": {
+      "title": "查询 WJX XML DSL 问卷",
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": true
+    },
+    "restore_admin": {
+      "title": "恢复管理员",
+      "destructiveHint": false,
+      "idempotentHint": false,
+      "openWorldHint": true
+    },
+    "restore_sub_account": {
+      "title": "恢复子账号",
+      "destructiveHint": false,
+      "idempotentHint": false,
+      "openWorldHint": true
+    },
+    "sso_partner_url": {
+      "title": "生成合作伙伴SSO登录链接",
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "sso_subaccount_url": {
+      "title": "生成子账号SSO登录链接",
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "sso_user_system_url": {
+      "title": "生成用户系统SSO链接",
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "submit_response": {
+      "title": "答卷提交",
+      "destructiveHint": false,
+      "idempotentHint": false,
+      "openWorldHint": true
+    },
+    "update_ai_page": {
+      "title": "更新 AI 主页",
+      "destructiveHint": true,
+      "idempotentHint": false,
+      "openWorldHint": true
+    },
+    "update_survey_from_definition": {
+      "title": "使用 DSL 定义修改问卷",
+      "destructiveHint": true,
+      "idempotentHint": false,
+      "openWorldHint": true
+    },
+    "update_survey_settings": {
+      "title": "修改问卷设置",
+      "destructiveHint": true,
+      "idempotentHint": false,
+      "openWorldHint": true
+    },
+    "update_survey_status": {
+      "title": "修改问卷状态",
+      "destructiveHint": true,
+      "idempotentHint": false,
+      "openWorldHint": true
+    },
+    "upload_file": {
+      "title": "上传文件",
+      "destructiveHint": false,
+      "idempotentHint": false,
+      "openWorldHint": true
+    }
+  },
+  "operations": {
+    "360-report": {
+      "capabilityIds": [
+        "response.360-report"
+      ],
+      "risk": "read",
+      "confirmation": "not-required",
+      "retry": {
+        "maxRetries": 0,
+        "httpRetryable": false,
+        "idempotent": false
+      },
+      "preRead": false,
+      "postVerify": false,
+      "ambiguousTimeout": "stop-and-report",
+      "consumesQueue": false,
+      "maxBatch": null,
+      "mcp": {
+        "tools": [
+          "get_360_report"
+        ],
+        "destructiveHint": false,
+        "idempotentHint": false
+      }
+    },
+    "async-download": {
+      "capabilityIds": [
+        "response.download"
+      ],
+      "risk": "read",
+      "confirmation": "not-required",
+      "retry": {
+        "maxRetries": 0,
+        "httpRetryable": false,
+        "idempotent": false
+      },
+      "preRead": false,
+      "postVerify": false,
+      "ambiguousTimeout": "stop-and-report",
+      "consumesQueue": false,
+      "maxBatch": null,
+      "mcp": {
+        "tools": [
+          "download_responses"
+        ],
+        "destructiveHint": false,
+        "idempotentHint": false
+      }
+    },
+    "clear": {
+      "capabilityIds": [
+        "response.clear",
+        "survey.clear-bin"
+      ],
+      "risk": "high-risk-write",
+      "confirmation": "required",
+      "retry": {
+        "maxRetries": 0,
+        "httpRetryable": false,
+        "idempotent": false
+      },
+      "preRead": true,
+      "postVerify": true,
+      "ambiguousTimeout": "stop-and-report",
+      "consumesQueue": false,
+      "maxBatch": null,
+      "mcp": {
+        "tools": [
+          "clear_recycle_bin",
+          "clear_responses"
+        ],
+        "destructiveHint": true,
+        "idempotentHint": false
+      }
+    },
+    "create": {
+      "capabilityIds": [
+        "survey.create"
+      ],
+      "risk": "write",
+      "confirmation": "not-required",
+      "retry": {
+        "maxRetries": 0,
+        "httpRetryable": false,
+        "idempotent": false
+      },
+      "preRead": false,
+      "postVerify": true,
+      "ambiguousTimeout": "stop-and-report",
+      "consumesQueue": false,
+      "maxBatch": null,
+      "mcp": {
+        "tools": [
+          "create_survey_by_json"
+        ],
+        "destructiveHint": false,
+        "idempotentHint": false
+      }
+    },
+    "delete": {
+      "capabilityIds": [
+        "survey.delete"
+      ],
+      "risk": "high-risk-write",
+      "confirmation": "required",
+      "retry": {
+        "maxRetries": 0,
+        "httpRetryable": false,
+        "idempotent": false
+      },
+      "preRead": true,
+      "postVerify": true,
+      "ambiguousTimeout": "stop-and-report",
+      "consumesQueue": false,
+      "maxBatch": null,
+      "mcp": {
+        "tools": [
+          "delete_survey"
+        ],
+        "destructiveHint": true,
+        "idempotentHint": false
+      }
+    },
+    "modify": {
+      "capabilityIds": [
+        "response.modify"
+      ],
+      "risk": "high-risk-write",
+      "confirmation": "required",
+      "retry": {
+        "maxRetries": 0,
+        "httpRetryable": false,
+        "idempotent": false
+      },
+      "preRead": true,
+      "postVerify": true,
+      "ambiguousTimeout": "stop-and-report",
+      "consumesQueue": false,
+      "maxBatch": null,
+      "mcp": {
+        "tools": [
+          "modify_response"
+        ],
+        "destructiveHint": true,
+        "idempotentHint": false
+      }
+    },
+    "publish/status": {
+      "capabilityIds": [
+        "survey.status"
+      ],
+      "risk": "high-risk-write",
+      "confirmation": "required",
+      "retry": {
+        "maxRetries": 0,
+        "httpRetryable": false,
+        "idempotent": false
+      },
+      "preRead": true,
+      "postVerify": true,
+      "ambiguousTimeout": "stop-and-report",
+      "consumesQueue": false,
+      "maxBatch": null,
+      "mcp": {
+        "tools": [
+          "update_survey_status"
+        ],
+        "destructiveHint": true,
+        "idempotentHint": false
+      }
+    },
+    "read": {
+      "capabilityIds": [
+        "response.count",
+        "response.query",
+        "survey.get",
+        "survey.list",
+        "survey.settings"
+      ],
+      "risk": "read",
+      "confirmation": "not-required",
+      "retry": {
+        "maxRetries": 2,
+        "httpRetryable": true,
+        "idempotent": true
+      },
+      "preRead": false,
+      "postVerify": false,
+      "ambiguousTimeout": "read-after-write",
+      "consumesQueue": false,
+      "maxBatch": null,
+      "mcp": {
+        "tools": [
+          "count_responses",
+          "get_survey",
+          "get_survey_settings",
+          "list_surveys",
+          "query_responses"
+        ],
+        "destructiveHint": false,
+        "idempotentHint": true
+      }
+    },
+    "realtime": {
+      "capabilityIds": [
+        "response.realtime"
+      ],
+      "risk": "high-risk-write",
+      "confirmation": "required",
+      "retry": {
+        "maxRetries": 0,
+        "httpRetryable": false,
+        "idempotent": false
+      },
+      "preRead": false,
+      "postVerify": false,
+      "ambiguousTimeout": "stop-and-report",
+      "consumesQueue": true,
+      "maxBatch": null,
+      "mcp": {
+        "tools": [
+          "query_responses_realtime"
+        ],
+        "destructiveHint": true,
+        "idempotentHint": false
+      }
+    },
+    "report": {
+      "capabilityIds": [
+        "response.report"
+      ],
+      "risk": "read",
+      "confirmation": "not-required",
+      "retry": {
+        "maxRetries": 0,
+        "httpRetryable": false,
+        "idempotent": false
+      },
+      "preRead": false,
+      "postVerify": false,
+      "ambiguousTimeout": "stop-and-report",
+      "consumesQueue": false,
+      "maxBatch": null,
+      "mcp": {
+        "tools": [
+          "get_report"
+        ],
+        "destructiveHint": false,
+        "idempotentHint": false
+      }
+    },
+    "shortlink": {
+      "capabilityIds": [
+        "survey.shortlink"
+      ],
+      "risk": "read",
+      "confirmation": "not-required",
+      "retry": {
+        "maxRetries": 0,
+        "httpRetryable": false,
+        "idempotent": true
+      },
+      "preRead": false,
+      "postVerify": false,
+      "ambiguousTimeout": "stop-and-report",
+      "consumesQueue": false,
+      "maxBatch": null,
+      "mcp": {
+        "tools": [
+          "get_short_link"
+        ],
+        "destructiveHint": false,
+        "idempotentHint": true
+      }
+    },
+    "submit": {
+      "capabilityIds": [
+        "response.submit"
+      ],
+      "risk": "write",
+      "confirmation": "not-required",
+      "retry": {
+        "maxRetries": 0,
+        "httpRetryable": false,
+        "idempotent": false
+      },
+      "preRead": true,
+      "postVerify": false,
+      "ambiguousTimeout": "stop-and-report",
+      "consumesQueue": false,
+      "maxBatch": null,
+      "mcp": {
+        "tools": [
+          "submit_response"
+        ],
+        "destructiveHint": false,
+        "idempotentHint": false
+      }
+    },
+    "update-settings": {
+      "capabilityIds": [
+        "survey.update-settings"
+      ],
+      "risk": "high-risk-write",
+      "confirmation": "required",
+      "retry": {
+        "maxRetries": 0,
+        "httpRetryable": false,
+        "idempotent": false
+      },
+      "preRead": true,
+      "postVerify": true,
+      "ambiguousTimeout": "stop-and-report",
+      "consumesQueue": false,
+      "maxBatch": null,
+      "mcp": {
+        "tools": [
+          "update_survey_settings"
+        ],
+        "destructiveHint": true,
+        "idempotentHint": false
+      }
+    }
+  },
+  "hostRoutes": {
+    "workbuddy": {
+      "protocol": "runtime-probe",
+      "probe": [
+        "mcp-tools",
+        "mcp-resources",
+        "shell-wjx-version"
+      ],
+      "selection": "continue-existing-or-cli-setup-mcp-business",
+      "setup": "use host-provided credential configuration"
+    },
+    "cowork": {
+      "protocol": "runtime-probe",
+      "probe": [
+        "mcp-tools",
+        "mcp-resources",
+        "shell-wjx-version"
+      ],
+      "selection": "continue-existing-or-cli-setup-mcp-business",
+      "setup": "use host-provided credential configuration"
+    },
+    "codex-work": {
+      "protocol": "runtime-probe",
+      "probe": [
+        "mcp-tools",
+        "mcp-resources",
+        "shell-wjx-version"
+      ],
+      "selection": "continue-existing-or-cli-setup-mcp-business",
+      "setup": "use host-provided credential configuration"
+    },
+    "qianwen-work": {
+      "protocol": "runtime-probe",
+      "probe": [
+        "mcp-tools",
+        "mcp-resources",
+        "shell-wjx-version"
+      ],
+      "selection": "continue-existing-or-cli-setup-mcp-business",
+      "setup": "use host-provided credential configuration"
+    }
+  },
+  "verificationRules": [
+    {
+      "id": "create-read-after-write",
+      "capabilityIds": [
+        "survey.create",
+        "survey.get",
+        "survey.status",
+        "survey.preview-url"
+      ]
+    },
+    {
+      "id": "write-unknown-outcome",
+      "capabilityIds": [
+        "survey.create",
+        "response.submit",
+        "survey.update-settings"
+      ]
+    },
+    {
+      "id": "modify-response-read-after-write",
+      "capabilityIds": [
+        "response.modify",
+        "response.query"
+      ]
+    },
+    {
+      "id": "queue-counts",
+      "capabilityIds": [
+        "response.realtime"
+      ]
+    }
+  ],
+  "stopConditions": [
+    "missing-or-invalid-credentials",
+    "ambiguous-target-or-publish-intent",
+    "unsupported-qtype-or-feature",
+    "unsafe-ambiguous-timeout",
+    "unverified-count-link-or-status"
+  ]
+}

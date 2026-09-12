@@ -20,7 +20,7 @@ export async function addSubAccount<T = unknown>(
   };
   assignDefined(params, input, ["password", "mobile", "email", "role", "group"]);
 
-  return callWjxSubuserApi<T>(params, { credentials, fetchImpl, maxRetries: 0 });
+  return callWjxSubuserApi<T>(params, { credentials, fetchImpl, maxRetries: 0, idempotency: "unsafe", httpRetryable: false });
 }
 
 export async function modifySubAccount<T = unknown>(
@@ -34,7 +34,7 @@ export async function modifySubAccount<T = unknown>(
   };
   assignDefined(params, input, ["mobile", "email", "role", "group"]);
 
-  return callWjxSubuserApi<T>(params, { credentials, fetchImpl, maxRetries: 0 });
+  return callWjxSubuserApi<T>(params, { credentials, fetchImpl, maxRetries: 0, idempotency: "unsafe", httpRetryable: false });
 }
 
 export async function deleteSubAccount<T = unknown>(
@@ -47,7 +47,7 @@ export async function deleteSubAccount<T = unknown>(
       action: Action.DELETE_SUB_ACCOUNT,
       subuser: input.subuser,
     },
-    { credentials, fetchImpl, maxRetries: 0 },
+    { credentials, fetchImpl, maxRetries: 0, idempotency: "unsafe", httpRetryable: false },
   );
 }
 
@@ -62,7 +62,7 @@ export async function restoreSubAccount<T = unknown>(
   };
   assignDefined(params, input, ["mobile", "email"]);
 
-  return callWjxSubuserApi<T>(params, { credentials, fetchImpl, maxRetries: 0 });
+  return callWjxSubuserApi<T>(params, { credentials, fetchImpl, maxRetries: 0, idempotency: "unsafe", httpRetryable: false });
 }
 
 export async function querySubAccounts<T = unknown>(
@@ -75,5 +75,5 @@ export async function querySubAccounts<T = unknown>(
   };
   assignDefined(params, input, ["subuser", "name_like", "role", "group", "status", "mobile", "page_index", "page_size"]);
 
-  return callWjxSubuserApi<T>(params, { credentials, fetchImpl });
+  return callWjxSubuserApi<T>(params, { credentials, fetchImpl, idempotency: "safe", httpRetryable: true });
 }

@@ -1,4 +1,4 @@
-import type { WjxApiResponse } from "wjx-api-sdk";
+import { type WjxApiResponse } from "wjx-api-sdk";
 export type ErrorCode = "API_ERROR" | "INPUT_ERROR" | "AUTH_ERROR" | "CONFIRMATION_REQUIRED" | "POLICY_DENIED" | "UPGRADE_REQUIRED";
 export type ErrorDetails = Record<string, unknown>;
 export declare class CliError extends Error {

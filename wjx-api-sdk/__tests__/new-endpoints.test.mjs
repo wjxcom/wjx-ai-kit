@@ -12,6 +12,10 @@ import {
   submitResponse,
   getQuestionTags,
   getFileLinks,
+  createAiPage,
+  updateAiPage,
+  AI_PAGE_MAX_HTML_LENGTH,
+  AI_PAGE_PAGE_TYPES,
   getWjxApiUrl,
   Action,
 } from "../dist/index.js";
@@ -429,6 +433,18 @@ test("submitResponse", async (t) => {
     assert.equal(body.sojumpparm, "custom123");
   });
 
+  await t.test("should forward submit_channel when provided", async () => {
+    const mock = mockFetch({ result: true, data: {} });
+    await submitResponse(
+      { vid: 800, inputcosttime: 30, submitdata: "1$1", submit_channel: "wjx-cli" },
+      credentials,
+      mock.impl,
+    );
+
+    const body = parsedBody(mock);
+    assert.equal(body.submit_channel, "wjx-cli");
+  });
+
   await t.test("should forward jpmversion when provided (defends against 『问卷已被修改』）", async () => {
     const mock = mockFetch({ result: true, data: {} });
     await submitResponse(
@@ -541,4 +557,54 @@ test("Action constants for new endpoints", () => {
   assert.equal(Action.SUBMIT_RESPONSE, "1001001");
   assert.equal(Action.GET_TAGS, "1000004");
   assert.equal(Action.GET_FILE_LINKS, "1001005");
+  assert.equal(Action.CREATE_AI_PAGE, "1000107");
+  assert.equal(Action.UPDATE_AI_PAGE, "1000108");
+});
+
+test("AI homepage endpoints map fields and validate inputs", async (t) => {
+  await t.test("exports shared limits and page types", () => {
+    assert.equal(AI_PAGE_MAX_HTML_LENGTH, 200000);
+    assert.deepEqual(AI_PAGE_PAGE_TYPES, [0, 1, 2]);
+  });
+  await t.test("createAiPage sends action 1000107", async () => {
+    const mock = mockFetch({ result: true, data: { vid: 207600 } });
+    await createAiPage({ html_content: "<h1>Homepage</h1>", title: "Homepage", page_type: 1, publish: true }, credentials, mock.impl);
+    const body = parsedBody(mock);
+    assert.equal(body.action, Action.CREATE_AI_PAGE);
+    assert.equal(body.html_content, "<h1>Homepage</h1>");
+    assert.equal(body.page_type, 1);
+    assert.equal(body.publish, true);
+    assert.match(mock.getUrl(), /action=1000107/);
+  });
+  await t.test("rejects blank HTML and invalid create options", async () => {
+    await assert.rejects(
+      () => createAiPage({ html_content: " \n\t" }, credentials, mockFetch({ result: true, data: {} }).impl),
+      /html_content is required/,
+    );
+    await assert.rejects(
+      () => createAiPage({ html_content: "<p>x</p>", publish: "true" }, credentials, mockFetch({ result: true, data: {} }).impl),
+      /publish must be a boolean/,
+    );
+  });
+  await t.test("updateAiPage accepts only traditional numeric vid", async () => {
+    const mock = mockFetch({ result: true, data: {} });
+    await updateAiPage({ vid: "207600", html_content: "<p>Updated</p>" }, credentials, mock.impl);
+    const body = parsedBody(mock);
+    assert.equal(body.action, Action.UPDATE_AI_PAGE);
+    assert.equal(body.vid, "207600");
+    await assert.rejects(() => updateAiPage({ vid: "sid-value", html_content: "<p>x</p>" }, credentials, mock.impl), /traditional numeric vid/);
+    await assert.rejects(() => updateAiPage({ vid: "000", html_content: "<p>x</p>" }, credentials, mock.impl), /traditional numeric vid/);
+  });
+  await t.test("updateAiPage rejects page type changes before sending a request", async () => {
+    let callCount = 0;
+    const impl = async () => {
+      callCount++;
+      return new Response(JSON.stringify({ result: true, data: {} }));
+    };
+    await assert.rejects(
+      () => updateAiPage({ vid: "207600", html_content: "<p>Updated</p>", page_type: 2 }, credentials, impl),
+      /page_type cannot be changed/,
+    );
+    assert.equal(callCount, 0);
+  });
 });

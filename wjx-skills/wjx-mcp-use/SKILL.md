@@ -1,17 +1,60 @@
 ---
 name: wjx-mcp-use
-description: "Guide for using wjx-mcp-server MCP tools to interact with the Wenjuanxing (问卷星) platform. Use when the user mentions: 问卷, 调查, 收集, 表单, 投票, 考试, 测评, 满意度, NPS, 问卷星, wjx, survey, questionnaire — or wants to create surveys, query responses, analyze data, manage contacts, or generate SSO links via MCP protocol. Tool, resource, and prompt counts are discovered from source at build time."
+description: "Guide for using wjx-mcp-server tools to create or update AI homepages, posters, PPTs, and surveys, query responses, and analyze data. Use when the user mentions: AI主页, AI海报, AI PPT, 问卷, 调查, 收集, 表单, 投票, 考试, 测评, 满意度, NPS, 问卷星, wjx, survey, or questionnaire. Tool, resource, and prompt counts are discovered from source at build time."
 ---
 
 # wjx-mcp-server Usage Guide
 
 wjx-mcp-server 提供 MCP 工具、参考资源和 prompt 模板，覆盖问卷星核心业务子集；CLI 是主入口，工作站能力（初始化、配置、补全、Skill 安装）保持 CLI-only。完整差异以仓库 `capabilities/capability-matrix.json` 为准。
 
+### HTTP 凭据边界
+
+本地优先使用 stdio，并通过 `WJX_API_KEY` 提供上游凭据。HTTP 模式中，`MCP_AUTH_TOKEN` 只保护 `/mcp` 的 `Authorization: Bearer` 访问 gate；单租户上游仍使用 `WJX_API_KEY`。启用 `MCP_TENANT_MODE=1` 时，每个请求必须提供 `X-WJX-API-Key`，服务端按 session 隔离且不回退进程级 key。只有显式设置 `MCP_LEGACY_BEARER_API_KEY=1` 才允许 Bearer 兼作上游 API Key；`/health` 不要求 Bearer。不要在消息、日志或 URL 中输出完整凭据。
+
+### HTTP 服务配置
+
+如果使用已部署的 MCP HTTP 服务，无需在本机安装 `wjx-mcp-server` 或配置本地
+`WJX_API_KEY`。在支持 MCP HTTP 的客户端配置中添加：
+
+```json
+{
+  "mcpServers": {
+    "wjx": {
+      "type": "http",
+      "url": "https://alifc.wjx.cn/mcp/latest",
+      "headers": {
+        "Authorization": "Bearer sk-wjx-xxx"
+      }
+    }
+  }
+}
+```
+
+将 `sk-wjx-xxx` 替换为服务端分配的 HTTP 访问令牌。保存配置后完全重启客户端；启用多租户模式时，还需按服务端要求提供 `X-WJX-API-Key`。
+
+## Agent 前门
+
+MCP 任务遵循“发现意图 -> 预检 -> 计划 -> 确认 -> 执行 -> 读回验证 -> 报告”。Prompt 只提供指导，不执行工具也不保证验证；Agent 必须根据工具返回的 `isError` 和 `result` 字段判断成功。WorkBuddy、Cowork、Codex Work、Qianwen Work 都先按 [宿主中立握手与路由](references/host-routing.md) 检查真实能力，不根据宿主名称猜测配置或 API。创建、发布、提交、设置替换、清理和凭据相关操作先说明副作用，高风险和队列消费操作需要确认；网络超时后的结果按 `unknown` 处理并优先读回。风险、重试、验证和 JSONL 题型以生成的 `agent-contract`/`jsonl-qtypes` 资料及对应只读资源为准。 其中包括 `wjx://reference/jsonl-qtypes`。
+
+`query_responses_realtime` 会消费服务端实时答卷队列，因此 Agent contract 将它标记为高风险且不可重放；调用前先向用户说明会移除/消费队列中的记录并取得确认。该标记是 MCP/Agent 层的安全策略，不改变 CLI 的 `response realtime` metadata 或退出码。
+
+外部问卷产品的常见入口可这样映射：question builder 对应 `create_survey_by_json` 的 JSONL；preview 对应 `build_preview_url`；publish 对应 `update_survey_status`；collect 对应 `query_responses`/`download_responses`；analyze 对应分析工具。分支、随机、配额和 piping 只有在生成 profile 明确列出并通过 SDK 校验时才可使用，否则视为未验证能力。
+
 ## AI Agent 行为准则（必读）
 
 ### 规则 0：按场景选择 JSONL 或 XML DSL
 
-问卷可通过 `create_survey_by_json`（JSONL，支持 70+ 题型）或 `create_survey_from_definition`（完整 XML DSL）创建。修改使用 `update_survey_from_definition`，查询 DSL 使用 `query_wjx_dsl`；XML DSL 的生成与校验使用 `generate_wjx_dsl`。
+
+问卷可通过 `create_survey_by_json`（JSONL）或 `create_survey_from_definition`（完整 XML DSL）创建。修改使用 `update_survey_from_definition`，查询 DSL 使用 `query_wjx_dsl`；XML DSL 的生成与校验使用 `generate_wjx_dsl`。所有 DSL 输入必须符合 `wjx-dsl 1` 规范并经过校验。
+### AI 主页
+
+AI 主页是独立的纯展示内容，与表单/问卷创建互斥：
+
+- 用户只要求创建 AI 主页、AI 海报或 AI PPT 时，只调用一次 `create_ai_page`；不得调用 `create_survey_by_json`，不得额外创建、复制或关联任何表单/问卷。
+- `page_type=2` 时，HTML 必须是逐页幻灯片：每页使用独立、固定比例的画布并提供逐页切换，首屏只展示一页，禁止单个纵向长页面。
+- 修改前先用 `get_survey` 读取草稿或已发布主页的 `html_content` 与 `page_type`，基于完整原 HTML 局部修改后再调用 `update_ai_page`；不得抓取公开页，也不得无原稿重做整页。
+- 页面类型不可修改。网页、海报、PPT之间的转换请求应直接说明不支持，不得新建替代主页或删除原主页。
+- 创建必须提供 `html_content` 或 `html`；更新必须提供传统数字 `vid`，不接受 `sid`；HTML 最长 200000 字符。详细参数见 [references/tools-survey.md](references/tools-survey.md)。
 
 ### 规则 1：一个需求 = 一个问卷
 
@@ -39,7 +82,7 @@ wjx-mcp-server 提供 MCP 工具、参考资源和 prompt 模板，覆盖问卷�
 - **已返回 API Key 相关错误**：如果工具返回 `API Key is required`、`Invalid API Key`、`appkey error` 或类似鉴权错误，必须立刻向用户说明需要处理 API Key，并给出获取/更新 `WJX_API_KEY` 的下一步；不要只复述错误信息，也不要继续调用其他业务工具反复尝试
 - **base_url 与用户域名不符**：引导添加 `WJX_BASE_URL` 环境变量（如 `https://xxx.sojump.cn`）
 - **获取 API Key**：让用户访问 `https://<域名>/weixinlogin.aspx?redirecturl=%2Fnewwjx%2Fmanage%2Fuserinfo.aspx%3FshowApiKey%3D1`，微信扫码登录后复制 Key
-- **cli_version 未安装**：可选；CLI `0.4.2` 已发布到 npm，先执行 `npm install -g wjx-cli@latest`，成功后再执行 `wjx skill install --force`，然后用 `wjx init --api-key <key>` 统一配置
+- **cli_version 未安装**：可选；CLI 当前源码版本为 `0.4.4`，发布后先执行 `npm install -g wjx-cli@latest`，成功后再执行 `wjx skill install --force`，然后用 `wjx init --api-key <key>` 统一配置
 
 收到 API Key 相关错误后的用户提醒应使用自然语言，不暴露 MCP 工具调用细节，例如：
 
@@ -70,12 +113,11 @@ https://www.wjx.cn/weixinlogin.aspx?redirecturl=%2Fnewwjx%2Fmanage%2Fuserinfo.as
 
 | 用户意图 | 工具 |
 |---------|------|
-| 做调查/问卷 | `create_survey_by_json`（JSONL）或 `create_survey_from_definition`（XML DSL） |
-| 按 DSL 创建/修改 | `create_survey_from_definition` / `update_survey_from_definition` |
-| 查询 DSL | `query_wjx_dsl` |
+| 做调查/问卷 | `create_survey_by_json`（支持 70+ 题型；atype 可创建 1/2/3/4/5/6/7/9/10/11，8 用户体系不能新建） |
 | 做考试/测验 | `create_survey_by_json` + prompt `generate-exam-json`，`atype: 6` |
 | 做投票 | `create_survey_by_json` + `atype: 3` |
 | 做表单/报名表 | `create_survey_by_json` + prompt `generate-form-json`，`atype: 7` |
+| 使用 XML DSL 创建/修改问卷 | `generate_wjx_dsl` → `create_survey_from_definition` / `update_survey_from_definition` |
 | 看问卷结果 | `get_report({ vid })` 统计概览，`query_responses({ vid })` 明细 |
 | 导出答卷数据 | `download_responses({ vid })` |
 | 查看填写链接 | 列表中的 `sid` / `mobile_path`；创建后优先用 `build_preview_url({ sid })`，无 sid 时才用 `build_preview_url({ vid })` 并说明暴露风险 |
@@ -87,11 +129,12 @@ https://www.wjx.cn/weixinlogin.aspx?redirecturl=%2Fnewwjx%2Fmanage%2Fuserinfo.as
 
 | 模块 | 工具数 | 说明 |
 |------|--------|------|
-| 问卷管理 | 11 | create_survey_by_json, get_survey, list_surveys, update_survey_status, get/update_survey_settings, delete_survey, get_question_tags, get_tag_details, upload_file, clear_recycle_bin |
+| 问卷管理 | 13 | create_survey_by_json, get_survey, list_surveys, update_survey_status, get/update_survey_settings, delete_survey, get_question_tags, get_tag_details, upload_file, clear_recycle_bin, create_ai_page, update_ai_page |
+| XML DSL | 4 | query_wjx_dsl, generate_wjx_dsl, create_survey_from_definition, update_survey_from_definition |
 | 答卷数据 | 11 | query_responses, count_responses, query_responses_realtime, download_responses, get_report, submit_response, build_submit_template, get_winners, modify_response, get_360_report, clear_responses |
 | 通讯录 | 14 | query/add/delete_contacts, add/delete/restore_admin, list/add/modify/delete_departments, list/add/modify/delete_tags |
 | 子账号 | 5 | add/modify/delete/restore/query_sub_accounts |
-| SSO | 5 | sso_subaccount_url, sso_user_system_url, sso_partner_url, build_survey_url, build_preview_url |
+| SSO | 6 | sso_subaccount_url, sso_user_system_url, sso_partner_url, build_survey_url, build_preview_url, get_short_link |
 | 分析计算 | 6 | decode_responses, decode_push_payload, calculate_nps, calculate_csat, detect_anomalies, compare_metrics |
 | 用户体系（兼容/已过时） | 6 | add/modify/delete_participants, bind_activity, query_survey_binding, query_user_surveys；仅维护已有系统 |
 | 诊断 | 1 | get_config — API Key（脱敏）、Base URL、CLI 版本、配置来源 |
@@ -100,9 +143,9 @@ https://www.wjx.cn/weixinlogin.aspx?redirecturl=%2Fnewwjx%2Fmanage%2Fuserinfo.as
 
 ## 核心工作流
 
-### 创建和修改问卷
+### 创建问卷（JSONL 或 XML DSL）
 
-AI 需要创建或修改 XML DSL 问卷时，先读取 `wjx://reference/wjx-xml-dsl`，直接生成完整 `wjx-dsl 1` 文本，再调用对应工具。JSONL 与 XML DSL 是两条独立入口。
+JSONL 使用中文 `qtype` 名称；`get_survey` 等读取接口返回的数字 `q_type/q_subtype` 是另一套结果编码。需要 XML DSL 时，先按 `wjx-dsl 1` 规范生成完整文本，再调用 DSL 校验/创建工具；两条链路不互相转换。
 
 ```
 1. 使用 prompt 模板生成题目 JSON（如 generate-survey-json、generate-exam-json 等）
@@ -111,13 +154,11 @@ AI 需要创建或修改 XML DSL 问卷时，先读取 `wjx://reference/wjx-xml-
 4. build_survey_url({ mode: "edit", activity: N }) — 提供编辑链接
 ```
 
-`create_survey_from_definition` 和 `update_survey_from_definition` 的 `dsl` 参数必须是完整 DSL 文本，不是 JSON 数组，也不是增量 Patch。SDK 只做轻量协议校验，后端负责最终题型、逻辑、Diff 和答卷保护。
 
 普通题型未传 `publish` 时默认立即发布；若 JSONL 包含纯框架题型 `折叠栏目`、`轮播图`、`AI追问`、`AI处理`、`AI访谈`、`图片OCR`、`VlookUp问卷关联` 或 `分页计时器`，则默认创建为草稿。先调用 `get_survey` 并提供编辑入口，待用户明确授权后再传 `publish: true`。
 
-**考试问卷（atype=6）注意**：JSONL 路径支持 `correctselect`、`quizscore` 和 `answeranalysis`；XML DSL v1 路径使用题目属性 `IsCeShi="true"` 和 `CeShiValue="<分值>"` 表达计分题，文件题/绘图题还需遵循对应的 `IsSignature` 等属性。创建后仍可通过编辑链接补充未覆盖的高级设置。
+**考试问卷（atype=6）注意**：JSONL 路径支持 `correctselect`、`quizscore` 和 `answeranalysis`。创建后仍可提供编辑链接补充未覆盖的高级设置。
 
-JSONL 题型字段详见 `create_survey_by_json` 的工具描述与 SDK `JSONL_SUPPORTED_QTYPES`；XML DSL 语法详见 [references/dsl-and-types.md](references/dsl-and-types.md)。
 
 ### 查询和分析数据
 
@@ -170,6 +211,7 @@ submitdata 题号必须与 `get_survey` 返回的原始 `q_index` 对齐——**
 | 资源 URI | 内容 |
 |----------|------|
 | `wjx://reference/wjx-xml-dsl` | WJX XML DSL v1 生成、校验、创建和修改规范 |
+| `wjx://reference/jsonl-qtypes` | JSONL 创建题型白名单与分层 |
 | `wjx://reference/question-types` | `get_survey` 读取结果的 q_type/q_subtype 映射（不是 JSONL 创建白名单） |
 | `wjx://reference/survey-types` | 问卷类型编码及创建限制（1/2/3/4/5/6/7/9/10/11 可创建，8 用户体系不能新建） |
 | `wjx://reference/survey-statuses` | 问卷状态码 |
@@ -177,6 +219,10 @@ submitdata 题号必须与 `get_survey` 返回的原始 `q_index` 对齐——**
 | `wjx://reference/analysis-methods` | NPS/CSAT/CES 公式和行业基准 |
 | `wjx://reference/user-roles` | 子账号角色编码 |
 | `wjx://reference/push-format` | 数据推送格式和加密说明 |
+| `wjx://reference/text-validation-types` | 文本题校验类型 |
+| `wjx://reference/matrix-display-types` | 矩阵题展示类型 |
+| `wjx://reference/table-display-types` | 表格题展示类型 |
+| `wjx://reference/survey-setting-types` | 问卷设置类型 |
 
 ## Prompt 模板
 
@@ -197,7 +243,6 @@ submitdata 题号必须与 `get_survey` 返回的原始 `q_index` 对齐——**
 
 ## Reference 文件（按需查阅）
 
-- [DSL 语法与题型](references/dsl-and-types.md) — DSL 格式、25+ 题型标签、q_type/q_subtype 映射表
 - [问卷工具详解](references/tools-survey.md) — 11 个问卷管理工具的完整参数
 - [答卷工具详解](references/tools-response.md) — 11 个答卷数据工具的完整参数
 - [其他工具详解](references/tools-other.md) — 通讯录、子账号、SSO、分析、推送工具参数

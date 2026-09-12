@@ -22,7 +22,7 @@ const packageJson = require("../../package.json") as { version?: unknown };
 const SDK_CLIENT_NAME = "wjx-api-sdk";
 const SDK_CLIENT_VERSION = typeof packageJson.version === "string" && packageJson.version.trim()
   ? packageJson.version.trim()
-  : "0.4.2";
+  : "0.4.4";
 
 /** Pluggable credential provider for per-request credentials (e.g. multi-tenant). */
 let _credentialProvider: (() => WjxCredentials | undefined) | undefined;
@@ -67,6 +67,23 @@ function isRetryable(status: number): boolean {
 const MAX_RETRY_BUDGET = 10_000;
 const MAX_TIMEOUT_MS = 2_147_483_647;
 const MAX_RETRY_DELAY_MS = 30_000;
+
+export class WjxAmbiguousOutcomeError extends Error {
+  readonly outcome = "unknown" as const;
+  readonly action: string;
+  readonly traceId: string;
+  readonly attempts: number;
+
+  constructor(action: string, traceId: string, attempts: number, cause?: unknown) {
+    const causeText = cause instanceof Error && cause.message ? `: ${cause.message}` : "";
+    super(`WJX API outcome is unknown after ${attempts} attempt(s) (action=${action}, traceid=${traceId})${causeText}; verify by reading the resource before retrying`);
+    this.name = "WjxAmbiguousOutcomeError";
+    this.action = action;
+    this.traceId = traceId;
+    this.attempts = attempts;
+    if (cause !== undefined) this.cause = cause;
+  }
+}
 
 function normalizeCredentials(credentials: WjxCredentials): WjxCredentials {
   const apiKey = typeof credentials?.apiKey === "string" ? credentials.apiKey.trim() : "";
@@ -136,7 +153,18 @@ async function _callApi<T = unknown>(
   const credentials = normalizeCredentials(opts.credentials ?? getWjxCredentials());
   const fetchImpl = opts.fetchImpl ?? fetch;
   const timeoutMs = normalizeTimeoutMs(opts.timeoutMs);
-  const maxRetries = normalizeRetryBudget(opts);
+  // Existing wrappers express write safety with an explicit zero retry budget.
+  // Preserve that convention while allowing new callers to declare it directly.
+  const idempotency = opts.idempotency
+    ?? (opts.retryBudget === 0 || opts.maxRetries === 0 ? "unsafe" : "safe");
+  if (!["safe", "unsafe", "unknown"].includes(idempotency)) {
+    throw new TypeError("idempotency must be safe, unsafe, or unknown");
+  }
+  if (opts.httpRetryable !== undefined && typeof opts.httpRetryable !== "boolean") {
+    throw new TypeError("httpRetryable must be a boolean");
+  }
+  const maxRetries = idempotency === "safe" ? normalizeRetryBudget(opts) : 0;
+  const httpRetryable = idempotency === "safe" && opts.httpRetryable === true;
   const logger = opts.logger;
 
   const traceId = opts.traceId ?? generateTraceId();
@@ -209,7 +237,7 @@ async function _callApi<T = unknown>(
             if (error === timeoutError) throw error;
             // Preserve the original HTTP status error if body cleanup fails.
           }
-          if (isRetryable(response.status) && attempt < maxRetries) {
+          if (httpRetryable && isRetryable(response.status) && attempt < maxRetries) {
             lastError = new Error(
               `WJX API request failed with ${response.status} ${response.statusText}`,
             );
@@ -259,6 +287,9 @@ async function _callApi<T = unknown>(
         lastError = new Error(
           `WJX API request timed out after ${timeoutMs}ms (action=${action}, traceid=${traceId})`,
         );
+        if (idempotency !== "safe") {
+          throw new WjxAmbiguousOutcomeError(action, traceId, attempt + 1, lastError);
+        }
         if (attempt < maxRetries) continue;
         throw lastError;
       }
@@ -266,11 +297,22 @@ async function _callApi<T = unknown>(
       const errorCode = error instanceof Error
         ? (error as Error & { code?: unknown }).code
         : undefined;
+      const cause = error instanceof Error && error.cause instanceof Error
+        ? error.cause
+        : undefined;
+      const causeCode = cause
+        ? (cause as Error & { code?: unknown }).code
+        : undefined;
       const errorText = [
         error instanceof Error ? error.message : String(error),
         typeof errorCode === "string" ? errorCode : "",
+        cause?.message ?? "",
+        typeof causeCode === "string" ? causeCode : "",
       ].join(" ");
-      const isNetworkError = /fetch|network|connect|ECONN|ETIMEDOUT|EAI_AGAIN/i.test(errorText);
+      const isNetworkError = /fetch|network|connect|ECONN|ETIMEDOUT|EAI_AGAIN|UND_ERR_SOCKET|UND_ERR_(?:CONNECT|HEADERS|BODY)_TIMEOUT|ERR_SOCKET_TIMEOUT|socket\s+hang\s+up/i.test(errorText);
+      if (isNetworkError && idempotency !== "safe") {
+        throw new WjxAmbiguousOutcomeError(action, traceId, attempt + 1, error);
+      }
       if (isNetworkError && attempt < maxRetries) {
         lastError = error as Error;
         continue;

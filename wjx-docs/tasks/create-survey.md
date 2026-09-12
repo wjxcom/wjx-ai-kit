@@ -43,3 +43,5 @@ wjx survey jsonl-template --type 1 --raw > survey.jsonl
 - 多项填空在标题中使用 `{_}` 占位符。
 - 只有明确指定选填时才在 `optional_titles` 中列出。
 - 普通题型当前没有 CLI 创建草稿选项；若必须先不发布，请在 SDK/MCP 中传 `publish:false`，或创建后立即使用状态操作暂停。框架题型省略 `--publish` 会按上述规则默认创建为草稿。创建后可用 `wjx survey get --vid <id> --get_questions` 检查结构。
+
+题型字段见 [题型与 JSONL](../reference/question-types.md)。XML DSL 创建与修改见 [WJX XML DSL v1](../reference/wjx-xml-dsl-v1.md)。

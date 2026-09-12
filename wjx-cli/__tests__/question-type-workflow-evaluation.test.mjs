@@ -1,9 +1,19 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { JSONL_SUPPORTED_QTYPES } from "wjx-api-sdk";
+import {
+  JSONL_READ_ONLY_OR_WEB_EDITOR_QTYPES,
+  JSONL_SUPPORTED_QTYPES,
+  getJsonlQuestionTypeCode,
+} from "wjx-api-sdk";
 import { startFixture } from "./fixtures/http-fixture.mjs";
 
 const NON_QUESTION_QTYPES = new Set(["问卷基础信息", "分页栏", "段落说明", "知情同意书"]);
+const CANONICAL_QTYPE_ALIASES = new Map([
+  ["表格数值题", "表格数值"],
+  ["表格填空题", "表格填空"],
+  ["表格组合题", "表格组合"],
+  ["表格自增题", "自增表格"],
+]);
 const FRAMEWORK_ONLY_QTYPES = new Set([
   "折叠栏目",
   "轮播图",
@@ -63,8 +73,12 @@ function questionFor(qtype) {
   }
   if (qtype === "多级下拉") question.leveldata = ["浙江省/杭州市/西湖区"];
   if (qtype === "门店选择") question.stores = ["门店 A", "门店 B"];
-  if (["BWS", "MaxDiff", "图片PK", "联合分析", "BPTO模型", "心理学实验"].includes(qtype)) {
-    question.mdattr = ["属性 A", "属性 B", "属性 C"];
+  if (["BWS", "MaxDiff", "Maxdiff", "图片PK", "联合分析", "BPTO模型", "心理学实验"].includes(qtype)) {
+    question.mdattr = ["属性 A", "属性 B", "属性 C", "属性 D"];
+  }
+  if (["BWS", "MaxDiff", "Maxdiff", "图片PK"].includes(qtype)) {
+    question.pertaskcount = 2;
+    question.tasklength = 2;
   }
   if (qtype === "联合分析") question.columntitle = ["品牌", "价格"];
   if (qtype === "品牌漏斗") question.brands = ["品牌 A", "品牌 B"];
@@ -81,23 +95,65 @@ function parseSuccess(result, label) {
 }
 
 test("every supported JSONL qtype follows create then get user workflow", async () => {
+  let createdSurvey = {
+    title: "全题型评测",
+    questionTypes: ["单选"],
+  };
   const fixture = await startFixture({
     timeout: 120_000,
     env: { WJX_API_KEY: "question-type-workflow-key" },
-    response: {
-      result: true,
-      data: {
-        vid: 880001,
-        title: "全题型评测",
-        atype: 1,
-        status: 0,
-        questions: [{ q_index: 2, q_type: 3, q_subtype: 3, q_title: "评测题", is_requir: true, items: [] }],
-      },
+    response: ({ request }) => {
+      let body = {};
+      try { body = JSON.parse(request.body || "{}"); } catch { /* request recorder keeps malformed bodies inspectable */ }
+      const action = String(body.action ?? "");
+      if (action === "1000106") {
+        const lines = typeof body.surveydatajson === "string"
+          ? body.surveydatajson.split(/\r?\n/).filter(Boolean)
+          : [];
+        let metadata = {};
+        try { metadata = JSON.parse(lines[0] ?? "{}"); } catch { /* CLI validation owns malformed JSONL */ }
+        createdSurvey = {
+          title: typeof body.title === "string" ? body.title : metadata.title,
+          questionTypes: lines.slice(1).map((line) => {
+            try { return JSON.parse(line)?.qtype; } catch { return undefined; }
+          }).filter((qtype) => typeof qtype === "string" && !NON_QUESTION_QTYPES.has(qtype)),
+        };
+        return { result: true, data: { vid: 880001 } };
+      }
+      if (action === "1000001") {
+        const origin = `http://${request.headers.host}`;
+        return {
+          result: true,
+          data: {
+            vid: 880001,
+            title: createdSurvey.title,
+            atype: 1,
+            status: 0,
+            sid: "qtypeReadbackSid",
+            questions: (createdSurvey.questionTypes ?? []).map((qtype, index) => {
+              const code = typeof qtype === "string" ? getJsonlQuestionTypeCode(qtype) : undefined;
+              return {
+              q_index: index + 1,
+              q_type: code?.q_type ?? 3,
+              q_subtype: code?.q_subtype ?? 3,
+              q_title: `题目 ${index + 1}`,
+              is_requir: true,
+              items: [],
+              };
+            }),
+            activity_domain: origin,
+            pc_path: "/vm/qtypeReadbackSid.aspx",
+          },
+        };
+      }
+      return { result: true, data: {} };
     },
   });
 
   try {
-    const qtypes = [...JSONL_SUPPORTED_QTYPES];
+    const qtypes = [...JSONL_SUPPORTED_QTYPES].filter(
+      (qtype) => !JSONL_READ_ONLY_OR_WEB_EDITOR_QTYPES.has(qtype),
+    );
     assert.ok(qtypes.length >= 90, `expected the complete qtype catalog, got ${qtypes.length}`);
     const rows = [{ qtype: "问卷基础信息", title: "全题型评测", atype: 1 }];
     for (const qtype of qtypes) {
@@ -110,20 +166,27 @@ test("every supported JSONL qtype follows create then get user workflow", async 
     const create = await fixture.run(["--yes", "survey", "create", "--jsonl", jsonl]);
     const createData = parseSuccess(create, "create all supported qtypes");
     assert.equal(createData.vid, 880001);
-    const createRequest = JSON.parse(fixture.requests().at(-1).body);
+    const requests = fixture.requests();
+    const createRequest = JSON.parse(requests.find((request) => JSON.parse(request.body).action === "1000106").body);
     assert.equal(createRequest.action, "1000106");
     assert.equal(createRequest.publish, false, "a survey containing a framework qtype must default to draft");
     const sentQtypes = new Set(createRequest.surveydatajson.split(/\r?\n/).filter(Boolean).map((line) => JSON.parse(line).qtype));
     for (const qtype of qtypes) {
       if (qtype === "问卷基础信息") continue;
-      assert.ok(sentQtypes.has(qtype), `create payload omitted qtype ${qtype}`);
+      const canonical = CANONICAL_QTYPE_ALIASES.get(qtype) ?? qtype;
+      assert.ok(sentQtypes.has(canonical), `create payload omitted qtype ${qtype}`);
     }
 
     const get = await fixture.run(["survey", "get", "--vid", "880001"]);
     const getData = parseSuccess(get, "get all-qtype survey");
     assert.equal(getData.vid, 880001);
     assert.ok(Array.isArray(getData.questions));
-    assert.equal(fixture.requests().length, 2, "workflow must issue one create and one get request");
+    const workflowRequests = fixture.requests().map((request) => JSON.parse(request.body));
+    const actions = workflowRequests.map((request) => String(request.action));
+    assert.equal(actions[0], "1000106", "workflow must create before any read");
+    assert.ok(actions.includes("1000001"), "workflow must issue a read-after-write verification");
+    assert.equal(actions.at(-1), "1000001", "workflow must finish with the explicit get request");
+    assert.ok(actions.length >= 3, "workflow must issue create, read-after-write, and explicit get requests");
   } finally {
     await fixture.close();
   }

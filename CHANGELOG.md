@@ -10,6 +10,22 @@
 
 ---
 
+## [0.4.4] - 2026-09-07
+
+### Changed
+
+- Made AI PPT output use fixed, paginated slides by default.
+- Added draft AI homepage source retrieval for in-place updates.
+- Prevented AI homepage creation from creating or linking surveys.
+- Rejected AI homepage type conversion without replacing or deleting the original page.
+
+## [0.4.3] - 2026-09-04
+
+### Changed
+
+- Unified the three workspace package versions at `0.4.3`.
+- Hardened AI homepage validation across SDK, CLI, and MCP.
+
 ## [0.4.2] - 2026-09-02
 
 ### Security

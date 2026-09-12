@@ -11,6 +11,7 @@ import {
   syncFile,
   countSourceFiles,
   shouldExclude,
+  renameWithRetry,
 } from "../scripts/sync-bundled.mjs";
 
 const execFileP = promisify(execFile);
@@ -99,6 +100,40 @@ describe("sync-bundled", () => {
     assert.deepStrictEqual(second, first, "第二次 sync 应该清掉 STALE.md");
   });
 
+  it("syncDir backs up a drifted destination before atomic replacement", () => {
+    const root = resolve(TMP, "atomic-dir");
+    const { src, dest } = makeFixture(root);
+    const backupRoot = resolve(root, "backups");
+    syncDir({
+      name: "atomic-dir",
+      src,
+      dest,
+      backupRoot,
+      exclude: ["__pycache__", ".gitignore"],
+    });
+    writeFileSync(join(dest, "references", "guide.md"), "user-edited\r\n");
+    syncDir({
+      name: "atomic-dir",
+      src,
+      dest,
+      backupRoot,
+      exclude: ["__pycache__", ".gitignore"],
+    });
+    assert.equal(readFileSync(join(dest, "references", "guide.md"), "utf8"), "# guide\n");
+    const backups = listRel(backupRoot).filter((file) => file.endsWith("references/guide.md"));
+    assert.equal(backups.length, 1, "漂移目标应保留一份备份");
+    assert.equal(readFileSync(join(backupRoot, backups[0]), "utf8"), "user-edited\r\n");
+  });
+
+  it("sync snapshots normalize CRLF and LF as the same content", () => {
+    const root = resolve(TMP, "eol");
+    const { src, dest } = makeFixture(root);
+    syncDir({ name: "eol", src, dest, exclude: ["__pycache__", ".gitignore"] });
+    writeFileSync(join(dest, "SKILL.md"), "# skill\r\n");
+    syncDir({ name: "eol", src, dest, exclude: ["__pycache__", ".gitignore"] });
+    assert.equal(readFileSync(join(dest, "SKILL.md"), "utf8"), "# skill\r\n");
+  });
+
   it("syncFile 复制单文件", () => {
     const root = resolve(TMP, "syncfile");
     mkdirSync(root, { recursive: true });
@@ -108,6 +143,19 @@ describe("sync-bundled", () => {
 
     syncFile({ name: "agent.md", src, dest });
     assert.strictEqual(readFileSync(dest, "utf8"), "agent content\n");
+  });
+
+  it("rename retries a transient Windows sharing failure", () => {
+    let calls = 0;
+    renameWithRetry("from", "to", () => {
+      calls += 1;
+      if (calls === 1) {
+        const error = new Error("sharing violation");
+        error.code = "EPERM";
+        throw error;
+      }
+    }, { delayMs: 0 });
+    assert.equal(calls, 2);
   });
 
   it("CLI 调用：source 仅 1 文件触发 abort（保护 bundled）", async () => {

@@ -4,7 +4,7 @@
 
 ## 安装
 
-当前稳定版本为 `0.4.2`，已发布到 npm，registry 的 `latest` 指向 `0.4.2`。直接安装：
+当前源码版本为 `0.4.4`。发布到 npm 后，registry 的 `latest` 将指向 `0.4.4`。直接安装：
 
 ```bash
 npm install wjx-api-sdk
@@ -48,4 +48,3 @@ console.log(created.data);
 也可以把 `{ apiKey: "...", baseUrl: "..." }` 作为第二参数传入函数；`baseUrl` 可以是部署主机，也可以是完整的 `/openapi/*.aspx` 地址。显式地址只作用于当前请求，不会修改全局环境，适合多租户并发调用。多租户程序也可以使用凭据提供者。函数、类型和错误结构见 [SDK API 参考](../reference/sdk.md)。
 
 需要让服务端识别调用方时，在支持请求覆盖的函数第四参数传入 `clientName`、`clientVersion`；SDK 会发送对应的 `X-WJX-Client`、`X-WJX-Client-Version` 请求头。`wjx-cli` 的 `survey create` 已自动携带自身版本。
-

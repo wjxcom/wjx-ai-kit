@@ -6,6 +6,7 @@ import {
   extractJsonlMetadata,
   normalizeJsonl,
   MAX_JSONL_SIZE,
+  canonicalizeJsonlQtypes,
   preprocessExamJsonl,
   hasVoteJsonlQtype,
   injectDefaultRequir,
@@ -66,7 +67,13 @@ export async function getSurvey<T = unknown>(
   if (input.get_tags !== undefined) params.get_tags = input.get_tags;
   if (input.showtitle !== undefined) params.showtitle = input.showtitle;
 
-  return callWjxApi<T>(params, { ...requestOptions, credentials, fetchImpl });
+  return callWjxApi<T>(params, {
+    ...requestOptions,
+    credentials,
+    fetchImpl,
+    idempotency: requestOptions?.idempotency ?? "safe",
+    httpRetryable: requestOptions?.httpRetryable ?? true,
+  });
 }
 
 export async function listSurveys<T = unknown>(
@@ -93,7 +100,13 @@ export async function listSurveys<T = unknown>(
   if (input.begin_time !== undefined) params.begin_time = input.begin_time;
   if (input.end_time !== undefined) params.end_time = input.end_time;
 
-  return callWjxApi<T>(params, { ...requestOptions, credentials, fetchImpl });
+  return callWjxApi<T>(params, {
+    ...requestOptions,
+    credentials,
+    fetchImpl,
+    idempotency: requestOptions?.idempotency ?? "safe",
+    httpRetryable: requestOptions?.httpRetryable ?? true,
+  });
 }
 
 export async function updateSurveyStatus<T = unknown>(
@@ -107,7 +120,7 @@ export async function updateSurveyStatus<T = unknown>(
       vid: input.vid,
       state: input.state,
     },
-    { credentials, fetchImpl, maxRetries: 0 },
+    { credentials, fetchImpl, maxRetries: 0, idempotency: "unsafe", httpRetryable: false },
   );
 }
 
@@ -122,7 +135,7 @@ export async function getSurveySettings<T = unknown>(
       vid: input.vid,
       additional_setting: input.additional_setting ?? "[1000,1001,1002,1003,1004,1005,1006,1007]",
     },
-    { credentials, fetchImpl },
+    { credentials, fetchImpl, idempotency: "safe", httpRetryable: true },
   );
 }
 
@@ -141,7 +154,13 @@ export async function updateSurveySettings<T = unknown>(
   if (input.sojumpparm_setting !== undefined) params.sojumpparm_setting = input.sojumpparm_setting;
   if (input.time_setting !== undefined) params.time_setting = input.time_setting;
 
-  return callWjxApi<T>(params, { credentials, fetchImpl, maxRetries: 0 });
+  return callWjxApi<T>(params, {
+    credentials,
+    fetchImpl,
+    maxRetries: 0,
+    idempotency: "unsafe",
+    httpRetryable: false,
+  });
 }
 
 export async function deleteSurvey<T = unknown>(
@@ -156,7 +175,13 @@ export async function deleteSurvey<T = unknown>(
   };
   if (input.completely_delete !== undefined) params.completely_delete = input.completely_delete;
 
-  return callWjxApi<T>(params, { credentials, fetchImpl, maxRetries: 0 });
+  return callWjxApi<T>(params, {
+    credentials,
+    fetchImpl,
+    maxRetries: 0,
+    idempotency: "unsafe",
+    httpRetryable: false,
+  });
 }
 
 export async function getQuestionTags<T = unknown>(
@@ -166,7 +191,7 @@ export async function getQuestionTags<T = unknown>(
 ): Promise<WjxApiResponse<T>> {
   return callWjxApi<T>(
     { action: Action.GET_TAGS, username: input.username },
-    { credentials, fetchImpl },
+    { credentials, fetchImpl, idempotency: "safe", httpRetryable: true },
   );
 }
 
@@ -177,7 +202,7 @@ export async function getTagDetails<T = unknown>(
 ): Promise<WjxApiResponse<T>> {
   return callWjxApi<T>(
     { action: Action.GET_TAG_DETAILS, tag_id: input.tag_id },
-    { credentials, fetchImpl },
+    { credentials, fetchImpl, idempotency: "safe", httpRetryable: true },
   );
 }
 
@@ -192,7 +217,13 @@ export async function clearRecycleBin<T = unknown>(
   };
   if (input.vid !== undefined) params.vid = input.vid;
 
-  return callWjxApi<T>(params, { credentials, fetchImpl, maxRetries: 0 });
+  return callWjxApi<T>(params, {
+    credentials,
+    fetchImpl,
+    maxRetries: 0,
+    idempotency: "unsafe",
+    httpRetryable: false,
+  });
 }
 
 /**
@@ -245,7 +276,8 @@ export async function createSurveyByJson<T = unknown>(
   parseJsonl(jsonl);
 
   // 考试题型预处理：注入 isquiz="1"，并在用户未指定 atype 时推断为 6（考试）
-  const { jsonl: examProcessed, hasExam } = preprocessExamJsonl(jsonl);
+  const canonicalJsonl = canonicalizeJsonlQtypes(jsonl);
+  const { jsonl: examProcessed, hasExam } = preprocessExamJsonl(canonicalJsonl);
   validateExplicitOptionalQuestionsInJsonl(examProcessed, input.optionalTitles);
   // 默认必答预处理：与页面创建行为保持一致，为题目行注入 requir=true（未指定时）
   const requirInjected = injectDefaultRequir(examProcessed);
@@ -296,6 +328,8 @@ export async function createSurveyByJson<T = unknown>(
       fetchImpl,
       retryBudget: 0,
       maxRetries: 0,
+      idempotency: "unsafe",
+      httpRetryable: false,
       timeoutMs: requestOptions?.timeoutMs ?? LONG_TIMEOUT_MS,
     },
   );
@@ -312,6 +346,6 @@ export async function uploadFile<T = unknown>(
       file_name: input.file_name,
       file: input.file,
     },
-    { credentials, fetchImpl, maxRetries: 0 },
+    { credentials, fetchImpl, maxRetries: 0, idempotency: "unsafe", httpRetryable: false },
   );
 }

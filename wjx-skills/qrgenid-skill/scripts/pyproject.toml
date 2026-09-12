@@ -1,0 +1,28 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "qrgenid"
+version = "0.1.0"
+description = "Batch QR code generator for Excel workbooks"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+  "Pillow>=10.0",
+  "XlsxWriter>=3.1",
+  "openpyxl>=3.1",
+  "qrcode[pil]>=7.4",
+  "xlrd>=2.0.1",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8.0", "pyinstaller>=6.0"]
+
+[project.scripts]
+qrgenid = "qrgenid.__main__:main"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+

@@ -4,7 +4,11 @@ import { execFile } from "node:child_process";
 import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { FRAMEWORK_ONLY_JSONL_QTYPES, JSONL_SUPPORTED_QTYPES } from "wjx-api-sdk";
+import {
+  FRAMEWORK_ONLY_JSONL_QTYPES,
+  JSONL_READ_ONLY_OR_WEB_EDITOR_QTYPES,
+  JSONL_SUPPORTED_QTYPES,
+} from "wjx-api-sdk";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const CLI = resolve(__dirname, "..", "dist", "index.js");
@@ -12,6 +16,12 @@ const NO_CONFIG = { WJX_CONFIG_PATH: resolve(__dirname, "..", "__complete_eval_n
 const SKILL = resolve(__dirname, "..", "..", "wjx-skills", "wjx-cli-use", "SKILL.md");
 const QUESTION_TYPES = resolve(__dirname, "..", "..", "wjx-skills", "wjx-cli-use", "references", "question-types.md");
 const MANIFEST = resolve(__dirname, "..", "manifest", "commands.json");
+const CANONICAL_QTYPE_ALIASES = new Map([
+  ["表格数值题", "表格数值"],
+  ["表格填空题", "表格填空"],
+  ["表格组合题", "表格组合"],
+  ["表格自增题", "自增表格"],
+]);
 
 function runCli(args, { env = {}, input, timeout = 15_000 } = {}) {
   return new Promise((done) => {
@@ -19,10 +29,17 @@ function runCli(args, { env = {}, input, timeout = 15_000 } = {}) {
       env: { ...process.env, ...NO_CONFIG, ...env },
       encoding: "utf8",
       timeout,
+      maxBuffer: 2 * 1024 * 1024,
     }, (error, stdout, stderr) => done({
       code: error ? error.code ?? 1 : 0,
       stdout: stdout || "",
       stderr: stderr || "",
+      error: error ? {
+        message: error.message,
+        code: error.code,
+        signal: error.signal,
+        killed: error.killed === true,
+      } : undefined,
     }));
     if (input !== undefined) {
       child.stdin.end(input);
@@ -68,6 +85,10 @@ function sampleQuestion(qtype) {
     question.columntitle = ["姓名", "备注"];
   } else if (qtype === "联合分析") {
     question.mdattr = ["价格低/包装A", "价格中/包装B", "价格高/包装C"];
+    question.columntitle = ["品牌", "价格"];
+    question.selects = [["品牌 A", "品牌 B"], ["低", "高"]];
+    question.pertaskcount = 1;
+    question.tasklength = 1;
   } else if (qtype === "层次分析") {
     question.rowtitle = ["价格", "品质", "品牌"];
   } else if (qtype === "循环评价") {
@@ -102,6 +123,10 @@ function sampleQuestion(qtype) {
     question.total = 100;
   } else if (["BWS", "MaxDiff", "Maxdiff", "图片PK", "BPTO模型", "心理学实验"].includes(qtype)) {
     question.mdattr = ["属性一", "属性二", "属性三"];
+    if (["BWS", "MaxDiff", "Maxdiff", "图片PK"].includes(qtype)) {
+      question.pertaskcount = 2;
+      question.tasklength = 2;
+    }
   } else if (qtype === "热力图") {
     question.heatbg = "/images/ai/demo.png";
   } else if (qtype === "多级下拉") {
@@ -123,7 +148,7 @@ function sampleQuestion(qtype) {
     question.columntitle = ["内容"];
   } else if (qtype === "多项填空") {
     question.title = "字段一 {_}，字段二 {_}";
-  } else if (["普通选择题", "单选", "多选", "下拉框", "排序", "量表题", "评分单选", "评分多选", "评价题", "投票单选", "投票多选", "考试单选", "考试判断", "考试多选"].includes(qtype)) {
+  } else if (["普通选择题", "单选", "多选", "下拉框", "排序", "量表题", "评分单选", "评分多选", "评价题", "投票单选", "投票多选", "考试单选", "考试判断", "考试多选", "考试文件", "考试绘图"].includes(qtype)) {
     question.select = ["选项一", "选项二"];
   } else if (qtype === "考试单项填空") {
     question.title = "中国的首都是 {_}";
@@ -136,11 +161,28 @@ function sampleQuestion(qtype) {
     ];
   }
   if (qtype.startsWith("考试") && !["考试单项填空", "考试多项填空"].includes(qtype)) {
-    question.correctselect = ["1"];
+    question.correctselect = ["选项一"];
     question.quizscore = "1";
   }
   return question;
 }
+
+const REAL_QTYPE_IMAGE_BASE64 = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=";
+
+function normalizeImageUrl(value) {
+  const url = String(value ?? "").trim();
+  if (url.startsWith("//")) return `https:${url}`;
+  return url;
+}
+
+test("protocol-relative upload URLs are normalized for image question payloads", () => {
+  assert.equal(
+    normalizeImageUrl("//pubnew.paperol.cn/c/340842/apiup/example.png"),
+    "https://pubnew.paperol.cn/c/340842/apiup/example.png",
+  );
+  assert.equal(normalizeImageUrl("https://example.com/image.png"), "https://example.com/image.png");
+  assert.equal(normalizeImageUrl(""), "");
+});
 
 function parsePlanBody(data) {
   assert.equal(data.kind, "dry-run");
@@ -206,12 +248,20 @@ test("every documented qtype has an executable JSONL dry-run contract", async ()
         { qtype: "单选", title: "锚点", select: ["是", "否"] },
       ), "utf8");
       const result = await runCli(["--dry-run", "survey", "create", "--file", file]);
+      if (JSONL_READ_ONLY_OR_WEB_EDITOR_QTYPES.has(qtype)) {
+        const error = parseProblem(result);
+        assert.match(error.message ?? error.errormsg ?? JSON.stringify(error), /不支持.*创建接口|Web 编辑器/);
+        continue;
+      }
       const body = parsePlanBody(parseSuccess(result));
       assert.equal(String(body.action), "1000106", qtype);
       const wireRows = String(body.surveydatajson).split(/\r?\n/).filter(Boolean).map((line) => JSON.parse(line));
-      const wireQuestion = wireRows.find((row) => row.qtype === qtype);
+      const canonicalQtype = CANONICAL_QTYPE_ALIASES.get(qtype) ?? qtype;
+      const wireQuestion = wireRows.find((row) => row.qtype === canonicalQtype);
       assert.ok(wireQuestion, qtype);
-      const expectedQuestion = qtype === "问卷基础信息" ? metadata : question;
+      const expectedQuestion = qtype === "问卷基础信息"
+        ? metadata
+        : { ...question, qtype: canonicalQtype };
       for (const [key, value] of Object.entries(expectedQuestion)) {
         assert.deepEqual(wireQuestion[key], value, `${qtype}.${key} was not preserved`);
       }
@@ -226,7 +276,8 @@ function parseEnvelope(result) {
   try {
     return JSON.parse(raw);
   } catch {
-    throw new Error(`CLI returned non-JSON output (exit ${result.code}): ${raw.slice(0, 300)}`);
+    const details = result.error ? `; ${JSON.stringify(result.error)}` : "";
+    throw new Error(`CLI returned non-JSON output (exit ${result.code}${details}): ${raw.slice(0, 300)}`);
   }
 }
 
@@ -266,8 +317,28 @@ function findVidsByTitle(value, titlePrefix) {
   return vids;
 }
 
+function findVidsByExactTitle(value, title) {
+  const vids = new Set();
+  const queue = [value];
+  while (queue.length > 0) {
+    const current = queue.shift();
+    if (!current || typeof current !== "object") continue;
+    if (!Array.isArray(current) && current.title === title) {
+      const vid = findVid(current);
+      if (vid) vids.add(vid);
+    }
+    for (const child of Object.values(current)) {
+      if (child && typeof child === "object") queue.push(child);
+    }
+  }
+  return vids;
+}
+
 test("every supported qtype completes a real create/get/delete workflow", {
-  skip: process.env.WJX_REAL_QTYPE_EVAL !== "1",
+  // Real qtype evaluation creates and permanently deletes surveys. Require
+  // the explicit global E2E gate as well as the narrower opt-in flag so a
+  // stale WJX_REAL_QTYPE_EVAL setting can never trigger destructive traffic.
+  skip: process.env.WJX_E2E !== "1" || process.env.WJX_REAL_QTYPE_EVAL !== "1",
 }, async () => {
   const configPath = process.env.WJX_CONFIG_PATH ?? resolve(process.env.USERPROFILE ?? ".", ".wjxrc");
   const username = process.env.WJX_USERNAME?.trim();
@@ -285,36 +356,87 @@ test("every supported qtype completes a real create/get/delete workflow", {
   const failures = [];
   const cleanupFailures = [];
   const statuses = [];
+  const boundaryResults = [];
   const realEnv = { WJX_CONFIG_PATH: configPath };
 
-  async function discoverCreatedVids() {
-    const listed = await runCli(["survey", "list", "--name_like", runPrefix], { env: realEnv, timeout: 60_000 });
-    if (listed.code !== 0) return new Set();
-    const envelope = parseEnvelope(listed);
-    return findVidsByTitle(envelope.data, runPrefix);
+  async function discoverCreatedVids(titleFilter = runPrefix, exactTitle) {
+    let lastError;
+    for (let attempt = 0; attempt < 4; attempt += 1) {
+      if (attempt > 0) await new Promise((resolve) => setTimeout(resolve, attempt * 1_000));
+      try {
+        const listed = await runCli(["survey", "list", "--name_like", runPrefix], { env: realEnv, timeout: 60_000 });
+        if (listed.code !== 0) throw new Error(`list exited ${listed.code}: ${listed.stderr || listed.stdout}`);
+        const envelope = parseEnvelope(listed);
+        const vids = exactTitle
+          ? findVidsByExactTitle(envelope.data, exactTitle)
+          : findVidsByTitle(envelope.data, titleFilter);
+        if (vids.size > 0 || attempt === 3) return vids;
+      } catch (error) {
+        lastError = error;
+      }
+    }
+    if (lastError) throw lastError;
+    return new Set();
   }
 
   for (const [index, qtype] of qtypes.entries()) {
     const title = `${runPrefix}-${String(index + 1).padStart(3, "0")}`;
     const atype = qtype.startsWith("考试") ? 6 : qtype.startsWith("投票") ? 3 : 1;
-    const question = qtype === "问卷基础信息"
+    let question = qtype === "问卷基础信息"
       ? { qtype: "单选", title: "锚点题", select: ["是", "否"] }
       : sampleQuestion(qtype);
-    const jsonlText = jsonl(
-      { qtype: "问卷基础信息", title, atype },
-      question,
-      { qtype: "单选", title: "清理锚点", select: ["是", "否"] },
-    );
     const vids = new Set();
     try {
+      if (qtype === "图片PK") {
+        const imageUrls = [];
+        for (let imageIndex = 0; imageIndex < 3; imageIndex += 1) {
+          const uploaded = await runCli([
+            "survey", "upload",
+            "--file_name", `${runPrefix}-image-${imageIndex + 1}.png`,
+            "--file", REAL_QTYPE_IMAGE_BASE64,
+          ], { env: realEnv, timeout: 60_000 });
+          const uploadEnvelope = parseEnvelope(uploaded);
+          assert.equal(uploaded.code, 0, `图片PK: upload ${imageIndex + 1} failed: ${uploaded.stderr}`);
+          assert.equal(uploadEnvelope.ok, true, `图片PK: upload ${imageIndex + 1} returned an error`);
+          const imageUrl = normalizeImageUrl(typeof uploadEnvelope.data === "string"
+            ? uploadEnvelope.data
+            : uploadEnvelope.data?.url ?? uploadEnvelope.data?.file_url ?? uploadEnvelope.data?.fileUrl);
+          assert.match(String(imageUrl ?? ""), /^https?:\/\//, `图片PK: upload ${imageIndex + 1} did not return an image URL`);
+          imageUrls.push(imageUrl);
+        }
+        question = { ...question, mdattr: imageUrls };
+      }
+      const jsonlText = jsonl(
+        { qtype: "问卷基础信息", title, atype },
+        question,
+        { qtype: "单选", title: "清理锚点", select: ["是", "否"] },
+      );
       const created = await runCli(["survey", "create", "--jsonl", jsonlText], { env: realEnv, timeout: 60_000 });
-      const createEnvelope = parseEnvelope(created);
-      assert.equal(created.code, 0, `${qtype}: ${created.stderr || created.stdout}`);
-      assert.equal(createEnvelope.ok, true, `${qtype}: ${created.stdout}`);
-      const vid = findVid(createEnvelope.data);
-      if (vid) vids.add(vid);
+      if (JSONL_READ_ONLY_OR_WEB_EDITOR_QTYPES.has(qtype)) {
+        const boundary = parseProblem(created);
+        assert.match(boundary.message ?? boundary.errormsg ?? JSON.stringify(boundary), /不支持.*创建接口|Web 编辑器/);
+        boundaryResults.push(qtype);
+        continue;
+      }
+      let createEnvelope;
+      let createError;
+      try {
+        createEnvelope = parseEnvelope(created);
+      } catch (error) {
+        createError = error;
+      }
+      const vid = createEnvelope?.ok === true ? findVid(createEnvelope.data) : undefined;
+      if (vid && created.code === 0) vids.add(vid);
       if (!vid) {
-        for (const discovered of await discoverCreatedVids()) vids.add(discovered);
+        for (const discovered of await discoverCreatedVids(runPrefix, title)) vids.add(discovered);
+      }
+      // A transport failure can happen after the server accepted the unsafe
+      // create. Recover only from a read-back VID; never replay the create.
+      if (created.code !== 0 || createEnvelope?.ok !== true) {
+        if (vids.size === 0) {
+          const diagnostic = created.stderr.trim() || created.stdout.trim();
+          throw createError ?? new Error(`${qtype}: create failed with exit ${created.code}${diagnostic ? `: ${diagnostic.slice(0, 1_000)}` : ""}`);
+        }
       }
       assert.ok(vids.size > 0, `${qtype}: create response did not contain a vid`);
 
@@ -338,7 +460,7 @@ test("every supported qtype completes a real create/get/delete workflow", {
     } finally {
       if (vids.size === 0) {
         try {
-          for (const discovered of await discoverCreatedVids()) vids.add(discovered);
+          for (const discovered of await discoverCreatedVids(runPrefix, title)) vids.add(discovered);
         } catch (error) {
           cleanupFailures.push({ qtype, message: `discover: ${error instanceof Error ? error.message : String(error)}` });
         }
@@ -365,7 +487,12 @@ test("every supported qtype completes a real create/get/delete workflow", {
   if (remaining.size > 0) cleanupFailures.push({ qtype: "all", message: `remaining vids: ${[...remaining].join(",")}` });
   assert.deepEqual(failures, [], `real qtype failures: ${JSON.stringify(failures)}`);
   assert.deepEqual(cleanupFailures, [], `real qtype cleanup failures: ${JSON.stringify(cleanupFailures)}`);
-  assert.equal(statuses.length, qtypes.length, "every qtype must have one verified survey status");
+  assert.equal(
+    statuses.length + boundaryResults.length,
+    qtypes.length,
+    "every qtype must have either a verified workflow or an explicit capability boundary",
+  );
+  assert.deepEqual(boundaryResults.sort(), [...JSONL_READ_ONLY_OR_WEB_EDITOR_QTYPES].filter((qtype) => qtypes.includes(qtype)).sort());
 });
 
 test("Skill documents all ten Agent rules and executable guidance anchors", async () => {

@@ -5,12 +5,17 @@ import {
   SURVEY_STATUSES,
   VERIFY_STATUSES,
   STATUS_TRANSITIONS,
+  TEXT_VALIDATION_TYPES,
+  MATRIX_DISPLAY_TYPES,
+  TABLE_DISPLAY_TYPES,
+  SURVEY_SETTING_TYPES,
 } from "./survey-reference.js";
 import {
   ANALYSIS_METHODS,
   RESPONSE_FORMAT_GUIDE,
 } from "./analysis-reference.js";
 import { PUSH_FORMAT_GUIDE } from "./push-reference.js";
+import { JSONL_QTYPES_RESOURCE } from "./jsonl-qtypes.js";
 import { DSL_SYNTAX_GUIDE } from "./dsl-reference.js";
 
 function formatResource(data: Record<string, unknown>): string {
@@ -18,6 +23,13 @@ function formatResource(data: Record<string, unknown>): string {
 }
 
 export function registerResources(server: McpServer): void {
+  server.resource(
+    "jsonl-qtypes",
+    "wjx://reference/jsonl-qtypes",
+    { description: "JSONL 创建 qtype 能力与分层；区别于 get_survey 返回的 q_type/q_subtype 数字编码，并标明草稿/Web 编辑器限制", mimeType: "application/json" },
+    async () => ({ contents: [{ uri: "wjx://reference/jsonl-qtypes", mimeType: "application/json", text: formatResource(JSONL_QTYPES_RESOURCE) }] }),
+  );
+
   server.resource(
     "survey-types",
     "wjx://reference/survey-types",
@@ -47,12 +59,64 @@ export function registerResources(server: McpServer): void {
   server.resource(
     "survey-statuses",
     "wjx://reference/survey-statuses",
-    { description: "问卷状态编码说明：0=未发布, 1=已发布, 2=已暂停, 3=已删除, 4=彻底删除, 5=被审核", mimeType: "application/json" },
+    { description: "问卷状态编码说明：0=未发布, 1=已发布, 2=已暂停, 3=已删除（回收站，可恢复）, 4=彻底删除（不可恢复）, 5=被审核", mimeType: "application/json" },
     async () => ({
       contents: [{
         uri: "wjx://reference/survey-statuses",
         mimeType: "application/json",
         text: formatResource({ survey_statuses: SURVEY_STATUSES, verify_statuses: VERIFY_STATUSES, status_transitions: STATUS_TRANSITIONS }),
+      }],
+    }),
+  );
+
+  server.resource(
+    "text-validation-types",
+    "wjx://reference/text-validation-types",
+    { description: "文本题校验类型编码（题目设置/读取结果）", mimeType: "application/json" },
+    async () => ({
+      contents: [{
+        uri: "wjx://reference/text-validation-types",
+        mimeType: "application/json",
+        text: formatResource(TEXT_VALIDATION_TYPES),
+      }],
+    }),
+  );
+
+  server.resource(
+    "matrix-display-types",
+    "wjx://reference/matrix-display-types",
+    { description: "矩阵题展现形式编码", mimeType: "application/json" },
+    async () => ({
+      contents: [{
+        uri: "wjx://reference/matrix-display-types",
+        mimeType: "application/json",
+        text: formatResource(MATRIX_DISPLAY_TYPES),
+      }],
+    }),
+  );
+
+  server.resource(
+    "table-display-types",
+    "wjx://reference/table-display-types",
+    { description: "表格题展现形式编码", mimeType: "application/json" },
+    async () => ({
+      contents: [{
+        uri: "wjx://reference/table-display-types",
+        mimeType: "application/json",
+        text: formatResource(TABLE_DISPLAY_TYPES),
+      }],
+    }),
+  );
+
+  server.resource(
+    "survey-setting-types",
+    "wjx://reference/survey-setting-types",
+    { description: "问卷设置内容类型编码（additional_setting）", mimeType: "application/json" },
+    async () => ({
+      contents: [{
+        uri: "wjx://reference/survey-setting-types",
+        mimeType: "application/json",
+        text: formatResource(SURVEY_SETTING_TYPES),
       }],
     }),
   );
@@ -126,4 +190,5 @@ export function registerResources(server: McpServer): void {
       }],
     }),
   );
+
 }

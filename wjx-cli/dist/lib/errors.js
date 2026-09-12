@@ -1,3 +1,4 @@
+import { WjxAmbiguousOutcomeError } from "wjx-api-sdk";
 const EXIT_CODES = {
     API_ERROR: 1,
     AUTH_ERROR: 1,
@@ -49,6 +50,15 @@ export function stderrJson(code, message, details) {
 function classifyError(err) {
     if (err instanceof CliError)
         return err;
+    if (err instanceof WjxAmbiguousOutcomeError) {
+        return new CliError("API_ERROR", err.message, {
+            outcome: err.outcome,
+            action: err.action,
+            traceid: err.traceId,
+            attempts: err.attempts,
+            recommendation: "read-after-write verification",
+        });
+    }
     if (err instanceof SyntaxError) {
         return new CliError("INPUT_ERROR", err.message);
     }
@@ -71,7 +81,6 @@ function classifyError(err) {
             err.message.includes("optionalTitles") ||
             err.message.includes("当前接口不支持创建") ||
             err.message.includes("corpid is required") ||
-            err.message.includes("DSL 包含不支持的题型") ||
             /^profile (?:name must not be blank|".*" not found)$/i.test(err.message) ||
             /Encrypted data|bad decrypt|wrong final block|unable to authenticate/i.test(err.message) ||
             err.message.startsWith("题目「")) {

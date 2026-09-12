@@ -3,6 +3,7 @@ export declare function getWjxApiUrl(baseUrl?: string): string;
 export declare function getWjxUserSystemApiUrl(baseUrl?: string): string;
 export declare function getWjxSubuserApiUrl(baseUrl?: string): string;
 export declare function getWjxContactsApiUrl(baseUrl?: string): string;
+export declare function getWjxShortLinkUrl(baseUrl?: string): string;
 export declare function getWjxSsoSubaccountUrl(baseUrl?: string): string;
 export declare function getWjxSsoUserSystemUrl(baseUrl?: string): string;
 export declare function getWjxSsoPartnerUrl(baseUrl?: string): string;
@@ -21,6 +22,8 @@ export declare const Action: {
     readonly QUERY_WJX_DSL: "1000006";
     readonly CREATE_SURVEY_BY_WJX_DSL: "1000109";
     readonly UPDATE_WJX_DSL: "1000110";
+    readonly CREATE_AI_PAGE: "1000107";
+    readonly UPDATE_AI_PAGE: "1000108";
     readonly DELETE_SURVEY: "1000301";
     readonly CLEAR_RECYCLE_BIN: "1000302";
     readonly SUBMIT_RESPONSE: "1001001";

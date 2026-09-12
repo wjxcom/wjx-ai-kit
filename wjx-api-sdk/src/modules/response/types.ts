@@ -54,6 +54,8 @@ export interface SubmitResponseInput {
   vid: number;
   inputcosttime: number;
   submitdata: string;
+  /** 提交通道标记，由调用方按服务端白名单传入。 */
+  submit_channel?: string;
   udsid?: number;
   sojumpparm?: string;
   submittime?: string;
@@ -87,7 +89,8 @@ export interface GetWinnersInput {
 
 export interface ModifyResponseInput {
   vid: number;
-  jid: number;
+  /** Response IDs are returned as large integers; serialize them as strings on the wire. */
+  jid: number | string;
   type: 1;
   answers: string;
 }

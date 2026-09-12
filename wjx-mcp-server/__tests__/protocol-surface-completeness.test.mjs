@@ -14,13 +14,18 @@ const MCP_SKILL_ROOT = resolve(HERE, "..", "..", "wjx-skills", "wjx-mcp-use");
 
 const RESOURCE_URIS = [
   "wjx://reference/analysis-methods",
-  "wjx://reference/wjx-xml-dsl",
+  "wjx://reference/jsonl-qtypes",
   "wjx://reference/push-format",
   "wjx://reference/question-types",
   "wjx://reference/response-format",
   "wjx://reference/survey-statuses",
   "wjx://reference/survey-types",
+  "wjx://reference/text-validation-types",
+  "wjx://reference/matrix-display-types",
+  "wjx://reference/table-display-types",
+  "wjx://reference/survey-setting-types",
   "wjx://reference/user-roles",
+  "wjx://reference/wjx-xml-dsl",
 ];
 
 const PROMPT_ARGS = {
@@ -71,6 +76,67 @@ test("every registered resource is readable and contains valid JSON", async () =
     assert.equal(result.contents[0].mimeType, "application/json");
     const parsed = JSON.parse(result.contents[0].text);
     assert.ok(parsed && typeof parsed === "object", `${uri} returned non-object JSON`);
+  }
+});
+
+test("MCP idempotent hints fail closed for every unsafe or unknown SDK operation", async () => {
+  const mcp = await createClient();
+  const listed = await mcp.listTools();
+  const expectedNonIdempotent = new Set([
+    // Survey writes (the SDK gives each an unsafe retry contract).
+    "update_survey_status",
+    "update_survey_settings",
+    "delete_survey",
+    "upload_file",
+    "clear_recycle_bin",
+    "create_survey_by_json",
+    "create_survey_from_definition",
+    // Response writes and operations that may create/consume server work.
+    "query_responses_realtime",
+    "download_responses",
+    "get_report",
+    "submit_response",
+    "modify_response",
+    "get_360_report",
+    "clear_responses",
+    "create_ai_page",
+    // Contacts and account-management writes.
+    "add_contacts",
+    "delete_contacts",
+    "add_admin",
+    "delete_admin",
+    "restore_admin",
+    "add_department",
+    "modify_department",
+    "delete_department",
+    "add_tag",
+    "modify_tag",
+    "delete_tag",
+    // Deprecated user-system writes.
+    "add_participants",
+    "modify_participants",
+    "delete_participants",
+    "bind_activity",
+    // Sub-account writes.
+    "add_sub_account",
+    "modify_sub_account",
+    "delete_sub_account",
+    "restore_sub_account",
+    "update_ai_page",
+    "update_survey_from_definition",
+  ]);
+  const actualNonIdempotent = new Set(
+    listed.tools
+      .filter((tool) => tool.annotations?.idempotentHint === false)
+      .map((tool) => tool.name),
+  );
+  assert.deepEqual(
+    [...actualNonIdempotent].sort(),
+    [...expectedNonIdempotent].sort(),
+    "a tool's idempotentHint must match its SDK replay-safety contract",
+  );
+  for (const tool of listed.tools) {
+    assert.equal(typeof tool.annotations?.idempotentHint, "boolean", `${tool.name} is missing idempotentHint`);
   }
 });
 

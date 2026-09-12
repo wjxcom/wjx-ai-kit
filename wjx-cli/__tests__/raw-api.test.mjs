@@ -41,6 +41,61 @@ test("raw api disables retries for catalog write actions", async () => {
   }
 });
 
+test("raw api applies endpoint metadata to retryable catalog reads", async () => {
+  let attempts = 0;
+  const fixture = await startFixture({
+    env: { WJX_API_KEY: "key" },
+    serverFactory: (handler) => createServer((request, response) => {
+      attempts += 1;
+      if (attempts === 1) {
+        response.statusCode = 503;
+        response.statusMessage = "Busy";
+        response.end("busy");
+        return;
+      }
+      handler(request, response);
+    }),
+  });
+
+  try {
+    const result = await fixture.run([
+      "api",
+      "--service", "default",
+      "--action", "survey.list",
+      "--params", JSON.stringify({ page_index: 1 }),
+    ]);
+    assert.equal(result.exitCode, 0, result.stderr);
+    assert.equal(attempts, 2, "survey.list should retry one retryable 503 response");
+  } finally {
+    await fixture.close();
+  }
+});
+
+test("raw api keeps non-idempotent catalog reads fail-closed on network failure", async () => {
+  let attempts = 0;
+  const fixture = await startFixture({
+    env: { WJX_API_KEY: "key" },
+    serverFactory: () => createServer((_request, response) => {
+      attempts += 1;
+      response.destroy();
+    }),
+  });
+
+  try {
+    const result = await fixture.run([
+      "api",
+      "--service", "default",
+      "--action", "response.realtime",
+      "--body", JSON.stringify({ vid: 42 }),
+    ]);
+    assert.notEqual(result.exitCode, 0);
+    assert.equal(attempts, 1, "response.realtime must not replay an ambiguous request");
+    assert.match(`${result.stdout}${result.stderr}`, /unknown|ambiguous|读回|verify/i);
+  } finally {
+    await fixture.close();
+  }
+});
+
 test("raw api routes service-specific catalog actions to their service endpoint", async () => {
   const fixture = await startFixture({ env: { WJX_API_KEY: "key" } });
   try {

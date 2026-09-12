@@ -5,6 +5,7 @@ export {
   getWjxUserSystemApiUrl,
   getWjxSubuserApiUrl,
   getWjxContactsApiUrl,
+  getWjxShortLinkUrl,
   getWjxSsoSubaccountUrl,
   getWjxSsoUserSystemUrl,
   getWjxSsoPartnerUrl,
@@ -35,6 +36,7 @@ export {
   callWjxContactsApi,
   getCorpId,
   assignDefined,
+  WjxAmbiguousOutcomeError,
 } from "./core/api-client.js";
 
 // Survey module
@@ -56,6 +58,7 @@ export {
   extractJsonlMetadata,
   normalizeJsonl,
   MAX_JSONL_SIZE,
+  canonicalizeJsonlQtypes,
   parseJsonl,
   jsonToSurvey,
   EXAM_QTYPES,
@@ -68,16 +71,27 @@ export {
   validateSurveyHasQuestions,
   NON_QUESTION_QTYPE_SET,
   JSONL_SUPPORTED_QTYPES,
+  JSONL_READ_ONLY_OR_WEB_EDITOR_QTYPES,
   FRAMEWORK_ONLY_JSONL_QTYPES,
   hasFrameworkOnlyJsonlQtype,
   resolveJsonlPublish,
   preflightJsonl,
 } from "./modules/survey/json-to-survey.js";
+export {
+  getJsonlQuestionTypeCode,
+  extractJsonlQuestionTypeExpectations,
+  compareJsonlQuestionTypes,
+  filterJsonlVerificationQuestions,
+} from "./modules/survey/qtype-mapping.js";
 export type {
   JsonSurveyMetadata,
   JsonSurveyQuestion,
   JsonParsedSurvey,
 } from "./modules/survey/json-to-survey.js";
+export type {
+  JsonlQuestionTypeExpectation,
+  JsonlQuestionTypeCheck,
+} from "./modules/survey/qtype-mapping.js";
 export type {
   CreateSurveyByJsonInput,
   GetSurveyInput,
@@ -122,6 +136,16 @@ export type {
   WjxDslValidationOptions,
   WjxDslGenerationResult,
 } from "./modules/dsl/types.js";
+
+// AI homepage module
+export { createAiPage, updateAiPage } from "./modules/ai-page/client.js";
+export {
+  AI_PAGE_MAX_HTML_LENGTH,
+  AI_PAGE_MAX_TITLE_LENGTH,
+  AI_PAGE_PAGE_TYPES,
+} from "./modules/ai-page/constants.js";
+export type { AiPageType } from "./modules/ai-page/constants.js";
+export type { AiPageResult, CreateAiPageInput, UpdateAiPageInput } from "./modules/ai-page/types.js";
 
 // Response module
 export {
@@ -240,6 +264,15 @@ export type {
   BuildSurveyUrlInput,
   BuildPreviewUrlInput,
 } from "./modules/sso/types.js";
+
+// Short-link module
+export { getShortLink } from "./modules/shortlink/client.js";
+export type {
+  GetShortLinkInput,
+  ShortLinkSuccess,
+  ShortLinkFailure,
+  ShortLinkResponse,
+} from "./modules/shortlink/types.js";
 
 // Analytics module
 export {

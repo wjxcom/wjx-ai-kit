@@ -82,7 +82,8 @@
 - `answeranalysis`：答案解析；
 - `include`、`answerlists`、`isaigrading`、`aiansweranalysis`：按题型需要使用。
 
-这些字段只在 JSONL 创建路径有明确转换支持；XML DSL v1 的考试题字段和问卷级设置以 [WJX XML DSL v1](wjx-xml-dsl-v1.md) 为准。考试时间等问卷级设置也可在创建后通过设置接口或编辑页配置。
+
+这些字段只在 JSONL 创建路径有明确转换支持；XML DSL v1 的考试题字段和问卷级设置以 [WJX XML DSL v1](wjx-xml-dsl-v1.md) 为准。
 
 ## 运行时来源
 

@@ -51,6 +51,13 @@ export function getWjxContactsApiUrl(baseUrl?: string): string {
     : envValue("WJX_CONTACTS_API_URL") ?? `${getWjxBaseUrl()}/openapi/contacts.aspx`;
 }
 
+export function getWjxShortLinkUrl(baseUrl?: string): string {
+  const explicitBaseUrl = nonBlank(baseUrl);
+  return explicitBaseUrl
+    ? `${getWjxBaseUrl(explicitBaseUrl)}/openapi/shortlink.aspx`
+    : envValue("WJX_SHORTLINK_URL") ?? `${getWjxBaseUrl()}/openapi/shortlink.aspx`;
+}
+
 export function getWjxSsoSubaccountUrl(baseUrl?: string): string {
   const explicitBaseUrl = nonBlank(baseUrl);
   return explicitBaseUrl
@@ -99,6 +106,8 @@ export const Action = {
   QUERY_WJX_DSL: "1000006",
   CREATE_SURVEY_BY_WJX_DSL: "1000109",
   UPDATE_WJX_DSL: "1000110",
+  CREATE_AI_PAGE: "1000107",
+  UPDATE_AI_PAGE: "1000108",
   DELETE_SURVEY: "1000301",
   CLEAR_RECYCLE_BIN: "1000302",
   SUBMIT_RESPONSE: "1001001",

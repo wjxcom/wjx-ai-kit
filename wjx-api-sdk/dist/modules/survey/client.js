@@ -1,7 +1,7 @@
 import { Action, LONG_TIMEOUT_MS } from "../../core/constants.js";
 import { callWjxApi, getWjxCredentials } from "../../core/api-client.js";
 export { extractJsonlMetadata, normalizeJsonl } from "./json-to-survey.js";
-import { extractJsonlMetadata, normalizeJsonl, MAX_JSONL_SIZE, preprocessExamJsonl, hasVoteJsonlQtype, injectDefaultRequir, injectAtypeIntoJsonl, inferAtypeFromTitle, validateSurveyTitle, validateSurveyHasQuestions, validateExplicitOptionalQuestionsInJsonl, preflightJsonl, parseJsonl, resolveJsonlPublish, } from "./json-to-survey.js";
+import { extractJsonlMetadata, normalizeJsonl, MAX_JSONL_SIZE, canonicalizeJsonlQtypes, preprocessExamJsonl, hasVoteJsonlQtype, injectDefaultRequir, injectAtypeIntoJsonl, inferAtypeFromTitle, validateSurveyTitle, validateSurveyHasQuestions, validateExplicitOptionalQuestionsInJsonl, preflightJsonl, parseJsonl, resolveJsonlPublish, } from "./json-to-survey.js";
 // User-system surveys are a legacy maintenance boundary and cannot be
 // created through the JSONL create API. All other documented atypes are
 // accepted by action 1000106 and interpreted by the service.
@@ -30,7 +30,13 @@ export async function getSurvey(input, credentials = getWjxCredentials(), fetchI
         params.get_tags = input.get_tags;
     if (input.showtitle !== undefined)
         params.showtitle = input.showtitle;
-    return callWjxApi(params, { ...requestOptions, credentials, fetchImpl });
+    return callWjxApi(params, {
+        ...requestOptions,
+        credentials,
+        fetchImpl,
+        idempotency: requestOptions?.idempotency ?? "safe",
+        httpRetryable: requestOptions?.httpRetryable ?? true,
+    });
 }
 export async function listSurveys(input = {}, credentials = getWjxCredentials(), fetchImpl = fetch, requestOptions) {
     const params = {
@@ -62,21 +68,27 @@ export async function listSurveys(input = {}, credentials = getWjxCredentials(),
         params.begin_time = input.begin_time;
     if (input.end_time !== undefined)
         params.end_time = input.end_time;
-    return callWjxApi(params, { ...requestOptions, credentials, fetchImpl });
+    return callWjxApi(params, {
+        ...requestOptions,
+        credentials,
+        fetchImpl,
+        idempotency: requestOptions?.idempotency ?? "safe",
+        httpRetryable: requestOptions?.httpRetryable ?? true,
+    });
 }
 export async function updateSurveyStatus(input, credentials = getWjxCredentials(), fetchImpl = fetch) {
     return callWjxApi({
         action: Action.UPDATE_STATUS,
         vid: input.vid,
         state: input.state,
-    }, { credentials, fetchImpl, maxRetries: 0 });
+    }, { credentials, fetchImpl, maxRetries: 0, idempotency: "unsafe", httpRetryable: false });
 }
 export async function getSurveySettings(input, credentials = getWjxCredentials(), fetchImpl = fetch) {
     return callWjxApi({
         action: Action.GET_SETTINGS,
         vid: input.vid,
         additional_setting: input.additional_setting ?? "[1000,1001,1002,1003,1004,1005,1006,1007]",
-    }, { credentials, fetchImpl });
+    }, { credentials, fetchImpl, idempotency: "safe", httpRetryable: true });
 }
 export async function updateSurveySettings(input, credentials = getWjxCredentials(), fetchImpl = fetch) {
     const params = {
@@ -93,7 +105,13 @@ export async function updateSurveySettings(input, credentials = getWjxCredential
         params.sojumpparm_setting = input.sojumpparm_setting;
     if (input.time_setting !== undefined)
         params.time_setting = input.time_setting;
-    return callWjxApi(params, { credentials, fetchImpl, maxRetries: 0 });
+    return callWjxApi(params, {
+        credentials,
+        fetchImpl,
+        maxRetries: 0,
+        idempotency: "unsafe",
+        httpRetryable: false,
+    });
 }
 export async function deleteSurvey(input, credentials = getWjxCredentials(), fetchImpl = fetch) {
     const params = {
@@ -103,13 +121,19 @@ export async function deleteSurvey(input, credentials = getWjxCredentials(), fet
     };
     if (input.completely_delete !== undefined)
         params.completely_delete = input.completely_delete;
-    return callWjxApi(params, { credentials, fetchImpl, maxRetries: 0 });
+    return callWjxApi(params, {
+        credentials,
+        fetchImpl,
+        maxRetries: 0,
+        idempotency: "unsafe",
+        httpRetryable: false,
+    });
 }
 export async function getQuestionTags(input, credentials = getWjxCredentials(), fetchImpl = fetch) {
-    return callWjxApi({ action: Action.GET_TAGS, username: input.username }, { credentials, fetchImpl });
+    return callWjxApi({ action: Action.GET_TAGS, username: input.username }, { credentials, fetchImpl, idempotency: "safe", httpRetryable: true });
 }
 export async function getTagDetails(input, credentials = getWjxCredentials(), fetchImpl = fetch) {
-    return callWjxApi({ action: Action.GET_TAG_DETAILS, tag_id: input.tag_id }, { credentials, fetchImpl });
+    return callWjxApi({ action: Action.GET_TAG_DETAILS, tag_id: input.tag_id }, { credentials, fetchImpl, idempotency: "safe", httpRetryable: true });
 }
 export async function clearRecycleBin(input, credentials = getWjxCredentials(), fetchImpl = fetch) {
     const params = {
@@ -118,7 +142,13 @@ export async function clearRecycleBin(input, credentials = getWjxCredentials(), 
     };
     if (input.vid !== undefined)
         params.vid = input.vid;
-    return callWjxApi(params, { credentials, fetchImpl, maxRetries: 0 });
+    return callWjxApi(params, {
+        credentials,
+        fetchImpl,
+        maxRetries: 0,
+        idempotency: "unsafe",
+        httpRetryable: false,
+    });
 }
 /**
  * 通过 JSONL 格式创建问卷（纯透传到服务端 action 1000106）。
@@ -159,7 +189,8 @@ export async function createSurveyByJson(input, credentials, fetchImpl = fetch, 
     // 防止坏数据原样进入服务端。
     parseJsonl(jsonl);
     // 考试题型预处理：注入 isquiz="1"，并在用户未指定 atype 时推断为 6（考试）
-    const { jsonl: examProcessed, hasExam } = preprocessExamJsonl(jsonl);
+    const canonicalJsonl = canonicalizeJsonlQtypes(jsonl);
+    const { jsonl: examProcessed, hasExam } = preprocessExamJsonl(canonicalJsonl);
     validateExplicitOptionalQuestionsInJsonl(examProcessed, input.optionalTitles);
     // 默认必答预处理：与页面创建行为保持一致，为题目行注入 requir=true（未指定时）
     const requirInjected = injectDefaultRequir(examProcessed);
@@ -200,6 +231,8 @@ export async function createSurveyByJson(input, credentials, fetchImpl = fetch, 
         fetchImpl,
         retryBudget: 0,
         maxRetries: 0,
+        idempotency: "unsafe",
+        httpRetryable: false,
         timeoutMs: requestOptions?.timeoutMs ?? LONG_TIMEOUT_MS,
     });
 }
@@ -208,6 +241,6 @@ export async function uploadFile(input, credentials = getWjxCredentials(), fetch
         action: Action.UPLOAD_FILE,
         file_name: input.file_name,
         file: input.file,
-    }, { credentials, fetchImpl, maxRetries: 0 });
+    }, { credentials, fetchImpl, maxRetries: 0, idempotency: "unsafe", httpRetryable: false });
 }
 //# sourceMappingURL=client.js.map

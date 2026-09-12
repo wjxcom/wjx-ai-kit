@@ -4,6 +4,22 @@ import { isInitializeRequest } from "@modelcontextprotocol/sdk/types.js";
 import { randomUUID, timingSafeEqual } from "node:crypto";
 import { credentialStore } from "../core/context.js";
 export const DEFAULT_MAX_BODY_BYTES = 10 * 1024 * 1024;
+export function resolveHttpCredentials(input) {
+    const bearer = input.bearerToken?.trim();
+    const requestApiKey = input.requestApiKey?.trim();
+    const upstream = input.upstreamApiKey?.trim();
+    // A tenant request must carry its own upstream credential. The transport
+    // bearer is an authentication token and is only accepted as an API key when
+    // the legacy compatibility flag is explicit. In default single-tenant mode,
+    // preserve the historical bearer fallback when no process key is configured.
+    const allowLegacyBearer = input.legacyBearerApiKey ?? !input.tenantMode;
+    const apiKey = input.tenantMode
+        ? (requestApiKey || (allowLegacyBearer ? bearer : undefined))
+        : (upstream || (allowLegacyBearer ? bearer : undefined));
+    if (!apiKey)
+        return undefined;
+    return { apiKey, ...(input.clientIp ? { clientIp: input.clientIp } : {}) };
+}
 class RequestBodyTooLargeError extends Error {
     maxBytes;
     constructor(maxBytes) {
@@ -90,6 +106,13 @@ export function readBody(req, maxBytes) {
         });
     });
 }
+/** Read a trimmed scalar request header without logging its value. */
+function extractHeader(req, name) {
+    const value = req.headers[name.toLowerCase()];
+    const scalar = Array.isArray(value) ? value[0] : value;
+    const trimmed = typeof scalar === "string" ? scalar.trim() : "";
+    return trimmed || undefined;
+}
 export async function startHttpTransport(_mcpServer, options, 
 /** Factory that creates a fresh McpServer for each session. */
 serverFactory) {
@@ -98,6 +121,12 @@ serverFactory) {
     const authToken = typeof options.authToken === "string" && options.authToken.trim()
         ? options.authToken.trim()
         : undefined;
+    const tenantMode = process.env.MCP_TENANT_MODE === "1";
+    const upstreamApiKey = options.upstreamApiKey ?? process.env.WJX_API_KEY;
+    const legacyBearerApiKey = options.legacyBearerApiKey
+        ?? (process.env.MCP_LEGACY_BEARER_API_KEY === "1"
+            ? true
+            : process.env.MCP_LEGACY_BEARER_API_KEY === "0" ? false : undefined);
     if (!Number.isSafeInteger(maxBodyBytes) || maxBodyBytes < 1) {
         throw new RangeError("maxBodyBytes must be a positive safe integer");
     }
@@ -135,12 +164,26 @@ serverFactory) {
         }
         // Build per-request WjxCredentials from Bearer token + client IP
         const clientIp = getClientIp(req);
-        const clientCreds = bearerToken
-            ? { apiKey: bearerToken, ...(clientIp ? { clientIp } : {}) }
-            : undefined;
+        const requestApiKey = extractHeader(req, "x-wjx-api-key");
+        const clientCreds = resolveHttpCredentials({
+            bearerToken,
+            requestApiKey,
+            tenantMode,
+            upstreamApiKey,
+            legacyBearerApiKey,
+            clientIp,
+        });
         if (url.pathname !== "/mcp") {
             res.writeHead(404, { "Content-Type": "application/json" });
             res.end(JSON.stringify({ error: "Not found" }));
+            return;
+        }
+        // Do not let the SDK fall back to a process-wide key when tenant mode is
+        // enabled. A missing request credential is an authentication failure, even
+        // when WJX_API_KEY happens to be configured for another tenant.
+        if (tenantMode && !clientCreds) {
+            res.writeHead(401, { "Content-Type": "application/json" });
+            res.end(JSON.stringify({ error: "Tenant WJX API credential is required" }));
             return;
         }
         // ── /mcp endpoint ───────────────────────────────────────────────

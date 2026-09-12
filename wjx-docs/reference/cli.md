@@ -1,12 +1,13 @@
 # CLI 命令参考
 
-运行 `wjx <command> --help` 可查看当前命令和参数；本版本包含 79 个叶子命令。
+运行 `wjx <command> --help` 可查看当前命令和参数；本版本包含 81 个叶子命令。
 
 ## 顶层命令
 
 | 命令 | 用途 |
 | --- | --- |
-| `survey` / `dsl` | 问卷生命周期、XML DSL 查询/校验/创建/修改和上传 |
+| `survey` | 问卷生命周期、题型、设置和上传 |
+| `dsl` | XML DSL 查询、校验、创建和修改 |
 | `response` | 答卷查询、下载、提交、报告 |
 | `analytics` | 本地解码、NPS/CSAT、异常检测、对比 |
 | `contacts` / `department` / `admin` / `tag` | 通讯录域 |
@@ -25,8 +26,7 @@
 | 查询单份答卷 | `wjx response query --jid <id>` |
 | 创建 JSONL 问卷 | `wjx survey create --file <path>` |
 | 校验 XML DSL | `wjx dsl generate --file <path>` |
-| 创建 XML DSL 问卷 | `wjx dsl create --file <path>` |
-| 修改 XML DSL 问卷 | `wjx dsl update --vid <vid> --file <path>` |
+| 创建/修改 XML DSL 问卷 | `wjx dsl create --file <path>` / `wjx dsl update --vid <vid> --file <path>` |
 | 查询 XML DSL | `wjx dsl query --vid <vid>` |
 | 生成填写/预览链接 | `wjx survey preview-url --sid <sid>` |
 
@@ -41,3 +41,6 @@
 `wjx update` 会先读取 npm registry 的 `latest` 版本；只有远端版本严格高于当前版本才执行安装。当前版本高于 registry 或 registry 检查失败时不会盲目更新，避免把本地版本降级或覆盖。
 
 `survey create` 请求会发送 `X-WJX-Client: wjx-cli` 和 `X-WJX-Client-Version: <当前版本>`。服务端若返回结构化的 `errorcode: "CLIENT_VERSION_TOO_OLD"`、`"CLI_VERSION_TOO_OLD"`、`"UPGRADE_REQUIRED"`，或 `data.upgrade_required: true`，CLI 会在 stderr 输出 `UPGRADE_REQUIRED`；服务端提供 `min_client_version`、`upgrade_command` 时，CLI 会原样保留并生成对应提示，未提供的字段不会臆造。stdout 不输出伪成功结果。低于 `0.4.1` 的旧 CLI 不会发送这些请求头，服务端需要按旧创建 action 或缺失版本头返回同一业务错误。
+# AI 主页
+
+`wjx survey create-ai-page --file homepage.html` 创建独立的纯展示 AI 主页；使用 `--html_content` 可直接传入 HTML，PPT 默认应采用逐页展示。修改前用 `wjx survey get --vid <vid>` 读取草稿也可返回的 `html_content` 和固定 `page_type`，再通过 `wjx survey update-ai-page --vid <vid> --file homepage.html` 原位更新。`vid` 必须为传统数字编号，更新不支持修改页面类型。

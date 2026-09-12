@@ -16,6 +16,7 @@ import { executeRuntimeAction } from "../dist/lib/runtime/executor.js";
 import { executeRuntimeCommand } from "../dist/lib/runtime/executor.js";
 import { createRuntimeContext } from "../dist/lib/runtime/context.js";
 import { createCapturingFetch, printDryRunPreview } from "../dist/lib/command-helpers.js";
+import { WjxAmbiguousOutcomeError } from "wjx-api-sdk";
 
 const PACKAGE_ROOT = fileURLToPath(new URL("..", import.meta.url));
 const CLI = resolve(PACKAGE_ROOT, "dist", "index.js");
@@ -130,6 +131,7 @@ test("submit dry-run emits an unresolved version without fetching survey metadat
     assert.equal(readFileSync(resolve(PACKAGE_ROOT, "dist/lib/runtime/dry-run.js"), "utf8").includes("fetch("), false);
     assert.equal(result.stderr, "");
     assert.deepEqual(envelope.data.plans[0].unresolved, ["jpmversion"]);
+    assert.equal(JSON.parse(envelope.data.plans[0].body).submit_channel, "wjx-cli");
   } finally {
     await fixture.close();
   }
@@ -228,6 +230,59 @@ test("runtime context forwards transport options only to execute", async () => {
   assert.deepEqual(received, { retryBudget: 0, timeoutMs: 1234 });
 });
 
+test("runtime command carries pre-read state through preparation and post-verification", async () => {
+  const program = new Command("wjx");
+  program.option("--yes");
+  program.setOptionValue("yes", true);
+  const command = program.command("probe");
+  const calls = [];
+  const originalWrite = process.stdout.write;
+  let output = "";
+  process.stdout.write = ((chunk) => { output += String(chunk); return true; });
+  try {
+    await executeRuntimeCommand(program, command, {
+      buildPlans: () => [],
+      context: createRuntimeContext({ credentials: { apiKey: "test-key" } }),
+      preRead: async () => {
+        calls.push("pre-read");
+        return { version: 7 };
+      },
+      prepareExecute: async (input, _credentials, _requestOptions, snapshot) => {
+        calls.push(["prepare", snapshot]);
+        return { ...input, version: snapshot.version };
+      },
+      execute: async (input) => {
+        calls.push(["execute", input]);
+        return { result: true, data: { accepted: true } };
+      },
+      requiredVerification: ["structure", "status"],
+      postVerify: async (_result, _input, _credentials, snapshot) => {
+        calls.push(["verify", snapshot]);
+        return {
+          outcome: "verified",
+          verification: { structure: snapshot.version === 7, status: true, link: false },
+          warnings: [],
+        };
+      },
+    });
+  } finally {
+    process.stdout.write = originalWrite;
+    process.exitCode = 0;
+  }
+
+  assert.deepEqual(calls, [
+    "pre-read",
+    ["prepare", { version: 7 }],
+    ["execute", { version: 7 }],
+    ["verify", { version: 7 }],
+  ]);
+  const envelope = JSON.parse(output.trim());
+  assert.equal(envelope.ok, true);
+  assert.equal(envelope.data.accepted, true);
+  assert.equal(envelope.data.outcome, "verified");
+  assert.equal(envelope.data.verification.structure, true);
+});
+
 test("runtime context credentials override ambient credential lookup", async () => {
   const program = new Command("wjx");
   const command = program.command("probe");
@@ -284,6 +339,128 @@ test("runtime action forwards context credentials and transport options to SDK f
   assert.deepEqual(received[3], { retryBudget: 0, timeoutMs: 1234 });
 });
 
+test("runtime action carries a pre-read snapshot into preparation and post-verification", async () => {
+  const program = new Command("wjx");
+  program.option("--yes");
+  program.setOptionValue("yes", true);
+  const command = program.command("probe");
+  let seen;
+  let output = "";
+  const originalWrite = process.stdout.write;
+  process.stdout.write = ((chunk) => {
+    output += String(chunk);
+    return true;
+  });
+  try {
+    await executeRuntimeAction(
+      program,
+      command,
+      async (input) => {
+        seen = { input };
+        return { result: true, data: { accepted: true } };
+      },
+      () => ({ value: "requested" }),
+      {
+        context: createRuntimeContext({ credentials: { apiKey: "test-key" } }),
+        preRead: async () => ({ existing: "before" }),
+        transformInput: async (input, _credentials, _requestOptions, snapshot) => ({
+          ...input,
+          preserved: snapshot.existing,
+        }),
+        postVerify: async (_result, _input, _credentials, snapshot) => ({
+          verification: { structure: snapshot.existing === "before", status: true, link: true },
+        }),
+      },
+    );
+  } finally {
+    process.stdout.write = originalWrite;
+  }
+  assert.deepEqual(seen.input, { value: "requested", preserved: "before" });
+  const envelope = JSON.parse(output.trim());
+  assert.equal(envelope.ok, true);
+  assert.equal(envelope.data.verification.structure, true);
+});
+
+test("ambiguous writes attempt one read-after-write verification and preserve unknown outcome", async () => {
+  const program = new Command("wjx");
+  program.option("--yes");
+  program.setOptionValue("yes", true);
+  const command = program.command("probe");
+  let verificationCalls = 0;
+  let stderr = "";
+  const originalWrite = process.stderr.write;
+  process.stderr.write = ((chunk) => { stderr += String(chunk); return true; });
+  try {
+    await executeRuntimeAction(
+      program,
+      command,
+      async () => {
+        throw new WjxAmbiguousOutcomeError("probe", "trace-probe", 1);
+      },
+      () => ({ vid: 42 }),
+      {
+        context: createRuntimeContext({ credentials: { apiKey: "test-key" } }),
+        postVerify: async (_result, input) => {
+          verificationCalls += 1;
+          assert.equal(input.vid, 42);
+          return { verification: { structure: false, status: true, link: false }, warnings: ["read-back attempted"] };
+        },
+      },
+    );
+  } catch {
+    // handleError intentionally throws an internal marker after writing stderr.
+  } finally {
+    process.stderr.write = originalWrite;
+    process.exitCode = 0;
+  }
+  assert.equal(verificationCalls, 1);
+  const envelope = JSON.parse(stderr.trim());
+  assert.equal(envelope.ok, false);
+  assert.equal(envelope.error.outcome, "unknown");
+  assert.deepEqual(envelope.error.verification.verification, { structure: false, status: true, link: false });
+});
+
+test("ambiguous writes report success when read-after-write proves the result", async () => {
+  const program = new Command("wjx");
+  program.option("--yes");
+  program.setOptionValue("yes", true);
+  const command = program.command("probe");
+  const originalWrite = process.stdout.write;
+  const originalErrorWrite = process.stderr.write;
+  let output = "";
+  let diagnostics = "";
+  process.stdout.write = ((chunk) => { output += String(chunk); return true; });
+  process.stderr.write = ((chunk) => { diagnostics += String(chunk); return true; });
+  try {
+    await executeRuntimeAction(
+      program,
+      command,
+      async () => {
+        throw new WjxAmbiguousOutcomeError("probe", "trace-proven", 1);
+      },
+      () => ({ vid: 42 }),
+      {
+        context: createRuntimeContext({ credentials: { apiKey: "test-key" } }),
+        postVerify: async () => ({
+          outcome: "verified",
+          verification: { structure: true, status: true, link: true },
+          warnings: ["传输结果不明确，但读回已确认"],
+        }),
+      },
+    );
+  } finally {
+    process.stdout.write = originalWrite;
+    process.stderr.write = originalErrorWrite;
+    process.exitCode = 0;
+  }
+
+  const envelope = JSON.parse(output.trim());
+  assert.equal(envelope.ok, true);
+  assert.equal(envelope.data.outcome, "verified");
+  assert.equal(envelope.data.verification.status, true);
+  assert.equal(diagnostics, "");
+});
+
 test("runtime action awaits asynchronous noAuth functions before formatting", async () => {
   const program = new Command("wjx");
   program.option("--format <format>");
@@ -312,6 +489,312 @@ test("runtime action awaits asynchronous noAuth functions before formatting", as
 
   assert.match(output, /"ready"\s*:\s*true/);
   assert.doesNotMatch(output, /Promise/);
+});
+
+test("runtime action keeps read-after-write verification in the result envelope", async () => {
+  const program = new Command("wjx");
+  program.option("--format <format>");
+  program.setOptionValue("format", "json");
+  program.option("--yes");
+  program.setOptionValue("yes", true);
+  const command = program.command("probe");
+  const originalWrite = process.stdout.write;
+  let output = "";
+  process.stdout.write = ((chunk) => {
+    output += String(chunk);
+    return true;
+  });
+
+  try {
+    await executeRuntimeAction(
+      program,
+      command,
+      async () => ({ result: true, data: { vid: 42 } }),
+      () => ({ vid: 42 }),
+      {
+        context: createRuntimeContext({ credentials: { apiKey: "test-key" } }),
+        postVerify: async () => ({
+          fillUrl: "https://www.wjx.cn/vm/verified.aspx",
+          verification: { structure: true, status: true, link: true },
+        }),
+      },
+    );
+  } finally {
+    process.stdout.write = originalWrite;
+  }
+
+  const envelope = JSON.parse(output.trim());
+  assert.equal(envelope.ok, true);
+  assert.equal(envelope.data.vid, 42);
+  assert.equal(envelope.data.verification.status, true);
+  assert.equal(envelope.data.fillUrl, "https://www.wjx.cn/vm/verified.aspx");
+});
+
+test("runtime action reports an unknown outcome when post-verification cannot prove the write", async () => {
+  const program = new Command("wjx");
+  program.option("--yes");
+  program.setOptionValue("yes", true);
+  const command = program.command("probe");
+  const originalWrite = process.stderr.write;
+  let stderr = "";
+  process.stderr.write = ((chunk) => {
+    stderr += String(chunk);
+    return true;
+  });
+
+  try {
+    await executeRuntimeAction(
+      program,
+      command,
+      async () => ({ result: true, data: { vid: 42 } }),
+      () => ({ vid: 42 }),
+      {
+        context: createRuntimeContext({ credentials: { apiKey: "test-key" } }),
+        postVerify: async () => ({
+          outcome: "unknown",
+          verification: { structure: false, status: false, link: false },
+          warnings: ["read-back unavailable"],
+        }),
+      },
+    );
+  } catch {
+    // handleError intentionally throws an internal marker after writing stderr.
+  } finally {
+    process.stderr.write = originalWrite;
+    process.exitCode = 0;
+  }
+
+  const envelope = JSON.parse(stderr.trim());
+  assert.equal(envelope.ok, false);
+  assert.equal(envelope.error.code, "API_ERROR");
+  assert.equal(envelope.error.outcome, "unknown");
+  assert.deepEqual(envelope.error.verification, { structure: false, status: false, link: false });
+  assert.deepEqual(envelope.error.warnings, ["read-back unavailable"]);
+});
+
+test("runtime action rejects any failed required verification check", async () => {
+  const program = new Command("wjx");
+  program.option("--yes");
+  program.setOptionValue("yes", true);
+  const command = program.command("probe");
+  const originalWrite = process.stderr.write;
+  let stderr = "";
+  process.stderr.write = ((chunk) => {
+    stderr += String(chunk);
+    return true;
+  });
+
+  try {
+    await executeRuntimeAction(
+      program,
+      command,
+      async () => ({ result: true, data: { vid: 42 } }),
+      () => ({ vid: 42 }),
+      {
+        context: createRuntimeContext({ credentials: { apiKey: "test-key" } }),
+        postVerify: async () => ({
+          verification: { structure: true, status: false, link: true },
+          warnings: ["status did not match"],
+        }),
+      },
+    );
+  } catch {
+    // handleError intentionally throws an internal marker after writing stderr.
+  } finally {
+    process.stderr.write = originalWrite;
+    process.exitCode = 0;
+  }
+
+  const envelope = JSON.parse(stderr.trim());
+  assert.equal(envelope.ok, false);
+  assert.equal(envelope.error.outcome, "unknown");
+  assert.deepEqual(envelope.error.verification, { structure: true, status: false, link: true });
+});
+
+test("runtime action permits an explicitly non-applicable verification field", async () => {
+  const program = new Command("wjx");
+  program.option("--yes");
+  program.setOptionValue("yes", true);
+  const command = program.command("probe");
+  const originalWrite = process.stdout.write;
+  let output = "";
+  process.stdout.write = ((chunk) => {
+    output += String(chunk);
+    return true;
+  });
+
+  try {
+    await executeRuntimeAction(
+      program,
+      command,
+      async () => ({ result: true, data: { vid: 42 } }),
+      () => ({ vid: 42 }),
+      {
+        context: createRuntimeContext({ credentials: { apiKey: "test-key" } }),
+        requiredVerification: ["structure", "status"],
+        postVerify: async () => ({
+          verification: { structure: true, status: true, link: false },
+          warnings: ["respondent link is not applicable"],
+        }),
+      },
+    );
+  } finally {
+    process.stdout.write = originalWrite;
+  }
+
+  const envelope = JSON.parse(output.trim());
+  assert.equal(envelope.ok, true);
+  assert.equal(envelope.data.verification.link, false);
+});
+
+test("runtime action rejects a post-verification callback that returns no evidence", async () => {
+  const program = new Command("wjx");
+  program.option("--yes");
+  program.setOptionValue("yes", true);
+  const command = program.command("probe");
+  const originalWrite = process.stderr.write;
+  let stderr = "";
+  process.stderr.write = ((chunk) => {
+    stderr += String(chunk);
+    return true;
+  });
+
+  try {
+    await executeRuntimeAction(
+      program,
+      command,
+      async () => ({ result: true, data: { vid: 42 } }),
+      () => ({ vid: 42 }),
+      {
+        context: createRuntimeContext({ credentials: { apiKey: "test-key" } }),
+        postVerify: async () => undefined,
+      },
+    );
+  } catch {
+    // handleError intentionally throws an internal marker after writing stderr.
+  } finally {
+    process.stderr.write = originalWrite;
+    process.exitCode = 0;
+  }
+
+  const envelope = JSON.parse(stderr.trim());
+  assert.equal(envelope.ok, false);
+  assert.equal(envelope.error.outcome, "unknown");
+  assert.equal(envelope.error.verification, undefined);
+});
+
+test("runtime action keeps failed verification errors marked unknown", async () => {
+  const program = new Command("wjx");
+  program.option("--yes");
+  program.setOptionValue("yes", true);
+  const command = program.command("probe");
+  const originalWrite = process.stderr.write;
+  let stderr = "";
+  process.stderr.write = ((chunk) => {
+    stderr += String(chunk);
+    return true;
+  });
+
+  try {
+    await executeRuntimeAction(
+      program,
+      command,
+      async () => ({ result: true, data: { vid: 42 } }),
+      () => ({ vid: 42 }),
+      {
+        context: createRuntimeContext({ credentials: { apiKey: "test-key" } }),
+        postVerify: async () => ({
+          outcome: "verified",
+          verification: { structure: true, status: false, link: true },
+          warnings: ["status did not match"],
+        }),
+      },
+    );
+  } catch {
+    // handleError intentionally throws an internal marker after writing stderr.
+  } finally {
+    process.stderr.write = originalWrite;
+    process.exitCode = 0;
+  }
+
+  const envelope = JSON.parse(stderr.trim());
+  assert.equal(envelope.ok, false);
+  assert.equal(envelope.error.outcome, "unknown");
+});
+
+test("runtime action does not let an empty required verification list bypass evidence", async () => {
+  const program = new Command("wjx");
+  program.option("--yes");
+  program.setOptionValue("yes", true);
+  const command = program.command("probe");
+  const originalWrite = process.stderr.write;
+  let stderr = "";
+  process.stderr.write = ((chunk) => {
+    stderr += String(chunk);
+    return true;
+  });
+
+  try {
+    await executeRuntimeAction(
+      program,
+      command,
+      async () => ({ result: true, data: { vid: 42 } }),
+      () => ({ vid: 42 }),
+      {
+        context: createRuntimeContext({ credentials: { apiKey: "test-key" } }),
+        requiredVerification: [],
+        postVerify: async () => ({ verification: {}, warnings: ["no checks"] }),
+      },
+    );
+  } catch {
+    // handleError intentionally throws an internal marker after writing stderr.
+  } finally {
+    process.stderr.write = originalWrite;
+    process.exitCode = 0;
+  }
+
+  const envelope = JSON.parse(stderr.trim());
+  assert.equal(envelope.ok, false);
+  assert.equal(envelope.error.outcome, "unknown");
+});
+
+test("runtime action keeps failed post-verification output as structured JSON with a deprecation warning", async () => {
+  const program = new Command("wjx");
+  program.option("--yes");
+  program.setOptionValue("yes", true);
+  const command = program.command("probe");
+  const originalWrite = process.stderr.write;
+  let stderr = "";
+  process.stderr.write = ((chunk) => {
+    stderr += String(chunk);
+    return true;
+  });
+
+  try {
+    await executeRuntimeAction(
+      program,
+      command,
+      async () => ({ result: true, data: { vid: 42 } }),
+      () => ({ vid: 42 }),
+      {
+        context: createRuntimeContext({ credentials: { apiKey: "test-key" } }),
+        deprecationWarning: "deprecated probe",
+        postVerify: async () => ({
+          verification: { structure: false, status: false, link: false },
+          warnings: ["read-back unavailable"],
+        }),
+      },
+    );
+  } catch {
+    // handleError intentionally throws an internal marker after writing stderr.
+  } finally {
+    process.stderr.write = originalWrite;
+    process.exitCode = 0;
+  }
+
+  const envelope = JSON.parse(stderr.trim());
+  assert.equal(envelope.ok, false);
+  assert.equal(envelope.error.outcome, "unknown");
 });
 
 test("dry-run renderer keeps plans separate from diagnostics", () => {

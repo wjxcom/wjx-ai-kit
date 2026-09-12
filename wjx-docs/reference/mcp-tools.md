@@ -1,6 +1,6 @@
 # MCP 工具参考
 
-当前版本提供 63 个 Tool、8 个 Resource 和 15 个 Prompt。输入 schema 和描述以运行时能力发现结果为最终契约；MCP 只保证 CLI 的核心业务子集，工作站能力和有意不暴露的通用 API 见仓库 capability matrix。
+当前版本提供 66 个 Tool、13 个 Resource 和 15 个 Prompt。输入 schema 和描述以运行时能力发现结果为最终契约；MCP 只保证 CLI 的核心业务子集，工作站能力和有意不暴露的通用 API 见仓库 capability matrix。
 
 ## Tool 模块
 
@@ -16,7 +16,6 @@
 | dsl（4） | `query_wjx_dsl`, `generate_wjx_dsl`, `create_survey_from_definition`, `update_survey_from_definition` | WJX XML DSL v1 查询、校验、创建和修改 |
 | server（1） | `get_config` | 查看脱敏配置与运行环境 |
 
-问卷创建支持 `create_survey_by_json`（JSONL）和 `create_survey_from_definition`（完整 XML DSL）。修改使用 `update_survey_from_definition`，查询 DSL 使用 `query_wjx_dsl`，DSL 预检使用 `generate_wjx_dsl`。
 
 ### 已过时的用户体系能力
 
@@ -28,7 +27,6 @@
 
 | URI | 内容 |
 | --- | --- |
-| `wjx://reference/wjx-xml-dsl` | WJX XML DSL v1 生成、校验、创建和修改规范 |
 | `wjx://reference/question-types` | `get_survey` 读取结果的 `q_type/q_subtype` 映射；JSONL 创建白名单以 SDK 和 `create_survey_by_json` 校验为准 |
 | `wjx://reference/survey-types` | 问卷类型编码和创建限制 |
 | `wjx://reference/survey-statuses` | 问卷状态码和合法转换 |
@@ -36,10 +34,10 @@
 | `wjx://reference/analysis-methods` | NPS、CSAT、CES 公式和行业基准 |
 | `wjx://reference/user-roles` | 子账号角色编码 |
 | `wjx://reference/push-format` | 数据推送格式和加密说明 |
+| `wjx://reference/wjx-xml-dsl` | WJX XML DSL v1 生成、校验、创建和修改规范 |
 
 ## Prompts（15）
 
-Prompt 是可复用的工作流模板，不能替代工具权限检查。AI 按 XML DSL 规范生成内容后，可交给 DSL 工具提交；JSONL 入口仍独立保留。
 
 | 分组 | 名称 |
 | --- | --- |
@@ -48,3 +46,8 @@ Prompt 是可复用的工作流模板，不能替代工具权限检查。AI 按 
 | JSONL 生成（3，推荐） | `generate-survey-json`, `generate-exam-json`, `generate-form-json` |
 
 不同 MCP 客户端可能只显示其支持的部分能力；需要完整列表时，请查看客户端的 `tools/list`、`resources/list` 和 `prompts/list` 结果。
+# AI 主页工具
+
+`create_ai_page` 调用 `A1000107` 创建独立的纯展示 HTML 主页，不联动创建表单/问卷；PPT 默认使用逐页展示。`get_survey` 对 AI 主页返回草稿也可读取的 `html_content` 和固定 `page_type`。`update_ai_page` 调用 `A1000108` 基于完整原 HTML 原位更新，只接受传统数字 `vid`，不支持修改页面类型。
+
+Prompt 是可复用的工作流模板，不能替代工具权限检查。问卷生成可使用 JSONL 模板或 XML DSL 规范\n\n问卷创建支持 `create_survey_by_json` 和 `create_survey_from_definition`，修改使用 `update_survey_from_definition`。

@@ -1,5 +1,10 @@
 export {
   createSurveyByJson,
+  createAiPage,
+  updateAiPage,
+  AI_PAGE_MAX_HTML_LENGTH,
+  AI_PAGE_MAX_TITLE_LENGTH,
+  AI_PAGE_PAGE_TYPES,
   CREATABLE_SURVEY_ATYPES,
   getSurvey,
   listSurveys,
@@ -14,5 +19,8 @@ export {
   extractJsonlMetadata,
   normalizeJsonl,
   MAX_JSONL_SIZE,
+  extractJsonlQuestionTypeExpectations,
+  compareJsonlQuestionTypes,
+  filterJsonlVerificationQuestions,
 } from "wjx-api-sdk";
 export type { SurveyDetail } from "wjx-api-sdk";

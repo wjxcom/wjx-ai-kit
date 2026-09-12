@@ -1,12 +1,424 @@
 import { z } from "zod";
-import { createSurveyByJson, CREATABLE_SURVEY_ATYPES, getSurvey, listSurveys, updateSurveyStatus, getSurveySettings, updateSurveySettings, deleteSurvey, getQuestionTags, getTagDetails, clearRecycleBin, uploadFile, MAX_JSONL_SIZE, } from "./client.js";
+import { createSurveyByJson, createAiPage, updateAiPage, AI_PAGE_MAX_HTML_LENGTH, AI_PAGE_MAX_TITLE_LENGTH, AI_PAGE_PAGE_TYPES, CREATABLE_SURVEY_ATYPES, getSurvey, listSurveys, updateSurveyStatus, getSurveySettings, updateSurveySettings, deleteSurvey, getQuestionTags, getTagDetails, clearRecycleBin, uploadFile, MAX_JSONL_SIZE, extractJsonlQuestionTypeExpectations, compareJsonlQuestionTypes, filterJsonlVerificationQuestions, } from "./client.js";
+import { buildPreviewUrl, getWjxBaseUrl, getWjxCredentials } from "wjx-api-sdk";
 import { assertApiResponse, toolApiResult, toolResult, toolError } from "../../helpers.js";
 import { QUESTION_TYPES } from "../../resources/survey-reference.js";
+import { surveyIdentityMatches, surveyIdentityState } from "./identity.js";
+import { parseNonNegativeCount, runVerifiedWrite, unknownVerification, } from "../../write-verification.js";
+const SETTING_KEYS = [
+    "api_setting",
+    "after_submit_setting",
+    "msg_setting",
+    "sojumpparm_setting",
+    "time_setting",
+];
+function asRecord(value) {
+    return value && typeof value === "object" && !Array.isArray(value)
+        ? value
+        : undefined;
+}
+function responseData(value) {
+    return asRecord(asRecord(value)?.data);
+}
+function statusLabel(value) {
+    const labels = {
+        0: "draft",
+        1: "published",
+        2: "paused",
+        3: "deleted",
+        4: "hard-deleted",
+        5: "reviewed",
+    };
+    const numeric = parseNonNegativeCount(value);
+    if (numeric === undefined)
+        return undefined;
+    return Number.isInteger(numeric) && Object.hasOwn(labels, numeric) ? labels[numeric] : undefined;
+}
+// Public WJX deployments may return a respondent host different from the
+// OpenAPI host (for example v.wjx.cn, tp.wjx.com, or ks.wjx.com). Keep this
+// bounded to WJX-owned DNS families and require the configured protocol/port.
+const OFFICIAL_RESPONDENT_HOST_SUFFIXES = [
+    ".wjx.cn",
+    ".wjx.com",
+    ".wjx.top",
+    ".sojump.cn",
+    ".sojump.com",
+];
+function normalizeOrigin(value) {
+    if (typeof value !== "string" || !value.trim())
+        return undefined;
+    try {
+        const url = new URL(value.trim());
+        if (url.protocol !== "http:" && url.protocol !== "https:")
+            return undefined;
+        return url.origin;
+    }
+    catch {
+        return undefined;
+    }
+}
+function isOfficialRespondentHost(hostname) {
+    const host = hostname.trim().toLowerCase().replace(/\.$/, "");
+    return OFFICIAL_RESPONDENT_HOST_SUFFIXES.some((suffix) => host === suffix.slice(1) || host.endsWith(suffix));
+}
+function isAllowedRespondentOrigin(origin, configuredOrigins) {
+    if (configuredOrigins.has(origin))
+        return true;
+    let candidate;
+    try {
+        candidate = new URL(origin);
+    }
+    catch {
+        return false;
+    }
+    if (!isOfficialRespondentHost(candidate.hostname))
+        return false;
+    for (const configured of configuredOrigins) {
+        try {
+            const base = new URL(configured);
+            if (base.protocol === candidate.protocol
+                && base.port === candidate.port
+                && isOfficialRespondentHost(base.hostname))
+                return true;
+        }
+        catch {
+            // Ignore malformed configured origins; exact-origin entries were checked
+            // before this loop.
+        }
+    }
+    return false;
+}
+function normalizeSid(value) {
+    if (typeof value !== "string")
+        return undefined;
+    const sid = value.trim();
+    return sid && !/^\d+$/.test(sid) ? sid : undefined;
+}
+function field(record, ...names) {
+    for (const name of names) {
+        if (record[name] !== undefined && record[name] !== null)
+            return record[name];
+    }
+    return undefined;
+}
+function respondentUrl(value, origins, vid, relativeOrigin) {
+    if (typeof value !== "string" || !value.trim())
+        return undefined;
+    let url;
+    try {
+        url = new URL(value.trim(), relativeOrigin ? `${relativeOrigin}/` : undefined);
+    }
+    catch {
+        return undefined;
+    }
+    if (!isAllowedRespondentOrigin(url.origin, origins) || !/^\/(?:vm|m|jq)(?:\/|$)/i.test(url.pathname))
+        return undefined;
+    const segment = url.pathname.split("/").filter(Boolean).at(-1) ?? "";
+    let publicId = segment.replace(/\.aspx$/i, "");
+    try {
+        publicId = decodeURIComponent(publicId);
+    }
+    catch {
+        return undefined;
+    }
+    return publicId && !/^\d+$/.test(publicId) && publicId !== String(vid) ? url.toString() : undefined;
+}
+function resolveRespondentLink(data, vid, baseUrl) {
+    if (!data)
+        return { hadLinkFields: false };
+    const configuredOrigins = new Set();
+    const resolvedBaseUrl = getWjxBaseUrl(baseUrl);
+    const baseOrigin = normalizeOrigin(resolvedBaseUrl);
+    if (baseOrigin)
+        configuredOrigins.add(baseOrigin);
+    const activityOrigin = normalizeOrigin(field(data, "activity_domain", "activityDomain", "respondent_domain"));
+    const relativeOrigin = activityOrigin && isAllowedRespondentOrigin(activityOrigin, configuredOrigins)
+        ? activityOrigin
+        : undefined;
+    const fullFill = field(data, "fill_url", "fillUrl", "respondent_url", "respondentUrl");
+    const paths = [
+        field(data, "pc_path", "pcPath"),
+        field(data, "mobile_path", "mobilePath"),
+        field(data, "fill_path", "fillPath"),
+    ];
+    let fillUrl = respondentUrl(fullFill, configuredOrigins, vid, relativeOrigin);
+    if (!fillUrl) {
+        for (const path of paths) {
+            fillUrl = respondentUrl(path, configuredOrigins, vid, relativeOrigin);
+            if (fillUrl)
+                break;
+        }
+    }
+    const sid = normalizeSid(field(data, "sid", "short_id", "shortId"));
+    const hadLinkFields = fullFill !== undefined || paths.some((value) => value !== undefined);
+    if (!fillUrl && sid && !hadLinkFields) {
+        try {
+            fillUrl = buildPreviewUrl({ sid, vid, allowVidFallback: false }, resolvedBaseUrl);
+        }
+        catch {
+            // Leave the link unverified; the caller reports an actionable warning.
+        }
+    }
+    return {
+        ...(fillUrl ? { fillUrl } : {}),
+        ...(sid ? { sid } : {}),
+        hadLinkFields,
+    };
+}
+function activityRecords(data) {
+    if (!data)
+        return [];
+    const value = field(data, "activitys", "activities", "surveys");
+    if (Array.isArray(value))
+        return value.filter((item) => Boolean(asRecord(item)));
+    const map = asRecord(value);
+    return map ? Object.values(map).filter((item) => Boolean(asRecord(item))) : [];
+}
+function recordMatchesVid(record, vid) {
+    const candidate = field(record, "vid", "activity", "id");
+    return candidate !== undefined && String(candidate).trim() === String(vid);
+}
+async function findListRecord(vid) {
+    let seen = 0;
+    for (let page = 1; page <= 100; page += 1) {
+        const result = await listSurveys({ page_index: page, page_size: 50 });
+        assertApiResponse(result);
+        if (result.result !== true)
+            return undefined;
+        const data = responseData(result);
+        const records = activityRecords(data);
+        const match = records.find((record) => recordMatchesVid(record, vid));
+        if (match)
+            return match;
+        seen += records.length;
+        const total = parseNonNegativeCount(field(data ?? {}, "total_count", "totalCount"));
+        if (!records.length || (total !== undefined && total > 0 && seen >= total) || records.length < 50)
+            break;
+    }
+    return undefined;
+}
+function currentBaseUrl() {
+    try {
+        return getWjxCredentials().baseUrl;
+    }
+    catch {
+        return undefined;
+    }
+}
+function surveyReadOrThrow(vid) {
+    return getSurvey({ vid }).then((result) => {
+        assertApiResponse(result);
+        if (result.result !== true)
+            throw new Error(result.errormsg || `问卷 ${vid} 读取失败`);
+        if (!surveyIdentityMatches(responseData(result), vid)) {
+            throw new Error(`问卷 ${vid} 读回身份不匹配或缺少可验证编号，已停止写入`);
+        }
+        return result;
+    });
+}
+function settingsPayload(value) {
+    const data = responseData(value);
+    if (!data)
+        return undefined;
+    return asRecord(data.settings) ?? data;
+}
+function parseSettingObject(value) {
+    if (typeof value === "string") {
+        try {
+            return asRecord(JSON.parse(value));
+        }
+        catch {
+            return undefined;
+        }
+    }
+    return asRecord(value);
+}
+function deepMerge(base, patch) {
+    const merged = { ...base };
+    for (const [key, value] of Object.entries(patch)) {
+        const existing = asRecord(merged[key]);
+        const next = asRecord(value);
+        merged[key] = existing && next ? deepMerge(existing, next) : value;
+    }
+    return merged;
+}
+function settingKeys(args) {
+    return SETTING_KEYS.filter((key) => args[key] !== undefined);
+}
+function createQuestionCount(jsonl) {
+    if (typeof jsonl !== "string")
+        return undefined;
+    try {
+        // Keep the count aligned with the SDK's verification helper: metadata and
+        // page/paragraph/consent scaffolding are excluded from real-question
+        // evidence, so the count and qtype positions cannot drift apart.
+        return extractJsonlQuestionTypeExpectations(jsonl).length;
+    }
+    catch {
+        return undefined;
+    }
+}
+function createTitle(jsonl, explicit) {
+    if (typeof explicit === "string" && explicit.trim())
+        return explicit.trim();
+    if (typeof jsonl !== "string")
+        return undefined;
+    try {
+        const first = jsonl.split(/\r?\n/).find(Boolean);
+        const row = first ? asRecord(JSON.parse(first)) : undefined;
+        return typeof row?.title === "string" && row.title.trim() ? row.title.trim() : undefined;
+    }
+    catch {
+        return undefined;
+    }
+}
+function recycleBinCount(value) {
+    const data = asRecord(value);
+    if (!data)
+        return { known: false };
+    for (const key of ["total_count", "totalCount", "count"]) {
+        const raw = data[key];
+        const count = parseNonNegativeCount(raw);
+        if (count !== undefined)
+            return { known: true, count };
+    }
+    for (const key of ["activitys", "activities", "surveys"]) {
+        const value = data[key];
+        if (Array.isArray(value))
+            return { known: true, count: value.length };
+        const object = asRecord(value);
+        if (object)
+            return { known: true, count: Object.keys(object).length };
+    }
+    return { known: false };
+}
+function verificationFailure(message, flags = {}, required = ["read-after-write"]) {
+    return unknownVerification(message, flags, required);
+}
+// WJX may expose a deletion in stages. Poll only the read endpoint and stop
+// after a bounded settling window so an Agent never replays the delete write.
+// Public API deletion is eventually consistent; allow a bounded settling
+// window long enough for status=4 to become visible without replaying delete.
+const DELETE_VERIFY_DELAYS_MS = [100, 200, 400, 800, 1_000, 1_000, 1_000, 2_000, 2_000];
+const DELETE_VERIFY_MAX_ATTEMPTS = DELETE_VERIFY_DELAYS_MS.length + 1;
+function deleteStatusCode(value) {
+    const numeric = parseNonNegativeCount(value);
+    if (numeric !== undefined)
+        return numeric;
+    const normalized = typeof value === "string" ? value.trim().toLowerCase().replace(/[\s_]+/g, "-") : "";
+    if (normalized === "deleted")
+        return 3;
+    if (normalized === "hard-deleted")
+        return 4;
+    return undefined;
+}
+function deleteStatusMatches(value, completely) {
+    const numeric = deleteStatusCode(value);
+    if (numeric === undefined)
+        return false;
+    return completely ? numeric === 4 : numeric === 3;
+}
+function waitForDeleteVerification(delayMs) {
+    return new Promise((resolve) => setTimeout(resolve, delayMs));
+}
+async function verifyDeletedSurvey(vid, completely, phase) {
+    let last = verificationFailure(completely ? "问卷仍可读或未达到彻底删除状态" : "问卷仍可读，删除状态未得到确认", { link: true }, ["survey-delete-status"]);
+    let attempts = 0;
+    for (let attempt = 1; attempt <= DELETE_VERIFY_MAX_ATTEMPTS; attempt += 1) {
+        attempts = attempt;
+        try {
+            const readBack = await getSurvey({ vid });
+            if (readBack.result === false) {
+                const notFound = /not[ -]?found|不存在|找不到/i.test(readBack.errormsg || "");
+                // Not-found cannot establish either deletion state. Retrying the same
+                // response cannot add evidence, so return unknown immediately.
+                last = verificationFailure(notFound
+                    ? completely
+                        ? "问卷读回不存在，但无法证明已达到彻底删除状态（status=4）"
+                        : "问卷读回不存在，但无法证明已进入回收站状态（status=3）"
+                    : (readBack.errormsg || "删除后的问卷状态无法确认"), { link: true }, [completely ? "survey-status-4" : "survey-status-3"]);
+                if (notFound)
+                    break;
+            }
+            else {
+                const data = responseData(readBack);
+                const actual = statusLabel(data?.status);
+                const explicitStatus = typeof data?.status === "string"
+                    ? data.status.trim().toLowerCase().replace(/[\s_]+/g, "-")
+                    : undefined;
+                const structure = surveyIdentityMatches(data, vid);
+                const status = deleteStatusMatches(data?.status, completely);
+                const verified = structure && status;
+                last = {
+                    ...((actual || explicitStatus) ? { status: actual ?? explicitStatus } : {}),
+                    outcome: verified ? "verified" : "unknown",
+                    verification: { structure, status, count: false, link: true },
+                    warnings: verified ? [] : [
+                        ...(structure ? [] : ["删除状态读回的问卷编号与请求不一致或缺少可验证身份"]),
+                        ...(!status ? [completely ? "问卷仍可读或未达到彻底删除状态" : "问卷仍可读，删除状态未得到确认"] : []),
+                    ],
+                    ...(verified ? {} : { verificationRequired: ["survey-delete-status"] }),
+                    attempts: attempt,
+                };
+                if (verified)
+                    return last;
+            }
+        }
+        catch (error) {
+            last = verificationFailure(`删除后的问卷读取失败：${error instanceof Error ? error.message : String(error)}`, { link: true }, ["survey-delete-status"]);
+        }
+        if (attempt < DELETE_VERIFY_MAX_ATTEMPTS) {
+            await waitForDeleteVerification(DELETE_VERIFY_DELAYS_MS[attempt - 1]);
+        }
+    }
+    if (phase === "ambiguous")
+        last.warnings = ["写入传输结果不明确，已完成有界删除状态轮询", ...last.warnings];
+    last.attempts = attempts;
+    return last;
+}
 export function registerSurveyTools(server) {
+    server.registerTool("create_ai_page", {
+        title: "创建 AI 主页",
+        description: "调用 OpenAPI A1000107 创建一个独立的纯展示 AI 主页。只调用本工具，不要额外创建或关联表单、问卷。html_content（或兼容字段 html）必填。page_type=2 时必须生成逐页 PPT：每张幻灯片占一个固定画布并逐页切换，禁止把全部内容做成单个纵向长页面。",
+        inputSchema: {
+            html_content: z.string().max(AI_PAGE_MAX_HTML_LENGTH).refine((value) => value.trim().length > 0, "HTML 内容不能为空").optional().describe(`AI 主页 HTML 内容，最长 ${AI_PAGE_MAX_HTML_LENGTH} 字符`),
+            html: z.string().max(AI_PAGE_MAX_HTML_LENGTH).refine((value) => value.trim().length > 0, "HTML 内容不能为空").optional().describe("html_content 的兼容字段"),
+            title: z.string().max(AI_PAGE_MAX_TITLE_LENGTH).optional().describe("AI 主页标题，不能包含问卷星"),
+            page_type: z.number().int().refine((value) => AI_PAGE_PAGE_TYPES.includes(value)).optional().describe("页面类型：0=网页, 1=海报, 2=PPT"),
+            publish: z.boolean().optional().describe("是否创建后立即发布"),
+            creater: z.string().optional().describe("创建者子账号用户名"),
+        },
+        annotations: { destructiveHint: false, idempotentHint: false, openWorldHint: true, title: "创建 AI 主页" },
+    }, async (args) => {
+        try {
+            return toolApiResult(await createAiPage(args));
+        }
+        catch (error) {
+            return toolError(error);
+        }
+    });
+    server.registerTool("update_ai_page", {
+        title: "更新 AI 主页",
+        description: "调用 OpenAPI A1000108 原位更新 AI 主页。先用 get_survey 读取目标的 html_content 和 page_type，再基于完整原 HTML 做修改；草稿也能读取，不要访问公开页或重做整页。vid 必须是传统数字编号，html_content（或兼容字段 html）必填。页面类型不可修改；若用户要求在网页、海报、PPT之间转换，直接说明不支持，不得创建替代主页，也不得删除原主页。",
+        inputSchema: {
+            vid: z.union([z.number().int().positive(), z.string().regex(/^(?:0*[1-9]\d*)$/)]).describe("传统数字 AI 主页 vid，不接受 sid"),
+            html_content: z.string().max(AI_PAGE_MAX_HTML_LENGTH).refine((value) => value.trim().length > 0, "HTML 内容不能为空").optional().describe(`AI 主页 HTML 内容，最长 ${AI_PAGE_MAX_HTML_LENGTH} 字符`),
+            html: z.string().max(AI_PAGE_MAX_HTML_LENGTH).refine((value) => value.trim().length > 0, "HTML 内容不能为空").optional().describe("html_content 的兼容字段"),
+            title: z.string().max(AI_PAGE_MAX_TITLE_LENGTH).optional().describe("AI 主页标题，不能包含问卷星"),
+        },
+        annotations: { destructiveHint: true, idempotentHint: false, openWorldHint: true, title: "更新 AI 主页" },
+    }, async (args) => {
+        try {
+            return toolApiResult(await updateAiPage(args));
+        }
+        catch (error) {
+            return toolError(error);
+        }
+    });
     // ─── get_survey ───────────────────────────────────────────────────
     server.registerTool("get_survey", {
         title: "获取问卷内容",
-        description: "根据问卷编号获取问卷详情，包括题目和选项信息。",
+        description: "根据问卷编号获取问卷详情，包括题目和选项信息。AI 主页（atype=12）会直接返回 html_content 和固定的 page_type，草稿无需访问公开页也可读取。",
         inputSchema: {
             vid: z.number().int().positive().describe("问卷编号"),
             get_questions: z
@@ -180,8 +592,8 @@ export function registerSurveyTools(server) {
     // ─── update_survey_status ─────────────────────────────────────────
     server.registerTool("update_survey_status", {
         title: "修改问卷状态",
-        description: "修改问卷的发布状态：发布(1)、暂停(2)、删除(3)。" +
-            "【状态转换规则】未发布(0)→已发布(1)；已发布(1)→已暂停(2)或已删除(3)；已暂停(2)→已发布(1)或已删除(3)。不可跳过中间状态（如从0直接到2），否则 API 会返回错误。",
+        description: "修改问卷的发布状态：发布(1)、暂停(2)、删除(3，进入回收站，可恢复)。" +
+            "【状态转换规则】未发布(0)→已发布(1)；已发布(1)→已暂停(2)或已删除(3，回收站，可恢复)；已暂停(2)→已发布(1)或已删除(3，回收站，可恢复)。彻底删除(4，不可恢复)只能通过 delete_survey(completely_delete=true) 或 clear_recycle_bin 完成。不可跳过中间状态（如从0直接到2），否则 API 会返回错误。",
         inputSchema: {
             vid: z.number().int().positive().describe("问卷编号"),
             state: z
@@ -189,18 +601,53 @@ export function registerSurveyTools(server) {
                 .int()
                 .min(1)
                 .max(3)
-                .describe("目标状态：1=发布, 2=暂停, 3=删除"),
+                .describe("目标状态：1=发布, 2=暂停, 3=删除并进入回收站（可恢复）"),
         },
         annotations: {
             destructiveHint: true,
-            idempotentHint: true,
+            // Status changes are unsafe in the SDK (publish/pause/delete can
+            // trigger server-side transitions); do not advertise replay safety.
+            idempotentHint: false,
             openWorldHint: true,
             title: "修改问卷状态",
         },
     }, async (args) => {
         try {
-            const result = await updateSurveyStatus({ vid: args.vid, state: args.state });
-            return toolApiResult(result);
+            return runVerifiedWrite({
+                operation: "update_survey_status",
+                preRead: () => surveyReadOrThrow(args.vid),
+                write: () => updateSurveyStatus({ vid: args.vid, state: args.state }),
+                verify: async ({ phase, preRead }) => {
+                    let readBack;
+                    try {
+                        readBack = await getSurvey({ vid: args.vid });
+                    }
+                    catch (error) {
+                        return verificationFailure(`问卷状态读回失败：${error instanceof Error ? error.message : String(error)}`, { link: true });
+                    }
+                    if (readBack.result !== true) {
+                        return verificationFailure(readBack.errormsg || "问卷状态读回失败", { link: true });
+                    }
+                    const data = responseData(readBack);
+                    const actual = statusLabel(data?.status);
+                    const expected = args.state === 1 ? "published" : args.state === 2 ? "paused" : "deleted";
+                    const structure = surveyIdentityMatches(data, args.vid);
+                    const status = actual === expected;
+                    const warnings = [
+                        ...(structure ? [] : ["问卷状态读回的问卷编号与请求不一致或缺少可验证身份"]),
+                        ...(!status ? [`问卷状态读回为 ${actual ?? "unknown"}，预期为 ${expected}`] : []),
+                    ];
+                    return {
+                        ...(actual ? { status: actual } : {}),
+                        outcome: structure && status ? "verified" : "unknown",
+                        verification: { structure, status, count: false, link: true },
+                        warnings: phase === "ambiguous"
+                            ? ["写入传输结果不明确，已通过状态读回检查", ...warnings]
+                            : warnings,
+                        ...(structure && status ? {} : { verificationRequired: ["survey-status"] }),
+                    };
+                },
+            });
         }
         catch (error) {
             return toolError(error);
@@ -247,46 +694,106 @@ export function registerSurveyTools(server) {
         },
         annotations: {
             destructiveHint: true,
-            idempotentHint: true,
+            // The API replaces the supplied settings and the SDK deliberately
+            // disables retries; hosts must not automatically replay this call.
+            idempotentHint: false,
             openWorldHint: true,
             title: "修改问卷设置",
         },
     }, async (args) => {
         try {
-            const hasAnySetting = args.api_setting !== undefined ||
-                args.after_submit_setting !== undefined ||
-                args.msg_setting !== undefined ||
-                args.sojumpparm_setting !== undefined ||
-                args.time_setting !== undefined;
-            if (!hasAnySetting) {
+            const requested = settingKeys(args);
+            if (requested.length === 0) {
                 return toolResult({ error: "至少需要提供一个设置项" }, true);
             }
             // 在 handler 中验证 JSON 格式（避免 Zod .refine() 导致 MCP 挂起）
-            for (const [key, val] of Object.entries({
-                api_setting: args.api_setting,
-                after_submit_setting: args.after_submit_setting,
-                msg_setting: args.msg_setting,
-                sojumpparm_setting: args.sojumpparm_setting,
-                time_setting: args.time_setting,
-            })) {
-                if (val !== undefined) {
-                    try {
-                        JSON.parse(val);
-                    }
-                    catch {
-                        throw new Error(`${key} 必须是合法的 JSON 字符串`);
-                    }
+            for (const key of requested) {
+                const value = args[key];
+                if (typeof value !== "string")
+                    throw new Error(`${key} 必须是合法的 JSON 字符串`);
+                try {
+                    JSON.parse(value);
+                }
+                catch {
+                    throw new Error(`${key} 必须是合法的 JSON 字符串`);
                 }
             }
-            const result = await updateSurveySettings({
-                vid: args.vid,
-                api_setting: args.api_setting,
-                after_submit_setting: args.after_submit_setting,
-                msg_setting: args.msg_setting,
-                sojumpparm_setting: args.sojumpparm_setting,
-                time_setting: args.time_setting,
+            let prepared = { vid: args.vid };
+            return runVerifiedWrite({
+                operation: "update_survey_settings",
+                preRead: async () => {
+                    const result = await getSurveySettings({ vid: args.vid });
+                    assertApiResponse(result);
+                    if (result.result !== true)
+                        throw new Error(result.errormsg || `问卷 ${args.vid} 设置读取失败`);
+                    if (surveyIdentityState(responseData(result), args.vid) === "mismatch") {
+                        throw new Error(`问卷 ${args.vid} 设置读回身份不匹配，已停止写入`);
+                    }
+                    return result;
+                },
+                write: async (before) => {
+                    const current = settingsPayload(before);
+                    prepared = { vid: args.vid };
+                    for (const key of requested) {
+                        const patch = parseSettingObject(args[key]);
+                        if (!patch)
+                            throw new Error(`${key} 必须是 JSON 对象`);
+                        const existing = parseSettingObject(current?.[key]);
+                        prepared[key] = JSON.stringify(existing ? deepMerge(existing, patch) : patch);
+                    }
+                    return updateSurveySettings(prepared);
+                },
+                verify: async ({ phase, preRead }) => {
+                    let after;
+                    try {
+                        after = await getSurveySettings({ vid: args.vid });
+                    }
+                    catch (error) {
+                        return verificationFailure(`设置读回失败：${error instanceof Error ? error.message : String(error)}`, { link: true }, ["survey-settings"]);
+                    }
+                    if (after.result !== true) {
+                        return verificationFailure(after.errormsg || "设置读回失败", { link: true }, ["survey-settings"]);
+                    }
+                    const afterData = settingsPayload(after);
+                    const beforeData = settingsPayload(preRead);
+                    const identityState = surveyIdentityState(responseData(after), args.vid);
+                    const verifiedFields = [];
+                    const mismatchedFields = [];
+                    const missingAfter = [];
+                    for (const key of requested) {
+                        const expected = parseSettingObject(prepared[key]);
+                        const actual = parseSettingObject(afterData?.[key]);
+                        if (!actual)
+                            missingAfter.push(key);
+                        else if (expected && JSON.stringify(actual) === JSON.stringify(expected))
+                            verifiedFields.push(key);
+                        else
+                            mismatchedFields.push(key);
+                    }
+                    const warnings = [];
+                    const missingBefore = requested.filter((key) => parseSettingObject(beforeData?.[key]) === undefined);
+                    if (missingBefore.length)
+                        warnings.push(`写入前读回缺少字段，无法确认未修改设置是否保留：${missingBefore.join(", ")}`);
+                    if (mismatchedFields.length)
+                        warnings.push(`设置读回与请求不一致：${mismatchedFields.join(", ")}`);
+                    if (missingAfter.length)
+                        warnings.push(`设置读回缺少字段：${missingAfter.join(", ")}`);
+                    if (identityState === "mismatch")
+                        warnings.push("设置读回的问卷编号与请求不一致");
+                    const identityValid = identityState !== "mismatch";
+                    const structure = identityValid && missingAfter.length === 0;
+                    const status = identityValid && structure && mismatchedFields.length === 0 && verifiedFields.length === requested.length && missingBefore.length === 0;
+                    if (phase === "ambiguous")
+                        warnings.unshift("写入传输结果不明确，已尝试设置读回");
+                    return {
+                        outcome: status ? "verified" : "unknown",
+                        verification: { structure, status, count: false, link: true },
+                        verifiedFields,
+                        warnings,
+                        ...(status ? {} : { verificationRequired: ["survey-settings"] }),
+                    };
+                },
             });
-            return toolApiResult(result);
         }
         catch (error) {
             return toolError(error);
@@ -295,11 +802,11 @@ export function registerSurveyTools(server) {
     // ─── delete_survey ────────────────────────────────────────────────
     server.registerTool("delete_survey", {
         title: "删除问卷",
-        description: "永久删除问卷。可选择彻底删除（不进回收站）。此操作不可逆，请谨慎使用。",
+        description: "删除问卷。普通删除进入回收站（status=3，可恢复）；设置 completely_delete=true 才会彻底删除（status=4，不可恢复）。请谨慎使用。",
         inputSchema: {
             vid: z.number().int().positive().describe("问卷编号"),
             username: z.string().min(1).describe("用户名（主账户/系统管理员/问卷创建者子账号）"),
-            completely_delete: z.boolean().optional().describe("是否彻底删除（不进回收站）"),
+            completely_delete: z.boolean().optional().describe("是否彻底删除（status=4，不可恢复；不传则进入回收站 status=3，可恢复）"),
         },
         annotations: {
             destructiveHint: true,
@@ -309,12 +816,16 @@ export function registerSurveyTools(server) {
         },
     }, async (args) => {
         try {
-            const result = await deleteSurvey({
-                vid: args.vid,
-                username: args.username,
-                completely_delete: args.completely_delete,
+            return runVerifiedWrite({
+                operation: "delete_survey",
+                preRead: () => surveyReadOrThrow(args.vid),
+                write: () => deleteSurvey({
+                    vid: args.vid,
+                    username: args.username,
+                    completely_delete: args.completely_delete,
+                }),
+                verify: ({ phase }) => verifyDeletedSurvey(args.vid, args.completely_delete === true, phase),
             });
-            return toolApiResult(result);
         }
         catch (error) {
             return toolError(error);
@@ -403,7 +914,7 @@ export function registerSurveyTools(server) {
     // ─── clear_recycle_bin ────────────────────────────────────────────
     server.registerTool("clear_recycle_bin", {
         title: "清空回收站",
-        description: "清空回收站中的问卷。若指定 vid 则仅彻底删除该问卷，否则清空整个回收站。此操作不可逆！",
+        description: "清空回收站中的问卷。若指定 vid 则使用彻底删除动作并只处理该问卷，否则调用批量回收站清理。此操作不可逆！",
         inputSchema: {
             username: z.string().min(1).describe("用户名（只能清空该用户创建的问卷）"),
             vid: z.number().int().positive().optional().describe("问卷编号（指定则仅删除该问卷，否则清空回收站）"),
@@ -416,11 +927,59 @@ export function registerSurveyTools(server) {
         },
     }, async (args) => {
         try {
-            const result = await clearRecycleBin({
-                username: args.username,
-                vid: args.vid,
+            return runVerifiedWrite({
+                operation: "clear_recycle_bin",
+                preRead: async () => {
+                    if (args.vid !== undefined) {
+                        const result = await surveyReadOrThrow(args.vid);
+                        const data = responseData(result);
+                        if (deleteStatusCode(data?.status) !== 3) {
+                            throw new Error(`问卷 ${args.vid} 当前不在回收站（status=3），已停止清理`);
+                        }
+                        return { kind: "survey", result };
+                    }
+                    const result = await listSurveys({ status: 3, page_index: 1, page_size: 50 });
+                    assertApiResponse(result);
+                    if (result.result !== true)
+                        throw new Error(result.errormsg || "回收站读取失败");
+                    if (!recycleBinCount(result.data).known)
+                        throw new Error("清空前无法读取回收站总数，已停止清理");
+                    return { kind: "bin", result };
+                },
+                // The public 1000302 action acknowledges a scoped `vid` but leaves
+                // the item in status=3. A scoped cleanup therefore uses the same
+                // hard-delete action that is proven to produce status=4; the bulk
+                // form keeps the dedicated recycle-bin endpoint.
+                write: () => args.vid === undefined
+                    ? clearRecycleBin({ username: args.username })
+                    : deleteSurvey({ vid: args.vid, username: args.username, completely_delete: true }),
+                verify: async ({ phase }) => {
+                    if (args.vid !== undefined) {
+                        // Scoped cleanup uses the hard-delete endpoint and shares the
+                        // bounded read-only poll with delete_survey. The public service
+                        // can expose status=3 briefly after acknowledging the write.
+                        return verifyDeletedSurvey(args.vid, true, phase);
+                    }
+                    let result;
+                    try {
+                        result = await listSurveys({ status: 3, page_index: 1, page_size: 50 });
+                    }
+                    catch (error) {
+                        return verificationFailure(`回收站列表读回失败：${error instanceof Error ? error.message : String(error)}`, { link: true }, ["recycle-bin-count"]);
+                    }
+                    if (result.result !== true)
+                        return verificationFailure(result.errormsg || "回收站列表读回失败", { link: true }, ["recycle-bin-count"]);
+                    const count = recycleBinCount(result.data);
+                    const verified = count.known && count.count === 0;
+                    return {
+                        ...(count.known ? { remaining: count.count } : {}),
+                        outcome: verified ? "verified" : "unknown",
+                        verification: { structure: count.known, status: verified, count: count.known, link: true },
+                        warnings: verified ? [] : ["回收站读回缺少可证明为空的计数，清理结果未知"],
+                        ...(verified ? {} : { verificationRequired: ["recycle-bin-count"] }),
+                    };
+                },
             });
-            return toolApiResult(result);
         }
         catch (error) {
             return toolError(error);
@@ -430,18 +989,16 @@ export function registerSurveyTools(server) {
     server.registerTool("create_survey_by_json", {
         title: "用 JSON 创建问卷",
         description: "（推荐，支持 70+ 题型）通过 JSONL 格式创建问卷。每行一个 JSON 对象，首行为 qtype='问卷基础信息' 的元数据。" +
-            "支持 70+ 种题型（普通调查、投票、专业调查模型、考试、表单），远多于 DSL 文本格式。" +
             "【核心字段】qtype（题型名称）、title（标题，只写题目正文，不写题目类型）、select（选项数组）、rowtitle（行标题或表格字段名）、requir（是否必填；缺省时 SDK 注入 true）。" +
             "【必答规则】默认所有题型都是必答题，包括单项填空、简答题、意见建议题、开放题；只有用户明确指定某个题号/题目/字段为选填时，才给该题传 requir=false。" +
-            "【专业模型】支持 BWS/MaxDiff(mdattr)、联合分析(columntitle)、品牌漏斗(brands)、Kano模型、SUS模型、PSM模型等。" +
+            "【专业模型】支持 BWS/MaxDiff(mdattr+pertaskcount+tasklength)、联合分析(columntitle)、品牌漏斗(brands)、Kano模型、SUS模型、PSM模型等。" +
             "【考试题型】支持 correctselect（正确答案）、quizscore（分值）、answeranalysis（答案解析）。" +
             "【关联逻辑】支持 relation（显示条件）、referselect（引用前题选项）。" +
             "【硬性校验 — 不满足会被 SDK 拒绝】1) 标题不得为空、占位符（??? / 无标题 / TODO / xxx 等）或少于 2 字；2) JSONL 必须包含至少 1 道真实题目（_meta/分页栏/段落说明/知情同意书不计入）。" +
             "【多项填空必看】多项填空 qtype='多项填空'，子填空位数量由 title 中的 {_} 占位符数量决定，例如 title='电话 {_}，邮箱 {_}，微信 {_}' 会生成 3 个空位；**禁止用 rowtitle 数组**（多项填空不支持该字段，服务端会忽略并只生成 1 个空位）。考试多项填空同理；考试完形填空不在当前 JSONL 创建支持集合中。" +
             "【表格类题型 706-710】生成 JSONL 时必须优先使用标准格式：" +
             "表格数值/表格填空使用 rowtitle；表格下拉框使用 rowtitle+selects；表格组合使用 rowtitle+types+selects；自增表格使用 rowtitle+columntitle+selects（一行模板），可选 min_rows/max_rows 设置行数边界，不要用 minvalue/maxvalue 代替。" +
-            "多项文件题(711) rowtitle 列出每个上传项；" +
-            "多项简答题(712) rowtitle 列出每个简答子题。" +
+            "多项文件题(711)和多项简答题(712)只能读取或在 Web 编辑器配置，当前创建接口会拒绝；需要多字段采集时请使用普通文件上传/简答题或表格题。" +
             "【投票题】投票单选/投票多选使用 qtype='投票单选'/'投票多选' + select，并在调用工具时显式传 atype=3。" +
             "输入示例（JSONL）：\n" +
             '{"qtype":"问卷基础信息","title":"客户满意度调查","introduction":"请认真填写"}\n' +
@@ -488,15 +1045,89 @@ export function registerSurveyTools(server) {
             if (args.atype !== undefined && !CREATABLE_SURVEY_ATYPES.has(args.atype)) {
                 throw new Error("当前接口不支持创建该 atype。可创建类型：1、2、3、4、5、6、7、9、10、11；8=用户体系不支持新建。");
             }
-            const result = await createSurveyByJson({
-                jsonl: args.jsonl,
-                title: args.title,
-                atype: args.atype,
-                optionalTitles: args.optional_titles,
-                publish: args.publish,
-                creater: args.creater,
+            const expectedTitle = createTitle(args.jsonl, args.title);
+            const expectedQuestionCount = createQuestionCount(args.jsonl);
+            const expectedQuestionTypes = extractJsonlQuestionTypeExpectations(args.jsonl);
+            return runVerifiedWrite({
+                operation: "create_survey_by_json",
+                write: () => createSurveyByJson({
+                    jsonl: args.jsonl,
+                    title: args.title,
+                    atype: args.atype,
+                    optionalTitles: args.optional_titles,
+                    publish: args.publish,
+                    creater: args.creater,
+                }),
+                verify: async ({ writeResult }) => {
+                    const created = responseData(writeResult);
+                    const rawVid = created?.vid ?? created?.activity ?? created?.id;
+                    const vid = typeof rawVid === "number" ? rawVid : Number(rawVid);
+                    if (!Number.isSafeInteger(vid) || vid <= 0) {
+                        return verificationFailure("创建响应缺少可验证的问卷编号，无法执行读回验证", { link: false }, ["survey-id", "get_survey"]);
+                    }
+                    let readBack;
+                    try {
+                        readBack = await getSurvey({ vid });
+                    }
+                    catch (error) {
+                        return verificationFailure(`创建后的问卷读取失败：${error instanceof Error ? error.message : String(error)}`, { link: false });
+                    }
+                    if (readBack.result !== true) {
+                        return verificationFailure(readBack.errormsg || "创建后的问卷读回失败，结果未知", { link: false });
+                    }
+                    const data = responseData(readBack);
+                    const questions = Array.isArray(data?.questions)
+                        ? data.questions
+                        : Array.isArray(data?.question) ? data.question : undefined;
+                    const comparableQuestions = Array.isArray(questions)
+                        ? filterJsonlVerificationQuestions(questions)
+                        : undefined;
+                    const titleMatches = expectedTitle === undefined || data?.title === expectedTitle;
+                    const countMatches = expectedQuestionCount === undefined || (comparableQuestions !== undefined && comparableQuestions.length === expectedQuestionCount);
+                    const typeCheck = Array.isArray(questions)
+                        ? compareJsonlQuestionTypes(expectedQuestionTypes, questions)
+                        : { matches: false, warnings: ["创建后的问卷未返回题目列表，无法校验 q_type/q_subtype"] };
+                    const identityMatches = surveyIdentityMatches(data, vid);
+                    const structure = identityMatches && titleMatches && countMatches && typeCheck.matches;
+                    const status = statusLabel(data?.status) !== undefined;
+                    const warnings = [...typeCheck.warnings];
+                    if (!identityMatches)
+                        warnings.push("创建后的问卷读回身份与请求不一致或缺少可验证编号");
+                    if (!titleMatches)
+                        warnings.push("创建后的问卷标题与请求不一致");
+                    if (!countMatches)
+                        warnings.push("创建后的题目数量与请求不一致或未返回");
+                    if (!status)
+                        warnings.push("创建后的问卷状态无法从读回响应确认");
+                    const baseUrl = currentBaseUrl();
+                    let linkEvidence = resolveRespondentLink(data, vid, baseUrl);
+                    if (!linkEvidence.fillUrl) {
+                        try {
+                            const listed = await findListRecord(vid);
+                            const fallback = resolveRespondentLink(listed, vid, baseUrl);
+                            if (fallback.fillUrl)
+                                linkEvidence = fallback;
+                        }
+                        catch (error) {
+                            warnings.push(`创建后的问卷列表回退读取失败：${error instanceof Error ? error.message : String(error)}`);
+                        }
+                    }
+                    const link = Boolean(linkEvidence.fillUrl);
+                    if (!link)
+                        warnings.push("创建后的问卷没有可验证的答题链接；未根据 vid 猜测公开链接");
+                    const verified = structure && status && link;
+                    return {
+                        vid,
+                        ...(linkEvidence.sid ? { sid: linkEvidence.sid } : typeof data?.sid === "string" ? { sid: data.sid } : {}),
+                        ...(linkEvidence.fillUrl ? { fillUrl: linkEvidence.fillUrl } : {}),
+                        ...(statusLabel(data?.status) ? { status: statusLabel(data?.status) } : {}),
+                        outcome: verified ? "verified" : "unknown",
+                        verification: { structure, status, count: countMatches, link },
+                        warnings,
+                        ...(verified ? {} : { verificationRequired: ["survey-structure", "survey-status", "respondent-link"] }),
+                    };
+                },
             });
-            return toolApiResult(result);
         }
         catch (error) {
             return toolError(error);

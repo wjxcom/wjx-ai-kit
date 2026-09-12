@@ -1,4 +1,30 @@
-# 问卷管理工具详解（11 个当前工具）
+# 问卷管理工具详解（13 个当前工具）
+
+## create_ai_page - 创建 AI 主页
+
+调用 OpenAPI `A1000107` 创建一个独立的纯展示 AI 主页。`html_content`（或兼容字段 `html`）必填，最大 200000 字符。单独的 AI 主页请求只调用本工具，不创建或关联表单/问卷。
+
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| `html_content` | string | 是 | 主页 HTML 内容；也可使用 `html` 别名 |
+| `title` | string | 否 | 主页标题，最长 100 字符 |
+| `page_type` | number | 否 | 页面类型：0=网页、1=海报、2=PPT |
+| `publish` | boolean | 否 | 是否立即发布 |
+| `creater` | string | 否 | 创建者子账号用户名 |
+
+当 `page_type=2` 时，HTML 默认使用逐页 PPT 结构：每张幻灯片是独立的固定比例画布，首屏只显示一页并提供逐页切换；不要把所有内容拼成一个纵向长页面。
+
+## update_ai_page - 更新 AI 主页
+
+调用 OpenAPI `A1000108` 原位更新主页。先调用 `get_survey` 读取目标的 `html_content` 和 `page_type`，基于完整原 HTML 修改后提交；草稿也可直接读取，无需访问公开页。只接受传统数字 `vid`，不接受 `sid`；`html_content`（或 `html`）必填。
+
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| `vid` | number/string | 是 | 传统数字主页编号 |
+| `html_content` | string | 是 | 完整 HTML 内容；也可使用 `html` 别名 |
+| `title` | string | 否 | 主页标题，最长 100 字符 |
+
+更新不支持修改页面类型。如果用户要求在网页、海报、PPT之间转换，直接返回不支持；不得自动创建替代主页或删除原主页。
 
 ## create_survey_by_json — 用 JSONL 创建问卷（推荐）
 
@@ -30,10 +56,11 @@
 
 ## get_survey — 获取问卷详情
 
+当目标是 AI 主页（`atype=12`）时，响应额外包含完整 `html_content` 和固定的 `page_type`；草稿状态同样返回，可作为后续 `update_ai_page` 的原稿。
+
 | 参数 | 类型 | 必填 | 说明 |
 |------|------|------|------|
 | `vid` | number | 是 | 问卷编号 |
-| `format` | "json" \| "dsl" \| "both" | 否 | 返回格式（默认 "json"） |
 | `get_questions` | boolean | 否 | 是否获取题目（默认 true） |
 | `get_items` | boolean | 否 | 是否获取选项（默认 true） |
 | `get_exts` | boolean | 否 | 是否获取问答选项列表 |
@@ -73,7 +100,7 @@
 | 参数 | 类型 | 必填 | 说明 |
 |------|------|------|------|
 | `vid` | number | 是 | 问卷编号 |
-| `additional_setting` | string | 否 | 设置类别 JSON 数组（默认 `[1000,1001,1002,1003,1004,1005,1006,1007]`） |
+| `additional_setting` | string | 否 | 设置类别 JSON 数组（默认 `[1000,1001,1002,1003,1004,1005,1006,1007]`）；编码映射见 `wjx://reference/survey-setting-types` |
 
 ## update_survey_settings — 修改问卷设置
 
@@ -82,17 +109,19 @@
 | `vid` | number | 是 | 问卷编号 |
 | `api_setting` | string | 否 | API 请求次数限制设置 JSON 字符串 |
 | `after_submit_setting` | string | 否 | 作答后跳转设置 JSON 字符串 |
-| `msg_setting` | string | 否 | 数据推送设置 JSON 字符串 |
+| `msg_setting` | string | 否 | 数据推送设置 JSON 字符串，例如 `{"post_url":"https://...","quick_post":true,"retry":true}`；这是全量替换，必须先读完整设置、合并后再写，写后复读核验 |
 | `sojumpparm_setting` | string | 否 | 自定义链接参数设置 JSON 字符串 |
 | `time_setting` | string | 否 | 时间设置 JSON 字符串 |
 
-## delete_survey — 删除问卷（不可恢复）
+## delete_survey — 删除问卷（可选彻底删除）
 
 | 参数 | 类型 | 必填 | 说明 |
 |------|------|------|------|
 | `vid` | number | 是 | 问卷编号 |
 | `username` | string | 是 | 用户名 |
-| `completely_delete` | boolean | 否 | 是否彻底删除 |
+| `completely_delete` | boolean | 否 | 传 `true` 才彻底删除（status=4，不可恢复）；不传则进入回收站（status=3，可恢复） |
+
+工具只发送一次删除请求，随后以有界只读轮询等待状态落库。普通删除必须读回 `status=3` 才算 `verified`；彻底删除必须证明 `status=4`。单纯 not-found 不足以证明任一删除状态，会返回 `outcome: "unknown"`。
 
 ## get_question_tags — 获取题目标签
 
@@ -114,6 +143,8 @@
 | `file` | string | 是 | Base64 编码的文件内容 |
 
 ## clear_recycle_bin — 清空回收站
+
+不传 `vid` 时调用批量回收站清理接口；传入 `vid` 时使用彻底删除动作并只处理该问卷，随后必须读回 `status=4`。服务端对 `1000302 + vid` 可能只返回成功但仍保留 `status=3`，因此不能把该响应当作指定问卷已清理。
 
 | 参数 | 类型 | 必填 | 说明 |
 |------|------|------|------|

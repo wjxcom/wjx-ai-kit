@@ -22,7 +22,6 @@ tools:
 
 - **`skills/wjx-mcp-use/SKILL.md`** — 核心子集工具总览、差异边界、核心工作流、MCP 资源、Prompt 模板、常用枚举值
 - **`skills/wjx-mcp-use/references/`** — 按需查阅的详细参考：
-  - `dsl-and-types.md` — DSL 文本语法、题型映射表、问卷/状态编码
   - `tools-survey.md` — 11 个问卷管理工具的完整参数
   - `tools-response.md` — 11 个答卷数据工具的完整参数
   - `tools-other.md` — 通讯录、子账号、SSO、分析、推送、用户体系工具参数
@@ -46,7 +45,6 @@ tools:
 3. 创建后调用 `get_survey` 验证问卷内容
 4. 主动使用 `build_preview_url` 提供预览链接，使用 `build_survey_url` 提供编辑链接
 
-读取或审阅已有问卷的 DSL 时，可调用 `get_survey` 的 `format: "dsl"`；迁移完成后回到 `create_survey_by_json`，不要把 DSL 作为新建入口。
 
 ### 用户体系兼容边界
 
