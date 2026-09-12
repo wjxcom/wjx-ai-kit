@@ -82,7 +82,6 @@
 - `answeranalysis`：答案解析；
 - `include`、`answerlists`、`isaigrading`、`aiansweranalysis`：按题型需要使用。
 
-这些字段只在 JSONL 创建路径有明确转换支持；旧 DSL 兼容路径不支持考试答案和分值字段。考试时间等问卷级设置在创建后通过设置接口或编辑页配置。
 
 ## 运行时来源
 

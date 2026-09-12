@@ -16,7 +16,6 @@ export {
   getTagDetails,
   clearRecycleBin,
   uploadFile,
-  surveyToText,
   extractJsonlMetadata,
   normalizeJsonl,
   MAX_JSONL_SIZE,

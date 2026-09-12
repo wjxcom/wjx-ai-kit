@@ -97,7 +97,6 @@ function classifyError(err: unknown): CliError {
       err.message.includes("optionalTitles") ||
       err.message.includes("当前接口不支持创建") ||
       err.message.includes("corpid is required") ||
-      err.message.includes("DSL 包含不支持的题型") ||
       /^profile (?:name must not be blank|".*" not found)$/i.test(err.message) ||
       /Encrypted data|bad decrypt|wrong final block|unable to authenticate/i.test(err.message) ||
       err.message.startsWith("题目「")

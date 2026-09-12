@@ -96,7 +96,7 @@ flowchart TD
 
 | 模块 | Tool 数量 | 主要职责 | 核心 API / 入口 |
 | --- | ---: | --- | --- |
-| `survey` | 11 | 问卷 JSONL 创建、DSL 读取、设置读写、标签、回收站和文件上传 | `createSurveyByJson()`、`getSurvey()`、`updateSurveySettings()`、`clearRecycleBin()` |
+| `survey` | 11 | 问卷 JSONL 创建、设置读写、标签、回收站和文件上传 | `createSurveyByJson()`、`getSurvey()`、`updateSurveySettings()`、`clearRecycleBin()` |
 | `response` | 11 | 答卷查询、计数、下载、报告、提交、模板、修改、清空 | `queryResponses()`、`downloadResponses()`、`getReport()`、`submitResponse()`、`buildSubmitTemplate()` |
 | `contacts` | 14 | 通讯录成员、管理员、部门、标签管理 | `queryContacts()`、`addContacts()`、`listDepartments()`、`listTags()` |
 | `sso` | 6 | 子账号 SSO、用户体系 SSO、代理商 SSO、问卷创建/编辑/预览链接、问卷短链接 | `buildSsoSubaccountUrl()`、`buildSsoUserSystemUrl()`、`buildSsoPartnerUrl()`、`buildSurveyUrl()`、`buildPreviewUrl()`、`getShortLink()` |
@@ -123,12 +123,10 @@ flowchart TD
 - `clear_recycle_bin`
 - `create_survey_by_json`（唯一当前创建入口）
 
-当前 Server 不注册 `create_survey` 和 `create_survey_by_text`。`get_survey` 的 `format=dsl` 仍保留用于读取和审阅；历史 JSON/DSL 必须在 Server 外部转换为 JSONL，再调用 `create_survey_by_json`。
 
 特点：
 
 - `createSurveyByJson()` 在调用前校验 JSONL 元数据、题目行和题型字段。
-- `surveyToText()` 为读取路径提供可读 DSL 输出；DSL 文本只用于审阅和历史迁移，不作为新问卷创建入口。
 - 设置更新工具要求至少传入一个设置块，避免空写请求。
 
 ### 5.3 response 模块
@@ -315,7 +313,6 @@ server.registerTool("tool_name", { inputSchema }, async (args) => {
 - `wjx://reference/response-format`
 - `wjx://reference/user-roles`
 - `wjx://reference/push-format`
-- `wjx://reference/dsl-syntax`
 
 资源层的作用是把稳定字典、格式规范和分析基准放进 MCP 上下文，而不是每次让模型重复猜测编码意义。
 

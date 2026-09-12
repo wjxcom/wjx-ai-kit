@@ -37,7 +37,7 @@ JSONL 使用中文 qtype、title、select、rowtitle、columntitle 等字段；�
   --creater <s>    创建者子账号
 
 ## 其他 survey 命令
-delete、status、settings、update-settings、tags、tag-details、clear-bin、upload、export-text 和 url 的参数以各自 --help 为准。`,
+delete、status、settings、update-settings、tags、tag-details、clear-bin、upload 和 url 的参数以各自 --help 为准。`,
     },
     response: {
         title: "response 模块命令参考",

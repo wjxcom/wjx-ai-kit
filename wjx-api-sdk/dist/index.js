@@ -3,7 +3,6 @@ export { getWjxBaseUrl, getWjxApiUrl, getWjxUserSystemApiUrl, getWjxSubuserApiUr
 export { setCredentialProvider, getWjxCredentials, callWjxApi, callWjxUserSystemApi, callWjxSubuserApi, callWjxContactsApi, getCorpId, assignDefined, WjxAmbiguousOutcomeError, } from "./core/api-client.js";
 // Survey module
 export { createSurveyByJson, CREATABLE_SURVEY_ATYPES, getSurvey, listSurveys, updateSurveyStatus, getSurveySettings, updateSurveySettings, deleteSurvey, getQuestionTags, getTagDetails, clearRecycleBin, uploadFile, } from "./modules/survey/client.js";
-export { surveyToText, typeToLabel, stripHtml } from "./modules/survey/survey-to-text.js";
 export { extractJsonlMetadata, normalizeJsonl, MAX_JSONL_SIZE, canonicalizeJsonlQtypes, parseJsonl, jsonToSurvey, EXAM_QTYPES, preprocessExamJsonl, hasVoteJsonlQtype, injectDefaultRequir, injectAtypeIntoJsonl, inferAtypeFromTitle, validateSurveyTitle, validateSurveyHasQuestions, NON_QUESTION_QTYPE_SET, JSONL_SUPPORTED_QTYPES, JSONL_READ_ONLY_OR_WEB_EDITOR_QTYPES, FRAMEWORK_ONLY_JSONL_QTYPES, hasFrameworkOnlyJsonlQtype, resolveJsonlPublish, preflightJsonl, } from "./modules/survey/json-to-survey.js";
 export { getJsonlQuestionTypeCode, extractJsonlQuestionTypeExpectations, compareJsonlQuestionTypes, filterJsonlVerificationQuestions, } from "./modules/survey/qtype-mapping.js";
 // AI homepage module

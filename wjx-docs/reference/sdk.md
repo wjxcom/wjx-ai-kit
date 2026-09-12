@@ -6,7 +6,8 @@ SDK 的导出入口是 `wjx-api-sdk`。远程 API 函数接受业务参数、可
 fn(input, credentials?, fetchImpl?, requestOptions?)
 ```
 
-本地辅助函数不遵循这个远程请求签名：`buildSubmitTemplate(questions)`、`decodePushPayload(encryptedData, appKey, signature?, rawBody?)`、`buildPreviewUrl(input, baseUrl?)`、`surveyToText(survey)`、`calculateNps(scores)` 和 `calculateCsat(scores, scaleType?)` 都不发起网络请求。
+本地辅助函数不遵循这个远程请求签名：`buildSubmitTemplate(questions)`、`decodePushPayload(encryptedData, appKey, signature?, rawBody?)`、`buildPreviewUrl(input, baseUrl?)`、`calculateNps(scores)` 和 `calculateCsat(scores, scaleType?)` 都不发起网络请求。
+
 
 ## 主要导出
 
@@ -18,7 +19,6 @@ fn(input, credentials?, fetchImpl?, requestOptions?)
 | contacts | `queryContacts`, `addContacts` |
 | user system（兼容/已过时） | `addParticipants`, `modifyParticipants`, `deleteParticipants`, `bindActivity`, `querySurveyBinding`, `queryUserSurveys`；仅用于已有系统 |
 | SSO | `buildSsoSubaccountUrl`, `buildSsoUserSystemUrl`, `buildSurveyUrl`, `buildPreviewUrl` |
-| DSL 读取/迁移 | `surveyToText`；不提供 DSL 创建接口 |
 
 ## 凭据优先级
 
@@ -47,9 +47,9 @@ await createSurveyByJson(input, credentials, fetch, {
 });
 ```
 
-问卷创建的唯一入口是 `createSurveyByJson`，参数为 JSONL 字符串。创建 `atype` 支持 `1/2/3/4/5/6/7/9/10/11`；`8` 用户体系不能新建。当前 SDK 不导出 `createSurvey`、`createSurveyByText` 或 `textToSurvey`；历史 DSL 需要在 SDK 外部转换为 JSONL。
+问卷创建的唯一入口是 `createSurveyByJson`，参数为 JSONL 字符串。创建 `atype` 支持 `1/2/3/4/5/6/7/9/10/11`；`8` 用户体系不能新建。
 
-`surveyToText` 保留用于把已读取的问卷转换为可读 DSL 文本；读取/导出 DSL 不等于使用 DSL 创建新问卷。
+
 
 AI 主页通过 `createAiPage`（OpenAPI `A1000107`）创建，通过 `getSurvey` 读取草稿也可返回的 `html_content` 和固定 `page_type`，再由 `updateAiPage`（OpenAPI `A1000108`）基于完整原 HTML 原位更新。更新不支持修改页面类型。
 

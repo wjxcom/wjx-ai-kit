@@ -1,7 +1,6 @@
 import { SURVEY_TYPES, QUESTION_TYPES, SURVEY_STATUSES, VERIFY_STATUSES, STATUS_TRANSITIONS, TEXT_VALIDATION_TYPES, MATRIX_DISPLAY_TYPES, TABLE_DISPLAY_TYPES, SURVEY_SETTING_TYPES, } from "./survey-reference.js";
 import { ANALYSIS_METHODS, RESPONSE_FORMAT_GUIDE, } from "./analysis-reference.js";
 import { PUSH_FORMAT_GUIDE } from "./push-reference.js";
-import { DSL_SYNTAX_GUIDE } from "./dsl-reference.js";
 import { JSONL_QTYPES_RESOURCE } from "./jsonl-qtypes.js";
 function formatResource(data) {
     return JSON.stringify(data, null, 2);
@@ -88,13 +87,6 @@ export function registerResources(server) {
                 uri: "wjx://reference/push-format",
                 mimeType: "application/json",
                 text: formatResource(PUSH_FORMAT_GUIDE),
-            }],
-    }));
-    server.resource("dsl-syntax", "wjx://reference/dsl-syntax", { description: "问卷星 DSL 文本语法参考：题型标记、格式规范、与 TxtToActivityService 对齐", mimeType: "application/json" }, async () => ({
-        contents: [{
-                uri: "wjx://reference/dsl-syntax",
-                mimeType: "application/json",
-                text: formatResource(DSL_SYNTAX_GUIDE),
             }],
     }));
 }

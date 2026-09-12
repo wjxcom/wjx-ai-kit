@@ -61,7 +61,6 @@
 | 参数 | 类型 | 必填 | 说明 |
 |------|------|------|------|
 | `vid` | number | 是 | 问卷编号 |
-| `format` | "json" \| "dsl" \| "both" | 否 | 返回格式（默认 "json"） |
 | `get_questions` | boolean | 否 | 是否获取题目（默认 true） |
 | `get_items` | boolean | 否 | 是否获取选项（默认 true） |
 | `get_exts` | boolean | 否 | 是否获取问答选项列表 |

@@ -63,7 +63,7 @@ test("createSurveyByJson sends JSONL to action 1000106 with Bearer auth", async 
   assert.equal("traceid" in parsedBody, false, "traceid should not be in POST body");
 });
 
-test("server exposes all 62 tools, 8 resources, and 15 prompts over stdio", async () => {
+test("server exposes all 62 tools, 7 resources, and 15 prompts over stdio", async () => {
   const transport = new StdioClientTransport({
     command: "node",
     args: [serverEntry],
@@ -212,7 +212,6 @@ test("server exposes all 62 tools, 8 resources, and 15 prompts over stdio", asyn
     const resourceUris = resourcesResult.resources.map((r) => r.uri).sort();
     assert.deepEqual(resourceUris, [
       "wjx://reference/analysis-methods",
-      "wjx://reference/dsl-syntax",
       "wjx://reference/jsonl-qtypes",
       "wjx://reference/matrix-display-types",
       "wjx://reference/push-format",

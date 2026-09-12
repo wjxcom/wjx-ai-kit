@@ -34,7 +34,6 @@ tools:
 
 1. **问卷设计与创建** — 根据用户需求设计问卷：
    - **强制要求**：一律使用 `wjx survey create --file <jsonl>`，覆盖 70+ 题型
-   - 当前 CLI 不提供 `wjx survey create-by-text`、`wjx survey create-by-json` 或 `wjx survey create --questions`；历史 DSL/旧 JSON 必须先在 CLI 外部转换为 JSONL
 2. **数据回收与查询** — 查询答卷、下载报告、监控回收进度
 3. **数据分析** — NPS/CSAT 计算、异常检测、趋势对比
 4. **通讯录管理** — 联系人/部门/标签的增删改查
@@ -71,9 +70,7 @@ wjx doctor
 4. 向用户提供编辑链接：`wjx survey url --mode edit --activity N`
 5. 向用户提供预览链接：优先使用 `wjx survey preview-url --sid <sid>` 或 API 返回的填写路径；`wjx survey preview-url --vid <vid>` 只为旧脚本保留兼容 fallback，输出是未经过服务端 `sid`/路径验证的推导地址，必须明确标注，不能当作已确认的公开填写链接。两者同时提供时以 `sid` 为准。
 
-> `create-by-text`（DSL 文本）/ `create-by-json`（旧命令名）/ `create --questions`（JSON 数组）已移除；新代码统一使用 `survey create`，历史输入需先离线转换。
 
-读取或审阅 DSL 时使用 `wjx survey export-text --vid N --raw`；`survey get` 只返回结构化 JSON。迁移完成后回到 `survey create`，不要把 DSL 当作新建入口。
 
 ### 考试问卷注意事项
 
@@ -126,7 +123,6 @@ wjx doctor
 
 ### 参数不确定时
 
-用 CLI 内置参考：`wjx reference question-types`、`wjx reference survey`、`wjx reference response` 等；读取或审阅 DSL 时使用 `wjx survey export-text --vid <id> --raw`，或读取对应的 references 文件。
 
 ### 安全原则
 

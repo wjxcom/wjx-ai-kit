@@ -1408,7 +1408,8 @@
         ],
         "targetFields": [
           "title"
-        ]
+        ],
+        "postVerify": true
       }
     },
     {
@@ -1438,35 +1439,6 @@
         ],
         "preRead": true,
         "postVerify": true
-      }
-    },
-    {
-      "id": "survey.export-text",
-      "command": "survey.export-text",
-      "service": "default",
-      "action": "shortcut:survey.export-text",
-      "input": {
-        "type": "object",
-        "properties": {}
-      },
-      "risk": "read",
-      "identities": [
-        "user",
-        "bot"
-      ],
-      "source": "shortcut",
-      "metadata": {
-        "path": "survey.export-text",
-        "risk": "read",
-        "identities": [
-          "user",
-          "bot"
-        ],
-        "targetFields": [
-          "vid"
-        ],
-        "httpRetryable": true,
-        "idempotent": true
       }
     },
     {
@@ -1752,7 +1724,9 @@
         "targetFields": [
           "vid",
           "title"
-        ]
+        ],
+        "preRead": true,
+        "postVerify": true
       }
     },
     {

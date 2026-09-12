@@ -21,7 +21,6 @@ import {
   buildPreviewUrl,
   getShortLink,
   getWjxShortLinkUrl,
-  surveyToText,
   MAX_JSONL_SIZE,
   preflightJsonl,
   parseJsonl,
@@ -1012,53 +1011,6 @@ export function registerSurveyCommands(program: Command): void {
         requireField(m, "file");
         return { file_name: m.file_name, file: m.file };
       });
-    });
-
-  // --- export-text ---
-  survey
-    .command("export-text")
-    .description("导出问卷为纯文本（题目+选项）")
-    .option("--vid <n>", "问卷ID", strictInt)
-    .option("--raw", "输出纯文本（不包裹 JSON）")
-    .action(async (_opts, cmd) => {
-      try {
-        const merged = getMerged(cmd);
-
-        requireField(merged, "vid");
-
-        if (program.opts().dryRun) {
-          const { fetchImpl, getCapturedRequest } = createCapturingFetch();
-          const profile = resolveProfile({ profile: program.opts().profile });
-          await getSurvey(
-            { vid: merged.vid as number },
-            applyProfileCredentials({ apiKey: "dry-run" }, profile),
-            fetchImpl,
-          );
-          printDryRunPreview(getCapturedRequest(), program.opts());
-          return;
-        }
-
-        const creds = getCredentials(program.opts());
-
-        const result = await getSurvey({ vid: merged.vid as number }, creds);
-
-        ensureApiSuccess(result);
-
-        const data = (result as unknown as Record<string, unknown>).data;
-        if (!data || typeof data !== "object" || !Array.isArray((data as Record<string, unknown>).questions)) {
-          throw new CliError("API_ERROR", "API 返回问卷数据缺少 questions 数组");
-        }
-        const text = surveyToText(data as Parameters<typeof surveyToText>[0]);
-        const globalOpts = program.opts();
-
-        if (merged.raw || globalOpts.format === "table") {
-          console.log(text);
-        } else {
-          formatOutput({ vid: merged.vid, text }, globalOpts);
-        }
-      } catch (e) {
-        handleError(e);
-      }
     });
 
   // --- jsonl-template ---

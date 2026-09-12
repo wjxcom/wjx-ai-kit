@@ -46,7 +46,6 @@ const metadata: Record<string, CommandMetadata> = {
     // after an ambiguous response from the public short-link endpoint.
     ambiguousTimeout: "stop-and-report",
   },
-  "survey.export-text": { path: "survey.export-text", risk: "read", identities: ["user", "bot"], targetFields: ["vid"], httpRetryable: true, idempotent: true },
   "response.count": { path: "response.count", risk: "read", identities: ["user", "bot"], targetFields: ["vid"], httpRetryable: true, idempotent: true },
   "response.query": { path: "response.query", risk: "read", identities: ["user", "bot"], targetFields: ["vid", "jid"], httpRetryable: true, idempotent: true },
   "response.realtime": { path: "response.realtime", risk: "read", identities: ["user", "bot"], targetFields: ["vid"], httpRetryable: false, idempotent: false },

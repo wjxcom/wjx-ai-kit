@@ -18,7 +18,6 @@ import {
   getTagDetails,
   clearRecycleBin,
   uploadFile,
-  surveyToText,
   MAX_JSONL_SIZE,
   extractJsonlQuestionTypeExpectations,
   compareJsonlQuestionTypes,
@@ -473,14 +472,9 @@ export function registerSurveyTools(server: McpServer): void {
     {
       title: "获取问卷内容",
       description:
-        "根据问卷编号获取问卷详情，包括题目和选项信息。AI 主页（atype=12）会直接返回 html_content 和固定的 page_type，草稿无需访问公开页也可读取。支持 format 参数选择返回格式：json（结构化）、dsl（人类可读文本）、both（两者都返回）。",
+        "根据问卷编号获取问卷详情，包括题目和选项信息。AI 主页（atype=12）会直接返回 html_content 和固定的 page_type，草稿无需访问公开页也可读取。",
       inputSchema: {
         vid: z.number().int().positive().describe("问卷编号"),
-        format: z
-          .enum(["json", "dsl", "both"])
-          .optional()
-          .default("json")
-          .describe("返回格式：json=结构化 JSON（默认），dsl=人类可读 DSL 文本，both=两者都返回"),
         get_questions: z
           .boolean()
           .optional()
@@ -538,19 +532,6 @@ export function registerSurveyTools(server: McpServer): void {
           return toolApiResult(result);
         }
 
-        const fmt = args.format ?? "json";
-
-        if (fmt === "dsl") {
-          const dsl = surveyToText(result.data);
-          return toolResult({ dsl }, false);
-        }
-
-        if (fmt === "both") {
-          const dsl = surveyToText(result.data);
-          return toolResult({ ...result, dsl }, false);
-        }
-
-        // default: json
         return toolApiResult(result);
       } catch (error) {
         return toolError(error);
@@ -1106,7 +1087,6 @@ export function registerSurveyTools(server: McpServer): void {
       title: "用 JSON 创建问卷",
       description:
         "（推荐，支持 70+ 题型）通过 JSONL 格式创建问卷。每行一个 JSON 对象，首行为 qtype='问卷基础信息' 的元数据。" +
-        "支持 70+ 种可创建题型（普通调查、投票、专业调查模型、考试、表单），远多于 DSL 文本格式；矩阵数值题、VlookUp问卷关联、多项文件题、多项简答题、当前语音仅支持读取或 Web 编辑器配置，创建前会拒绝。" +
         "【核心字段】qtype（题型名称）、title（标题，只写题目正文，不写题目类型）、select（选项数组）、rowtitle（行标题或表格字段名）、requir（是否必填；缺省时 SDK 注入 true）。" +
         "【必答规则】默认所有题型都是必答题，包括单项填空、简答题、意见建议题、开放题；只有用户明确指定某个题号/题目/字段为选填时，才给该题传 requir=false。" +
         "【专业模型】支持 BWS/MaxDiff(mdattr+pertaskcount+tasklength)、联合分析(columntitle)、品牌漏斗(brands)、Kano模型、SUS模型、PSM模型等。" +

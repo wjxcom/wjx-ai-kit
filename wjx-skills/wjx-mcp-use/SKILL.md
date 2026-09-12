@@ -44,8 +44,8 @@ MCP 任务遵循“发现意图 -> 预检 -> 计划 -> 确认 -> 执行 -> 读�
 
 ### 规则 0：创建问卷只用 `create_survey_by_json`（强制）
 
-当前 MCP Server 只注册 `create_survey_by_json` 作为问卷创建工具。`create_survey_by_text` 与 `create_survey` 已移除；历史 DSL/JSON 必须在 MCP 外部转换为 JSONL。所有当前可创建题型、投票、考试、表单都走 `create_survey_by_json`；JSONL 不承诺覆盖读取接口的全部数字 `q_type/q_subtype` 编码。
 
+当前 MCP Server 只注册 create_survey_by_json 作为问卷创建工具；所有当前可创建题型、投票、考试、表单都走该 JSONL 入口。
 ### AI 主页
 
 AI 主页是独立的纯展示内容，与表单/问卷创建互斥：
@@ -62,11 +62,8 @@ AI 主页是独立的纯展示内容，与表单/问卷创建互斥：
 
 ### 规则 2：问卷类型 ≠ 题目类型
 
-"投票/考试/调查"是**问卷类型**（`atype` 参数）。JSONL 创建投票时使用 `qtype:"投票单选"` / `qtype:"投票多选"`，并显式传 `atype: 3`；只有旧 DSL 文本格式才使用普通 `[单选题]` / `[多选题]`，不存在 `[投票单选题]` 标签。
 
-### 规则 3：历史 DSL 不支持的题型要明确告知
 
-签名题（用 `[绘图题]` 替代）、地区题（用 `[多级下拉题]` 或网页端添加）、NPS 专用题（用 `[量表题]` + `0~10`）不在历史 DSL 支持范围内。新问卷应优先使用 JSONL 题型参考；只有读取或迁移 DSL 时才告知替代方案，**不要**反复尝试或拆分多个问卷。
 
 ### 规则 3.1：用户体系只允许兼容维护
 
@@ -103,7 +100,6 @@ https://www.wjx.cn/weixinlogin.aspx?redirecturl=%2Fnewwjx%2Fmanage%2Fuserinfo.as
   - 矩阵多选（q_subtype=703）3 行：`4$1!1|2,2!3,3!1|4` — 同一行多个列用 `|` 拼
   - 矩阵量表（q_subtype=701）3 行：`5$1!5,2!4,3!3` — 行号!分值
   - 矩阵题的"行数"来自 `get_survey` 返回的 `item_rows.length`；`items` 数组是**列头**（列选项），不是行。
-- **考试题分值/答案字段**：JSONL 创建路径支持 `correctselect`、`quizscore` 和 `answeranalysis`；旧 DSL 兼容路径不支持。`submit_response` 仅用于答题端提交，不能修改考试配置。
 
 ### 规则 7：填写链接优先使用短编号
 
@@ -156,13 +152,11 @@ https://www.wjx.cn/weixinlogin.aspx?redirecturl=%2Fnewwjx%2Fmanage%2Fuserinfo.as
 4. build_survey_url({ mode: "edit", activity: N }) — 提供编辑链接
 ```
 
-`create_survey_by_json` 是唯一创建工具。其 `jsonl` 参数必须是每行一个 JSON 对象的字符串，不是 JSON 数组；当前 Server 不接受旧 DSL 或 JSON 数组创建参数。
 
 普通题型未传 `publish` 时默认立即发布；若 JSONL 包含纯框架题型 `折叠栏目`、`轮播图`、`AI追问`、`AI处理`、`AI访谈`、`图片OCR`、`VlookUp问卷关联` 或 `分页计时器`，则默认创建为草稿。先调用 `get_survey` 并提供编辑入口，待用户明确授权后再传 `publish: true`。
 
-**考试问卷（atype=6）注意**：JSONL 路径支持 `correctselect`、`quizscore` 和 `answeranalysis`；DSL 兼容路径不支持这些字段。创建后仍可提供编辑链接补充未覆盖的高级设置。
+**考试问卷（atype=6）注意**：JSONL 路径支持 `correctselect`、`quizscore` 和 `answeranalysis`。创建后仍可提供编辑链接补充未覆盖的高级设置。
 
-JSONL 题型字段详见 `create_survey_by_json` 的工具描述与 SDK `JSONL_SUPPORTED_QTYPES`；`wjx://reference/question-types` 只用于解释 `get_survey` 的 `q_type/q_subtype`。读取或迁移历史 DSL 时查阅 [references/dsl-and-types.md](references/dsl-and-types.md)，新问卷始终转换回 JSONL 后创建。
 
 ### 查询和分析数据
 
@@ -207,7 +201,6 @@ submitdata 题号必须与 `get_survey` 返回的原始 `q_index` 对齐——**
 | "activity not found" | 问卷 vid 不存在 | `list_surveys` 确认正确 vid |
 | "corp_id required" | 通讯录操作缺企业 ID | 配置 `WJX_CORP_ID` 环境变量 |
 | 网络超时 | base_url 错误或网络不通 | `get_config` 检查 base_url |
-| 历史问卷迁移后题目丢失 | DSL 转换或 JSONL 字段错误 | 读取历史 DSL 时检查题号和题型映射；转换后先用 JSONL 预检，再重新获取问卷结构 |
 
 更多排查详见 [references/troubleshooting.md](references/troubleshooting.md)。
 
@@ -215,7 +208,6 @@ submitdata 题号必须与 `get_survey` 返回的原始 `q_index` 对齐——**
 
 | 资源 URI | 内容 |
 |----------|------|
-| `wjx://reference/dsl-syntax` | DSL 文本语法（仅读取、审阅和离线迁移） |
 | `wjx://reference/jsonl-qtypes` | JSONL 创建题型白名单与分层 |
 | `wjx://reference/question-types` | `get_survey` 读取结果的 q_type/q_subtype 映射（不是 JSONL 创建白名单） |
 | `wjx://reference/survey-types` | 问卷类型编码及创建限制（1/2/3/4/5/6/7/9/10/11 可创建，8 用户体系不能新建） |
@@ -248,7 +240,6 @@ submitdata 题号必须与 `get_survey` 返回的原始 `q_index` 对齐——**
 
 ## Reference 文件（按需查阅）
 
-- [DSL 语法与题型](references/dsl-and-types.md) — DSL 格式、25+ 题型标签、q_type/q_subtype 映射表
 - [问卷工具详解](references/tools-survey.md) — 11 个问卷管理工具的完整参数
 - [答卷工具详解](references/tools-response.md) — 11 个答卷数据工具的完整参数
 - [其他工具详解](references/tools-other.md) — 通讯录、子账号、SSO、分析、推送工具参数

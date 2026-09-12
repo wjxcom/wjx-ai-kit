@@ -39,7 +39,6 @@ const MANIFEST = [
     ["integrations/workbench", "工作台与 Claw"],
   ]},
   { group: "兼容与变更", collapsed: true, items: [
-    ["legacy/dsl", "DSL 兼容"],
     ["changelog", "变更记录"],
     ["migration", "迁移指南"],
   ]},
