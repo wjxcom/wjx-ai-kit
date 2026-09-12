@@ -115,7 +115,7 @@ AI 需要创建或修改 XML DSL 问卷时，先读取 `wjx://reference/wjx-xml-
 
 普通题型未传 `publish` 时默认立即发布；若 JSONL 包含纯框架题型 `折叠栏目`、`轮播图`、`AI追问`、`AI处理`、`AI访谈`、`图片OCR`、`VlookUp问卷关联` 或 `分页计时器`，则默认创建为草稿。先调用 `get_survey` 并提供编辑入口，待用户明确授权后再传 `publish: true`。
 
-**考试问卷（atype=6）注意**：JSONL 路径支持 `correctselect`、`quizscore` 和 `answeranalysis`；DSL 兼容路径不支持这些字段。创建后仍可提供编辑链接补充未覆盖的高级设置。
+**考试问卷（atype=6）注意**：JSONL 路径支持 `correctselect`、`quizscore` 和 `answeranalysis`；XML DSL v1 路径使用题目属性 `IsCeShi="true"` 和 `CeShiValue="<分值>"` 表达计分题，文件题/绘图题还需遵循对应的 `IsSignature` 等属性。创建后仍可通过编辑链接补充未覆盖的高级设置。
 
 JSONL 题型字段详见 `create_survey_by_json` 的工具描述与 SDK `JSONL_SUPPORTED_QTYPES`；XML DSL 语法详见 [references/dsl-and-types.md](references/dsl-and-types.md)。
 

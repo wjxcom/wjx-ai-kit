@@ -13,6 +13,7 @@
 | multi-user（5） | `add_sub_account`, `modify_sub_account`, `delete_sub_account`, `restore_sub_account`, `query_sub_accounts` | 子账号管理 |
 | sso（5） | `sso_subaccount_url`, `sso_user_system_url`, `sso_partner_url`, `build_survey_url`, `build_preview_url` | 生成登录、编辑和填写链接；用户系统 SSO 仅配合已有系统使用 |
 | analytics（6） | `decode_responses`, `decode_push_payload`, `calculate_nps`, `calculate_csat`, `detect_anomalies`, `compare_metrics` | 本地数据解码、推送解密和指标计算 |
+| dsl（4） | `query_wjx_dsl`, `generate_wjx_dsl`, `create_survey_from_definition`, `update_survey_from_definition` | WJX XML DSL v1 查询、校验、创建和修改 |
 | server（1） | `get_config` | 查看脱敏配置与运行环境 |
 
 问卷创建支持 `create_survey_by_json`（JSONL）和 `create_survey_from_definition`（完整 XML DSL）。修改使用 `update_survey_from_definition`，查询 DSL 使用 `query_wjx_dsl`，DSL 预检使用 `generate_wjx_dsl`。

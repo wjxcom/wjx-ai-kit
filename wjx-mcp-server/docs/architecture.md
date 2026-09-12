@@ -96,13 +96,14 @@ flowchart TD
 
 | 模块 | Tool 数量 | 主要职责 | 核心 API / 入口 |
 | --- | ---: | --- | --- |
-| `survey` | 11 | 问卷 JSONL 创建、DSL 读取、设置读写、标签、回收站和文件上传 | `createSurveyByJson()`、`getSurvey()`、`updateSurveySettings()`、`clearRecycleBin()` |
+| `survey` | 11 | 问卷 JSONL 创建、查询、设置读写、标签、回收站和文件上传 | `createSurveyByJson()`、`getSurvey()`、`updateSurveySettings()`、`clearRecycleBin()` |
 | `response` | 11 | 答卷查询、计数、下载、报告、提交、模板、修改、清空 | `queryResponses()`、`downloadResponses()`、`getReport()`、`submitResponse()`、`buildSubmitTemplate()` |
 | `contacts` | 14 | 通讯录成员、管理员、部门、标签管理 | `queryContacts()`、`addContacts()`、`listDepartments()`、`listTags()` |
 | `sso` | 5 | 子账号 SSO、用户体系 SSO、代理商 SSO、问卷创建/编辑/预览链接 | `buildSsoSubaccountUrl()`、`buildSsoUserSystemUrl()`、`buildSsoPartnerUrl()`、`buildSurveyUrl()`、`buildPreviewUrl()` |
 | `user-system` | 6 | 参与者管理、活动绑定、问卷绑定查询、用户关联问卷查询 | `addParticipants()`、`bindActivity()`、`querySurveyBinding()`、`queryUserSurveys()` |
 | `multi-user` | 5 | 子账号创建、修改、删除、恢复、查询 | `addSubAccount()`、`modifySubAccount()`、`querySubAccounts()` |
 | `analytics` | 6 | 答卷解码、推送解密、NPS/CSAT、本地异常检测、指标对比 | `decodeResponses()`、`decodePushPayload()`、`calculateNps()`、`calculateCsat()`、`detectAnomalies()`、`compareMetrics()` |
+| `dsl` | 4 | WJX XML DSL v1 查询、校验、创建和修改 | `queryWjxDsl()`、`generateWjxDsl()`、`createSurveyByWjxDsl()`、`updateWjxDsl()` |
 | `server`（诊断） | 1 | 配置与运行环境诊断 | `get_config` |
 
 业务模块中的 Tool 数量直接对应各 `src/modules/*/tools.ts` 中 `server.registerTool()` 的出现次数，共 62 个；`src/server.ts` 另注册 1 个 `get_config` 诊断工具，总计 63 个。
@@ -121,7 +122,7 @@ flowchart TD
 - `get_tag_details`
 - `upload_file`
 - `clear_recycle_bin`
-- `create_survey_by_json`（JSONL 创建入口）以及 `create_survey_from_definition`（XML DSL 创建入口）
+- `create_survey_by_json`（JSONL 创建入口）
 
 当前 Server 的问卷写入链路分为 JSONL 和 XML DSL：JSONL 使用 `create_survey_by_json`；XML DSL 使用 `query_wjx_dsl`、`generate_wjx_dsl`、`create_survey_from_definition` 和 `update_survey_from_definition` 完成查询、校验、创建和修改。
 
