@@ -144,6 +144,15 @@ export function ensureApiSuccess<T>(response: WjxApiResponse<T>): asserts respon
   const details: ErrorDetails = {};
   if (failure.errorcode !== undefined) details.errorcode = failure.errorcode;
   if (failure.traceid !== undefined) details.traceid = failure.traceid;
+  // DSL write failures carry structured validation data inside `data`.
+  // Preserve the bounded diagnostics without echoing the full DSL payload.
+  if (failure.data && typeof failure.data === "object" && !Array.isArray(failure.data)) {
+    const data = failure.data as Record<string, unknown>;
+    for (const key of ["status", "correlationId", "validationSuccess", "canCommit", "hasChanges", "hasBreakingChanges", "diagnosticCount", "diagnosticsTruncated"]) {
+      if (data[key] !== undefined) details[key] = data[key];
+    }
+    if (Array.isArray(data.diagnostics)) details.diagnostics = data.diagnostics.slice(0, 50);
+  }
   const upgrade = getUpgradeDetails(failure);
   if (upgrade) {
     const upgradeDetails: ErrorDetails = {

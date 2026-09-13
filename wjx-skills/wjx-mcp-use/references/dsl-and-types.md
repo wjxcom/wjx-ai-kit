@@ -18,7 +18,7 @@ DSL 是花括号文本，**不是** `序号. 标题[题型标记]` 那种旧文�
 
 - 第一行必须是 `wjx-dsl 1;`，可选 `xml version` / `xml encoding` 声明。
 - 根节点是 `questionnaire { ... };`；问卷标题用 `attr "Title" = "..."`。
-- 题目为 `question <type> { ... };`，内部用 `attr "Name" = "Value";` 和 `item { ... };` / `row { ... };` 子块。
+- 题目为 `question <type> { ... };`，内部用 `attr "Name" = "Value";` 和 `item { ... };` / `row { ... };` 子块。`gapfill` 标题使用 `___` 空位（客户端兼容归一化 `{_}`，但服务端原生解析格式是 `___`）。
 - 分页用 `page { ... };` 块，不是 `=== 分页 ===`。
 - 段落说明用 `question cut { ... };`，不会被静默过滤。
 - 字符串一律双引号，布尔/数字/编码也按字符串传输（`"true"` / `"1"`）。

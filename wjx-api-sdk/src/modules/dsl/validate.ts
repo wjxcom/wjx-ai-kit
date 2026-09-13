@@ -135,6 +135,69 @@ function validateFileUploadMaxSizes(value: string, diagnostics: WjxDslDiagnostic
   }
 }
 
+function countTopLevelBlocks(body: string, names: string[]): number {
+  const masked = maskDslComments(body);
+  const wanted = new Set(names.map((name) => name.toLowerCase()));
+  let depth = 0;
+  let count = 0;
+  const token = /(?:node\s+"([A-Za-z_][A-Za-z0-9_]*)"|([A-Za-z_][A-Za-z0-9_]*))\s*\{/g;
+  let match: RegExpExecArray | null;
+  while ((match = token.exec(masked)) !== null) {
+    const name = (match[1] ?? match[2]).toLowerCase();
+    if (depth === 0 && wanted.has(name)) count += 1;
+    const open = masked.indexOf("{", match.index);
+    const close = matchingBrace(masked, open);
+    if (close >= 0) token.lastIndex = Math.max(token.lastIndex, close + 1);
+  }
+  return count;
+}
+
+function validateQuestionSemantics(value: string, diagnostics: WjxDslDiagnostic[]): void {
+  const masked = maskDslComments(value);
+  const pattern = /\bquestion\s+([A-Za-z_][A-Za-z0-9_]*)\s*\{|\bnode\s+"Question"\s*\{/gi;
+  let match: RegExpExecArray | null;
+  while ((match = pattern.exec(masked)) !== null) {
+    const open = masked.indexOf("{", match.index);
+    const close = matchingBrace(masked, open);
+    if (open < 0 || close < 0) continue;
+    const body = value.slice(open + 1, close);
+    const type = (match[1] ?? topLevelAttribute(body, "Type") ?? "").trim().toLowerCase();
+    const items = countTopLevelBlocks(body, ["item"]);
+    const rows = countTopLevelBlocks(body, ["row"]);
+    const columns = countTopLevelBlocks(body, ["column"]);
+    const referTopic = Number(topLevelAttribute(body, "ReferTopic"));
+    const reference = Number.isInteger(referTopic) && referTopic > 0;
+    if (["radio", "radio_down", "check"].includes(type) && items === 0 && !reference) diagnostics.push(diagnostic("DSL_QUESTION_SHAPE", `题型 ${type} 至少需要一个 Item。`));
+    if (type === "gapfill") {
+      const count = Number(topLevelAttribute(body, "GapCount"));
+      const titleCount = (topLevelAttribute(body, "Title")?.match(/___/g) ?? []).length;
+      if (!Number.isSafeInteger(count) || count <= 0) diagnostics.push(diagnostic("DSL_GAP_COUNT", "gapfill 的 GapCount 必须存在且为正整数。"));
+      else if (rows > 0 && rows !== count) diagnostics.push(diagnostic("DSL_QUESTION_SHAPE", "gapfill 的 ItemRow 数量必须与 GapCount 一致。"));
+      else if (rows > 0 && titleCount === 0) diagnostics.push(diagnostic("DSL_QUESTION_SHAPE", "gapfill 标题必须使用 ___ 空位标记。"));
+      else if (rows === 0 && titleCount !== count) diagnostics.push(diagnostic("DSL_QUESTION_SHAPE", "gapfill 标题中的 ___ 数量必须与 GapCount 一致。"));
+    }
+    if (type === "matrix") {
+      const mode = Number(topLevelAttribute(body, "Mode"));
+      if ([301, 302, 303].includes(mode) && columns === 0) diagnostics.push(diagnostic("DSL_MATRIX_SHAPE", `matrix Mode=${mode} 至少需要一个 ItemColumn。`));
+      if ([201, 202, 203, 204, 301, 302, 303].includes(mode) && rows === 0 && !reference) diagnostics.push(diagnostic("DSL_MATRIX_SHAPE", `matrix Mode=${mode} 至少需要一个 ItemRow。`));
+      if ([101, 102, 103, 2, 3, 6, 7, 303].includes(mode) && items === 0) diagnostics.push(diagnostic("DSL_MATRIX_SHAPE", `matrix Mode=${mode} 至少需要一个 Item。`));
+      if (mode === 301) {
+        const min = Number(topLevelAttribute(body, "MinValue"));
+        const max = Number(topLevelAttribute(body, "MaxValue"));
+        if (!Number.isSafeInteger(min) || !Number.isSafeInteger(max) || min < 0 || min >= max) diagnostics.push(diagnostic("DSL_MATRIX_RANGE", "表格数值必须显式满足 0 <= MinValue < MaxValue。"));
+      }
+      const verify = (topLevelAttribute(body, "Verify") ?? "").trim().toLowerCase();
+      if (mode === 302 && verify === "conjoint") {
+        const taskCount = Number(topLevelAttribute(body, "ConjointTaskCount"));
+        const taskLength = Number(topLevelAttribute(body, "ConjointTaskLength"));
+        if (!Number.isSafeInteger(taskCount) || taskCount <= 0) diagnostics.push(diagnostic("DSL_CONJOINT_TASK", "联合分析必须设置正整数 ConjointTaskCount。"));
+        if (!Number.isSafeInteger(taskLength) || taskLength <= 0) diagnostics.push(diagnostic("DSL_CONJOINT_TASK", "联合分析必须设置正整数 ConjointTaskLength。"));
+        if (columns < 3) diagnostics.push(diagnostic("DSL_CONJOINT_SHAPE", "联合分析至少需要两个属性列和一个是否选中列。"));
+      }
+    }
+  }
+}
+
 /** Lightweight protocol checks. Semantic validation remains authoritative on the server. */
 export function validateWjxDsl(
   value: unknown,
@@ -172,11 +235,14 @@ export function validateWjxDsl(
   if (quote) diagnostics.push(diagnostic("DSL_STRING", "DSL 包含未闭合字符串"));
   if (depth !== 0) diagnostics.push(diagnostic("DSL_BRACES", "DSL 花括号未配对"));
   validateFileUploadMaxSizes(value, diagnostics);
+  validateQuestionSemantics(value, diagnostics);
   return diagnostics.slice(0, options.maxDiagnostics ?? 100);
 }
 
 export function normalizeWjxDsl(value: string): string {
-  return value.replace(/^\uFEFF/, "").replace(/\r\n?/g, "\n");
+  // The legacy editor's gap-fill parser recognizes three underscores. Accept
+  // the author-friendly `{_}` spelling and normalize it before transport.
+  return value.replace(/^\uFEFF/, "").replace(/\r\n?/g, "\n").replace(/\{_\}/g, "___");
 }
 
 export function generateWjxDsl(value: string, options?: WjxDslValidationOptions): WjxDslGenerationResult {

@@ -26,6 +26,20 @@ test("generateWjxDsl validates and normalizes AI-generated DSL", () => {
   assert.equal(result.diagnostics.length, 0);
 });
 
+test("generateWjxDsl normalizes legacy gap-fill markers and catches backend shape rules", () => {
+  const normalized = generateWjxDsl('wjx-dsl 1; questionnaire { question gapfill { attr "Topic" = "1"; attr "Title" = "A {_} B {_}"; attr "GapCount" = "2"; row { }; row { }; }; };');
+  assert.equal(normalized.valid, true);
+  assert.match(normalized.dsl, /A ___ B ___/);
+
+  const tableNumber = generateWjxDsl('wjx-dsl 1; questionnaire { question matrix { attr "Topic" = "1"; attr "Mode" = "301"; row { }; column { }; }; };');
+  assert.equal(tableNumber.valid, false);
+  assert.equal(tableNumber.diagnostics.some((item) => item.code === "DSL_MATRIX_RANGE"), true);
+
+  const conjoint = generateWjxDsl('wjx-dsl 1; questionnaire { node "Question" { attr "Type" = "matrix"; attr "Topic" = "1"; attr "Mode" = "302"; attr "Verify" = "conjoint"; }; };');
+  assert.equal(conjoint.valid, false);
+  assert.equal(conjoint.diagnostics.some((item) => item.code === "DSL_CONJOINT_TASK"), true);
+});
+
 test("generateWjxDsl validates file upload MaxSize before transport", () => {
   const valid = `wjx-dsl 1; questionnaire { node "Question" { attr "Type" = "fileupload"; attr "Topic" = "1"; attr "MaxSize" = "2048000"; }; };`;
   assert.equal(generateWjxDsl(valid).valid, true);
