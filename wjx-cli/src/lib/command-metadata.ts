@@ -99,7 +99,7 @@ const metadata: Record<string, CommandMetadata> = {
   "analytics.compare": { path: "analytics.compare", risk: "read", identities: ["user", "bot"], targetFields: [], httpRetryable: false, idempotent: true },
   "analytics.decode-push": { path: "analytics.decode-push", risk: "read", identities: ["user", "bot"], targetFields: [], httpRetryable: false, idempotent: true },
   "sso.subaccount-url": { path: "sso.subaccount-url", risk: "read", identities: ["user", "bot"], targetFields: ["subuser"] },
-  "sso.user-system-url": { path: "sso.user-system-url", risk: "read", identities: ["user", "bot"], targetFields: ["sysid", "username"] },
+  "sso.user-system-url": { path: "sso.user-system-url", risk: "read", identities: ["user", "bot"], targetFields: ["system_id", "u"] },
   "sso.partner-url": { path: "sso.partner-url", risk: "read", identities: ["user", "bot"], targetFields: ["username"] },
   "completion.bash": { path: "completion.bash", risk: "read", identities: ["user", "bot"], targetFields: [] },
   "completion.zsh": { path: "completion.zsh", risk: "read", identities: ["user", "bot"], targetFields: [] },
@@ -116,6 +116,8 @@ const metadata: Record<string, CommandMetadata> = {
   "update": { path: "update", risk: "write", identities: ["user"], targetFields: [] },
   "diagnostics.whoami": { path: "diagnostics.whoami", risk: "read", identities: ["user", "bot"], targetFields: [] },
   "diagnostics.doctor": { path: "diagnostics.doctor", risk: "read", identities: ["user", "bot"], targetFields: [] },
+  "whoami": { path: "whoami", risk: "read", identities: ["user", "bot"], targetFields: [] },
+  "doctor": { path: "doctor", risk: "read", identities: ["user", "bot"], targetFields: [] },
 };
 
 export const COMMAND_METADATA: Readonly<Record<string, CommandMetadata>> = Object.freeze(metadata);

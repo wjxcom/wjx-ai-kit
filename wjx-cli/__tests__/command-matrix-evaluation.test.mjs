@@ -821,6 +821,62 @@ describe("complete CLI command contract matrix", () => {
     }
   });
 
+  test("update installs the exact version returned by npm latest dist-tag", async () => {
+    const bin = await mkdtemp(resolve(process.env.TEMP ?? ".", "wjx-update-latest-query-bin-"));
+    const calls = resolve(bin, "npm-calls.log");
+    const currentParts = CLI_VERSION.split(".").map(Number);
+    const latestVersion = `${currentParts[0]}.${currentParts[1]}.${currentParts[2] + 1}`;
+    try {
+      // Keep the fixture sensitive to both the registry query and the exact
+      // version passed to install. A mutable @latest install can race with a
+      // dist-tag change and must fail this test.
+      await writeFile(resolve(bin, "npm.cmd"), `@echo off\r\n>>"${calls}" echo %*\r\nif "%~1"=="view" (echo "${latestVersion}" & exit /b 0)\r\nif "%~1"=="install" (if "%~2"=="wjx-cli@${latestVersion}" exit /b 0\r\n  exit /b 1\r\n)\r\nif "%~1"=="list" (echo {"dependencies":{"wjx-cli":{"version":"${latestVersion}"}}} & exit /b 0)\r\nexit /b 1\r\n`, "utf8");
+      const result = await runCli(["update", "--silent"], { env: { PATH: `${bin};${process.env.PATH ?? ""}` } });
+      assert.equal(result.exitCode, 0, result.stderr);
+      const envelope = JSON.parse(result.stdout);
+      assert.equal(envelope.ok, true);
+      assert.equal(envelope.data.status, "updated");
+      assert.equal(envelope.data.newVersion, latestVersion);
+
+      const callsText = await readFile(calls, "utf8");
+      assert.match(callsText, new RegExp(`view wjx-cli dist-tags.latest --json`));
+      assert.match(callsText, new RegExp(`install wjx-cli@${latestVersion} --global`));
+      assert.match(callsText, new RegExp(`list wjx-cli --global --depth=0 --json`));
+    } finally {
+      await rm(bin, { recursive: true, force: true });
+    }
+  });
+
+  test("update does not report success from a local fallback after global install fails", async () => {
+    const bin = await mkdtemp(resolve(process.env.TEMP ?? ".", "wjx-update-global-fallback-bin-"));
+    const calls = resolve(bin, "npm-calls.log");
+    const firstInstall = resolve(bin, "first-install");
+    const currentParts = CLI_VERSION.split(".").map(Number);
+    const latestVersion = `${currentParts[0]}.${currentParts[1]}.${currentParts[2] + 1}`;
+    try {
+      await writeFile(resolve(bin, "npm.cmd"), `@echo off\r\n>>"${calls}" echo %*\r\nif "%~1"=="view" (echo "${latestVersion}" & exit /b 0)\r\nif "%~1"=="install" (\r\n  if exist "${firstInstall}" exit /b 0\r\n  echo first > "${firstInstall}"\r\n  exit /b 1\r\n)\r\nif "%~1"=="list" (echo {"version":"${latestVersion}"} & exit /b 0)\r\nexit /b 1\r\n`, "utf8");
+      const result = await runCli(["update", "--silent"], { env: { PATH: `${bin};${process.env.PATH ?? ""}` } });
+      assert.equal(result.exitCode, 1, result.stdout);
+      assert.equal(result.stdout.trim(), "");
+      const error = parseProblem(result);
+      assert.equal(error.error.code, "API_ERROR");
+      assert.match(error.error.message, /全局|更新失败|install/);
+      const callsText = await readFile(calls, "utf8");
+      assert.equal((callsText.match(/^install /gm) ?? []).length, 1, callsText);
+    } finally {
+      await rm(bin, { recursive: true, force: true });
+    }
+  });
+
+  test("strict integer options reject non-decimal and unsafe values", async () => {
+    for (const value of ["1e3", "0x10", "9007199254740993", " 42 "]) {
+      const result = await runCli(["survey", "get", "--vid", value, "--dry-run"]);
+      assert.equal(result.exitCode, 2, `${value}: ${result.stdout}`);
+      assert.equal(result.stdout.trim(), "");
+      assert.equal(parseProblem(result).error.code, "INPUT_ERROR");
+    }
+  });
+
   test("update fails closed when npm reports an older installed version after a successful install", async () => {
     const bin = await mkdtemp(resolve(process.env.TEMP ?? ".", "wjx-update-verify-bin-"));
     const currentParts = CLI_VERSION.split(".").map(Number);
@@ -1240,6 +1296,22 @@ describe("complete CLI command contract matrix", () => {
     const envelope = parseSuccess(result);
     assert.equal(envelope.data.kind, "dry-run");
     assert.deepEqual(envelope.data.plans, []);
+  });
+
+  test("completion install keeps success diagnostics in the JSON result", async () => {
+    const home = await mkdtemp(resolve(process.env.TEMP ?? ".", "wjx-completion-home-"));
+    try {
+      const result = await runCli(["completion", "install"], {
+        env: { SHELL: "/bin/bash", HOME: home, USERPROFILE: home },
+      });
+      assert.equal(result.exitCode, 0, result.stderr);
+      assert.equal(result.stderr.trim(), "");
+      const envelope = parseSuccess(result);
+      assert.equal(envelope.data.status, "installed");
+      assert.equal(envelope.data.profilePath, resolve(home, ".bashrc"));
+    } finally {
+      await rm(home, { recursive: true, force: true });
+    }
   });
 
   test("update dry-run does not invoke npm", async () => {

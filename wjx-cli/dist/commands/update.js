@@ -40,7 +40,7 @@ function runNpm(args, options = {}) {
 function readLatestVersion() {
     let raw;
     try {
-        raw = String(runNpm(["view", "wjx-cli@latest", "version", "--json"], {
+        raw = String(runNpm(["view", "wjx-cli", "dist-tags.latest", "--json"], {
             encoding: "utf8",
             stdio: ["ignore", "pipe", "pipe"],
         })).trim();
@@ -109,10 +109,10 @@ function readInstalledVersion(global) {
     }
     return candidate.trim();
 }
-function installLatest(global) {
+function installLatest(version, global) {
     runNpm(global
-        ? ["install", "wjx-cli@latest", "--global"]
-        : ["install", "wjx-cli@latest"], { stdio: "pipe" });
+        ? ["install", `wjx-cli@${version}`, "--global"]
+        : ["install", `wjx-cli@${version}`], { stdio: "pipe" });
 }
 export function registerUpdateCommands(program) {
     program
@@ -136,22 +136,14 @@ export function registerUpdateCommands(program) {
                     latestVersion,
                 };
             }
-            let globalError;
             let installedVersion;
             try {
-                installLatest(true);
+                installLatest(latestVersion, true);
                 installedVersion = readInstalledVersion(true);
             }
             catch (e) {
-                globalError = e instanceof Error ? e.message : String(e);
-                try {
-                    installLatest(false);
-                    installedVersion = readInstalledVersion(false);
-                }
-                catch (err) {
-                    const msg = `更新失败: ${err instanceof Error ? err.message : String(err)}`;
-                    throw new CliError("API_ERROR", msg, globalError ? { globalError } : undefined);
-                }
+                const msg = `全局更新失败: ${e instanceof Error ? e.message : String(e)}`;
+                throw new CliError("API_ERROR", msg);
             }
             if (compareVersions(installedVersion, latestVersion) < 0) {
                 throw new CliError("API_ERROR", `更新失败: registry 要求 v${latestVersion}，但实际安装版本为 v${installedVersion}`, { installed_version: installedVersion, latest_version: latestVersion });

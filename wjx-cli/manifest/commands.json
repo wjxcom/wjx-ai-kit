@@ -1322,8 +1322,8 @@
           "bot"
         ],
         "targetFields": [
-          "sysid",
-          "username"
+          "system_id",
+          "u"
         ]
       }
     },
