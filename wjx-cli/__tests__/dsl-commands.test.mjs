@@ -22,3 +22,10 @@ test("dsl generate validates AI-generated DSL without authentication", async () 
   assert.match(stdout, /wjx-dsl 1/);
   assert.match(stdout, /questionnaire/);
 });
+
+test("dsl create and update expose the asset manifest pipeline", async () => {
+  const create = await run(process.execPath, [CLI, "dsl", "create", "--help"], { env: ENV, encoding: "utf8" });
+  const update = await run(process.execPath, [CLI, "dsl", "update", "--help"], { env: ENV, encoding: "utf8" });
+  assert.match(create.stdout, /--assets <path>/);
+  assert.match(update.stdout, /--assets <path>/);
+});

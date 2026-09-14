@@ -1,4 +1,5 @@
 import type { SurveyDetail } from "../survey/types.js";
+import type { FetchLike, WjxCredentials } from "../../core/types.js";
 
 export type WjxDslStatus =
   | "Success"
@@ -26,6 +27,15 @@ export interface WjxDslOperationData {
   diagnostics?: WjxDslDiagnostic[];
   diagnosticCount?: number;
   diagnosticsTruncated?: boolean;
+  hasChanges?: boolean;
+  hasBreakingChanges?: boolean;
+  noChange?: boolean;
+  changeCount?: number;
+  changesTruncated?: boolean;
+  changes?: unknown[];
+  indexChangeCount?: number;
+  indexChangesTruncated?: boolean;
+  indexChanges?: unknown[];
 }
 
 export interface WjxDslLimits {
@@ -96,4 +106,23 @@ export interface WjxDslGenerationResult {
   diagnostics: WjxDslDiagnostic[];
   valid: boolean;
   byteLength: number;
+}
+
+export interface VerifyWjxDslWriteInput {
+  vid: string | number;
+  expectedDsl: string;
+  linkHint?: string;
+  requireLink?: boolean;
+  credentials?: WjxCredentials;
+  fetchImpl?: FetchLike;
+}
+
+export interface VerifyWjxDslWriteResult {
+  vid: string | number;
+  verification: { structure: boolean; status: boolean; link: boolean };
+  outcome: "verified" | "unknown";
+  actualQuestionCount?: number;
+  warnings: string[];
+  status?: string;
+  sid?: string;
 }

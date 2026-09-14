@@ -254,7 +254,7 @@ node "Question" {
 
 DSL 创建/修改作用于**普通问卷**，不限定「AI 主页」等特殊类型：创建默认生成调查类型（用 `--type` 指定其它类型），修改针对一个你有权限的既有传统 `vid`。`vid` 不存在或无权限时后端返回 `NotFound`/`Forbidden`（如「问卷不存在」），而非题型限制错误。DSL 与 JSONL（`survey create`）是两条相互独立的创建链路，互不转换。
 
-修改不使用增量 Patch DSL。即使只修改一题，也提交修改后的完整问卷 DSL，由后端 Diff 判断实际变化。更新不使用 CAS、If-Match、receipt 或幂等参数；`allow_breaking_changes` 仅用于显式批准 breaking change，已有答卷时仍遵循后端限制。
+修改不使用增量 Patch DSL。即使只修改一题，也提交修改后的完整问卷 DSL，由后端 Diff 判断实际变化。更新不使用 CAS、If-Match、receipt 或幂等参数；`allow_breaking_changes` 仅用于显式批准 breaking change，已有答卷时仍遵循后端限制。CLI/MCP 写入后会尝试回读完整 DSL、身份、状态和链接；回读失败时结果标记为未知，不能仅凭写接口响应宣称已完成。
 
 ## CLI 示例
 

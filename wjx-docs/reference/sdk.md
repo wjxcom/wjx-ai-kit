@@ -19,7 +19,7 @@ fn(input, credentials?, fetchImpl?, requestOptions?)
 | contacts | `queryContacts`, `addContacts` |
 | user system（兼容/已过时） | `addParticipants`, `modifyParticipants`, `deleteParticipants`, `bindActivity`, `querySurveyBinding`, `queryUserSurveys`；仅用于已有系统 |
 | SSO | `buildSsoSubaccountUrl`, `buildSsoUserSystemUrl`, `buildSurveyUrl`, `buildPreviewUrl` |
-| XML DSL | `queryWjxDsl`, `createSurveyByWjxDsl`, `updateWjxDsl`, `validateWjxDsl` |
+| XML DSL | `queryWjxDsl`, `createSurveyByWjxDsl`, `updateWjxDsl`, `verifyWjxDslWrite`, `validateWjxDsl` |
 
 ## 凭据优先级
 
@@ -48,7 +48,7 @@ await createSurveyByJson(input, credentials, fetch, {
 });
 ```
 
-问卷创建支持 `createSurveyByJson`（JSONL）和 `createSurveyByWjxDsl`（完整 XML DSL）。修改使用 `updateWjxDsl`，查询使用 `queryWjxDsl`；SDK 只做 DSL 协议校验、规范化和传输。
+问卷创建支持 `createSurveyByJson`（JSONL）和 `createSurveyByWjxDsl`（完整 XML DSL）。修改使用 `updateWjxDsl`，查询使用 `queryWjxDsl`；`verifyWjxDslWrite` 用于写入后的 DSL、身份、状态和链接回读验证。SDK 仍不把结构化业务对象转换成 DSL，题型语义由服务端最终判断。
 
 创建 `atype` 支持 `1/2/3/4/5/6/7/9/10/11`；`8` 用户体系不能新建。
 

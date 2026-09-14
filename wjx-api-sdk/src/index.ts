@@ -115,6 +115,7 @@ export {
   createSurveyByWjxDsl,
   updateWjxDsl,
 } from "./modules/dsl/client.js";
+export { verifyWjxDslWrite } from "./modules/dsl/verify.js";
 export {
   generateWjxDsl,
   normalizeWjxDsl,
@@ -135,6 +136,8 @@ export type {
   WjxDslFailureData,
   WjxDslValidationOptions,
   WjxDslGenerationResult,
+  VerifyWjxDslWriteInput,
+  VerifyWjxDslWriteResult,
 } from "./modules/dsl/types.js";
 
 // AI homepage module

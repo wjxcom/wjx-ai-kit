@@ -56,7 +56,7 @@ questionnaire {
     考试题: "原题型 + IsCeShi=\"true\" + CeShiValue=\"<分值>\"",
   },
   advanced_types_caveat:
-    "标识不在 <Question> 属性上的题型（热力图、折叠栏目、轮播图、知情同意书、品牌漏斗、部门/其它信息，以及 langv/clock 等渲染由后端决定的 Verify）不要用 raw node 硬凑，改用编辑器或 JSONL 创建（create_survey_by_json 传中文 qtype）。",
+    "标识不在 <Question> 属性上的题型（热力图、折叠栏目、轮播图、知情同意书、品牌漏斗、部门/其它信息，以及 langv/clock 等渲染由后端决定的 Verify）不能用 raw node 宣称完整支持；如需创建仅可提交明确标注为 scaffold 的占位框架，最终素材和语义配置必须在编辑器或 JSONL 流程中完成。",
   question_examples: {
     check: `question check {
   attr "Topic" = "2";

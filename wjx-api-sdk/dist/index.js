@@ -7,6 +7,7 @@ export { extractJsonlMetadata, normalizeJsonl, MAX_JSONL_SIZE, canonicalizeJsonl
 export { getJsonlQuestionTypeCode, extractJsonlQuestionTypeExpectations, compareJsonlQuestionTypes, filterJsonlVerificationQuestions, } from "./modules/survey/qtype-mapping.js";
 // WJX XML DSL module
 export { queryWjxDsl, createSurveyByWjxDsl, updateWjxDsl, } from "./modules/dsl/client.js";
+export { verifyWjxDslWrite } from "./modules/dsl/verify.js";
 export { generateWjxDsl, normalizeWjxDsl, validateWjxDsl, MAX_WJX_DSL_BYTES, } from "./modules/dsl/validate.js";
 // AI homepage module
 export { createAiPage, updateAiPage } from "./modules/ai-page/client.js";

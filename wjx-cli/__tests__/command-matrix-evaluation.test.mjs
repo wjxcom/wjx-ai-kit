@@ -66,9 +66,9 @@ const DSL = 'wjx-dsl 1; questionnaire { attr "Title" = "矩阵 DSL"; };';
  * deliberately exercise the same flag names that a Skill/Agent would emit.
  */
 const REMOTE_CASES = [
-  { id: "survey.dsl.query", path: ["dsl", "query"], action: Action.QUERY_WJX_DSL, required: ["--vid"], args: ["--vid", "42"], stdin: { vid: "42" } },
-  { id: "survey.dsl.create", path: ["dsl", "create"], action: Action.CREATE_SURVEY_BY_WJX_DSL, required: ["--dsl"], args: ["--dsl", DSL], stdin: { dsl: DSL } },
-  { id: "survey.dsl.update", path: ["dsl", "update"], action: Action.UPDATE_WJX_DSL, highRisk: true, required: ["--vid", "--dsl"], args: ["--vid", "42", "--dsl", DSL], stdin: { vid: "42", dsl: DSL } },
+  { id: "survey.dsl.query", path: ["dsl", "query"], action: Action.QUERY_WJX_DSL, required: ["--vid"], args: ["--vid", "42", "--get-exts", "--get-setting", "--get-page-cut", "--get-tags", "--showtitle"], stdin: { vid: "42", get_exts: true, get_setting: true, get_page_cut: true, get_tags: true, showtitle: true } },
+  { id: "survey.dsl.create", path: ["dsl", "create"], action: Action.CREATE_SURVEY_BY_WJX_DSL, required: ["--dsl"], args: ["--dsl", DSL, "--assets", "assets.json"], stdin: { dsl: DSL, assets: "assets.json" } },
+  { id: "survey.dsl.update", path: ["dsl", "update"], action: Action.UPDATE_WJX_DSL, highRisk: true, required: ["--vid", "--dsl"], args: ["--vid", "42", "--dsl", DSL, "--assets", "assets.json"], stdin: { vid: "42", dsl: DSL, assets: "assets.json" } },
   { id: "survey.list", path: ["survey", "list"], action: Action.LIST_SURVEYS, args: ["--page", "1", "--page_size", "10"], stdin: {} },
   { id: "survey.get", path: ["survey", "get"], action: Action.GET_SURVEY, required: ["--vid"], args: ["--vid", "42"], stdin: { vid: 42 } },
   { id: "survey.create", path: ["survey", "create"], action: Action.CREATE_SURVEY_BY_JSON, required: ["--jsonl"], args: ["--jsonl", JSONL], stdin: { jsonl: JSONL } },

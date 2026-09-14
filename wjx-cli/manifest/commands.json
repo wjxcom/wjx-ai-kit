@@ -1463,7 +1463,8 @@
           "user",
           "bot"
         ],
-        "targetFields": []
+        "targetFields": [],
+        "postVerify": true
       }
     },
     {

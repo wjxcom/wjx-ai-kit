@@ -22,12 +22,12 @@ const USER_TARGETS = ["vid", "jid", "username", "uids", "subuser", "sysid", "typ
 const metadata: Record<string, CommandMetadata> = {
   "dsl.query": { path: "dsl.query", risk: "read", identities: ["user", "bot"], targetFields: ["vid"], httpRetryable: true, idempotent: true },
   "dsl.generate": { path: "dsl.generate", risk: "read", identities: ["user", "bot"], targetFields: [] },
-  "dsl.create": { path: "dsl.create", risk: "write", identities: ["user", "bot"], targetFields: [] },
+  "dsl.create": { path: "dsl.create", risk: "write", identities: ["user", "bot"], targetFields: [], postVerify: true },
   "dsl.update": { path: "dsl.update", risk: "high-risk-write", identities: ["user", "bot"], targetFields: ["vid"], preRead: true, postVerify: true },
   // Catalog IDs retain the historical survey.dsl namespace while command
   // paths use the public dsl.* spelling.
   "survey.dsl.query": { path: "dsl.query", risk: "read", identities: ["user", "bot"], targetFields: ["vid"], httpRetryable: true, idempotent: true },
-  "survey.dsl.create": { path: "dsl.create", risk: "write", identities: ["user", "bot"], targetFields: [] },
+  "survey.dsl.create": { path: "dsl.create", risk: "write", identities: ["user", "bot"], targetFields: [], postVerify: true },
   "survey.dsl.update": { path: "dsl.update", risk: "high-risk-write", identities: ["user", "bot"], targetFields: ["vid"], preRead: true, postVerify: true },
   "survey.list": { path: "survey.list", risk: "read", identities: ["user", "bot"], targetFields: [], httpRetryable: true, idempotent: true },
   "survey.get": { path: "survey.get", risk: "read", identities: ["user", "bot"], targetFields: ["vid"], httpRetryable: true, idempotent: true },

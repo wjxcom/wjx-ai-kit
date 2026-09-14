@@ -5,11 +5,13 @@ import {
   generateWjxDsl,
   queryWjxDsl,
   updateWjxDsl,
+  verifyWjxDslWrite,
 } from "wjx-api-sdk";
 import { getMerged, requireField, strictInt } from "../lib/command-helpers.js";
 import { CliError, handleError } from "../lib/errors.js";
 import { formatOutput } from "../lib/output.js";
 import { executeRuntimeAction } from "../lib/runtime/executor.js";
+import { materializeDslAssets } from "../lib/dsl-assets.js";
 
 const MAX_DSL_BYTES = 4 * 1024 * 1024;
 function stdinData(command: Command): Record<string, unknown> | undefined {
@@ -62,6 +64,7 @@ function resolveDsl(command: Command, actionOptions?: unknown): string {
 }
 
 function requireTraditionalVid(value: unknown): string {
+  if (typeof value === "number" && Number.isSafeInteger(value) && value > 0) return String(value);
   if (typeof value !== "string" || !value.trim() || value.trim() !== value || /[\u0000-\u001f\u007f]/.test(value)) {
     throw new CliError("INPUT_ERROR", "--vid 必须是有效的传统问卷 vid");
   }
@@ -75,10 +78,24 @@ function addDslInput(command: Command): Command {
 export function registerDslCommands(program: Command): void {
   const dsl = program.command("dsl").description("使用 WJX XML DSL 查询、校验、创建和修改问卷");
 
-  dsl.command("query").description("查询传统 vid 问卷并返回 DSL").option("--vid <vid>", "传统编码问卷 vid").action(async (_options, command) => {
+  dsl.command("query").description("查询传统 vid 问卷并返回 DSL")
+    .option("--vid <vid>", "传统编码问卷 vid")
+    .option("--get-exts", "读取文件扩展名配置")
+    .option("--get-setting", "读取问卷设置")
+    .option("--get-page-cut", "读取分页和段落结构")
+    .option("--get-tags", "读取题目标签")
+    .option("--showtitle", "读取标题字段")
+    .action(async (_options, command) => {
     const merged = getMerged(command);
     requireField(merged, "vid");
-    await executeRuntimeAction(program, command, queryWjxDsl, (values) => ({ vid: requireTraditionalVid(values.vid) }));
+    await executeRuntimeAction(program, command, queryWjxDsl, (values) => ({
+      vid: requireTraditionalVid(values.vid),
+      ...(merged.get_exts === undefined ? {} : { get_exts: merged.get_exts as boolean }),
+      ...(merged.get_setting === undefined ? {} : { get_setting: merged.get_setting as boolean }),
+      ...(merged.get_page_cut === undefined ? {} : { get_page_cut: merged.get_page_cut as boolean }),
+      ...(merged.get_tags === undefined ? {} : { get_tags: merged.get_tags as boolean }),
+      ...(merged.showtitle === undefined ? {} : { showtitle: merged.showtitle as boolean }),
+    }));
   });
 
   addDslInput(dsl.command("generate").description("校验并规范化 AI 生成的 DSL").option("--out <path>", "将规范化 DSL 写入文件")).action(async (_options, command) => {
@@ -93,23 +110,67 @@ export function registerDslCommands(program: Command): void {
     } catch (error) { handleError(error); }
   });
 
-  addDslInput(dsl.command("create").description("提交 AI 生成的 WJX XML DSL 创建问卷").option("--type <n>", "问卷类型", strictInt).option("--publish", "创建后发布").option("--compress-img", "压缩图片")).action(async (_options, command) => {
+  addDslInput(dsl.command("create").description("提交 AI 生成的 WJX XML DSL 创建问卷").option("--type <n>", "问卷类型", strictInt).option("--publish", "创建后发布").option("--compress-img", "压缩图片").option("--assets <path>", "素材清单 JSON；上传并替换 {{asset:id}} 占位符")).action(async (_options, command) => {
     const merged = getMerged(command);
     await executeRuntimeAction(program, command, createSurveyByWjxDsl, () => ({
       dsl: resolveDsl(command, _options),
       ...(merged.type === undefined ? {} : { atype: merged.type as number }),
       ...(merged.publish === undefined ? {} : { publish: merged.publish as boolean }),
       ...((merged.compress_img ?? merged.compressImg) === undefined ? {} : { compress_img: (merged.compress_img ?? merged.compressImg) as boolean }),
-    }));
+    }), {
+      postVerify: async (result, input, credentials) => {
+        const data = result.result === true && result.data && typeof result.data === "object"
+          ? result.data as Record<string, unknown>
+          : {};
+        const rawVid = data.vid;
+        const resolvedVid = typeof rawVid === "number" || typeof rawVid === "string" ? rawVid : undefined;
+        if (resolvedVid === undefined) {
+          return { verification: { structure: false, status: false, link: false }, outcome: "unknown", warnings: ["DSL create response did not include a verifiable vid"] };
+        }
+        try {
+          const linkHint = [data.fill_url, data.fillUrl, data.pc_path, data.pcPath, data.mobile_path, data.mobilePath, data.sid]
+            .find((value): value is string => typeof value === "string" && value.trim().length > 0);
+          return await verifyWjxDslWrite({ vid: resolvedVid, expectedDsl: String(input.dsl), ...(linkHint ? { linkHint } : {}), credentials });
+        } catch (error) {
+          return { verification: { structure: false, status: false, link: false }, outcome: "unknown", warnings: ["DSL create read-back failed", error instanceof Error ? error.message : String(error)] };
+        }
+      },
+      transformInput: async (input, credentials) => {
+        if (typeof merged.assets !== "string" || !merged.assets.trim()) return input;
+        const materialized = await materializeDslAssets(String(input.dsl), merged.assets, credentials);
+        return { ...input, dsl: materialized.dsl };
+      },
+    });
   });
 
-  addDslInput(dsl.command("update").description("提交 AI 生成的完整 DSL 修改问卷").option("--vid <vid>", "传统编码问卷 vid").option("--allow-breaking-changes", "显式允许 breaking change（仅无答卷时有效）")).action(async (_options, command) => {
+  addDslInput(dsl.command("update").description("提交 AI 生成的完整 DSL 修改问卷").option("--vid <vid>", "传统编码问卷 vid").option("--allow-breaking-changes", "显式允许 breaking change（仅无答卷时有效）").option("--assets <path>", "素材清单 JSON；上传并替换 {{asset:id}} 占位符")).action(async (_options, command) => {
     const merged = getMerged(command);
     requireField(merged, "vid");
     await executeRuntimeAction(program, command, updateWjxDsl, (values) => ({
       vid: requireTraditionalVid(merged.vid),
       dsl: resolveDsl(command, _options),
       ...((merged.allowBreakingChanges ?? merged.allow_breaking_changes) === true ? { allowBreakingChanges: true } : {}),
-    }));
+    }), {
+      preRead: async (input, credentials) => {
+        const current = await queryWjxDsl({ vid: input.vid as string, get_questions: true, get_items: true }, credentials);
+        if (current.result !== true) throw new CliError("API_ERROR", `无法读取问卷 ${String(input.vid)} 的当前 DSL，已停止更新`);
+        const data = current.data && typeof current.data === "object" ? current.data as unknown as Record<string, unknown> : {};
+        if (String(data.vid ?? input.vid) !== String(input.vid)) throw new CliError("API_ERROR", `问卷 ${String(input.vid)} 的读回身份不匹配，已停止更新`);
+        return data;
+      },
+      requiredVerification: ["structure", "status"],
+      postVerify: async (result, input, credentials) => {
+        try {
+          return await verifyWjxDslWrite({ vid: input.vid as string, expectedDsl: String(input.dsl), requireLink: false, credentials });
+        } catch (error) {
+          return { verification: { structure: false, status: false, link: true }, outcome: "unknown", warnings: ["DSL update read-back failed", error instanceof Error ? error.message : String(error)] };
+        }
+      },
+      transformInput: async (input, credentials) => {
+        if (typeof merged.assets !== "string" || !merged.assets.trim()) return input;
+        const materialized = await materializeDslAssets(String(input.dsl), merged.assets, credentials);
+        return { ...input, dsl: materialized.dsl };
+      },
+    });
   });
 }

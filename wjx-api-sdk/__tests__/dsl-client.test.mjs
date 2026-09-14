@@ -5,6 +5,7 @@ import {
   generateWjxDsl,
   queryWjxDsl,
   updateWjxDsl,
+  verifyWjxDslWrite,
 } from "../dist/index.js";
 
 const DSL = 'wjx-dsl 1; questionnaire { attr "Title" = "测试问卷"; };';
@@ -77,4 +78,24 @@ test("invalid DSL is rejected before a write request", async () => {
   await assert.rejects(() => createSurveyByWjxDsl({ dsl: "invalid" }, { apiKey: "key" }, fetchImpl), /wjx-dsl|questionnaire/);
   await assert.rejects(() => updateWjxDsl({ vid: "1", dsl: "invalid" }, { apiKey: "key" }, fetchImpl), /wjx-dsl|questionnaire/);
   assert.equal(called, false);
+});
+
+test("verifyWjxDslWrite reads back identity, DSL structure, status, and link", async () => {
+  const dsl = 'wjx-dsl 1; questionnaire { attr "Title" = "验证问卷"; question radio { attr "Topic" = "1"; attr "Title" = "题目"; item { attr "ItemTitle" = "是"; attr "ItemValue" = "1"; }; }; };';
+  const fetchImpl = async (_url, _init) => new Response(JSON.stringify({
+    result: true,
+    data: { vid: 42, dsl, status: 0, sid: "AbC123" },
+  }), { status: 200, headers: { "content-type": "application/json" } });
+  const verified = await verifyWjxDslWrite({ vid: 42, expectedDsl: dsl, credentials: { apiKey: "key", baseUrl: "https://example.test" }, fetchImpl });
+  assert.equal(verified.outcome, "verified");
+  assert.deepEqual(verified.verification, { structure: true, status: true, link: true });
+});
+
+test("local DSL validation normalizes aliases and rejects duplicate Topics", () => {
+  const duplicate = generateWjxDsl(`wjx-dsl 1; questionnaire {
+    question matrix_single { attr "Topic" = "1"; attr "Title" = "A"; row { }; item { }; };
+    question matrix_multi { attr "Topic" = "1"; attr "Title" = "B"; row { }; item { }; };
+  };`);
+  assert.equal(duplicate.valid, false);
+  assert.ok(duplicate.diagnostics.some((item) => item.code === "DSL_DUPLICATE_TOPIC"));
 });

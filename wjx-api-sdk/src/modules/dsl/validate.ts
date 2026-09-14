@@ -152,6 +152,58 @@ function countTopLevelBlocks(body: string, names: string[]): number {
   return count;
 }
 
+function normalizedQuestionType(type: string, body: string): { type: string; mode?: number; allowEmptyItems?: boolean; skipShape?: boolean } {
+  const normalized = type.trim().toLowerCase();
+  const aliases: Record<string, { type: string; mode?: number; allowEmptyItems?: boolean; skipShape?: boolean }> = {
+    dropdown: { type: "radio_down" }, select: { type: "radio_down" },
+    sort: { type: "check", mode: 1 }, ranking: { type: "check", mode: 1 },
+    scale: { type: "radio", mode: 101 }, rating: { type: "radio", mode: 101 },
+    true_false: { type: "radio" }, truefalse: { type: "radio" }, judgement: { type: "radio" }, panduan: { type: "radio" },
+    scenario: { type: "radio" }, qingjing: { type: "radio" }, commodity: { type: "check" }, shop: { type: "check" }, shelf: { type: "check" },
+    appointment: { type: "check" }, reservation: { type: "check" },
+    multi_level_dropdown: { type: "question" }, multilevel_dropdown: { type: "question" }, multilevel: { type: "question" },
+    signature: { type: "fileupload" }, drawing: { type: "fileupload" },
+    scoring_single: { type: "radio" }, score_single: { type: "radio" }, scoring_multi: { type: "check" }, score_multi: { type: "check" },
+    exam_multi_fill: { type: "gapfill" }, exam_cloze: { type: "gapfill" }, cloze: { type: "gapfill" },
+    conjoint: { type: "matrix", mode: 302, skipShape: true }, maxdiff: { type: "matrix", mode: 302, skipShape: true }, bws: { type: "matrix", mode: 302, skipShape: true },
+    circulate: { type: "matrix", mode: 302, skipShape: true }, kano: { type: "matrix", mode: 101, skipShape: true },
+    ai_grading: { type: "question" }, texthighlights: { type: "matrix", mode: 103, skipShape: true }, text_highlights: { type: "matrix", mode: 103, skipShape: true },
+    video: { type: "matrix", mode: 201, skipShape: true }, ocr: { type: "matrix", mode: 201, skipShape: true }, sus: { type: "matrix", mode: 101, skipShape: true },
+    bpto: { type: "matrix", mode: 302, skipShape: true }, price_breakpoint: { type: "matrix", mode: 101, skipShape: true }, price_break: { type: "matrix", mode: 101, skipShape: true },
+    classify: { type: "matrix", mode: 103, skipShape: true }, device: { type: "matrix", mode: 201, skipShape: true }, company: { type: "matrix", mode: 201, skipShape: true },
+    psm: { type: "matrix", mode: 202, skipShape: true }, level: { type: "matrix", mode: 103, skipShape: true }, test: { type: "matrix", mode: 302, skipShape: true },
+    ai_interview: { type: "matrix", mode: 201, skipShape: true }, citylevel: { type: "radio", allowEmptyItems: true, skipShape: true }, radio_cati: { type: "radio", allowEmptyItems: true, skipShape: true },
+    contacts_user: { type: "question" }, map: { type: "question" }, map_location: { type: "question" }, date: { type: "question" }, datetime: { type: "question" },
+    ai: { type: "question" }, ai_followup: { type: "question" }, ai_hci: { type: "question" }, ai_hci_process: { type: "question" }, store_select: { type: "question" }, shop_select: { type: "question" },
+    name: { type: "question" }, id_number: { type: "question" }, idcard: { type: "question" }, country_region: { type: "question" }, city_select: { type: "question" }, region: { type: "question" }, province_city: { type: "question" }, address_region: { type: "question" }, email: { type: "question" }, phone: { type: "question" }, mobile: { type: "question" }, university: { type: "question" }, password: { type: "question" },
+    matrix_single: { type: "matrix", mode: 103 }, matrix_multi: { type: "matrix", mode: 102 }, matrix_scale: { type: "matrix", mode: 101 }, matrix_fill: { type: "matrix", mode: 201 }, matrix_slider: { type: "matrix", mode: 202 }, matrix_numeric: { type: "matrix", mode: 301 }, table_numeric: { type: "matrix", mode: 301 }, table_fill: { type: "matrix", mode: 302 }, table_question: { type: "matrix", mode: 302 }, table_dropdown: { type: "matrix", mode: 303 }, table_down: { type: "matrix", mode: 303 }, table_combo: { type: "matrix", mode: 302 }, table_incremental: { type: "matrix", mode: 302 }, multi_file: { type: "matrix", mode: 203 }, multifile: { type: "matrix", mode: 203 }, multi_textarea: { type: "matrix", mode: 204 }, multi_question: { type: "matrix", mode: 204 }, multiquestion: { type: "matrix", mode: 204 },
+  };
+  const mapped = aliases[normalized];
+  if (mapped) return mapped;
+  const explicitMode = Number(topLevelAttribute(body, "Mode"));
+  return { type: normalized, ...(Number.isSafeInteger(explicitMode) ? { mode: explicitMode } : {}) };
+}
+
+function validateDuplicateTopics(value: string, diagnostics: WjxDslDiagnostic[]): void {
+  const masked = maskDslComments(value);
+  const pattern = /\bquestion\s+[A-Za-z_][A-Za-z0-9_]*\s*\{|\bnode\s+"Question"\s*\{/gi;
+  const topics = new Map<string, number>();
+  let match: RegExpExecArray | null;
+  while ((match = pattern.exec(masked)) !== null) {
+    const open = masked.indexOf("{", match.index);
+    const close = matchingBrace(masked, open);
+    if (open < 0 || close < 0) continue;
+    const body = value.slice(open + 1, close);
+    const topic = topLevelAttribute(body, "Topic");
+    if (topic === undefined || topic.trim() === "") continue;
+    const line = lineNumber(value, match.index);
+    const previous = topics.get(topic);
+    if (previous !== undefined) diagnostics.push(diagnostic("DSL_DUPLICATE_TOPIC", `Topic ${topic} 重复（首次出现在第 ${previous} 行）。`, line));
+    else topics.set(topic, line);
+    pattern.lastIndex = close + 1;
+  }
+}
+
 function validateQuestionSemantics(value: string, diagnostics: WjxDslDiagnostic[]): void {
   const masked = maskDslComments(value);
   const pattern = /\bquestion\s+([A-Za-z_][A-Za-z0-9_]*)\s*\{|\bnode\s+"Question"\s*\{/gi;
@@ -161,13 +213,14 @@ function validateQuestionSemantics(value: string, diagnostics: WjxDslDiagnostic[
     const close = matchingBrace(masked, open);
     if (open < 0 || close < 0) continue;
     const body = value.slice(open + 1, close);
-    const type = (match[1] ?? topLevelAttribute(body, "Type") ?? "").trim().toLowerCase();
+    const normalized = normalizedQuestionType(match[1] ?? topLevelAttribute(body, "Type") ?? "", body);
+    const type = normalized.type;
     const items = countTopLevelBlocks(body, ["item"]);
     const rows = countTopLevelBlocks(body, ["row"]);
     const columns = countTopLevelBlocks(body, ["column"]);
     const referTopic = Number(topLevelAttribute(body, "ReferTopic"));
     const reference = Number.isInteger(referTopic) && referTopic > 0;
-    if (["radio", "radio_down", "check"].includes(type) && items === 0 && !reference) diagnostics.push(diagnostic("DSL_QUESTION_SHAPE", `题型 ${type} 至少需要一个 Item。`));
+    if (["radio", "radio_down", "check"].includes(type) && items === 0 && !reference && !normalized.allowEmptyItems && !normalized.skipShape) diagnostics.push(diagnostic("DSL_QUESTION_SHAPE", `题型 ${type} 至少需要一个 Item。`));
     if (type === "gapfill") {
       const count = Number(topLevelAttribute(body, "GapCount"));
       const titleCount = (topLevelAttribute(body, "Title")?.match(/___/g) ?? []).length;
@@ -176,8 +229,8 @@ function validateQuestionSemantics(value: string, diagnostics: WjxDslDiagnostic[
       else if (rows > 0 && titleCount === 0) diagnostics.push(diagnostic("DSL_QUESTION_SHAPE", "gapfill 标题必须使用 ___ 空位标记。"));
       else if (rows === 0 && titleCount !== count) diagnostics.push(diagnostic("DSL_QUESTION_SHAPE", "gapfill 标题中的 ___ 数量必须与 GapCount 一致。"));
     }
-    if (type === "matrix") {
-      const mode = Number(topLevelAttribute(body, "Mode"));
+    if (type === "matrix" && !normalized.skipShape) {
+      const mode = normalized.mode ?? Number(topLevelAttribute(body, "Mode"));
       if ([301, 302, 303].includes(mode) && columns === 0) diagnostics.push(diagnostic("DSL_MATRIX_SHAPE", `matrix Mode=${mode} 至少需要一个 ItemColumn。`));
       if ([201, 202, 203, 204, 301, 302, 303].includes(mode) && rows === 0 && !reference) diagnostics.push(diagnostic("DSL_MATRIX_SHAPE", `matrix Mode=${mode} 至少需要一个 ItemRow。`));
       if ([101, 102, 103, 2, 3, 6, 7, 303].includes(mode) && items === 0) diagnostics.push(diagnostic("DSL_MATRIX_SHAPE", `matrix Mode=${mode} 至少需要一个 Item。`));
@@ -235,6 +288,7 @@ export function validateWjxDsl(
   if (quote) diagnostics.push(diagnostic("DSL_STRING", "DSL 包含未闭合字符串"));
   if (depth !== 0) diagnostics.push(diagnostic("DSL_BRACES", "DSL 花括号未配对"));
   validateFileUploadMaxSizes(value, diagnostics);
+  validateDuplicateTopics(value, diagnostics);
   validateQuestionSemantics(value, diagnostics);
   return diagnostics.slice(0, options.maxDiagnostics ?? 100);
 }
