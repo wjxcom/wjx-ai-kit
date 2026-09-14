@@ -54,6 +54,24 @@ test("generateWjxDsl validates file upload MaxSize before transport", () => {
   assert.equal(generateWjxDsl('wjx-dsl 1; questionnaire { question signature { attr "Topic" = "1"; }; };').valid, true);
 });
 
+test("generateWjxDsl rejects blocks without the required terminating semicolon", () => {
+  const dsl = `wjx-dsl 1; questionnaire {
+    question radio { attr "Topic" = "1"; item { attr "ItemTitle" = "是"; } }
+  };`;
+  const result = generateWjxDsl(dsl);
+  assert.equal(result.valid, false);
+  assert.equal(result.diagnostics.some((item) => item.code === "DSL_SEMICOLON"), true);
+});
+
+test("generateWjxDsl ignores block-shaped text inside quoted attributes", () => {
+  const dsl = `wjx-dsl 1; questionnaire {
+    question radio { attr "Topic" = "1"; attr "Title" = "文本包含 item { fake }"; };
+  };`;
+  const result = generateWjxDsl(dsl);
+  assert.equal(result.valid, false);
+  assert.equal(result.diagnostics.some((item) => item.code === "DSL_QUESTION_SHAPE"), true);
+});
+
 test("DSL clients route the three actions and do not send CAS fields", async () => {
   const calls = [];
   const credentials = { apiKey: "dsl-test-key", baseUrl: "https://example.test" };

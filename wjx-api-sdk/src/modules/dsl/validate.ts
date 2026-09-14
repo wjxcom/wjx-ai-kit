@@ -68,6 +68,67 @@ function matchingBrace(value: string, openIndex: number): number {
   return -1;
 }
 
+/** Mask strings and comments while preserving positions for structural scans. */
+function maskDslStructure(value: string): string {
+  const chars = value.split("");
+  let quote = false;
+  let escaped = false;
+  let preserveQuote = false;
+  let lineComment = false;
+  let blockComment = false;
+  for (let i = 0; i < chars.length; i += 1) {
+    const current = chars[i];
+    const next = chars[i + 1];
+    if (lineComment) {
+      if (current === "\n" || current === "\r") lineComment = false;
+      else chars[i] = " ";
+      continue;
+    }
+    if (blockComment) {
+      if (current === "*" && next === "/") {
+        chars[i] = " "; chars[i + 1] = " "; i += 1; blockComment = false;
+      } else if (current !== "\n" && current !== "\r") chars[i] = " ";
+      continue;
+    }
+    if (quote) {
+      if (current === "\n" || current === "\r") continue;
+      if (!preserveQuote) chars[i] = " ";
+      if (escaped) escaped = false;
+      else if (current === "\\") escaped = true;
+      else if (current === '"') quote = false;
+      continue;
+    }
+    if (current === '"') {
+      preserveQuote = /\bnode\s*$/i.test(value.slice(0, i));
+      if (!preserveQuote) chars[i] = " ";
+      quote = true;
+    } else if (current === "/" && next === "/") {
+      chars[i] = " "; chars[i + 1] = " "; i += 1; lineComment = true;
+    } else if (current === "/" && next === "*") {
+      chars[i] = " "; chars[i + 1] = " "; i += 1; blockComment = true;
+    } else if (current === "#") {
+      chars[i] = " "; lineComment = true;
+    }
+  }
+  return chars.join("");
+}
+
+function validateBlockTerminators(value: string, diagnostics: WjxDslDiagnostic[]): void {
+  const masked = maskDslStructure(value);
+  const pattern = /\b(?:questionnaire|page|question|item|row|rightrow|column|other|raw)\s*\{|\bnode\s+"[A-Za-z_][A-Za-z0-9_]*"\s*\{/gi;
+  let match: RegExpExecArray | null;
+  while ((match = pattern.exec(masked)) !== null) {
+    const openIndex = masked.indexOf("{", match.index);
+    const closeIndex = matchingBrace(masked, openIndex);
+    if (openIndex < 0 || closeIndex < 0) continue;
+    let next = closeIndex + 1;
+    while (next < masked.length && /\s/.test(masked[next])) next += 1;
+    if (masked[next] !== ";") {
+      diagnostics.push(diagnostic("DSL_SEMICOLON", "DSL 块结束后必须使用分号。", lineNumber(value, closeIndex)));
+    }
+  }
+}
+
 function topLevelAttribute(body: string, name: string): string | undefined {
   const pattern = new RegExp(`\\battr\\s+(?:"${name}"|${name})\\s*=\\s*(?:"([^"\\\\]*(?:\\\\.[^"\\\\]*)*)"|([^;\\s]+))`, "i");
   let depth = 0;
@@ -114,7 +175,7 @@ function isInsideQuotedString(value: string, index: number): boolean {
 }
 
 function validateFileUploadMaxSizes(value: string, diagnostics: WjxDslDiagnostic[]): void {
-  const masked = maskDslComments(value);
+  const masked = maskDslStructure(value);
   const candidatePattern = /\bquestion(?:\s+(fileupload|signature|drawing))?\s*\{|\bnode\s+"Question"\s*\{/gi;
   let match: RegExpExecArray | null;
   while ((match = candidatePattern.exec(masked)) !== null) {
@@ -136,7 +197,7 @@ function validateFileUploadMaxSizes(value: string, diagnostics: WjxDslDiagnostic
 }
 
 function countTopLevelBlocks(body: string, names: string[]): number {
-  const masked = maskDslComments(body);
+  const masked = maskDslStructure(body);
   const wanted = new Set(names.map((name) => name.toLowerCase()));
   let depth = 0;
   let count = 0;
@@ -153,7 +214,7 @@ function countTopLevelBlocks(body: string, names: string[]): number {
 }
 
 function validateQuestionSemantics(value: string, diagnostics: WjxDslDiagnostic[]): void {
-  const masked = maskDslComments(value);
+  const masked = maskDslStructure(value);
   const pattern = /\bquestion\s+([A-Za-z_][A-Za-z0-9_]*)\s*\{|\bnode\s+"Question"\s*\{/gi;
   let match: RegExpExecArray | null;
   while ((match = pattern.exec(masked)) !== null) {
@@ -234,6 +295,7 @@ export function validateWjxDsl(
   }
   if (quote) diagnostics.push(diagnostic("DSL_STRING", "DSL 包含未闭合字符串"));
   if (depth !== 0) diagnostics.push(diagnostic("DSL_BRACES", "DSL 花括号未配对"));
+  validateBlockTerminators(value, diagnostics);
   validateFileUploadMaxSizes(value, diagnostics);
   validateQuestionSemantics(value, diagnostics);
   return diagnostics.slice(0, options.maxDiagnostics ?? 100);
