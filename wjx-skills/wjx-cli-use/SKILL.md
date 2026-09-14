@@ -4,9 +4,9 @@ display_name: 问卷星cli
 display_name_en: wjx-cli-use
 displayName: 问卷星cli
 name_en: wjx-cli-use
-description: "Guide for using wjx-cli (Wenjuanxing CLI) to create AI homepages, posters, PPTs, and surveys, query responses, and analyze data. Use when the user mentions: AI主页, AI海报, AI PPT, 问卷, 调查, 收集, 表单, 投票, 考试, 测评, 满意度, NPS, 问卷星, wjx, survey, questionnaire, or wants to create or update those resources."
-description_zh: "使用 wjx-cli 创建或修改 AI主页、AI海报、AI PPT、问卷，查询回复及分析数据的指南。当用户提到 AI主页、AI海报、AI PPT、问卷、调查、收集、表单、投票、考试、测评、满意度、NPS、问卷星时使用。"
-description_en: "Guide for using wjx-cli (Wenjuanxing CLI) to create AI homepages, posters, PPTs, and surveys, query responses, and analyze data. Use when the user mentions AI homepages, AI posters, AI PPTs, surveys, forms, exams, NPS, Wenjuanxing, wjx, or related creation and update tasks."
+description: "使用 wjx-cli 可以让AI来调用问卷星官方提供的能力。支持创建在线问卷调查、表单、在线考试、在线投票、360评估、各类心理职业测评、在线签署页、签到表等，创建成功后可获取分享链接。数据收集完成后可提供数据、报表的生成和下载。还可以利用此工具进行问卷项目的批量管理。"
+description_zh: "使用 wjx-cli 可以让AI来调用问卷星官方提供的能力。支持创建在线问卷调查、表单、在线考试、在线投票、360评估、各类心理职业测评、在线签署页、签到表等，创建成功后可获取分享链接。数据收集完成后可提供数据、报表的生成和下载。还可以利用此工具进行问卷项目的批量管理。"
+description_en: "wjx-cli enables AI to invoke the official capabilities provided by Wenjuanxing (wjx.cn). It supports creating online questionnaires and surveys, forms, online exams, online voting, 360-degree assessments, various psychological and career assessments, online signing pages, sign-in sheets, and more. Once created, a shareable link can be obtained. After data collection is complete, it supports generating and downloading data and reports. It can also be used for batch management of survey projects."
 version: 0.4.4
 author: 问卷星
 ---
