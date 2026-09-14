@@ -344,8 +344,21 @@ export function validateWjxDsl(value, options = {}) {
     let depth = 0;
     let quote = false;
     let escaped = false;
-    const lines = value.split(/\r?\n/);
+    const lines = maskDslComments(value).split(/\r?\n/);
+    const structural = maskDslStructure(value).split(/\r?\n/);
     for (let lineIndex = 0; lineIndex < lines.length; lineIndex += 1) {
+        for (const char of structural[lineIndex]) {
+            if (char === '"')
+                continue;
+            if (char === "{")
+                depth += 1;
+            if (char === "}")
+                depth -= 1;
+            if (depth < 0) {
+                diagnostics.push(diagnostic("DSL_BRACES", "DSL 包含多余的右花括号", lineIndex + 1));
+                depth = 0;
+            }
+        }
         for (const char of lines[lineIndex]) {
             if (escaped) {
                 escaped = false;
@@ -361,14 +374,6 @@ export function validateWjxDsl(value, options = {}) {
             }
             if (quote)
                 continue;
-            if (char === "{")
-                depth += 1;
-            if (char === "}")
-                depth -= 1;
-            if (depth < 0) {
-                diagnostics.push(diagnostic("DSL_BRACES", "DSL 包含多余的右花括号", lineIndex + 1));
-                depth = 0;
-            }
         }
     }
     if (quote)

@@ -72,6 +72,24 @@ test("generateWjxDsl ignores block-shaped text inside quoted attributes", () => 
   assert.equal(result.diagnostics.some((item) => item.code === "DSL_QUESTION_SHAPE"), true);
 });
 
+test("generateWjxDsl ignores braces inside comments", () => {
+  const dsl = `wjx-dsl 1; questionnaire {
+    // comment with { a fake block };
+    question radio { attr "Topic" = "1"; item { attr "ItemTitle" = "是"; }; };
+  };`;
+  const result = generateWjxDsl(dsl);
+  assert.equal(result.valid, true);
+});
+
+test("generateWjxDsl ignores quotes inside comments", () => {
+  const dsl = `wjx-dsl 1; questionnaire {
+    // comment with an unmatched quote ";
+    question radio { attr "Topic" = "1"; item { attr "ItemTitle" = "是"; }; };
+  };`;
+  const result = generateWjxDsl(dsl);
+  assert.equal(result.valid, true);
+});
+
 test("DSL clients route the three actions and do not send CAS fields", async () => {
   const calls = [];
   const credentials = { apiKey: "dsl-test-key", baseUrl: "https://example.test" };
