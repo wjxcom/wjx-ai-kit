@@ -84,8 +84,8 @@ questionnaire {
   },
   logic: ["if", "show", "hide", "jump", "branch", "reference", "random", "raw"],
   logic_rules: {
-    references: "使用 Topic/Item 引用；jump/branch 目标为 END 或有效 Topic。",
-    validation: "悬空引用、自循环和跳转环由后端最终校验。",
+    references: "这些字段可从查询结果原样保留；当前没有通用、可验证的客户端逻辑修改接口，配置请使用 Web 编辑器。",
+    validation: "SDK/CLI/MCP 不提供逻辑语法校验或写后读回；提交后需人工复核。",
   },
   raw_policy: "未知属性或高级能力使用 raw 显式保留，客户端不得静默删除。",
   api: {

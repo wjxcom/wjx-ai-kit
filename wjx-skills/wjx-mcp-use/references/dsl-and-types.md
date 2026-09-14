@@ -90,7 +90,7 @@ questionnaire {
 
 ### 逻辑与限制
 
-分支逻辑、验证规则、评分权重、随机化等用 DSL 的逻辑动作（`if`/`show`/`hide`/`jump`/`branch`/`reference`/`random`/`raw`）表达；无法安全建模的字段用 `raw` 保留。题型编码、必填属性、矩阵 `Mode` 及高级属性均以服务端能力矩阵为最终准绳。
+分支逻辑、验证规则、评分权重、随机化等高级设置目前只能通过 `query_wjx_dsl` 读取既有配置；当前 SDK/CLI/MCP 没有通用、可验证的逻辑修改接口。DSL 中的 `if`/`show`/`hide`/`jump`/`branch`/`reference`/`random`/`raw` 字段如需保留只能作为未经验证的原始内容，提交后必须由 Web 编辑器人工复核。题型编码、必填属性、矩阵 `Mode` 及高级属性均以服务端能力矩阵为最终准绳。
 
 ### 查询结果的中文解读
 

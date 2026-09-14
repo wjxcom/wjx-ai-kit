@@ -2,7 +2,7 @@
 
 本文件记录项目的所有重要变更。
 
-> 说明：以下 0.x 条目保留为历史记录。条目中出现的 `createSurvey`、`createSurveyByText`、`textToSurvey` 创建相关能力已移除，不属于当前 SDK，也不得据此恢复或新增兼容入口。当前问卷创建唯一使用 `createSurveyByJson`。
+> 说明：以下 0.x 条目保留为历史记录。条目中出现的旧创建能力已移除，不属于当前 SDK；当前 SDK 同时提供 JSONL 创建和 XML DSL v1 的独立 query/generate/create/update 链路。
 
 ## [0.4.4] - 2026-09-07
 

@@ -123,8 +123,8 @@ flowchart TD
 - `get_tag_details`
 - `upload_file`
 - `clear_recycle_bin`
-- `create_survey_by_json`（唯一当前创建入口）
-- `create_survey_from_definition`、`update_survey_from_definition`、`query_wjx_dsl`、`generate_wjx_dsl`
+- `create_survey_by_json`（JSONL 创建入口）
+- `create_survey_from_definition`、`update_survey_from_definition`、`query_wjx_dsl`、`generate_wjx_dsl`（XML DSL v1 独立链路）
 
 
 特点：
