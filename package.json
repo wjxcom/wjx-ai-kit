@@ -27,6 +27,6 @@
     "jsonl-capabilities:check": "npm run build --workspace=wjx-api-sdk && node scripts/export-jsonl-capabilities.mjs --check"
   },
   "devDependencies": {
-    "marked": "^18.0.2"
+    "marked": "^18.0.11"
   }
 }
