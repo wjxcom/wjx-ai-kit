@@ -49,6 +49,49 @@ function maskDslComments(value: string): string {
   return chars.join("");
 }
 
+function hasUnterminatedBlockComment(value: string): boolean {
+  let quote = false;
+  let escaped = false;
+  let lineComment = false;
+  let blockComment = false;
+  for (let i = 0; i < value.length; i += 1) {
+    const current = value[i];
+    const next = value[i + 1];
+    if (lineComment) {
+      if (current === "\n" || current === "\r") lineComment = false;
+      continue;
+    }
+    if (blockComment) {
+      if (current === "*" && next === "/") { blockComment = false; i += 1; }
+      continue;
+    }
+    if (quote) {
+      if (escaped) escaped = false;
+      else if (current === "\\") escaped = true;
+      else if (current === '"') quote = false;
+      continue;
+    }
+    if (current === '"') quote = true;
+    else if (current === "/" && next === "/") { lineComment = true; i += 1; }
+    else if (current === "/" && next === "*") { blockComment = true; i += 1; }
+    else if (current === "#") lineComment = true;
+  }
+  return blockComment;
+}
+
+function topLevelQuestionnaireRootCount(value: string): number {
+  const structural = maskDslStructure(value);
+  let depth = 0;
+  let count = 0;
+  for (let i = 0; i < structural.length; i += 1) {
+    const current = structural[i];
+    if (depth === 0 && /^questionnaire\s*\{/i.test(structural.slice(i))) count += 1;
+    if (current === "{") depth += 1;
+    else if (current === "}") depth = Math.max(0, depth - 1);
+  }
+  return count;
+}
+
 function matchingBrace(value: string, openIndex: number): number {
   let depth = 0;
   let quote = false;
@@ -234,7 +277,7 @@ function validateQuestionSemantics(value: string, diagnostics: WjxDslDiagnostic[
       const titleCount = (topLevelAttribute(body, "Title")?.match(/___/g) ?? []).length;
       if (!Number.isSafeInteger(count) || count <= 0) diagnostics.push(diagnostic("DSL_GAP_COUNT", "gapfill 的 GapCount 必须存在且为正整数。"));
       else if (rows > 0 && rows !== count) diagnostics.push(diagnostic("DSL_QUESTION_SHAPE", "gapfill 的 ItemRow 数量必须与 GapCount 一致。"));
-      else if (rows > 0 && titleCount === 0) diagnostics.push(diagnostic("DSL_QUESTION_SHAPE", "gapfill 标题必须使用 ___ 空位标记。"));
+      else if (rows > 0 && titleCount !== count) diagnostics.push(diagnostic("DSL_QUESTION_SHAPE", "gapfill 标题中的 ___ 数量必须与 GapCount 一致。"));
       else if (rows === 0 && titleCount !== count) diagnostics.push(diagnostic("DSL_QUESTION_SHAPE", "gapfill 标题中的 ___ 数量必须与 GapCount 一致。"));
     }
     if (type === "matrix") {
@@ -271,9 +314,10 @@ export function validateWjxDsl(
   if (bytes > maxBytes) return [diagnostic("DSL_TOO_LARGE", `dsl 超过 ${maxBytes} 字节限制`)];
 
   const diagnostics: WjxDslDiagnostic[] = [];
+  if (hasUnterminatedBlockComment(value)) diagnostics.push(diagnostic("DSL_COMMENT", "DSL 包含未闭合块注释"));
   const first = value.replace(/^\uFEFF/, "").trimStart();
   if (!/^wjx-dsl\s+1\s*;/i.test(first)) diagnostics.push(diagnostic("DSL_HEADER", "DSL 必须以 wjx-dsl 1; 开头"));
-  if (!/\bquestionnaire\s*\{/i.test(first)) diagnostics.push(diagnostic("DSL_ROOT", "DSL 缺少 questionnaire 根节点"));
+  if (topLevelQuestionnaireRootCount(first) !== 1) diagnostics.push(diagnostic("DSL_ROOT", "DSL 必须包含唯一的 questionnaire 根节点"));
 
   let depth = 0;
   let quote = false;
@@ -307,8 +351,47 @@ export function validateWjxDsl(
 
 export function normalizeWjxDsl(value: string): string {
   // The legacy editor's gap-fill parser recognizes three underscores. Accept
-  // the author-friendly `{_}` spelling and normalize it before transport.
-  return value.replace(/^\uFEFF/, "").replace(/\r\n?/g, "\n").replace(/\{_\}/g, "___");
+  // the author-friendly `{_}` spelling in gapfill titles without rewriting
+  // unrelated literal text or raw fields.
+  const normalized = value.replace(/^\uFEFF/, "").replace(/\r\n?/g, "\n");
+  const masked = maskDslStructure(normalized);
+  const replacements: Array<{ start: number; end: number; value: string }> = [];
+  const questionPattern = /\bquestion\s+gapfill\s*\{|\bnode\s+"Question"\s*\{/gi;
+  let questionMatch: RegExpExecArray | null;
+  while ((questionMatch = questionPattern.exec(masked)) !== null) {
+    const openIndex = masked.indexOf("{", questionMatch.index);
+    const closeIndex = matchingBrace(masked, openIndex);
+    if (openIndex < 0 || closeIndex < 0) continue;
+    const body = normalized.slice(openIndex + 1, closeIndex);
+    if (/^node\b/i.test(questionMatch[0]) && (topLevelAttribute(body, "Type") ?? "").toLowerCase() !== "gapfill") continue;
+    const bodyMasked = masked.slice(openIndex + 1, closeIndex);
+    let depth = 0;
+    for (let i = 0; i < bodyMasked.length; i += 1) {
+      const current = bodyMasked[i];
+      if (depth === 0) {
+        const attrMatch = /^attr\s+/i.exec(bodyMasked.slice(i));
+        const titleMatch = attrMatch && /^attr\s+(?:"Title"|Title)\s*=\s*/i.exec(body.slice(i));
+        if (titleMatch) {
+          const valueStart = i + titleMatch[0].length;
+          const valueMatch = /^"((?:\\.|[^"\\])*)"/.exec(body.slice(valueStart));
+          if (valueMatch && valueMatch[1].includes("{_}")) {
+            replacements.push({
+              start: openIndex + 1 + valueStart + 1,
+              end: openIndex + 1 + valueStart + 1 + valueMatch[1].length,
+              value: valueMatch[1].replace(/\{_\}/g, "___"),
+            });
+          }
+        }
+      }
+      if (current === "{") depth += 1;
+      else if (current === "}") depth = Math.max(0, depth - 1);
+    }
+  }
+  let result = normalized;
+  for (const replacement of replacements.sort((a, b) => b.start - a.start)) {
+    result = `${result.slice(0, replacement.start)}${replacement.value}${result.slice(replacement.end)}`;
+  }
+  return result;
 }
 
 export function generateWjxDsl(value: string, options?: WjxDslValidationOptions): WjxDslGenerationResult {

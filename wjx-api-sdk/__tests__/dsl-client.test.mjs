@@ -3,6 +3,7 @@ import { test } from "node:test";
 import {
   createSurveyByWjxDsl,
   generateWjxDsl,
+  normalizeWjxDsl,
   queryWjxDsl,
   updateWjxDsl,
 } from "../dist/index.js";
@@ -90,6 +91,60 @@ test("generateWjxDsl ignores quotes inside comments", () => {
   assert.equal(result.valid, true);
 });
 
+test("normalizeWjxDsl limits legacy marker replacement to gapfill titles", () => {
+  const input = 'wjx-dsl 1; questionnaire { attr "Title" = "literal {_}"; question gapfill { attr "Title" = "A {_}"; raw "Note" = "literal {_}"; }; };';
+  const result = normalizeWjxDsl(input);
+  assert.equal(result.includes('attr "Title" = "literal {_}";'), true);
+  assert.equal(result.includes('attr "Title" = "A ___";'), true);
+  assert.equal(result.includes('raw "Note" = "literal {_}";'), true);
+});
+
+test("normalizeWjxDsl handles generic gapfill nodes", () => {
+  const input = 'wjx-dsl 1; questionnaire { node "Question" { attr "Type" = "gapfill"; attr "Title" = "A {_}"; }; };';
+  assert.equal(normalizeWjxDsl(input).includes('attr "Title" = "A ___";'), true);
+});
+
+test("generateWjxDsl does not mistake commented or quoted text for the root block", () => {
+  const cases = [
+    'wjx-dsl 1; // questionnaire { fake };',
+    'wjx-dsl 1; attr "Title" = "questionnaire { fake }";',
+  ];
+  for (const dsl of cases) {
+    const result = generateWjxDsl(dsl);
+    assert.equal(result.valid, false);
+    assert.equal(result.diagnostics.some((item) => item.code === "DSL_ROOT"), true, dsl);
+  }
+});
+
+test("generateWjxDsl rejects an unterminated block comment", () => {
+  const result = generateWjxDsl('wjx-dsl 1; questionnaire { /* unterminated');
+  assert.equal(result.valid, false);
+  assert.equal(result.diagnostics.some((item) => item.code === "DSL_COMMENT"), true);
+});
+
+test("generateWjxDsl accepts hash line comments containing comment markers", () => {
+  const result = generateWjxDsl('wjx-dsl 1; questionnaire { # comment /* marker\n };');
+  assert.equal(result.valid, true);
+});
+
+test("generateWjxDsl requires questionnaire to be the top-level root", () => {
+  const result = generateWjxDsl('wjx-dsl 1; wrapper { questionnaire { }; };');
+  assert.equal(result.valid, false);
+  assert.equal(result.diagnostics.some((item) => item.code === "DSL_ROOT"), true);
+});
+
+test("generateWjxDsl rejects multiple questionnaire roots", () => {
+  const result = generateWjxDsl('wjx-dsl 1; questionnaire { }; questionnaire { };');
+  assert.equal(result.valid, false);
+  assert.equal(result.diagnostics.some((item) => item.code === "DSL_ROOT"), true);
+});
+
+test("generateWjxDsl requires gap-fill placeholders to match GapCount", () => {
+  const result = generateWjxDsl('wjx-dsl 1; questionnaire { question gapfill { attr "Topic" = "1"; attr "Title" = "A ___"; attr "GapCount" = "2"; row { }; row { }; }; };');
+  assert.equal(result.valid, false);
+  assert.equal(result.diagnostics.some((item) => item.code === "DSL_QUESTION_SHAPE"), true);
+});
+
 test("DSL clients route the three actions and do not send CAS fields", async () => {
   const calls = [];
   const credentials = { apiKey: "dsl-test-key", baseUrl: "https://example.test" };
@@ -97,11 +152,13 @@ test("DSL clients route the three actions and do not send CAS fields", async () 
   const nonCanonicalDsl = `\uFEFF${DSL.replaceAll("; ", ";\r\n")}`;
   const normalizedDsl = nonCanonicalDsl.replace(/^\uFEFF/, "").replace(/\r\n?/g, "\n");
   await createSurveyByWjxDsl({ dsl: nonCanonicalDsl }, credentials, mockFetch(calls));
-  await updateWjxDsl({ vid: "207550", dsl: nonCanonicalDsl }, credentials, mockFetch(calls));
+  await updateWjxDsl({ vid: "207550", dsl: nonCanonicalDsl, allowBreakingChanges: true }, credentials, mockFetch(calls));
   assert.deepEqual(calls.map((call) => call.body.action), ["1000006", "1000109", "1000110"]);
   assert.equal(calls[1].body.dsl, normalizedDsl);
   assert.equal(calls[2].body.dsl, normalizedDsl);
   assert.equal(calls[2].body.vid, "207550");
+  assert.equal(calls[2].body.allow_breaking_changes, true);
+  assert.equal("allowBreakingChanges" in calls[2].body, false);
   assert.equal("ifMatch" in calls[2].body, false);
   assert.equal("receipt" in calls[2].body, false);
   assert.equal("idempotencyKey" in calls[2].body, false);
@@ -112,5 +169,18 @@ test("invalid DSL is rejected before a write request", async () => {
   const fetchImpl = async () => { called = true; throw new Error("must not call transport"); };
   await assert.rejects(() => createSurveyByWjxDsl({ dsl: "invalid" }, { apiKey: "key" }, fetchImpl), /wjx-dsl|questionnaire/);
   await assert.rejects(() => updateWjxDsl({ vid: "1", dsl: "invalid" }, { apiKey: "key" }, fetchImpl), /wjx-dsl|questionnaire/);
+  assert.equal(called, false);
+});
+
+test("DSL create rejects unsupported survey atypes before transport", async () => {
+  let called = false;
+  const fetchImpl = async () => { called = true; throw new Error("must not call transport"); };
+  for (const atype of [0, 8, 12, 999]) {
+    await assert.rejects(
+      () => createSurveyByWjxDsl({ dsl: DSL, atype }, { apiKey: "key" }, fetchImpl),
+      /不支持创建 atype/,
+      `atype=${atype} was accepted`,
+    );
+  }
   assert.equal(called, false);
 });

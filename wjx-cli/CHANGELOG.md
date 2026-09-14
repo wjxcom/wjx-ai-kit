@@ -2,6 +2,12 @@
 
 > 说明：以下 0.x 条目保留为历史记录。条目中出现的旧创建能力仅用于历史追溯，不属于当前 CLI，也不得据此恢复入口。当前 CLI 提供 JSONL `survey create` 和独立的 DSL 命令链路。
 
+## [0.4.5] - 2026-09-14
+
+- DSL `survey create` 在发起请求前拒绝当前接口不支持的新建问卷类型，并与 SDK 共享可创建类型集合。
+- DSL `survey update` 使用 API 标准字段 `allow_breaking_changes`，保留现有 camelCase 参数兼容性；CLI Skill、文档和发布产物同步更新。
+- 补充 DSL 结构/题目语义校验和回归测试，统一工作区版本至 `0.4.5`。
+
 ## [0.4.4] - 2026-09-07
 
 - 增加 `survey shortlink`，支持将问卷填写长链接转换为短信短链接。

@@ -71,6 +71,8 @@ export interface CreateWjxDslSurveyResult extends WjxDslOperationData {
 export interface UpdateWjxDslInput {
   vid: string | number;
   dsl: string;
+  /** API wire name; the camelCase alias is retained for SDK compatibility. */
+  allow_breaking_changes?: boolean;
   allowBreakingChanges?: boolean;
 }
 

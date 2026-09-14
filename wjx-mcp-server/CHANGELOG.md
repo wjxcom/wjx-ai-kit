@@ -4,6 +4,12 @@
 
 > 说明：以下 0.x 条目保留为历史记录。条目中出现的旧创建能力已移除，不属于当前 Server；当前 Server 同时提供 JSONL `create_survey_by_json` 和 XML DSL v1 的独立 query/generate/create/update 工具链路。
 
+## [0.4.5] - 2026-09-14
+
+- DSL 创建工具的 `atype` 校验与 SDK 可创建问卷类型集合保持一致，避免把服务端会拒绝的类型暴露为可创建选项。
+- DSL 更新工具统一传递 API 标准字段 `allow_breaking_changes`，并同步资源、Prompt、Skill 文档和构建产物。
+- 补充 DSL 校验回归覆盖并将 `wjx-mcp-server` 与其他工作区包统一升级至 `0.4.5`。
+
 ## [0.4.4] - 2026-09-07
 
 - 增加 `get_short_link` 工具，支持将问卷填写长链接转换为短信短链接。

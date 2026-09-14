@@ -4,6 +4,12 @@
 
 > 说明：以下 0.x 条目保留为历史记录。条目中出现的旧创建能力已移除，不属于当前 SDK；当前 SDK 同时提供 JSONL 创建和 XML DSL v1 的独立 query/generate/create/update 链路。
 
+## [0.4.5] - 2026-09-14
+
+- 强化 XML DSL v1 校验：要求唯一 `questionnaire` 根节点，检测未闭合块注释，并校验 gapfill 的 `GapCount`、行数和标题占位符数量。
+- DSL 创建前校验可创建的问卷类型；更新请求使用 API 标准字段 `allow_breaking_changes`，同时保留 SDK 的 camelCase 兼容别名。
+- 将 `{_}` 仅规范化为 gapfill 标题中的 `___`，避免改写普通标题和 `raw` 字段；补充对应回归测试并同步构建产物。
+
 ## [0.4.4] - 2026-09-07
 
 - 增加问卷填写长链接转短信短链接的 `getShortLink` 能力。

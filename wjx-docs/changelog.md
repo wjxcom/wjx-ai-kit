@@ -1,5 +1,11 @@
 # 变更记录
 
+## 0.4.5 (2026-09-14)
+
+- SDK、CLI、MCP Server 统一升级至 `0.4.5`，并同步工作区依赖和发布文档。
+- 完善 XML DSL v1 的结构/题目语义校验、注释语法、gapfill 占位符和可创建问卷类型边界说明。
+- 对齐 DSL query/generate/create/update 的字段命名、Skill 镜像和迁移文档，补充回归测试与发布产物。
+
 ## 0.4.4 (2026-09-07)
 
 - SDK、CLI、MCP Server 统一升级至 0.4.4。

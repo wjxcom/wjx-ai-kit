@@ -1,6 +1,6 @@
 import { readFileSync, writeFileSync, statSync } from "node:fs";
 import { Command } from "commander";
-import { createSurveyByWjxDsl, generateWjxDsl, queryWjxDsl, updateWjxDsl, } from "wjx-api-sdk";
+import { createSurveyByWjxDsl, CREATABLE_SURVEY_ATYPES, generateWjxDsl, queryWjxDsl, updateWjxDsl, } from "wjx-api-sdk";
 import { getMerged, requireField, strictInt } from "../lib/command-helpers.js";
 import { CliError, handleError } from "../lib/errors.js";
 import { formatOutput } from "../lib/output.js";
@@ -97,6 +97,9 @@ export function registerDslCommands(program) {
     });
     addDslInput(dsl.command("create").description("提交 AI 生成的 WJX XML DSL 创建问卷").option("--type <n>", "问卷类型", strictInt).option("--publish", "创建后发布").option("--compress-img", "压缩图片")).action(async (_options, command) => {
         const merged = getMerged(command);
+        if (merged.type !== undefined && !CREATABLE_SURVEY_ATYPES.has(merged.type)) {
+            throw new CliError("INPUT_ERROR", `当前接口不支持创建 atype=${String(merged.type)} 类型的问卷`);
+        }
         await executeRuntimeAction(program, command, createSurveyByWjxDsl, () => ({
             dsl: resolveDsl(command, _options),
             ...(merged.type === undefined ? {} : { atype: merged.type }),
@@ -110,7 +113,7 @@ export function registerDslCommands(program) {
         await executeRuntimeAction(program, command, updateWjxDsl, (values) => ({
             vid: requireTraditionalVid(merged.vid),
             dsl: resolveDsl(command, _options),
-            ...((merged.allowBreakingChanges ?? merged.allow_breaking_changes) === true ? { allowBreakingChanges: true } : {}),
+            ...((merged.allowBreakingChanges ?? merged.allow_breaking_changes) === true ? { allow_breaking_changes: true } : {}),
         }));
     });
 }

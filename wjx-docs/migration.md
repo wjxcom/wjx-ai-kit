@@ -6,7 +6,7 @@
 
 ## 从 MCP npm 安装迁移
 
-旧版源码安装方式仍可用。当前三个包的源码版本均为 `0.4.4`，发布顺序为 SDK → MCP Server → CLI。发布前从 GitHub 克隆并构建，发布完成后可直接安装 registry 的 `latest`。
+旧版源码安装方式仍可用。当前三个包的源码版本均为 `0.4.5`，发布顺序为 SDK → MCP Server → CLI。发布前从 GitHub 克隆并构建，发布完成后可直接安装 registry 的 `latest`。
 
 ## 从旧 CLI 参数迁移
 

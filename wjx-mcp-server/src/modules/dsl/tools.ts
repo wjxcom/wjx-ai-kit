@@ -1,11 +1,13 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
+import { CREATABLE_SURVEY_ATYPES } from "wjx-api-sdk";
 import { assertApiResponse, toolApiResult, toolError, toolResult } from "../../helpers.js";
 import { createSurveyByWjxDsl, generateWjxDsl, queryWjxDsl, updateWjxDsl } from "./client.js";
 
 const MAX_DSL_BYTES = 4 * 1024 * 1024;
 const dslSchema = z.string().min(1).refine((value) => Buffer.byteLength(value, "utf8") <= MAX_DSL_BYTES, `DSL UTF-8 字节数不能超过 ${MAX_DSL_BYTES}`);
 const vidSchema = z.union([z.string().min(1), z.number().int().positive()]);
+const atypeSchema = z.number().int().refine((value) => CREATABLE_SURVEY_ATYPES.has(value), "atype 不是当前接口支持的新建问卷类型");
 
 export function registerDslTools(server: McpServer): void {
   server.registerTool("query_wjx_dsl", {
@@ -37,7 +39,7 @@ export function registerDslTools(server: McpServer): void {
     description: "接收 AI 生成的完整 WJX XML DSL，校验通过后调用 A1000109 创建问卷。definition 指 DSL 文本，不是 JSON 问卷模型。",
     inputSchema: {
       dsl: dslSchema,
-      atype: z.number().int().positive().optional(),
+      atype: atypeSchema.optional(),
       publish: z.boolean().optional(),
       compress_img: z.boolean().optional(),
     },
@@ -60,7 +62,7 @@ export function registerDslTools(server: McpServer): void {
     annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: false, openWorldHint: true, title: "使用 DSL 定义修改问卷" },
   }, async (args) => {
     try {
-      const result = await updateWjxDsl({ vid: args.vid, dsl: args.dsl, ...(args.allow_breaking_changes === undefined ? {} : { allowBreakingChanges: args.allow_breaking_changes }) });
+      const result = await updateWjxDsl({ vid: args.vid, dsl: args.dsl, ...(args.allow_breaking_changes === undefined ? {} : { allow_breaking_changes: args.allow_breaking_changes }) });
       assertApiResponse(result);
       return toolApiResult(result);
     } catch (error) { return toolError(error); }

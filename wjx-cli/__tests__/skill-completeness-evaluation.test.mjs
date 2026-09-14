@@ -501,7 +501,7 @@ test("Skill documents all ten Agent rules and executable guidance anchors", asyn
     assert.match(skill, new RegExp(`规则\\s*${index}(?:[：:]|\\b)`), `missing rule ${index}`);
   }
   for (const phrase of [
-    "创建问卷只用 `survey create`",
+    "按场景选择 JSONL 或 XML DSL",
     "禁止**自行拼成",
     "不要使用 `--format table`",
     "不要只复述错误信息",

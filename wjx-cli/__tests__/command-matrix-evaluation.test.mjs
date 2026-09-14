@@ -404,6 +404,7 @@ function optionWireKeys(command, flag) {
   }
   const aliases = {
     "--compress-img": ["compress_img", "compressImg"],
+    "--allow-breaking-changes": ["allow_breaking_changes", "allowBreakingChanges"],
     "--page": ["page", "page_index"],
     "--type": ["type", "atype"],
     "--description": ["description", "desc"],

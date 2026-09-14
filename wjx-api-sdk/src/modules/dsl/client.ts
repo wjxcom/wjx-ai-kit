@@ -1,6 +1,7 @@
 import type { FetchLike, WjxApiResponse, WjxCredentials } from "../../core/types.js";
 import { callWjxApi, getWjxCredentials } from "../../core/api-client.js";
 import { Action, LONG_TIMEOUT_MS } from "../../core/constants.js";
+import { CREATABLE_SURVEY_ATYPES } from "../survey/client.js";
 import type {
   CreateWjxDslSurveyInput,
   CreateWjxDslSurveyResult,
@@ -15,6 +16,12 @@ function assertValidDsl(dsl: string): string {
   const result = generateWjxDsl(dsl);
   if (!result.valid) throw new TypeError(result.diagnostics.map((item) => item.message).join("；"));
   return result.dsl;
+}
+
+function assertCreatableAtype(atype: number): void {
+  if (!Number.isSafeInteger(atype) || !CREATABLE_SURVEY_ATYPES.has(atype)) {
+    throw new TypeError(`当前接口不支持创建 atype=${atype} 类型的问卷`);
+  }
 }
 
 export async function queryWjxDsl<T = QueryWjxDslResult>(input: QueryWjxDslInput, credentials: WjxCredentials = getWjxCredentials(), fetchImpl: FetchLike = fetch): Promise<WjxApiResponse<T>> {
@@ -33,6 +40,7 @@ export async function queryWjxDsl<T = QueryWjxDslResult>(input: QueryWjxDslInput
 
 export async function createSurveyByWjxDsl<T = CreateWjxDslSurveyResult>(input: CreateWjxDslSurveyInput, credentials: WjxCredentials = getWjxCredentials(), fetchImpl: FetchLike = fetch): Promise<WjxApiResponse<T>> {
   if (!input || typeof input.dsl !== "string") throw new TypeError("dsl must be a string");
+  if (input.atype !== undefined) assertCreatableAtype(input.atype);
   const dsl = assertValidDsl(input.dsl);
   return callWjxApi<T>({
     action: Action.CREATE_SURVEY_BY_WJX_DSL,
@@ -51,6 +59,8 @@ export async function updateWjxDsl<T = UpdateWjxDslResult>(input: UpdateWjxDslIn
     action: Action.UPDATE_WJX_DSL,
     vid: input.vid,
     dsl,
-    ...(input.allowBreakingChanges === undefined ? {} : { allowBreakingChanges: input.allowBreakingChanges }),
+    ...((input.allow_breaking_changes ?? input.allowBreakingChanges) === undefined
+      ? {}
+      : { allow_breaking_changes: (input.allow_breaking_changes ?? input.allowBreakingChanges) }),
   }, { credentials, fetchImpl, maxRetries: 0, timeoutMs: LONG_TIMEOUT_MS });
 }
