@@ -121,6 +121,17 @@ export function ensureApiSuccess(response) {
         details.errorcode = failure.errorcode;
     if (failure.traceid !== undefined)
         details.traceid = failure.traceid;
+    // DSL write failures carry structured validation data inside `data`.
+    // Preserve the bounded diagnostics without echoing the full DSL payload.
+    if (failure.data && typeof failure.data === "object" && !Array.isArray(failure.data)) {
+        const data = failure.data;
+        for (const key of ["status", "correlationId", "validationSuccess", "canCommit", "hasChanges", "hasBreakingChanges", "diagnosticCount", "diagnosticsTruncated"]) {
+            if (data[key] !== undefined)
+                details[key] = data[key];
+        }
+        if (Array.isArray(data.diagnostics))
+            details.diagnostics = data.diagnostics.slice(0, 50);
+    }
     const upgrade = getUpgradeDetails(failure);
     if (upgrade) {
         const upgradeDetails = {

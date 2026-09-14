@@ -50,10 +50,10 @@ wjx-cli 是问卷星 OpenAPI 的命令行工具。命令格式：`wjx <模块> <
 
 ## AI Agent 行为准则（必读）
 
-### 规则 0：创建问卷只用 `survey create`（强制）
+### 规则 0：按场景选择 JSONL 或 XML DSL
 
 
-先运行 `wjx survey jsonl-template --type <问卷类型> --raw` 获取当前 CLI 可接受的骨架，再编辑 JSONL。每个非空行必须是一个完整 JSON 对象；首行必须是 `{"qtype":"问卷基础信息","title":"...","atype":1}`，后续题目使用中文字符串字段 `qtype` 以及 `title`、`select`、`rowtitle` 等字段。
+创建 JSONL 问卷先运行 `wjx survey jsonl-template --type <问卷类型> --raw` 获取骨架，再执行 `wjx survey create`。创建 XML DSL 问卷使用 `wjx dsl generate` 校验后执行 `wjx dsl create`；修改使用 `wjx dsl update`，查询使用 `wjx dsl query`。每个非空 JSONL 行必须是完整 JSON 对象；XML DSL 必须以 `wjx-dsl 1;` 开头。
 
 不要把旧接口的 `_meta`、`q_type`、`q_subtype`、`q_title`、`items` 结构传给 `create`；CLI 会将其判为输入错误。
 
@@ -82,7 +82,7 @@ AI 主页是独立的纯展示内容，与表单/问卷创建互斥：
 
 ### 规则 3.2：纯框架题型默认保持草稿
 
-普通题型未指定发布选项时默认发布；但 `折叠栏目`、`轮播图`、`AI追问`、`AI处理`、`AI访谈`、`图片OCR`、`VlookUp问卷关联`、`分页计时器` 仅凭 JSONL 骨架无法完善。问卷包含任一上述题型时，创建接口默认保持草稿。先获取详情和编辑入口，指导用户补充素材/配置；只有用户明确要求发布时才显式传 `--publish` 或执行发布状态操作。
+普通题型未指定发布选项时默认发布；但 `折叠栏目`、`轮播图`、`AI追问`、`AI处理`、`AI访谈`、`图片OCR`、`分页计时器` 仅凭 JSONL 骨架无法完善。问卷包含任一上述题型时，创建接口默认保持草稿。先获取详情和编辑入口，指导用户补充素材/配置；只有用户明确要求发布时才显式传 `--publish` 或执行发布状态操作。`VlookUp问卷关联`、`矩阵数值题`、`多项文件题`、`多项简答题` 和 `当前语音` 属于读取/Web 编辑器边界，当前 JSONL 创建接口直接拒绝，不能按草稿路径重试。
 
 ### 规则 3.1：用户体系只允许兼容维护
 
@@ -279,7 +279,8 @@ wjx doctor
 
 | 模块 | 命令 | 说明 |
 |------|------|------|
-| `survey` | list, get, create, create-ai-page, update-ai-page, jsonl-template, delete, status, settings, update-settings, tags, tag-details, clear-bin, upload, url, preview-url, shortlink | 问卷增删改查、AI 主页、配置、预览链接与短信短链接 |
+| `survey` | list, get, create, create-ai-page, update-ai-page, jsonl-template, delete, status, settings, update-settings, tags, tag-details, clear-bin, upload, url, preview-url, shortlink, dsl.query, dsl.create, dsl.update | 问卷增删改查、AI 主页、配置、预览链接与短信短链接 |
+| `dsl` | query, generate, create, update | XML DSL 查询、校验、创建和修改 |
 | `response` | query, realtime, download, submit-template, submit, modify, clear, report, count, winners, 360-report | 答卷数据操作 |
 | `contacts` | query, add, delete | 联系人管理（需 WJX_CORP_ID） |
 | `department` | list, add, modify, delete | 部门管理 |
@@ -293,9 +294,9 @@ wjx doctor
 
 ## 核心工作流
 
-### 创建问卷（统一使用 JSONL 格式）
+### 创建问卷（JSONL 或 XML DSL 格式）
 
-> **重要**：必须执行 `wjx survey create` 命令来创建问卷。只生成 JSONL 文本而不执行命令，问卷不会被创建到问卷星平台上。
+> **重要**：创建任何新问卷都必须执行 `wjx survey create` 或 `wjx dsl create` 命令。只生成 JSONL/DSL 文本而不执行命令，问卷不会被创建到问卷星平台上。
 
 ```bash
 wjx survey jsonl-template --type 1 --raw > survey.jsonl

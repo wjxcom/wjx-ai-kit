@@ -1091,12 +1091,12 @@ export function registerSurveyTools(server: McpServer): void {
         "【必答规则】默认所有题型都是必答题，包括单项填空、简答题、意见建议题、开放题；只有用户明确指定某个题号/题目/字段为选填时，才给该题传 requir=false。" +
         "【专业模型】支持 BWS/MaxDiff(mdattr+pertaskcount+tasklength)、联合分析(columntitle)、品牌漏斗(brands)、Kano模型、SUS模型、PSM模型等。" +
         "【考试题型】支持 correctselect（正确答案）、quizscore（分值）、answeranalysis（答案解析）。" +
-        "【关联逻辑】支持 relation（显示条件）、referselect（引用前题选项）。" +
+        "【关联逻辑】relation/referselect 目前仅作为字段透传，SDK 不提供通用语法校验或写后读回验证；需要可验证的分支逻辑时请使用 Web 编辑器。" +
         "【硬性校验 — 不满足会被 SDK 拒绝】1) 标题不得为空、占位符（??? / 无标题 / TODO / xxx 等）或少于 2 字；2) JSONL 必须包含至少 1 道真实题目（_meta/分页栏/段落说明/知情同意书不计入）。" +
         "【多项填空必看】多项填空 qtype='多项填空'，子填空位数量由 title 中的 {_} 占位符数量决定，例如 title='电话 {_}，邮箱 {_}，微信 {_}' 会生成 3 个空位；**禁止用 rowtitle 数组**（多项填空不支持该字段，服务端会忽略并只生成 1 个空位）。考试多项填空同理；考试完形填空不在当前 JSONL 创建支持集合中。" +
         "【表格类题型 706-710】生成 JSONL 时必须优先使用标准格式：" +
         "表格数值/表格填空使用 rowtitle；表格下拉框使用 rowtitle+selects；表格组合使用 rowtitle+types+selects；自增表格使用 rowtitle+columntitle+selects（一行模板），可选 min_rows/max_rows 设置行数边界，不要用 minvalue/maxvalue 代替。" +
-        "多项文件题(711)和多项简答题(712)只能读取或在 Web 编辑器配置，当前创建接口会拒绝；需要多字段采集时请使用普通文件上传/简答题或表格题。" +
+        "矩阵数值题(706)、VlookUp问卷关联、多项文件题(711)、多项简答题(712)和当前语音只能读取或在 Web 编辑器配置，当前创建接口会拒绝；需要多字段采集时请使用普通文件上传/简答题或表格题。" +
         "【投票题】投票单选/投票多选使用 qtype='投票单选'/'投票多选' + select，并在调用工具时显式传 atype=3。" +
         "输入示例（JSONL）：\n" +
         '{"qtype":"问卷基础信息","title":"客户满意度调查","introduction":"请认真填写"}\n' +

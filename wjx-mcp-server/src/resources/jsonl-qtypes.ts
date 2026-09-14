@@ -1,6 +1,6 @@
 export const JSONL_QTYPES_RESOURCE = {
   "schemaVersion": 1,
-  "sourceRevision": "4c75d81d1a89948064d470706251aa7b075046fc7bfc58af6dc16984b4256a9c",
+  "sourceRevision": "0ee9e610b87648d7c4c860fb37053342264c63b9308925a2766d69f2b7a2175c",
   "qtypes": [
     "AI处理",
     "AI访谈",
@@ -241,7 +241,6 @@ export const JSONL_QTYPES_RESOURCE = {
         "AI处理",
         "AI访谈",
         "AI追问",
-        "VlookUp问卷关联",
         "分页计时器",
         "图片OCR",
         "折叠栏目",
@@ -266,7 +265,6 @@ export const JSONL_QTYPES_RESOURCE = {
     "AI处理",
     "AI访谈",
     "AI追问",
-    "VlookUp问卷关联",
     "分页计时器",
     "图片OCR",
     "折叠栏目",

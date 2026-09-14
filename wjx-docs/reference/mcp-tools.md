@@ -1,6 +1,6 @@
 # MCP 工具参考
 
-当前版本提供 61 个 Tool、8 个 Resource 和 15 个 Prompt。输入 schema 和描述以运行时能力发现结果为最终契约；MCP 只保证 CLI 的核心业务子集，工作站能力和有意不暴露的通用 API 见仓库 capability matrix。
+当前版本提供 66 个 Tool、13 个 Resource 和 15 个 Prompt。输入 schema 和描述以运行时能力发现结果为最终契约；MCP 只保证 CLI 的核心业务子集，工作站能力和有意不暴露的通用 API 见仓库 capability matrix。
 
 ## Tool 模块
 
@@ -13,6 +13,7 @@
 | multi-user（5） | `add_sub_account`, `modify_sub_account`, `delete_sub_account`, `restore_sub_account`, `query_sub_accounts` | 子账号管理 |
 | sso（5） | `sso_subaccount_url`, `sso_user_system_url`, `sso_partner_url`, `build_survey_url`, `build_preview_url` | 生成登录、编辑和填写链接；用户系统 SSO 仅配合已有系统使用 |
 | analytics（6） | `decode_responses`, `decode_push_payload`, `calculate_nps`, `calculate_csat`, `detect_anomalies`, `compare_metrics` | 本地数据解码、推送解密和指标计算 |
+| dsl（4） | `query_wjx_dsl`, `generate_wjx_dsl`, `create_survey_from_definition`, `update_survey_from_definition` | WJX XML DSL v1 查询、校验、创建和修改 |
 | server（1） | `get_config` | 查看脱敏配置与运行环境 |
 
 
@@ -33,6 +34,7 @@
 | `wjx://reference/analysis-methods` | NPS、CSAT、CES 公式和行业基准 |
 | `wjx://reference/user-roles` | 子账号角色编码 |
 | `wjx://reference/push-format` | 数据推送格式和加密说明 |
+| `wjx://reference/wjx-xml-dsl` | WJX XML DSL v1 生成、校验、创建和修改规范 |
 
 ## Prompts（15）
 
@@ -48,4 +50,4 @@
 
 `create_ai_page` 调用 `A1000107` 创建独立的纯展示 HTML 主页，不联动创建表单/问卷；PPT 默认使用逐页展示。`get_survey` 对 AI 主页返回草稿也可读取的 `html_content` 和固定 `page_type`。`update_ai_page` 调用 `A1000108` 基于完整原 HTML 原位更新，只接受传统数字 `vid`，不支持修改页面类型。
 
-Prompt 是可复用的工作流模板，不能替代工具权限检查。问卷生成统一使用 JSONL 模板\n\n问卷创建的唯一入口是 create_survey_by_json。当前 Server 不注册 create_survey 或 create_survey_by_text。。
+Prompt 是可复用的工作流模板，不能替代工具权限检查。问卷生成可使用 JSONL 模板或 XML DSL 规范\n\n问卷创建支持 `create_survey_by_json` 和 `create_survey_from_definition`，修改使用 `update_survey_from_definition`。

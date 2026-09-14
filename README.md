@@ -73,7 +73,7 @@ wjx response report --vid 12345
 wjx response query --vid 12345 --page_size 50
 ```
 
-新项目只使用 JSONL 创建问卷。
+新项目支持 JSONL 和完整 XML DSL 两条独立的问卷创建路径。
 
 
 ## 开发

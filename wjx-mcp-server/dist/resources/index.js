@@ -2,6 +2,7 @@ import { SURVEY_TYPES, QUESTION_TYPES, SURVEY_STATUSES, VERIFY_STATUSES, STATUS_
 import { ANALYSIS_METHODS, RESPONSE_FORMAT_GUIDE, } from "./analysis-reference.js";
 import { PUSH_FORMAT_GUIDE } from "./push-reference.js";
 import { JSONL_QTYPES_RESOURCE } from "./jsonl-qtypes.js";
+import { DSL_SYNTAX_GUIDE } from "./dsl-reference.js";
 function formatResource(data) {
     return JSON.stringify(data, null, 2);
 }
@@ -87,6 +88,13 @@ export function registerResources(server) {
                 uri: "wjx://reference/push-format",
                 mimeType: "application/json",
                 text: formatResource(PUSH_FORMAT_GUIDE),
+            }],
+    }));
+    server.resource("dsl-syntax", "wjx://reference/wjx-xml-dsl", { description: "WJX XML DSL v1 生成、校验和 API 调用规范", mimeType: "application/json" }, async () => ({
+        contents: [{
+                uri: "wjx://reference/wjx-xml-dsl",
+                mimeType: "application/json",
+                text: formatResource(DSL_SYNTAX_GUIDE),
             }],
     }));
 }

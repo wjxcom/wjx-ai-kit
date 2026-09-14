@@ -42,8 +42,17 @@ const builtinEntry = (id: string, risk: ActionCatalogEntry["risk"] = "read"): Ca
   source: "builtin",
 });
 
+const dslEntry = (id: string, action: string, risk: ActionCatalogEntry["risk"] = "read"): CatalogEntry => ({
+  ...apiEntry(id, action, risk),
+  command: id.replace(/^survey\.dsl\./, "dsl."),
+});
+
 /** Complete public command catalog used by raw API, schema, completion and manifest checks. */
 export const CATALOG: readonly CatalogEntry[] = Object.freeze([
+  dslEntry("survey.dsl.query", Action.QUERY_WJX_DSL),
+  dslEntry("survey.dsl.create", Action.CREATE_SURVEY_BY_WJX_DSL, "write"),
+  dslEntry("survey.dsl.update", Action.UPDATE_WJX_DSL, "high-risk-write"),
+  { ...builtinEntry("survey.dsl.generate"), command: "dsl.generate" },
   apiEntry("survey.get", Action.GET_SURVEY),
   apiEntry("survey.list", Action.LIST_SURVEYS),
   apiEntry("survey.create", Action.CREATE_SURVEY_BY_JSON, "write"),

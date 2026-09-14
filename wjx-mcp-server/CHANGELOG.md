@@ -2,7 +2,7 @@
 
 本文件记录项目的所有重要变更。
 
-> 说明：以下 0.x 条目保留为历史记录。条目中出现的 `create_survey`、`create_survey_by_text` 或 DSL 创建能力已移除，不属于当前 Server，也不得据此恢复工具。当前问卷创建唯一使用 `create_survey_by_json`。
+> 说明：以下 0.x 条目保留为历史记录。条目中出现的旧创建能力已移除，不属于当前 Server；当前 Server 同时提供 JSONL `create_survey_by_json` 和 XML DSL v1 的独立 query/generate/create/update 工具链路。
 
 ## [0.4.4] - 2026-09-07
 

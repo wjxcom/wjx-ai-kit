@@ -29,7 +29,7 @@ flowchart TD
     F --> G[McpServer]
     G --> H[Resources 13]
     G --> I[Prompts 15]
-    G --> J[Tools 60]
+    G --> J[Tools 66]
 
     J --> M1[survey]
     J --> M2[response]
@@ -38,6 +38,7 @@ flowchart TD
     J --> M5[multi-user]
     J --> M6[sso]
     J --> M7[analytics]
+    J --> M8[dsl]
 
     M1 --> N1[src/modules/*/client.ts]
     M2 --> N1
@@ -96,16 +97,17 @@ flowchart TD
 
 | 模块 | Tool 数量 | 主要职责 | 核心 API / 入口 |
 | --- | ---: | --- | --- |
-| `survey` | 11 | 问卷 JSONL 创建、设置读写、标签、回收站和文件上传 | `createSurveyByJson()`、`getSurvey()`、`updateSurveySettings()`、`clearRecycleBin()` |
+| `survey` | 13 | 问卷 JSONL/AI 主页创建、查询、设置读写、标签、回收站和文件上传 | `createSurveyByJson()`、`getSurvey()`、`updateSurveySettings()`、`clearRecycleBin()` |
 | `response` | 11 | 答卷查询、计数、下载、报告、提交、模板、修改、清空 | `queryResponses()`、`downloadResponses()`、`getReport()`、`submitResponse()`、`buildSubmitTemplate()` |
 | `contacts` | 14 | 通讯录成员、管理员、部门、标签管理 | `queryContacts()`、`addContacts()`、`listDepartments()`、`listTags()` |
 | `sso` | 6 | 子账号 SSO、用户体系 SSO、代理商 SSO、问卷创建/编辑/预览链接、问卷短链接 | `buildSsoSubaccountUrl()`、`buildSsoUserSystemUrl()`、`buildSsoPartnerUrl()`、`buildSurveyUrl()`、`buildPreviewUrl()`、`getShortLink()` |
 | `user-system` | 6 | 参与者管理、活动绑定、问卷绑定查询、用户关联问卷查询 | `addParticipants()`、`bindActivity()`、`querySurveyBinding()`、`queryUserSurveys()` |
 | `multi-user` | 5 | 子账号创建、修改、删除、恢复、查询 | `addSubAccount()`、`modifySubAccount()`、`querySubAccounts()` |
 | `analytics` | 6 | 答卷解码、推送解密、NPS/CSAT、本地异常检测、指标对比 | `decodeResponses()`、`decodePushPayload()`、`calculateNps()`、`calculateCsat()`、`detectAnomalies()`、`compareMetrics()` |
+| `dsl` | 4 | WJX XML DSL v1 查询、校验、创建和修改 | `queryWjxDsl()`、`generateWjxDsl()`、`createSurveyByWjxDsl()`、`updateWjxDsl()` |
 | `server`（诊断） | 1 | 配置与运行环境诊断 | `get_config` |
 
-业务模块中的 Tool 数量直接对应各 `src/modules/*/tools.ts` 中 `server.registerTool()` 的出现次数，共 59 个；`src/server.ts` 另注册 1 个 `get_config` 诊断工具，总计 60 个。资源数量以 `src/resources/index.ts` 的 13 个 `server.resource()` 注册为准。
+业务模块中的 Tool 数量直接对应各 `src/modules/*/tools.ts` 中 `server.registerTool()` 的出现次数，共 65 个；`src/server.ts` 另注册 1 个 `get_config` 诊断工具，总计 66 个。资源数量以 `src/resources/index.ts` 的 13 个 `server.resource()` 注册为准。
 
 ### 5.2 survey 模块
 
@@ -121,7 +123,8 @@ flowchart TD
 - `get_tag_details`
 - `upload_file`
 - `clear_recycle_bin`
-- `create_survey_by_json`（唯一当前创建入口）
+- `create_survey_by_json`（JSONL 创建入口）
+- `create_survey_from_definition`、`update_survey_from_definition`、`query_wjx_dsl`、`generate_wjx_dsl`（XML DSL v1 独立链路）
 
 
 特点：
@@ -313,6 +316,7 @@ server.registerTool("tool_name", { inputSchema }, async (args) => {
 - `wjx://reference/response-format`
 - `wjx://reference/user-roles`
 - `wjx://reference/push-format`
+- `wjx://reference/wjx-xml-dsl`
 
 资源层的作用是把稳定字典、格式规范和分析基准放进 MCP 上下文，而不是每次让模型重复猜测编码意义。
 

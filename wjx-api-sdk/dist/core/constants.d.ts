@@ -19,6 +19,9 @@ export declare const Action: {
     readonly UPDATE_SETTINGS: "1000103";
     readonly UPLOAD_FILE: "1000104";
     readonly CREATE_SURVEY_BY_JSON: "1000106";
+    readonly QUERY_WJX_DSL: "1000006";
+    readonly CREATE_SURVEY_BY_WJX_DSL: "1000109";
+    readonly UPDATE_WJX_DSL: "1000110";
     readonly CREATE_AI_PAGE: "1000107";
     readonly UPDATE_AI_PAGE: "1000108";
     readonly DELETE_SURVEY: "1000301";

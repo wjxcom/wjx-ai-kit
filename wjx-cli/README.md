@@ -68,7 +68,7 @@ JSON 是默认输出；`--format table` 只用于人工查看；`--stdin` 接收
 
 运行 `wjx update` 时，CLI 会先比较 registry 的 `latest` 与当前版本；远端版本不高于当前版本时只报告 `up-to-date`，不会执行安装，因此不会把本地版本降级。
 
-当前命令以 `wjx --help` 为准，完整说明见 [CLI 快速开始](../wjx-docs/start/cli.md) 和 [CLI 命令参考](../wjx-docs/reference/cli.md)。问卷创建唯一使用 `survey create`；CLI 不提供 `create-by-text`、`create-by-json` 或旧 JSON 数组创建命令。
+当前命令以 `wjx --help` 为准，完整说明见 [CLI 快速开始](../wjx-docs/start/cli.md) 和 [CLI 命令参考](../wjx-docs/reference/cli.md)。问卷创建使用 `survey create`（JSONL）或 `dsl create`（完整 XML DSL）；CLI 不提供 `create-by-text`、`create-by-json` 或旧 JSON 数组创建命令。
 
 
 ## 开发

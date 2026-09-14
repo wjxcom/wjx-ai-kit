@@ -1,6 +1,10 @@
 {
   "schemaVersion": 1,
   "capabilities": [
+    { "id": "survey.dsl.query", "sdk": ["queryWjxDsl"], "catalog": "survey.dsl.query", "cli": "dsl query", "mcp": "query_wjx_dsl", "status": "core-aligned", "reason": null },
+    { "id": "survey.dsl.create", "sdk": ["createSurveyByWjxDsl"], "catalog": "survey.dsl.create", "cli": "dsl create", "mcp": "create_survey_from_definition", "status": "core-aligned", "reason": null },
+    { "id": "survey.dsl.update", "sdk": ["updateWjxDsl"], "catalog": "survey.dsl.update", "cli": "dsl update", "mcp": "update_survey_from_definition", "status": "core-aligned", "reason": null },
+    { "id": "survey.dsl.generate", "sdk": ["generateWjxDsl"], "catalog": "survey.dsl.generate", "cli": "dsl generate", "mcp": "generate_wjx_dsl", "status": "core-aligned", "reason": null },
     { "id": "survey.get", "sdk": ["getSurvey"], "catalog": "survey.get", "cli": "survey get", "mcp": "get_survey", "status": "core-aligned", "reason": null },
     { "id": "survey.list", "sdk": ["listSurveys"], "catalog": "survey.list", "cli": "survey list", "mcp": "list_surveys", "status": "core-aligned", "reason": null },
     { "id": "survey.create", "sdk": ["createSurveyByJson"], "catalog": "survey.create", "cli": "survey create", "mcp": "create_survey_by_json", "status": "core-aligned", "reason": null },

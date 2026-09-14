@@ -42,10 +42,10 @@ MCP 任务遵循“发现意图 -> 预检 -> 计划 -> 确认 -> 执行 -> 读�
 
 ## AI Agent 行为准则（必读）
 
-### 规则 0：创建问卷只用 `create_survey_by_json`（强制）
+### 规则 0：按场景选择 JSONL 或 XML DSL
 
 
-当前 MCP Server 只注册 create_survey_by_json 作为问卷创建工具；所有当前可创建题型、投票、考试、表单都走该 JSONL 入口。
+问卷可通过 `create_survey_by_json`（JSONL）或 `create_survey_from_definition`（完整 XML DSL）创建。修改使用 `update_survey_from_definition`，查询 DSL 使用 `query_wjx_dsl`；XML DSL 的生成与校验使用 `generate_wjx_dsl`。所有 DSL 输入必须符合 `wjx-dsl 1` 规范并经过校验。
 ### AI 主页
 
 AI 主页是独立的纯展示内容，与表单/问卷创建互斥：
@@ -117,6 +117,7 @@ https://www.wjx.cn/weixinlogin.aspx?redirecturl=%2Fnewwjx%2Fmanage%2Fuserinfo.as
 | 做考试/测验 | `create_survey_by_json` + prompt `generate-exam-json`，`atype: 6` |
 | 做投票 | `create_survey_by_json` + `atype: 3` |
 | 做表单/报名表 | `create_survey_by_json` + prompt `generate-form-json`，`atype: 7` |
+| 使用 XML DSL 创建/修改问卷 | `generate_wjx_dsl` → `create_survey_from_definition` / `update_survey_from_definition` |
 | 看问卷结果 | `get_report({ vid })` 统计概览，`query_responses({ vid })` 明细 |
 | 导出答卷数据 | `download_responses({ vid })` |
 | 查看填写链接 | 列表中的 `sid` / `mobile_path`；创建后优先用 `build_preview_url({ sid })`，无 sid 时才用 `build_preview_url({ vid })` 并说明暴露风险 |
@@ -129,10 +130,11 @@ https://www.wjx.cn/weixinlogin.aspx?redirecturl=%2Fnewwjx%2Fmanage%2Fuserinfo.as
 | 模块 | 工具数 | 说明 |
 |------|--------|------|
 | 问卷管理 | 13 | create_survey_by_json, get_survey, list_surveys, update_survey_status, get/update_survey_settings, delete_survey, get_question_tags, get_tag_details, upload_file, clear_recycle_bin, create_ai_page, update_ai_page |
+| XML DSL | 4 | query_wjx_dsl, generate_wjx_dsl, create_survey_from_definition, update_survey_from_definition |
 | 答卷数据 | 11 | query_responses, count_responses, query_responses_realtime, download_responses, get_report, submit_response, build_submit_template, get_winners, modify_response, get_360_report, clear_responses |
 | 通讯录 | 14 | query/add/delete_contacts, add/delete/restore_admin, list/add/modify/delete_departments, list/add/modify/delete_tags |
 | 子账号 | 5 | add/modify/delete/restore/query_sub_accounts |
-| SSO | 5 | sso_subaccount_url, sso_user_system_url, sso_partner_url, build_survey_url, build_preview_url |
+| SSO | 6 | sso_subaccount_url, sso_user_system_url, sso_partner_url, build_survey_url, build_preview_url, get_short_link |
 | 分析计算 | 6 | decode_responses, decode_push_payload, calculate_nps, calculate_csat, detect_anomalies, compare_metrics |
 | 用户体系（兼容/已过时） | 6 | add/modify/delete_participants, bind_activity, query_survey_binding, query_user_surveys；仅维护已有系统 |
 | 诊断 | 1 | get_config — API Key（脱敏）、Base URL、CLI 版本、配置来源 |
@@ -141,9 +143,9 @@ https://www.wjx.cn/weixinlogin.aspx?redirecturl=%2Fnewwjx%2Fmanage%2Fuserinfo.as
 
 ## 核心工作流
 
-### 创建问卷（统一使用 JSON 方式）
+### 创建问卷（JSONL 或 XML DSL）
 
-**唯一推荐**：所有问卷创建一律使用 `create_survey_by_json`。JSONL 使用中文 `qtype` 名称；`get_survey` 等读取接口返回的数字 `q_type/q_subtype` 是另一套结果编码。`wjx://reference/question-types` 仅提供读取结果的编码映射；创建白名单以 SDK 的 `JSONL_SUPPORTED_QTYPES` 与服务端校验为准。
+JSONL 使用中文 `qtype` 名称；`get_survey` 等读取接口返回的数字 `q_type/q_subtype` 是另一套结果编码。需要 XML DSL 时，先按 `wjx-dsl 1` 规范生成完整文本，再调用 DSL 校验/创建工具；两条链路不互相转换。
 
 ```
 1. 使用 prompt 模板生成题目 JSON（如 generate-survey-json、generate-exam-json 等）
@@ -153,7 +155,7 @@ https://www.wjx.cn/weixinlogin.aspx?redirecturl=%2Fnewwjx%2Fmanage%2Fuserinfo.as
 ```
 
 
-普通题型未传 `publish` 时默认立即发布；若 JSONL 包含纯框架题型 `折叠栏目`、`轮播图`、`AI追问`、`AI处理`、`AI访谈`、`图片OCR`、`VlookUp问卷关联` 或 `分页计时器`，则默认创建为草稿。先调用 `get_survey` 并提供编辑入口，待用户明确授权后再传 `publish: true`。
+普通题型未传 `publish` 时默认立即发布；若 JSONL 包含纯框架题型 `折叠栏目`、`轮播图`、`AI追问`、`AI处理`、`AI访谈`、`图片OCR` 或 `分页计时器`，则默认创建为草稿。先调用 `get_survey` 并提供编辑入口，待用户明确授权后再传 `publish: true`。`VlookUp问卷关联`、`矩阵数值题`、`多项文件题`、`多项简答题` 和 `当前语音` 属于读取/Web 编辑器边界，当前 JSONL 创建接口直接拒绝，不能按草稿路径重试。
 
 **考试问卷（atype=6）注意**：JSONL 路径支持 `correctselect`、`quizscore` 和 `answeranalysis`。创建后仍可提供编辑链接补充未覆盖的高级设置。
 
@@ -208,6 +210,7 @@ submitdata 题号必须与 `get_survey` 返回的原始 `q_index` 对齐——**
 
 | 资源 URI | 内容 |
 |----------|------|
+| `wjx://reference/wjx-xml-dsl` | WJX XML DSL v1 生成、校验、创建和修改规范 |
 | `wjx://reference/jsonl-qtypes` | JSONL 创建题型白名单与分层 |
 | `wjx://reference/question-types` | `get_survey` 读取结果的 q_type/q_subtype 映射（不是 JSONL 创建白名单） |
 | `wjx://reference/survey-types` | 问卷类型编码及创建限制（1/2/3/4/5/6/7/9/10/11 可创建，8 用户体系不能新建） |

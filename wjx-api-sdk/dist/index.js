@@ -5,6 +5,9 @@ export { setCredentialProvider, getWjxCredentials, callWjxApi, callWjxUserSystem
 export { createSurveyByJson, CREATABLE_SURVEY_ATYPES, getSurvey, listSurveys, updateSurveyStatus, getSurveySettings, updateSurveySettings, deleteSurvey, getQuestionTags, getTagDetails, clearRecycleBin, uploadFile, } from "./modules/survey/client.js";
 export { extractJsonlMetadata, normalizeJsonl, MAX_JSONL_SIZE, canonicalizeJsonlQtypes, parseJsonl, jsonToSurvey, EXAM_QTYPES, preprocessExamJsonl, hasVoteJsonlQtype, injectDefaultRequir, injectAtypeIntoJsonl, inferAtypeFromTitle, validateSurveyTitle, validateSurveyHasQuestions, NON_QUESTION_QTYPE_SET, JSONL_SUPPORTED_QTYPES, JSONL_READ_ONLY_OR_WEB_EDITOR_QTYPES, FRAMEWORK_ONLY_JSONL_QTYPES, hasFrameworkOnlyJsonlQtype, resolveJsonlPublish, preflightJsonl, } from "./modules/survey/json-to-survey.js";
 export { getJsonlQuestionTypeCode, extractJsonlQuestionTypeExpectations, compareJsonlQuestionTypes, filterJsonlVerificationQuestions, } from "./modules/survey/qtype-mapping.js";
+// WJX XML DSL module
+export { queryWjxDsl, createSurveyByWjxDsl, updateWjxDsl, } from "./modules/dsl/client.js";
+export { generateWjxDsl, normalizeWjxDsl, validateWjxDsl, MAX_WJX_DSL_BYTES, } from "./modules/dsl/validate.js";
 // AI homepage module
 export { createAiPage, updateAiPage } from "./modules/ai-page/client.js";
 export { AI_PAGE_MAX_HTML_LENGTH, AI_PAGE_MAX_TITLE_LENGTH, AI_PAGE_PAGE_TYPES, } from "./modules/ai-page/constants.js";

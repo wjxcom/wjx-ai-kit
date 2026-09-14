@@ -536,7 +536,6 @@ export const FRAMEWORK_ONLY_JSONL_QTYPES = new Set([
     "AI处理",
     "AI访谈",
     "图片OCR",
-    "VlookUp问卷关联",
     "分页计时器",
 ]);
 /** Return whether a JSONL document contains a known shell-only qtype. */

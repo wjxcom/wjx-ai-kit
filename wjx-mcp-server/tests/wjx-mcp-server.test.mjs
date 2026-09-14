@@ -63,7 +63,7 @@ test("createSurveyByJson sends JSONL to action 1000106 with Bearer auth", async 
   assert.equal("traceid" in parsedBody, false, "traceid should not be in POST body");
 });
 
-test("server exposes all 62 tools, 7 resources, and 15 prompts over stdio", async () => {
+test("server exposes all 66 tools, 13 resources, and 15 prompts over stdio", async () => {
   const transport = new StdioClientTransport({
     command: "node",
     args: [serverEntry],
@@ -106,6 +106,7 @@ test("server exposes all 62 tools, 7 resources, and 15 prompts over stdio", asyn
       "count_responses",
       "create_ai_page",
       "create_survey_by_json",
+      "create_survey_from_definition",
       "decode_push_payload",
       "decode_responses",
       "delete_admin",
@@ -117,6 +118,7 @@ test("server exposes all 62 tools, 7 resources, and 15 prompts over stdio", asyn
       "delete_tag",
       "detect_anomalies",
       "download_responses",
+      "generate_wjx_dsl",
       "get_360_report",
       "get_config",
       "get_question_tags",
@@ -140,6 +142,7 @@ test("server exposes all 62 tools, 7 resources, and 15 prompts over stdio", asyn
       "query_sub_accounts",
       "query_survey_binding",
       "query_user_surveys",
+      "query_wjx_dsl",
       "restore_admin",
       "restore_sub_account",
       "sso_partner_url",
@@ -147,6 +150,7 @@ test("server exposes all 62 tools, 7 resources, and 15 prompts over stdio", asyn
       "sso_user_system_url",
       "submit_response",
       "update_ai_page",
+      "update_survey_from_definition",
       "update_survey_settings",
       "update_survey_status",
       "upload_file",
@@ -223,6 +227,7 @@ test("server exposes all 62 tools, 7 resources, and 15 prompts over stdio", asyn
       "wjx://reference/table-display-types",
       "wjx://reference/text-validation-types",
       "wjx://reference/user-roles",
+      "wjx://reference/wjx-xml-dsl",
     ]);
     const resourceMeta = resourcesResult.resources.find((resource) => resource.uri === "wjx://reference/question-types");
     assert.match(resourceMeta?.description ?? "", /读取编码映射/);

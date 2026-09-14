@@ -16,7 +16,7 @@
     "wjx-mcp-server/src/modules/survey/tools.ts",
     "wjx-mcp-server/src/modules/user-system/tools.ts"
   ],
-  "sourceRevision": "356510d4f2583c3fcd033efc0fe6a855b7752b10634412257b1db34e137ab7f2",
+  "sourceRevision": "8101c5e9ae38b8454dd5c2d508b0d1cda6fc0e5a6572a02061fe7f0f0036bd21",
   "mergeRules": {
     "scope": "Agent contract safety policy only; does not change CLI metadata or exit codes",
     "risk": "max(cli-metadata-risk, high-risk-write when any mapped MCP destructiveHint is true)",
@@ -173,6 +173,12 @@
       "idempotentHint": false,
       "openWorldHint": true
     },
+    "create_survey_from_definition": {
+      "title": "使用 DSL 定义创建问卷",
+      "destructiveHint": false,
+      "idempotentHint": false,
+      "openWorldHint": true
+    },
     "decode_push_payload": {
       "title": "解密推送载荷",
       "destructiveHint": false,
@@ -238,6 +244,12 @@
       "destructiveHint": false,
       "idempotentHint": false,
       "openWorldHint": true
+    },
+    "generate_wjx_dsl": {
+      "title": "校验 WJX XML DSL",
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
     },
     "get_360_report": {
       "title": "360度评估报告下载",
@@ -377,6 +389,12 @@
       "idempotentHint": true,
       "openWorldHint": true
     },
+    "query_wjx_dsl": {
+      "title": "查询 WJX XML DSL 问卷",
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": true
+    },
     "restore_admin": {
       "title": "恢复管理员",
       "destructiveHint": false,
@@ -415,6 +433,12 @@
     },
     "update_ai_page": {
       "title": "更新 AI 主页",
+      "destructiveHint": true,
+      "idempotentHint": false,
+      "openWorldHint": true
+    },
+    "update_survey_from_definition": {
+      "title": "使用 DSL 定义修改问卷",
       "destructiveHint": true,
       "idempotentHint": false,
       "openWorldHint": true

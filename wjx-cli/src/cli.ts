@@ -19,6 +19,7 @@ import { registerSkillCommands } from "./commands/skill.js";
 import { registerUpdateCommands } from "./commands/update.js";
 import { registerApiCommands } from "./commands/api.js";
 import { registerSchemaCommands } from "./commands/schema.js";
+import { registerDslCommands } from "./commands/dsl.js";
 import { readStdin } from "./lib/stdin.js";
 import { handleError, isCliErrorHandled, CliError } from "./lib/errors.js";
 import { getCompletions } from "./lib/completions.js";
@@ -78,6 +79,7 @@ registerSkillCommands(program);
 registerUpdateCommands(program);
 registerApiCommands(program);
 registerSchemaCommands(program);
+registerDslCommands(program);
 
 (async () => {
   try {

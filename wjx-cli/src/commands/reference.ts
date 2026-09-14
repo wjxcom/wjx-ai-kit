@@ -17,7 +17,7 @@ ${qtypeList}
 
 JSONL 使用中文 qtype、title、select、rowtitle、columntitle 等字段；原始字段会透传给服务端。不要填写旧接口的 q_type、q_subtype、q_title、items 字段。
 
-普通题型未指定 publish 时默认发布；包含折叠栏目、轮播图、AI追问、AI处理、AI访谈、图片OCR、VlookUp问卷关联或分页计时器时默认保持草稿，待编辑页完善后再由用户明确授权发布。`,
+普通题型未指定 publish 时默认发布；包含折叠栏目、轮播图、AI追问、AI处理、AI访谈、图片OCR 或分页计时器时默认保持草稿，待编辑页完善后再由用户明确授权发布。VlookUp问卷关联、矩阵数值题、多项文件题、多项简答题和当前语音只能读取既有问卷或由 Web 编辑器配置，当前 JSONL 创建接口直接拒绝。`,
   },
   survey: {
     title: "survey 模块命令参考",

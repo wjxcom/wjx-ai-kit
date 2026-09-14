@@ -7,6 +7,9 @@ export { getJsonlQuestionTypeCode, extractJsonlQuestionTypeExpectations, compare
 export type { JsonSurveyMetadata, JsonSurveyQuestion, JsonParsedSurvey, } from "./modules/survey/json-to-survey.js";
 export type { JsonlQuestionTypeExpectation, JsonlQuestionTypeCheck, } from "./modules/survey/qtype-mapping.js";
 export type { CreateSurveyByJsonInput, GetSurveyInput, ListSurveysInput, UpdateSurveyStatusInput, GetSurveySettingsInput, UpdateSurveySettingsInput, DeleteSurveyInput, GetQuestionTagsInput, GetTagDetailsInput, ClearRecycleBinInput, UploadFileInput, SurveyQuestionItem, SurveyQuestion, SurveyDetail, } from "./modules/survey/types.js";
+export { queryWjxDsl, createSurveyByWjxDsl, updateWjxDsl, } from "./modules/dsl/client.js";
+export { generateWjxDsl, normalizeWjxDsl, validateWjxDsl, MAX_WJX_DSL_BYTES, } from "./modules/dsl/validate.js";
+export type { WjxDslStatus, WjxDslDiagnostic, WjxDslOperationData, WjxDslLimits, QueryWjxDslInput, QueryWjxDslResult, CreateWjxDslSurveyInput, CreateWjxDslSurveyResult, UpdateWjxDslInput, UpdateWjxDslResult, WjxDslFailureData, WjxDslValidationOptions, WjxDslGenerationResult, } from "./modules/dsl/types.js";
 export { createAiPage, updateAiPage } from "./modules/ai-page/client.js";
 export { AI_PAGE_MAX_HTML_LENGTH, AI_PAGE_MAX_TITLE_LENGTH, AI_PAGE_PAGE_TYPES, } from "./modules/ai-page/constants.js";
 export type { AiPageType } from "./modules/ai-page/constants.js";

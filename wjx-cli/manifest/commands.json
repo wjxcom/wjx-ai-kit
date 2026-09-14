@@ -1442,6 +1442,114 @@
       }
     },
     {
+      "id": "survey.dsl.create",
+      "command": "dsl.create",
+      "service": "default",
+      "action": "1000109",
+      "input": {
+        "type": "object",
+        "properties": {}
+      },
+      "risk": "write",
+      "identities": [
+        "user",
+        "bot"
+      ],
+      "source": "api",
+      "metadata": {
+        "path": "dsl.create",
+        "risk": "write",
+        "identities": [
+          "user",
+          "bot"
+        ],
+        "targetFields": []
+      }
+    },
+    {
+      "id": "survey.dsl.generate",
+      "command": "dsl.generate",
+      "service": "default",
+      "action": "builtin:survey.dsl.generate",
+      "input": {
+        "type": "object",
+        "properties": {}
+      },
+      "risk": "read",
+      "identities": [
+        "user",
+        "bot"
+      ],
+      "source": "builtin",
+      "metadata": {
+        "path": "dsl.generate",
+        "risk": "read",
+        "identities": [
+          "user",
+          "bot"
+        ],
+        "targetFields": []
+      }
+    },
+    {
+      "id": "survey.dsl.query",
+      "command": "dsl.query",
+      "service": "default",
+      "action": "1000006",
+      "input": {
+        "type": "object",
+        "properties": {}
+      },
+      "risk": "read",
+      "identities": [
+        "user",
+        "bot"
+      ],
+      "source": "api",
+      "metadata": {
+        "path": "dsl.query",
+        "risk": "read",
+        "identities": [
+          "user",
+          "bot"
+        ],
+        "targetFields": [
+          "vid"
+        ],
+        "httpRetryable": true,
+        "idempotent": true
+      }
+    },
+    {
+      "id": "survey.dsl.update",
+      "command": "dsl.update",
+      "service": "default",
+      "action": "1000110",
+      "input": {
+        "type": "object",
+        "properties": {}
+      },
+      "risk": "high-risk-write",
+      "identities": [
+        "user",
+        "bot"
+      ],
+      "source": "api",
+      "metadata": {
+        "path": "dsl.update",
+        "risk": "high-risk-write",
+        "identities": [
+          "user",
+          "bot"
+        ],
+        "targetFields": [
+          "vid"
+        ],
+        "preRead": true,
+        "postVerify": true
+      }
+    },
+    {
       "id": "survey.get",
       "command": "survey.get",
       "service": "default",

@@ -63,6 +63,8 @@ await listSurveys(
 
 需要服务端识别调用方版本时，可在第四参数传入 `clientName` 和 `clientVersion`。SDK 会发送 `X-WJX-Client` 与 `X-WJX-Client-Version` 请求头；CLI 的 `survey create` 已自动发送 `wjx-cli` 与自身版本。
 
+问卷创建支持 `createSurveyByJson`（JSONL）和 `createSurveyByWjxDsl`（完整 XML DSL）；修改使用 `updateWjxDsl`，查询使用 `queryWjxDsl`。SDK 只做 DSL 协议校验、规范化和传输，不把结构化业务对象转换成 DSL。
+
 创建问卷统一使用 `createSurveyByJson`。答卷模板可用 `buildSubmitTemplate` 根据 `getSurvey` 题目结构在本地生成；它不会发起网络请求，并保留服务端原始 `q_index`。推送数据可用 `decodePushPayload` 在本地解密并可选验签，同样不会发起网络请求。
 
 
