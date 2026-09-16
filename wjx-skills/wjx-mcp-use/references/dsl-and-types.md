@@ -49,7 +49,7 @@ DSL 是花括号文本，**不是** `序号. 标题[题型标记]` 那种旧文�
 
 ### 别名未覆盖的高级题型（raw node）
 
-别名表没有的高级题型用 Generic 别名 `node "Question" { ... }` 直接写：基础 Type + 后端读取的标识属性（`Mode`/`Verify`/`HasValue`/`IsCeShi`/`IsSignature`/`IsQingJing`/`IsEvaluate`/`IsLadder`/`IsTouPiao`/`IsShop`/`IsShelf`/`IsAppointment`/`Relation`/`Height`）。常用取值：NPS=`radio`+`Mode="6"`+`HasValue`；评价星级=`radio`+`IsEvaluate`+`HasValue`；社会阶层=`radio`+`IsLadder`；性别/学历等=`radio`+`Verify="性别"`；手机/日期/邮箱=`question`+`Verify="手机"`/`日期`/`Email`；矩阵高级模型=`matrix`+`Mode`(如 `302`)+`Verify`(`conjoint`/`maxdiff`/`bpto`/`vlookup`/`ocr` 等)；考试题=原题型+`IsCeShi="true"`+`CeShiValue`。完整对照表见权威参考 [wjx-xml-dsl-v1.md](../../../wjx-docs/reference/wjx-xml-dsl-v1.md) 的「高级题型（raw node + 标识属性）」。
+别名表没有的高级题型，部分可用 Generic 别名 `node "Question" { ... }` 透传：基础 Type + 后端读取的标识属性（`Mode`/`Verify`/`HasValue`/`IsCeShi`/`IsSignature`/`IsQingJing`/`IsEvaluate`/`IsLadder`/`IsTouPiao`/`IsShop`/`IsShelf`/`IsAppointment`/`Relation`/`Height`）。常用取值：NPS=`radio`+`Mode="6"`+`HasValue`；评价星级=`radio`+`IsEvaluate`+`HasValue`；社会阶层=`radio`+`IsLadder`；性别/学历等=`radio`+`Verify="性别"`；手机/日期/邮箱=`question`+`Verify="手机"`/`日期`/`Email`；矩阵高级模型=`matrix`+`Mode`(如 `302`)+`Verify`(`conjoint`/`maxdiff`/`bpto` 等)。vlookup、ocr、热力图、折叠栏目、轮播图等字段只能透传并需要服务端/Web 编辑器验收；不能据此宣称一定可创建。完整对照表见权威参考 [wjx-xml-dsl-v1.md](../../../wjx-docs/reference/wjx-xml-dsl-v1.md) 的「高级题型（raw node + 标识属性）」。
 
 > 标识不在 `<Question>` 属性上的题型（热力图、折叠栏目、轮播图、知情同意书、品牌漏斗、部门/其它信息，以及 `langv`/`clock` 等渲染由后端决定的 `Verify`）不要用 raw node 硬凑，改用编辑器或 JSONL 创建（`create_survey_by_json` 传中文 `qtype`，后端会正确落全部标识）。
 
@@ -90,7 +90,7 @@ questionnaire {
 
 ### 逻辑与限制
 
-分支逻辑、验证规则、评分权重、随机化等用 DSL 的逻辑动作（`if`/`show`/`hide`/`jump`/`branch`/`reference`/`random`/`raw`）表达；无法安全建模的字段用 `raw` 保留。题型编码、必填属性、矩阵 `Mode` 及高级属性均以服务端能力矩阵为最终准绳。
+分支逻辑、验证规则、评分权重、随机化等可用 DSL 的逻辑动作（`if`/`show`/`hide`/`jump`/`branch`/`reference`/`random`/`raw`）透传；无法安全建模的字段用 `raw` 保留。客户端只做轻量结构校验，当前没有随机化、配额、piping 或复杂分支的通用配置与页面闭环验证，不能据此宣称完整支持。题型编码、必填属性、矩阵 `Mode` 及高级属性均以服务端能力矩阵为最终准绳。
 
 ### 查询结果的中文解读
 

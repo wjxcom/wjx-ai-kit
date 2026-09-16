@@ -99,8 +99,13 @@ describe("survey-generation-json prompts", () => {
         arguments: { topic: "完整题型覆盖" },
       });
       const text = result.messages[0].content.text;
-      for (const qtype of JSONL_QTYPES_RESOURCE.qtypes) {
+      for (const qtype of JSONL_QTYPES_RESOURCE.creatableQtypes) {
         assert.ok(text.includes(qtype), `prompt omitted generated qtype: ${qtype}`);
+      }
+      const constraint = text.match(/qtype 的值只能从当前可创建列表中选择：[^\n]*/)?.[0] ?? "";
+      assert.ok(constraint, "prompt omitted the generated creatable qtype constraint");
+      for (const qtype of JSONL_QTYPES_RESOURCE.readOnlyOrWebEditorQtypes) {
+        assert.doesNotMatch(constraint, new RegExp(qtype));
       }
       assert.match(text, /wjx:\/\/reference\/jsonl-qtypes/);
     });

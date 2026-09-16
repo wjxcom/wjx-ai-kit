@@ -96,7 +96,8 @@ const JSONL_FORMAT_INSTRUCTIONS = `
 
 /** qtype 约束指令。列表来自生成的 profile，避免 prompt 与 SDK 漂移。 */
 function qtypeConstraint(): string {
-  return `qtype 的值只能是生成 profile 中列出的值：${JSONL_QTYPES_RESOURCE.qtypes.join("、")}。完整分层、草稿限制和字段约束请以资源 wjx://reference/jsonl-qtypes 为准；本 prompt 的示例不是额外白名单。`;
+  const creatable = JSONL_QTYPES_RESOURCE.creatableQtypes ?? JSONL_QTYPES_RESOURCE.qtypes;
+  return `qtype 的值只能从当前可创建列表中选择：${creatable.join("、")}。完整 qtype 列表还包含只能读取或转 Web 编辑器的题型；请以资源 wjx://reference/jsonl-qtypes 的分层、草稿限制和字段约束为准，本 prompt 的示例不是额外白名单。`;
 }
 
 /** 通用 JSONL 格式约束 */

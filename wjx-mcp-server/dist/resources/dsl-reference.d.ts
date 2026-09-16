@@ -37,6 +37,49 @@ export declare const DSL_SYNTAX_GUIDE: {
         考试题: string;
     };
     advanced_types_caveat: string;
+    attribute_labels: {
+        Title: string;
+        Type: string;
+        Topic: string;
+        Requir: string;
+        Mode: string;
+        Verify: string;
+        Default: string;
+        ItemPlaceholder: string;
+        ItemHide: string;
+        IsHide: string;
+        ItemVerify: string;
+        ItemRequired: string;
+        ItemHuChi: string;
+        IsReverse: string;
+        IsHalfScore: string;
+        VectorLevel: string;
+        Style: string;
+        MinValue: string;
+        MaxValue: string;
+        MinValueText: string;
+        MaxValueText: string;
+        RowWidth: string;
+        RowRightWidth: string;
+        MobileRowTitleVertical: string;
+        LevelData: string;
+        OnlySearch: string;
+        Search: string;
+        FuzzyQuery: string;
+        PositionInfo: string;
+        ItemImg: string;
+        ItemImgText: string;
+        Ext: string;
+        MaxSize: string;
+        MaxLength: string;
+        IsCeShi: string;
+        CeShiValue: string;
+        ReferTopic: string;
+        TitleTopic: string;
+        Relation: string;
+        AnytimeJumpto: string;
+    };
+    attribute_labels_note: string;
     question_examples: {
         check: string;
         gapfill: string;
@@ -46,6 +89,7 @@ export declare const DSL_SYNTAX_GUIDE: {
     logic_rules: {
         references: string;
         validation: string;
+        workflow_boundary: string;
     };
     raw_policy: string;
     api: {

@@ -93,6 +93,18 @@ export interface SurveyQuestionItem {
   item_index: number;
   item_title: string;
   item_image?: string;
+  /** Service may expose hidden/required/validation flags on matrix rows and options. */
+  item_hide?: boolean;
+  is_hide?: boolean;
+  item_required?: boolean;
+  is_item_required?: boolean;
+  item_verify?: string | number;
+  item_relation?: string | number;
+  item_textbox?: boolean;
+  allow_filltext?: boolean;
+  item_placeholder?: string;
+  item_label?: string;
+  item_image_text?: boolean;
   item_score?: number;
   item_selected?: boolean;
 }
@@ -120,6 +132,35 @@ export interface SurveyQuestion {
   is_requir: boolean;
   has_jump: boolean;
   is_hide?: boolean;
+  /** Optional prompt/default and rich-text values returned by the service. */
+  prompt?: string;
+  default_value?: string;
+  item_placeholder?: string;
+  verify?: string | number;
+  has_value?: boolean;
+  is_reverse?: boolean;
+  is_half_score?: boolean;
+  vector_level?: number;
+  style?: number;
+  min_value_text?: string;
+  max_value_text?: string;
+  level_data?: string;
+  level_data_external_url?: string;
+  only_search?: boolean;
+  search?: boolean;
+  fuzzy_query?: boolean;
+  no_repeat?: boolean;
+  num_per_row?: number;
+  alone_answer?: boolean;
+  is_random_label?: boolean;
+  is_random_label_choice?: boolean;
+  item_huchi?: boolean;
+  position_info?: unknown;
+  relation?: string | number;
+  title_topic?: number;
+  refer_topic?: number;
+  item_rows?: SurveyQuestionItem[];
+  item_columns?: SurveyQuestionItem[];
 
   /** Items / options (for selection-type, ranking, weight questions). */
   items?: SurveyQuestionItem[];
@@ -153,6 +194,16 @@ export interface SurveyQuestion {
 
   // ── ranking (q_subtype=402) specific ──
   check_mode?: number;
+
+  /** Raw service-owned fields retained for advanced/exam question variants. */
+  is_ceshi?: boolean;
+  ce_shi_value?: number;
+  ce_shi_desc?: string;
+  ext?: string;
+  max_size?: number;
+  max_length?: number;
+  random_mode?: number;
+  part_set?: string;
 }
 
 /** The `data` payload returned by get_survey (action=1000001). */

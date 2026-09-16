@@ -40,7 +40,7 @@ wjx survey create --file survey.jsonl
 | `rowtitle` | 矩阵题的行标题；比重题或表格题的项目/字段 |
 | `columntitle` | 表格/自增表格的列标题；联合分析等题型的专用列数据 |
 | `requir` | 是否必答，默认 `true`；设为 `false` 时还需把同一题目标题传入 `--optional_titles` |
-| `randomchoice` | 是否随机排列选项 |
+| `randomchoice` | 服务端选项随机字段；当前没有完整可验证的随机化配置闭环 |
 | `lowlimit` / `uplimit` | 多选、排序等题型的最少/最多选择数 |
 | `minvalue` / `maxvalue` | 滑动条、矩阵滑动条等数值题型的范围；自增表格行数使用 `min_rows` / `max_rows`，**不能**代替 NPS 的 `select` |
 | `minvaluetext` / `maxvaluetext` | 量表或滑动条两端显示文案；只描述端点，不定义 NPS 的分值范围 |

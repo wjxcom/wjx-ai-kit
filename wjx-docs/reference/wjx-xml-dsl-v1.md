@@ -119,7 +119,7 @@ question matrix {
 
 ### 高级题型（raw node + 标识属性）
 
-别名表未覆盖的高级题型**今天即可创建**：用 Generic 别名 `node "Question" { ... }` 直接写出后端**基础 Type** 加上服务端序列化器实际读取的**标识属性**。这些属性名是后端 XML 原名，DSL 原样透传（不做本地题型校验、不删未知字段），因此高级子型完全由这组属性决定。
+别名表未覆盖的高级题型可以尝试用 Generic 别名 `node "Question" { ... }` 透传后端**基础 Type**和服务端序列化器实际读取的**标识属性**。这些属性名是后端 XML 原名，DSL 原样透传（不做本地题型校验、不删未知字段）；是否可创建、是否需要 Web 编辑器以及页面是否可用，最终以服务端响应和人工验收为准。
 
 服务端从 `<Question>` 读取的关键标识属性：
 
@@ -202,7 +202,7 @@ node "Question" {
 
 ## 逻辑 DSL
 
-后端支持的逻辑动作包括：`if`、`show`、`hide`、`jump`、`branch`、`reference`、`random` 和 `raw`。逻辑引用使用 Topic/Item 标识；`jump` 或 `branch` 的目标可以是 `END` 或有效 Topic。悬空引用、自循环和跳转环由后端最终校验。
+后端支持的逻辑动作包括：`if`、`show`、`hide`、`jump`、`branch`、`reference`、`random` 和 `raw`。逻辑引用使用 Topic/Item 标识；`jump` 或 `branch` 的目标可以是 `END` 或有效 Topic。悬空引用、自循环和跳转环由后端最终校验。客户端只做轻量结构校验；随机化、配额、piping 和复杂分支目前没有通用配置与页面闭环验证，相关字段只能作为 `raw` 保留，不能据此宣称完整支持。
 
 ## 查询结果的中文解读
 
@@ -236,6 +236,21 @@ node "Question" {
 | `IsCeShi` / `CeShiValue` | 是否计分 / 该题分值 | 考试题 |
 | `ReferTopic` / `TitleTopic` | 选项引用题号 / 标题引用题号 | 逻辑引用 |
 | `Relation` / `AnytimeJumpto` | 显示关联 / 跳转目标 | 逻辑 |
+| `Default` / `ItemPlaceholder` | 题目默认值 / 填空提示文字 | 填空、选择题 |
+| `IsHide` / `ItemHide` | 隐藏题目 / 隐藏选项（`true`/`false`） | 题目、选项 |
+| `ItemVerify` / `ItemRequired` | 行/列验证方式 / 是否必填 | 矩阵、表格 |
+| `ItemHuChi` | 矩阵列互斥（`true`/`false`） | 矩阵多选 |
+| `IsReverse` / `IsHalfScore` | 反向计分 / 允许半分（`true`/`false`） | 矩阵量表 |
+| `VectorLevel` / `Style` | 量表级数 / 显示样式 | 量表题 |
+| `MinValueText` / `MaxValueText` | 滑动条两端显示文本 | 滑动条 |
+| `RowWidth` / `RowRightWidth` / `Width` | 行标题、右侧行和列宽度 | 矩阵、表格 |
+| `MobileRowTitleVertical` | 移动端行标题是否竖排 | 矩阵、表格 |
+| `LevelData` / `OnlySearch` / `Search` / `FuzzyQuery` | 级联数据、仅搜索、允许搜索、模糊搜索 | 多级下拉 |
+| `PositionInfo` | 定位标记的结构化位置数据 | 段落/定位 |
+| `AloneAnswer` | 矩阵单题作答/独立作答 | 矩阵 |
+| `IsRandomLabel` / `IsRandomLabelChoice` | 行/选项分组随机及随机入组 | 矩阵、选择题 |
+| `NoRepeat` / `NumPerRow` | 不重复选择 / 每行展示数量 | 选择题、矩阵 |
+| `Step` / `DigitType` | 滑动条步长 / 是否允许小数 | 滑动条 |
 
 ### 协议值解读（raw / 特殊字段）
 
@@ -243,6 +258,8 @@ node "Question" {
 - **`PartSet`（题目随机设置，问卷级，按题目随机时生效）**：格式为逗号分隔的多组，每组 `起始题号;结束题号;抽取数量`（分号三段）。例如 `1;5;2` = **从第 1~5 题中随机抽取 2 题展示**；省略第三段则展示该区间全部题目。
 - **`Ext`（上传类型）**：见上表，是权威的完整白名单，逐项列出，不要只报「支持文档/图片」这类概括。
 - **`ItemImg`（选项图片）**：值是问卷星服务器上**已上传图片资源的相对路径**（如 `upfiles/.../x.png`），不是任意外链 URL——填入未上传到问卷星的地址，作答页不会显示图片。选项图片需先经问卷星上传接口/编辑器上传得到该路径后再写入 `ItemImg`；`ItemImgText=true` 时图片与选项文字同时显示。DSL 编解码对 `ItemImg`/`ItemImgText` 无损透传。
+- **富文本**：题干、行标题和选项文字可能直接包含 HTML 片段；客户端按字符串原样透传，不尝试清洗或降级为纯文本。
+- **验证和高级设置**：`ItemVerify`、`ItemRequired`、`ItemHuChi`、`IsReverse`、`IsHalfScore`、`Default`、`ItemPlaceholder` 等字段可通过 `raw attr` 保留。它们是否在作答页生效仍以服务端读回和页面验收为准。
 
 ## 创建、修改、查询
 
@@ -252,7 +269,7 @@ node "Question" {
 | 创建 | `A1000109` | 完整 DSL，正文使用 `dsl` 字段 |
 | 修改 | `A1000110` | 传统 `vid` + 修改后的完整 DSL |
 
-DSL 创建/修改作用于**普通问卷**，不限定「AI 主页」等特殊类型：创建默认生成调查类型（用 `--type` 指定其它类型），修改针对一个你有权限的既有传统 `vid`。`vid` 不存在或无权限时后端返回 `NotFound`/`Forbidden`（如「问卷不存在」），而非题型限制错误。DSL 与 JSONL（`survey create`）是两条相互独立的创建链路，互不转换。
+DSL 创建默认生成调查类型（用 `--type` 指定其它类型）；修改提交一个既有传统 `vid` 的完整 DSL。目标问卷是否属于服务端支持的 DSL 类型由后端最终判断；若返回题型不支持或 AI 主页类型错误，应停止重试并转 JSONL/Web 编辑器流程。DSL 与 JSONL（`survey create`）是两条相互独立的创建链路，互不转换。
 
 修改不使用增量 Patch DSL。即使只修改一题，也提交修改后的完整问卷 DSL，由后端 Diff 判断实际变化。更新不使用 CAS、If-Match、receipt 或幂等参数；`allow_breaking_changes` 仅用于显式批准 breaking change，已有答卷时仍遵循后端限制。CLI/MCP 写入后会尝试回读完整 DSL、身份、状态和链接；回读失败时结果标记为未知，不能仅凭写接口响应宣称已完成。
 

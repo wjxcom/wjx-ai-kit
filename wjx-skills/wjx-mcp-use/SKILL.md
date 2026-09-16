@@ -155,7 +155,7 @@ JSONL 使用中文 `qtype` 名称；`get_survey` 等读取接口返回的数字 
 ```
 
 
-普通题型未传 `publish` 时默认立即发布；若 JSONL 包含纯框架题型 `折叠栏目`、`轮播图`、`AI追问`、`AI处理`、`AI访谈`、`图片OCR`、`VlookUp问卷关联` 或 `分页计时器`，则默认创建为草稿。先调用 `get_survey` 并提供编辑入口，待用户明确授权后再传 `publish: true`。
+普通题型未传 `publish` 时默认立即发布；若 JSONL 包含纯框架题型 `折叠栏目`、`轮播图`、`AI追问`、`AI处理`、`AI访谈`、`图片OCR` 或 `分页计时器`，则默认创建为草稿。`VlookUp问卷关联` 当前由创建接口拒绝，只能读取既有问卷或转 Web 编辑器。先调用 `get_survey` 并提供编辑入口，待用户明确授权后再传 `publish: true`。
 
 **考试问卷（atype=6）注意**：JSONL 路径支持 `correctselect`、`quizscore` 和 `answeranalysis`。创建后仍可提供编辑链接补充未覆盖的高级设置。
 
