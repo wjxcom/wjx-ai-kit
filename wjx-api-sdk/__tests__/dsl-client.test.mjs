@@ -41,6 +41,22 @@ test("generateWjxDsl normalizes legacy gap-fill markers and catches backend shap
   assert.equal(conjoint.diagnostics.some((item) => item.code === "DSL_CONJOINT_TASK"), true);
 });
 
+test("generateWjxDsl accepts query-style matrix children and protocol matrices", () => {
+  const queryStyle = `wjx-dsl 1; questionnaire {
+    node "Question" { attr "Type" = "matrix"; attr "Topic" = "1"; attr "Mode" = "201";
+      node "ItemRow" { attr "Title" = "Row"; };
+    };
+    node "Question" { attr "Type" = "matrix"; attr "Topic" = "2"; attr "Mode" = "302";
+      attr "Verify" = "test"; attr "TestData" = "{}";
+    };
+    node "Question" { attr "Type" = "matrix"; attr "Topic" = "3"; attr "Mode" = "201";
+      attr "Verify" = "aiInterview";
+    };
+  };`;
+  const result = generateWjxDsl(queryStyle);
+  assert.equal(result.valid, true, JSON.stringify(result.diagnostics));
+});
+
 test("generateWjxDsl validates file upload MaxSize before transport", () => {
   const valid = `wjx-dsl 1; questionnaire { node "Question" { attr "Type" = "fileupload"; attr "Topic" = "1"; attr "MaxSize" = "2048000"; }; };`;
   assert.equal(generateWjxDsl(valid).valid, true);

@@ -181,7 +181,13 @@ function normalizedQuestionType(type: string, body: string): { type: string; mod
   const mapped = aliases[normalized];
   if (mapped) return mapped;
   const explicitMode = Number(topLevelAttribute(body, "Mode"));
-  return { type: normalized, ...(Number.isSafeInteger(explicitMode) ? { mode: explicitMode } : {}) };
+  const verify = (topLevelAttribute(body, "Verify") ?? "").trim().toLowerCase();
+  const protocolMatrix = normalized === "matrix" && verify !== "" && verify !== "0" && verify !== "conjoint";
+  return {
+    type: normalized,
+    ...(Number.isSafeInteger(explicitMode) ? { mode: explicitMode } : {}),
+    ...(protocolMatrix ? { skipShape: true } : {}),
+  };
 }
 
 function validateDuplicateTopics(value: string, diagnostics: WjxDslDiagnostic[]): void {
@@ -216,8 +222,8 @@ function validateQuestionSemantics(value: string, diagnostics: WjxDslDiagnostic[
     const normalized = normalizedQuestionType(match[1] ?? topLevelAttribute(body, "Type") ?? "", body);
     const type = normalized.type;
     const items = countTopLevelBlocks(body, ["item"]);
-    const rows = countTopLevelBlocks(body, ["row"]);
-    const columns = countTopLevelBlocks(body, ["column"]);
+    const rows = countTopLevelBlocks(body, ["row", "itemrow"]);
+    const columns = countTopLevelBlocks(body, ["column", "itemcolumn"]);
     const referTopic = Number(topLevelAttribute(body, "ReferTopic"));
     const reference = Number.isInteger(referTopic) && referTopic > 0;
     if (["radio", "radio_down", "check"].includes(type) && items === 0 && !reference && !normalized.allowEmptyItems && !normalized.skipShape) diagnostics.push(diagnostic("DSL_QUESTION_SHAPE", `题型 ${type} 至少需要一个 Item。`));
