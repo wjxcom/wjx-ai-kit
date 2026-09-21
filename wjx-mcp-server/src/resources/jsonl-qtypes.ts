@@ -1,6 +1,6 @@
 export const JSONL_QTYPES_RESOURCE = {
   "schemaVersion": 1,
-  "sourceRevision": "0ee9e610b87648d7c4c860fb37053342264c63b9308925a2766d69f2b7a2175c",
+  "sourceRevision": "fe7b4d1e007b10f6fa9acd5d707a0db23991f37f659006867ad8bd0546414cda",
   "qtypes": [
     "AI处理",
     "AI访谈",
@@ -279,7 +279,6 @@ export const JSONL_QTYPES_RESOURCE = {
         "层次分析",
         "年龄段",
         "当前语言",
-        "循环评价",
         "心理学实验",
         "性别",
         "情景随机",
@@ -305,7 +304,6 @@ export const JSONL_QTYPES_RESOURCE = {
         "答卷摄像",
         "答题录音",
         "签名题",
-        "考试代码",
         "考试判断",
         "考试单选",
         "考试单项填空",
@@ -350,7 +348,9 @@ export const JSONL_QTYPES_RESOURCE = {
         "AI追问",
         "分页计时器",
         "图片OCR",
+        "循环评价",
         "折叠栏目",
+        "考试代码",
         "轮播图"
       ],
       "mode": "draft-unless-explicit-publish",
@@ -374,7 +374,9 @@ export const JSONL_QTYPES_RESOURCE = {
     "AI追问",
     "分页计时器",
     "图片OCR",
+    "循环评价",
     "折叠栏目",
+    "考试代码",
     "轮播图"
   ],
   "readOnlyOrWebEditorQtypes": [

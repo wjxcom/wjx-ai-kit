@@ -470,6 +470,11 @@ const QTYPE_ALIAS_MAP = {
     "表格填空题": "表格填空",
     "表格组合题": "表格组合",
     "表格自增题": "自增表格",
+    // AI commonly calls an ordinary open-ended prompt "主观题". Keep it on
+    // the plain survey path instead of letting it fall through to an exam
+    // fill-in representation.
+    "主观题": "简答题",
+    "主观问答": "简答题",
 };
 /**
  * qtypes that remain readable in existing surveys but are rejected by the
@@ -537,6 +542,8 @@ export const FRAMEWORK_ONLY_JSONL_QTYPES = new Set([
     "AI访谈",
     "图片OCR",
     "分页计时器",
+    "循环评价",
+    "考试代码",
 ]);
 /** Return whether a JSONL document contains a known shell-only qtype. */
 export function hasFrameworkOnlyJsonlQtype(jsonlText) {
@@ -635,6 +642,8 @@ const ENGLISH_QTYPE_HINTS = {
     multiplechoice: "多选",
     text: "单项填空",
     textarea: "简答题",
+    subjective: "简答题",
+    subjective_question: "简答题",
     input: "单项填空",
     fillblank: "单项填空",
     fill_blank: "单项填空",
@@ -746,6 +755,39 @@ export function preflightJsonl(jsonlText) {
         if (JSONL_READ_ONLY_OR_WEB_EDITOR_QTYPES.has(normalized)) {
             throw new Error(`JSONL 第 ${i + 1} 行题型 "${obj.qtype}" 当前不支持通过问卷星 JSONL 创建接口创建。` +
                 `请改用 Web 编辑器创建，或读取已有问卷；不要重复重试该请求。`);
+        }
+        // These three families share q_type=5 in get_survey. Numeric read-back
+        // alone therefore cannot tell an exam blank from an exam short answer.
+        // Reject ambiguous payloads before transport so the caller cannot create
+        // a misleading question by accidentally mixing their contracts.
+        if (normalized === "考试代码") {
+            if (typeof obj.codetype !== "string" || !obj.codetype.trim()) {
+                throw new Error(`JSONL 第 ${i + 1} 行考试代码必须提供非空字符串 codetype（编程语言）。` +
+                    `代码题没有标准答案设置；初始代码与判题配置须在 Web 编辑器补充。`);
+            }
+            if (obj.correctselect !== undefined || obj.answer !== undefined || obj.answerlists !== undefined) {
+                throw new Error(`JSONL 第 ${i + 1} 行考试代码不能设置 correctselect/answer/answerlists 标准答案；代码题应由运行/判题配置处理，不能降级为考试填空。`);
+            }
+            if (obj.code !== undefined || obj.initialcode !== undefined) {
+                throw new Error(`JSONL 第 ${i + 1} 行考试代码的 code/initialcode 当前不会被服务端保存；请在 Web 编辑器设置初始代码。`);
+            }
+        }
+        if (normalized === "考试简答" && (obj.correctselect !== undefined || obj.answer !== undefined)) {
+            throw new Error(`JSONL 第 ${i + 1} 行考试简答不能设置 correctselect/answer 标准答案；主观题请使用 answeranalysis/quizscore，人工阅卷配置请在 Web 编辑器完成。`);
+        }
+        if (normalized === "简答题" && obj.isquiz === "1") {
+            throw new Error(`JSONL 第 ${i + 1} 行普通简答题不能设置 isquiz="1"；考试主观题请改用 qtype="考试简答"，避免被服务端按考试填空路径处理。`);
+        }
+        if (normalized === "考试单项填空" && obj.codetype !== undefined) {
+            throw new Error(`JSONL 第 ${i + 1} 行考试单项填空不支持 codetype；需要编程语言的题目请使用 qtype="考试代码" 并提供 codetype。`);
+        }
+        if (normalized === "考试单项填空") {
+            const answers = obj.correctselect;
+            if (!(typeof answers === "string" && answers.trim())
+                && !(Array.isArray(answers) && answers.length > 0
+                    && answers.every((answer) => typeof answer === "string" && answer.trim()))) {
+                throw new Error(`JSONL 第 ${i + 1} 行考试单项填空必须提供非空 correctselect 标准答案（字符串或字符串数组）。`);
+            }
         }
         if (TASK_PARAMETER_QTYPES.has(normalized)) {
             const attrs = obj.mdattr;

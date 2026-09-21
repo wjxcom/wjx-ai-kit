@@ -188,6 +188,39 @@ function recordMatchesVid(record: Record<string, unknown>, vid: number): boolean
   return candidate !== undefined && String(candidate).trim() === String(vid);
 }
 
+/**
+ * A malformed question index can make an otherwise successful JSONL create
+ * fail when the respondent page tries to render or submit it. Only enforce
+ * this check when the service actually returns q_index values; older API
+ * responses omitted them, and absence is handled by the existing type/count
+ * checks.
+ */
+function validateQuestionIndexes(
+  questions: readonly Record<string, unknown>[],
+  warnings: string[],
+): boolean {
+  const indexed = filterJsonlVerificationQuestions(questions)
+    .map((question) => field(question, "q_index", "qIndex"))
+    .filter((value) => value !== undefined && value !== null);
+  if (indexed.length === 0) return true;
+  const normalized: number[] = [];
+  for (const value of indexed) {
+    const numeric = typeof value === "number"
+      ? value
+      : typeof value === "string" && /^\d+$/.test(value.trim()) ? Number(value) : NaN;
+    if (!Number.isSafeInteger(numeric) || numeric <= 0) {
+      warnings.push("读回题目包含无效 q_index（必须是正整数），答卷页可能无法渲染");
+      return false;
+    }
+    normalized.push(numeric);
+  }
+  if (new Set(normalized).size !== normalized.length) {
+    warnings.push("读回题目包含重复 q_index，答卷页可能无法渲染或提交");
+    return false;
+  }
+  return true;
+}
+
 async function findListRecord(input: VerifyInput, warnings: string[]): Promise<Record<string, unknown> | undefined> {
   const fetchList = input.listSurveysFn ?? ((args, credentials, fetchImpl) => listSurveys(args, credentials, fetchImpl));
   const pageSize = 50;
@@ -281,6 +314,7 @@ export async function verifySurveyPostWrite(input: VerifyInput): Promise<PostVer
   const identityMatches = surveyIdentityMatches(data, input.vid);
   let structure = identityMatches;
   if (!identityMatches) warnings.push("read-after-write response identity differs from the requested survey id or is missing");
+  if (!validateQuestionIndexes(questions, warnings)) structure = false;
   const actualTitle = field(data, "title", "name", "survey_title");
   if (input.expectedTitle !== undefined && actualTitle !== input.expectedTitle) structure = false;
   if (input.expectedQuestionCount !== undefined) {

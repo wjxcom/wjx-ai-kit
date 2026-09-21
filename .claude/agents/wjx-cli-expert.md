@@ -75,7 +75,7 @@ wjx doctor
 ### 考试问卷注意事项
 
 - 创建考试问卷时使用 `--type 6`，并明确使用 `考试单选`、`考试判断`、`考试多选`、`考试单项填空` 等考试专用 qtype；普通单选/多选/填空不会因为 `--type 6` 自动转换为考试题型
-- **考试配置**：使用 `wjx survey jsonl-template --type 6 --raw` 生成骨架，在考试题上用 `correctselect` 和 `quizscore` 设置正确答案与分值；模板未覆盖的高级考试设置再通过 `wjx survey url --mode edit --activity N` 指引用户在网页端补充
+- **考试配置**：使用 `wjx survey jsonl-template --type 6 --raw` 生成骨架。客观选择题用 `correctselect` 和 `quizscore` 设置答案与分值；普通主观题使用 `简答题`，考试主观题使用 `考试简答`，`考试单项填空` 必须填写 `correctselect`。`考试代码` 必须有 `codetype`，禁止生成 `correctselect`/`answer`；JSONL 服务端不保存 `code`/`initialcode`，请通过 `wjx survey url --mode edit --activity N` 指引用户在网页端设置初始代码和判题规则
 - 创建考试后使用 `wjx survey update-settings --vid N --time_setting '...'` 设置考试时间限制
 
 ### 提交答卷（重要：严格确认每条）
@@ -126,7 +126,7 @@ wjx doctor
 
 ### 安全原则
 
-- **破坏性操作执行前必须确认**：`survey delete`、`response clear`、`survey clear-bin`
+- **破坏性操作执行前必须确认**：`survey delete`、`response clear`、`survey clear-bin`。`survey delete` 未传 `--username` 时会先读取问卷并从 `creater` 补齐；读回缺少创建者则停止，不要猜测用户名或绕过服务端校验
 - 批量操作先告知影响范围
 - 首次操作用 `--dry-run` 预览
 

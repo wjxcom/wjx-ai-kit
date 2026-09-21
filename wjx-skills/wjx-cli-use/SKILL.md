@@ -53,7 +53,7 @@ wjx-cli 是问卷星 OpenAPI 的命令行工具。命令格式：`wjx <模块> <
 ### 规则 0：按场景选择 JSONL 或 XML DSL
 
 
-创建 JSONL 问卷先运行 `wjx survey jsonl-template --type <问卷类型> --raw` 获取骨架，再执行 `wjx survey create`。创建 XML DSL 问卷使用 `wjx dsl generate` 校验后执行 `wjx dsl create`；修改使用 `wjx dsl update`，查询使用 `wjx dsl query`。每个非空 JSONL 行必须是完整 JSON 对象；XML DSL 必须以 `wjx-dsl 1;` 开头。
+创建 JSONL 问卷先运行 `wjx survey jsonl-template --type <问卷类型> --raw` 获取骨架，再执行 `wjx survey create`。创建 XML DSL 问卷使用 `wjx dsl generate` 校验后执行 `wjx dsl create`；传统问卷修改使用 `wjx dsl update`（服务端 action `A1000110`），查询使用 `wjx dsl query`。AI 主页修改必须使用 `wjx survey update-ai-page`（服务端 action `A1000108`），不能把 AI 主页 vid 传给 `wjx dsl update`。每个非空 JSONL 行必须是完整 JSON 对象；XML DSL 必须以 `wjx-dsl 1;` 开头。
 
 不要把旧接口的 `_meta`、`q_type`、`q_subtype`、`q_title`、`items` 结构传给 `create`；CLI 会将其判为输入错误。
 
@@ -82,7 +82,7 @@ AI 主页是独立的纯展示内容，与表单/问卷创建互斥：
 
 ### 规则 3.2：纯框架题型默认保持草稿
 
-普通题型未指定发布选项时默认发布；但 `折叠栏目`、`轮播图`、`AI追问`、`AI处理`、`AI访谈`、`图片OCR`、`分页计时器` 仅凭 JSONL 骨架无法完善。问卷包含任一上述题型时，创建接口默认保持草稿。`VlookUp问卷关联` 当前由创建接口拒绝，只能读取既有问卷或转 Web 编辑器。先获取详情和编辑入口，指导用户补充素材/配置；只有用户明确要求发布时才显式传 `--publish` 或执行发布状态操作。
+普通题型未指定发布选项时默认发布；但 `折叠栏目`、`轮播图`、`AI追问`、`AI处理`、`AI访谈`、`图片OCR`、`分页计时器`、`循环评价`、`考试代码` 仅凭 JSONL 骨架无法完善。问卷包含任一上述题型时，创建接口默认保持草稿。`VlookUp问卷关联` 当前由创建接口拒绝，只能读取既有问卷或转 Web 编辑器。先获取详情和编辑入口，指导用户补充素材/配置；只有用户明确要求发布时才显式传 `--publish` 或执行发布状态操作。
 
 ### 规则 3.1：用户体系只允许兼容维护
 
@@ -318,7 +318,7 @@ JSONL 每个非空行放一个 JSON 对象，且首行必须是问卷基础信�
 
 创建成功后，先保存并结构化解析完整 JSON 响应。若响应带有可验证的 `fill_url`，直接将它作为填写地址；否则从同一响应记录的 `activity_domain` 与 `pc_path`（桌面端优先）或 `mobile_path` 组合地址，并确认使用的是短 `sid`。只有创建响应缺少这些路径时，才用响应中的 `vid` 到列表接口逐页查找对应记录。不要为此调用 `survey get`，也不要把 `survey url` 的编辑/创建地址当作填写地址。
 
-**考试问卷注意**：先运行 `wjx survey jsonl-template --type 6 --raw`，按模板使用 `考试单选`、`考试多选`、`考试判断` 等 `qtype`；用 `correctselect` 和 `quizscore` 设置正确答案与分值。需要模板未覆盖的高级考试设置时，再提供编辑链接并指引用户在网页端补充。
+**考试问卷注意**：先运行 `wjx survey jsonl-template --type 6 --raw`，按模板使用 `考试单选`、`考试多选`、`考试判断` 等 `qtype`；用 `correctselect` 和 `quizscore` 设置客观题答案与分值。普通主观题使用 `简答题`，考试主观题使用 `考试简答`，有标准答案的单项填空使用 `考试单项填空` + `correctselect`。`考试代码` 必须提供 `codetype`（编程语言），不能设置 `correctselect`/`answer`；`code`/`initialcode` 当前不会被 JSONL 服务端保存，初始代码、判题和人工阅卷设置需在网页端补充。创建后的 `考试简答`/`考试单项填空` 目前共享服务端 `q_type=5`，CLI 会将其标记为未完成题型校验，不会伪称已确认语义。
 
 ### 答卷与分析
 

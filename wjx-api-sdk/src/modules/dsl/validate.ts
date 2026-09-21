@@ -11,7 +11,7 @@ function diagnostic(code: string, message: string, line?: number): WjxDslDiagnos
   return { severity: "Error", code, message, ...(line === undefined ? {} : { line }) };
 }
 
-function maskDslComments(value: string): string {
+export function maskDslComments(value: string): string {
   const chars = value.split("");
   let quote = false;
   let escaped = false;
@@ -49,7 +49,7 @@ function maskDslComments(value: string): string {
   return chars.join("");
 }
 
-function matchingBrace(value: string, openIndex: number): number {
+export function matchingBrace(value: string, openIndex: number): number {
   let depth = 0;
   let quote = false;
   let escaped = false;
@@ -97,7 +97,7 @@ function lineNumber(value: string, index: number): number {
   return line;
 }
 
-function isInsideQuotedString(value: string, index: number): boolean {
+export function isInsideQuotedString(value: string, index: number): boolean {
   let quote = false;
   let escaped = false;
   for (let i = 0; i < index; i += 1) {

@@ -130,7 +130,7 @@ test("every source-declared option is exposed by at least one command help", asy
   const builtInOptions = new Set(["--help", "--version"]);
   assert.deepEqual([...helpOptions].filter((option) => !sourceOptions.has(option) && !builtInOptions.has(option)), [],
     "help exposes options that are not declared in source");
-  assert.equal(sourceOptions.size, 145, "update this denominator when an option is intentionally added or removed");
+  assert.equal(sourceOptions.size, 150, "update this denominator when an option is intentionally added or removed");
 });
 
 test("every leaf accepts all of its declared options syntactically", async () => {

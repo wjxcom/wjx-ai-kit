@@ -131,7 +131,8 @@ function isUnverifiedPostWrite(
   const required = requiredVerification.length > 0
     ? requiredVerification
     : ["structure", "status", "link"] as const;
-  return required.some((field) => checks[field] !== true);
+  return required.some((field) => checks[field] !== true
+    && !(field === "link" && verified.status === "draft"));
 }
 
 function verificationErrorDetails(verified: unknown): Record<string, unknown> {

@@ -445,12 +445,12 @@ describe("required field validation (post-merge)", () => {
     assert.equal(err.code, "INPUT_ERROR");
   });
 
-  it("survey delete without --username → INPUT_ERROR exit 2", async () => {
-    const result = await runFull(["survey", "delete", "--vid", "123"]);
+  it("survey delete without --vid → INPUT_ERROR exit 2", async () => {
+    const result = await runFull(["survey", "delete"]);
     assert.equal(result.exitCode, 2);
     const err = parseProblem(result.stderr);
     assert.equal(err.code, "INPUT_ERROR");
-    assert.ok(err.message.includes("username"));
+    assert.ok(err.message.includes("vid"));
   });
 
   it("survey status without --state → INPUT_ERROR exit 2", async () => {

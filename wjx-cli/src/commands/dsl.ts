@@ -65,8 +65,8 @@ function resolveDsl(command: Command, actionOptions?: unknown): string {
 
 function requireTraditionalVid(value: unknown): string {
   if (typeof value === "number" && Number.isSafeInteger(value) && value > 0) return String(value);
-  if (typeof value !== "string" || !value.trim() || value.trim() !== value || /[\u0000-\u001f\u007f]/.test(value)) {
-    throw new CliError("INPUT_ERROR", "--vid 必须是有效的传统问卷 vid");
+  if (typeof value !== "string" || !/^\d+$/.test(value) || !Number.isSafeInteger(Number(value)) || Number(value) <= 0) {
+    throw new CliError("INPUT_ERROR", "--vid 必须是正整数传统问卷编号，不能使用 sid");
   }
   return value;
 }
@@ -90,11 +90,11 @@ export function registerDslCommands(program: Command): void {
     requireField(merged, "vid");
     await executeRuntimeAction(program, command, queryWjxDsl, (values) => ({
       vid: requireTraditionalVid(values.vid),
-      ...(merged.get_exts === undefined ? {} : { get_exts: merged.get_exts as boolean }),
-      ...(merged.get_setting === undefined ? {} : { get_setting: merged.get_setting as boolean }),
-      ...(merged.get_page_cut === undefined ? {} : { get_page_cut: merged.get_page_cut as boolean }),
-      ...(merged.get_tags === undefined ? {} : { get_tags: merged.get_tags as boolean }),
-      ...(merged.showtitle === undefined ? {} : { showtitle: merged.showtitle as boolean }),
+      ...((values.getExts ?? values.get_exts) === undefined ? {} : { get_exts: values.getExts ?? values.get_exts }),
+      ...((values.getSetting ?? values.get_setting) === undefined ? {} : { get_setting: values.getSetting ?? values.get_setting }),
+      ...((values.getPageCut ?? values.get_page_cut) === undefined ? {} : { get_page_cut: values.getPageCut ?? values.get_page_cut }),
+      ...((values.getTags ?? values.get_tags) === undefined ? {} : { get_tags: values.getTags ?? values.get_tags }),
+      ...(values.showtitle === undefined ? {} : { showtitle: values.showtitle }),
     }));
   });
 
@@ -143,7 +143,7 @@ export function registerDslCommands(program: Command): void {
     });
   });
 
-  addDslInput(dsl.command("update").description("提交 AI 生成的完整 DSL 修改问卷").option("--vid <vid>", "传统编码问卷 vid").option("--allow-breaking-changes", "显式允许 breaking change（仅无答卷时有效）").option("--assets <path>", "素材清单 JSON；上传并替换 {{asset:id}} 占位符")).action(async (_options, command) => {
+  addDslInput(dsl.command("update").description("使用 action A1000110 修改传统问卷；AI 主页请使用 survey update-ai-page").option("--vid <vid>", "传统编码问卷 vid").option("--allow-breaking-changes", "显式允许 breaking change（仅无答卷时有效）").option("--assets <path>", "素材清单 JSON；上传并替换 {{asset:id}} 占位符")).action(async (_options, command) => {
     const merged = getMerged(command);
     requireField(merged, "vid");
     await executeRuntimeAction(program, command, updateWjxDsl, (values) => ({
@@ -153,9 +153,28 @@ export function registerDslCommands(program: Command): void {
     }), {
       preRead: async (input, credentials) => {
         const current = await queryWjxDsl({ vid: input.vid as string, get_questions: true, get_items: true }, credentials);
-        if (current.result !== true) throw new CliError("API_ERROR", `无法读取问卷 ${String(input.vid)} 的当前 DSL，已停止更新`);
+        if (current.result !== true) {
+          throw new CliError(
+            "API_ERROR",
+            current.errormsg || `无法读取传统问卷 ${String(input.vid)} 的当前 DSL；AI 主页请改用 survey update-ai-page`,
+            {
+              action: "1000006",
+              intendedAction: "1000110",
+              vid: input.vid,
+              ...(current.errorcode === undefined ? {} : { errorcode: current.errorcode }),
+              ...(current.traceid === undefined ? {} : { traceid: current.traceid }),
+            },
+          );
+        }
         const data = current.data && typeof current.data === "object" ? current.data as unknown as Record<string, unknown> : {};
-        if (String(data.vid ?? input.vid) !== String(input.vid)) throw new CliError("API_ERROR", `问卷 ${String(input.vid)} 的读回身份不匹配，已停止更新`);
+        const readVid = data.vid ?? data.activity_id ?? data.activityId;
+        if (String(readVid ?? "") !== String(input.vid)) throw new CliError("API_ERROR", `问卷 ${String(input.vid)} 的读回身份不匹配或缺少编号，已停止更新`);
+        if (String(data.atype ?? data.activity_type ?? "") === "12") {
+          throw new CliError("INPUT_ERROR", `问卷 ${String(input.vid)} 是 AI 主页，不能使用 dsl update；请改用 survey update-ai-page`);
+        }
+        if (typeof data.dsl !== "string" || !data.dsl.trim()) {
+          throw new CliError("API_ERROR", `问卷 ${String(input.vid)} 的读回结果缺少完整 DSL，已停止更新；AI 主页请改用 survey update-ai-page`);
+        }
         return data;
       },
       requiredVerification: ["structure", "status"],

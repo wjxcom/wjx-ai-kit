@@ -60,6 +60,54 @@ describe("verifySurveyPostWrite", () => {
     assert.match(result.warnings.join(" "), /sid|link/i);
   });
 
+  it("treats a draft without a respondent link as verified structure/status", async () => {
+    const result = await verifySurveyPostWrite({
+      vid: 42,
+      expectedQuestionCount: 1,
+      expectedStatus: "draft",
+      baseUrl: "https://www.wjx.cn",
+      getSurveyFn: async () => ok({
+        vid: 42,
+        status: 0,
+        title: "草稿",
+        questions: [{ q_type: 3, q_subtype: 3 }],
+      }),
+    });
+    assert.deepEqual(result.verification, { structure: true, status: true, link: false });
+    assert.equal(result.fillUrl, undefined);
+  });
+
+  it("rejects duplicate or invalid q_index values that can break respondent rendering", async () => {
+    const duplicate = await verifySurveyPostWrite({
+      vid: 42,
+      baseUrl: "https://www.wjx.cn",
+      getSurveyFn: async () => ok({
+        vid: 42,
+        sid: "indexSid",
+        status: 1,
+        questions: [
+          { q_index: 1, q_type: 3 },
+          { q_index: 1, q_type: 4 },
+        ],
+      }),
+    });
+    assert.equal(duplicate.verification.structure, false);
+    assert.match(duplicate.warnings.join(" "), /重复 q_index/);
+
+    const invalid = await verifySurveyPostWrite({
+      vid: 42,
+      baseUrl: "https://www.wjx.cn",
+      getSurveyFn: async () => ok({
+        vid: 42,
+        sid: "indexSid",
+        status: 1,
+        questions: [{ q_index: 0, q_type: 3 }],
+      }),
+    });
+    assert.equal(invalid.verification.structure, false);
+    assert.match(invalid.warnings.join(" "), /无效 q_index/);
+  });
+
   it("accepts a server short id and verifies structure and status", async () => {
     const result = await verifySurveyPostWrite({
       vid: 42,

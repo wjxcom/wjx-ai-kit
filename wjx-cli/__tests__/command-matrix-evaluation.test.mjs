@@ -67,14 +67,14 @@ const DSL = 'wjx-dsl 1; questionnaire { attr "Title" = "矩阵 DSL"; };';
  */
 const REMOTE_CASES = [
   { id: "survey.dsl.query", path: ["dsl", "query"], action: Action.QUERY_WJX_DSL, required: ["--vid"], args: ["--vid", "42", "--get-exts", "--get-setting", "--get-page-cut", "--get-tags", "--showtitle"], stdin: { vid: "42", get_exts: true, get_setting: true, get_page_cut: true, get_tags: true, showtitle: true } },
-  { id: "survey.dsl.create", path: ["dsl", "create"], action: Action.CREATE_SURVEY_BY_WJX_DSL, required: ["--dsl"], args: ["--dsl", DSL, "--assets", "assets.json"], stdin: { dsl: DSL, assets: "assets.json" } },
-  { id: "survey.dsl.update", path: ["dsl", "update"], action: Action.UPDATE_WJX_DSL, highRisk: true, required: ["--vid", "--dsl"], args: ["--vid", "42", "--dsl", DSL, "--assets", "assets.json"], stdin: { vid: "42", dsl: DSL, assets: "assets.json" } },
+  { id: "survey.dsl.create", path: ["dsl", "create"], action: Action.CREATE_SURVEY_BY_WJX_DSL, required: ["--dsl"], args: ["--dsl", DSL], stdin: { dsl: DSL } },
+  { id: "survey.dsl.update", path: ["dsl", "update"], action: Action.UPDATE_WJX_DSL, highRisk: true, required: ["--vid", "--dsl"], args: ["--vid", "42", "--dsl", DSL], stdin: { vid: "42", dsl: DSL } },
   { id: "survey.list", path: ["survey", "list"], action: Action.LIST_SURVEYS, args: ["--page", "1", "--page_size", "10"], stdin: {} },
   { id: "survey.get", path: ["survey", "get"], action: Action.GET_SURVEY, required: ["--vid"], args: ["--vid", "42"], stdin: { vid: 42 } },
   { id: "survey.create", path: ["survey", "create"], action: Action.CREATE_SURVEY_BY_JSON, required: ["--jsonl"], args: ["--jsonl", JSONL], stdin: { jsonl: JSONL } },
   { id: "survey.create-ai-page", path: ["survey", "create-ai-page"], action: Action.CREATE_AI_PAGE, required: ["--html_content"], args: ["--html_content", "<!doctype html><title>AI主页</title><main>内容</main>", "--title", "AI主页", "--page_type", "0"], stdin: { html_content: "<!doctype html><title>AI主页</title><main>内容</main>", title: "AI主页", page_type: 0 } },
   { id: "survey.update-ai-page", path: ["survey", "update-ai-page"], action: Action.UPDATE_AI_PAGE, highRisk: true, required: ["--vid", "--html_content"], args: ["--vid", "42", "--html_content", "<!doctype html><title>AI主页</title><main>更新内容</main>"], stdin: { vid: 42, html_content: "<!doctype html><title>AI主页</title><main>更新内容</main>" } },
-  { id: "survey.delete", path: ["survey", "delete"], action: Action.DELETE_SURVEY, highRisk: true, required: ["--vid", "--username"], args: ["--vid", "42", "--username", "owner"], stdin: { vid: 42, username: "owner" } },
+  { id: "survey.delete", path: ["survey", "delete"], action: Action.DELETE_SURVEY, highRisk: true, required: ["--vid"], args: ["--vid", "42", "--username", "owner"], stdin: { vid: 42, username: "owner" } },
   { id: "survey.status", path: ["survey", "status"], action: Action.UPDATE_STATUS, highRisk: true, required: ["--vid", "--state"], args: ["--vid", "42", "--state", "1"], stdin: { vid: 42, state: 1 } },
   { id: "survey.settings", path: ["survey", "settings"], action: Action.GET_SETTINGS, required: ["--vid"], args: ["--vid", "42"], stdin: { vid: 42 } },
   { id: "survey.update-settings", path: ["survey", "update-settings"], action: Action.UPDATE_SETTINGS, highRisk: true, required: ["--vid"], args: ["--vid", "42", "--api_setting", "{}"], stdin: { vid: 42, api_setting: {} } },
@@ -238,6 +238,7 @@ const BOOLEAN_OPTION_FLAGS = new Set([
   "--valid", "--reset_to_zero", "--auto_create_udept", "--auto_create_tag",
   "--is_radio", "--can_chg_answer", "--can_view_result", "--force_join_times",
   "--get_questions", "--get_items", "--get_exts", "--get_setting", "--get_page_cut", "--get_tags",
+  "--get-exts", "--get-setting", "--get-page-cut", "--get-tags", "--compress-img", "--allow-breaking-changes",
   "--showtitle",
   "--force", "--silent", "--skip-pip", "--no-install-skill", "--install-ppt-skill",
   "--raw", "--no-auto-version",
@@ -319,7 +320,7 @@ async function coverageValue(command, option, tempDir) {
   if (flag === "--file") {
     if (command === "survey.upload") return "aGVsbG8=";
     const file = resolve(tempDir, `${command.replaceAll(".", "-")}-${flag.slice(2)}.txt`);
-    const content = command === "survey.create" ? JSONL : "1$1";
+    const content = command === "survey.create" ? JSONL : command.startsWith("dsl.") ? DSL : "1$1";
     await writeFile(file, content, "utf8");
     return file;
   }
@@ -340,6 +341,9 @@ async function coverageValue(command, option, tempDir) {
   if (option.descriptor === "format") return "json";
   if (flag === "--submitdata") return "1$1";
   if (flag === "--jsonl") return JSONL;
+  if (flag === "--dsl") return DSL;
+  if (flag === "--assets") return "assets.json";
+  if (command === "dsl.generate" && flag === "--out") return resolve(tempDir, "normalized.wjx");
   if (flag === "--file_name") return "coverage.txt";
   if (flag === "--file") return "coverage.txt";
   if (flag === "--type" && command === "survey.jsonl-template") return "1";
@@ -382,11 +386,15 @@ function optionExpectedValue(command, flag, value) {
   // Compare against the resulting wire value, not the temporary path passed
   // to the CLI.
   if (flag === "--submitdata-file") return "1$1";
+  if (command.startsWith("dsl.") && flag === "--file") return DSL;
   if (!BOOLEAN_OPTION_FLAGS.has(flag)) return value;
   return flag === "--no-install-skill" || flag === "--no-auto-version" ? false : true;
 }
 
 function optionWireKeys(command, flag) {
+  if (flag === "--file" && command.startsWith("dsl.")) return ["dsl"];
+  if (command.startsWith("dsl.") && flag.startsWith("--get-")) return [flag.slice(2).replaceAll("-", "_")];
+  if (command.startsWith("dsl.") && flag === "--compress-img") return ["compress_img"];
   if (flag === "--file" && ["survey.create", "survey.create-ai-page", "survey.update-ai-page"].includes(command)) {
     return ["file", "surveydatajson", "jsonl", "html_content"];
   }
@@ -431,7 +439,7 @@ function assertOptionReflected(command, flag, value, envelope) {
   if (envelope.data?.input !== undefined) sources.push(envelope.data.input);
   // `--no-auto-version` is an execution policy rather than a wire field; its
   // observable contract is asserted by the dedicated workflow test.
-  if (flag === "--no-auto-version") return;
+  if (flag === "--no-auto-version" || (command.startsWith("dsl.") && flag === "--assets")) return;
   const keys = optionWireKeys(command, flag);
   const reflected = sources.some((source) => {
     if (!source || typeof source !== "object") return false;
@@ -470,7 +478,7 @@ describe("complete CLI command contract matrix", () => {
 
   test("leaf command inventory is exhaustive and every leaf is discoverable", async () => {
     assert.equal(new Set(LEAF_COMMANDS).size, LEAF_COMMANDS.length);
-    assert.equal(LEAF_COMMANDS.length, 77);
+    assert.equal(LEAF_COMMANDS.length, 81);
     for (const command of LEAF_COMMANDS) {
       const result = await runCli([...command.split("."), "--help"]);
       assert.equal(result.exitCode, 0, `${command}: ${result.stderr}`);
@@ -551,7 +559,7 @@ describe("complete CLI command contract matrix", () => {
 
   test("every leaf command has a safe preview or local dry-run path", async () => {
     const cases = [
-      ...REMOTE_CASES.map((item) => ({ id: item.id, args: [...item.path, ...item.args] })),
+      ...REMOTE_CASES.map((item) => ({ id: item.id.replace(/^survey\.dsl\./, "dsl."), args: [...item.path, ...item.args] })),
       ...LOCAL_DRY_RUN_CASES,
     ];
     const ids = cases.map((item) => item.id).sort();
@@ -869,7 +877,6 @@ describe("complete CLI command contract matrix", () => {
   test("required text and collection inputs reject empty values", async () => {
     const cases = [
       ["contacts", "query", "--uid", ""],
-      ["survey", "delete", "--vid", "42", "--username", "", "--yes"],
       ["response", "modify", "--vid", "42", "--jid", "7", "--answers", ""],
       ["survey", "upload", "--file_name", "file.txt", "--file", ""],
       ["department", "add", "--depts", "[]"],
@@ -935,6 +942,8 @@ describe("complete CLI command contract matrix", () => {
     let recycleBinCount = 1;
     let responseCount = 3;
     let responseAnswers = { "10000": "1" };
+    let dslSurvey = DSL;
+    let aiPageHtml = "<main>原始主页</main>";
     const settings = {
       api_setting: {},
       after_submit_setting: {},
@@ -947,12 +956,23 @@ describe("complete CLI command contract matrix", () => {
         let body = {};
         try { body = JSON.parse(request.body || "{}"); } catch { /* malformed bodies are covered by input tests */ }
         const action = String(body.action ?? "");
+        if (action === "1000006") return { result: true, data: { vid: 42, dsl: dslSurvey, status: 0, sid: "matrixReadbackSid" } };
+        if (action === "1000109" || action === "1000110") {
+          dslSurvey = body.dsl;
+          return { result: true, data: { vid: 42, status: 0, sid: "matrixReadbackSid" } };
+        }
+        if (action === "1000108") {
+          aiPageHtml = body.html_content;
+          return { result: true, data: { vid: 42, status: 0 } };
+        }
         if (action === "1000001") {
           const origin = `http://${request.headers.host}`;
           return {
             result: true,
             data: {
               vid: 42,
+              page_type: 0,
+              html_content: aiPageHtml,
               title: survey.title,
               description: "",
               status: survey.status,
@@ -1472,7 +1492,7 @@ describe("complete CLI command contract matrix", () => {
     const tempDir = await mkdtemp(resolve(process.env.TEMP ?? ".", "wjx-option-matrix-"));
     const covered = new Set();
     const expectedLocalOptions = new Set();
-    const remoteById = new Map(REMOTE_CASES.map((item) => [item.id, item]));
+    const remoteById = new Map(REMOTE_CASES.map((item) => [item.id.replace(/^survey\.dsl\./, "dsl."), item]));
     const localById = new Map(LOCAL_DRY_RUN_CASES.map((item) => [item.id, item]));
     try {
       for (const command of LEAF_COMMANDS) {
@@ -1493,7 +1513,7 @@ describe("complete CLI command contract matrix", () => {
             let baseArgs = [...remote.args];
             // Mutually exclusive input sources/aliases must be tested alone.
             if (option.flag === "--file") {
-              baseArgs = removeOption(baseArgs, "--jsonl");
+              baseArgs = removeOption(baseArgs, command.startsWith("dsl.") ? "--dsl" : "--jsonl");
             } else if (option.flag === "--submitdata-file") {
               baseArgs = removeOption(baseArgs, "--submitdata");
             } else if (option.flag === "--status") {
@@ -1528,6 +1548,9 @@ describe("complete CLI command contract matrix", () => {
           if (GLOBAL_OPTION_FLAGS.has(option.flag)) continue;
           expectedLocalOptions.add(key);
           let baseArgs = [...local.args];
+          if (command === "dsl.generate" && option.flag === "--file") {
+            baseArgs = removeOption(baseArgs, "--dsl");
+          }
           if (command === "survey.url" && option.flag === "--activity") {
             baseArgs = removeOption(removeOption(baseArgs, "--mode"), "--name");
             baseArgs.push("--mode", "edit");
@@ -1585,7 +1608,7 @@ describe("complete CLI command contract matrix", () => {
         `option matrix did not execute every command-local option (covered ${covered.size}, expected ${expectedLocalOptions.size})`);
       // This is the current command-local occurrence denominator. Keep it
       // explicit so a help/parser drift cannot silently shrink the matrix.
-      assert.equal(expectedLocalOptions.size, 263,
+      assert.equal(expectedLocalOptions.size, 283,
         "update the command-local option denominator only when the public surface intentionally changes");
     } finally {
       await rm(tempDir, { recursive: true, force: true });

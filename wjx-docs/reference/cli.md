@@ -20,7 +20,8 @@
 
 | 目标 | 当前参数 |
 | --- | --- |
-| 彻底删除问卷 | `wjx survey delete --completely` |
+| 删除问卷 | `wjx survey delete --vid <vid>`；省略 `--username` 时从读回的 `creater` 自动补齐 |
+| 彻底删除问卷 | `wjx survey delete --vid <vid> --completely` |
 | 上传文件 | `wjx survey upload --file_name <name> --file <base64>` |
 | 导出格式 | `wjx response download --suffix 0\|1\|2` |
 | 查询单份答卷 | `wjx response query --jid <id>` |

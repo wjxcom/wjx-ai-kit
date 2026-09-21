@@ -45,10 +45,12 @@ wjx survey create --file survey.jsonl
 | `minvalue` / `maxvalue` | 滑动条、矩阵滑动条等数值题型的范围；自增表格行数使用 `min_rows` / `max_rows`，**不能**代替 NPS 的 `select` |
 | `minvaluetext` / `maxvaluetext` | 量表或滑动条两端显示文案；只描述端点，不定义 NPS 的分值范围 |
 | `total` | 比重题总值，默认 100 |
-| `correctselect` | 考试题正确答案数组 |
+| `correctselect` | 考试选择题及单项填空的正确答案；`考试单项填空` 必填，不要用于 `考试简答` 或 `考试代码` |
 | `quizscore` | 考试题分值字符串 |
 | `isquiz` | 考试题标记，使用 `"1"` |
 | `answeranalysis` | 考试题答案解析 |
+| `codetype` | `考试代码` 必填的编程语言字符串 |
+| `code` / `initialcode` | 当前 JSONL 服务端不会保存这两个字段；SDK 会拒绝，请到 Web 编辑器设置初始代码 |
 | `types` / `selects` | 表格组合各列的输入类型和对应选项；自增表格的 `selects` 只有一行模板 |
 | `min_rows` / `max_rows` | 自增表格可添加行数的可选边界 |
 | `leveldata` | 多级下拉的层级数据 |
@@ -74,6 +76,8 @@ wjx survey create --file survey.jsonl
 
 以下题型也只能读取既有问卷或在 Web 编辑器中配置，当前 JSONL 创建接口会明确拒绝：`VlookUp问卷关联`、`多项文件题`、`多项简答题`、`当前语音`。它们仍保留在读取题型映射中；CLI/MCP 会在本地预检阶段停止，不会重试服务端创建。需要多文件或多段文字采集时，请改用多个普通 `文件上传`/`简答题`，并在创建前重新生成完整 JSONL。
 
+`循环评价` 目前可通过 XML DSL 透传 `matrix` + `Verify="circulate"`（通常还要由服务端或网页配置评价对象、轮次和随机规则），并可查询和回读协议结构；JSONL 只接受题型名称，不能表达完整循环配置。CLI 不把 DSL 解析成功当作答题页闭环已验证，创建或更新后必须用真实预览/答题页验收，缺少配置时转 Web 编辑器补全。
+
 ## NPS 量表（唯一规范写法）
 
 NPS 题必须使用 `qtype:"NPS量表"`，并提供完整且严格有序的 11 个字符串选项。`select` 定义答卷人实际能选择的分值，**不能省略，也不能用 `minvalue`/`maxvalue` 替代**。下面是唯一规范 JSONL 示例；需要自定义题干或端点文案时，只改对应文字，不改 `select` 序列：
@@ -88,7 +92,7 @@ NPS 题必须使用 `qtype:"NPS量表"`，并提供完整且严格有序的 11 �
 
 ### 纯框架题型（默认不发布）
 
-以下题型可以通过 `create` 建立骨架，但仅凭 JSONL 示例不能完成素材、AI 参数或页面时序配置：`折叠栏目`、`轮播图`、`AI追问`、`AI处理`、`AI访谈`、`图片OCR`、`分页计时器`。包含这些题型时，未显式指定发布选项会创建为草稿；创建后应先在编辑页完善，再由用户明确要求发布。`VlookUp问卷关联` 属于读取/Web 编辑器边界，当前 JSONL 创建接口直接拒绝。
+以下题型可以通过 `create` 建立骨架，但仅凭 JSONL 示例不能完成素材、AI 参数、循环评价子题或代码判题配置：`折叠栏目`、`轮播图`、`AI追问`、`AI处理`、`AI访谈`、`图片OCR`、`分页计时器`、`循环评价`、`考试代码`。包含这些题型时，未显式指定发布选项会创建为草稿；创建后应先在编辑页完善，再由用户明确要求发布。`VlookUp问卷关联` 属于读取/Web 编辑器边界，当前 JSONL 创建接口直接拒绝。
 
 以下名称适用于更专门的场景；字段结构不明确时先查看当前 CLI 模板或按用户已有的合法 JSONL 结构操作，不要猜字段：
 
@@ -156,7 +160,7 @@ wjx survey create --file vote.jsonl --type 3
 
 ### 考试
 
-从考试模板开始，使用考试专用 `qtype`、`correctselect` 和 `quizscore`：
+从考试模板开始。客观题使用考试专用 `qtype`、`correctselect` 和 `quizscore`：
 
 ```jsonl
 {"qtype":"问卷基础信息","title":"JavaScript 基础考试","atype":6}
@@ -167,6 +171,15 @@ wjx survey create --file vote.jsonl --type 3
 ```bash
 wjx survey create --file exam.jsonl --type 6
 ```
+
+主观题和代码题必须区分：普通调查的开放回答使用 `简答题`，考试主观题使用 `考试简答`，有标准答案的填空才使用 `考试单项填空`/`考试多项填空`。`考试单项填空` 必须提供 `correctselect`；`考试代码` 至少提供编程语言，不要生成 `correctselect`/`answer`，也不要填写不会被服务端保存的 `code`/`initialcode`：
+
+```jsonl
+{"qtype":"考试简答","title":"请说明你的解题思路","quizscore":"10","answeranalysis":"人工阅卷"}
+{"qtype":"考试代码","title":"实现一个求和函数","codetype":"python","quizscore":"10"}
+```
+
+`考试简答` 和 `考试单项填空` 在问卷星读取接口中目前都可能返回 `q_type=5,q_subtype=5`，CLI 会保留该能力边界并在写后验证中提示“未完成题型校验”，不能仅凭数字编码宣称题型语义已确认。完整判题、运行沙箱和人工阅卷设置请在 Web 编辑器复核。
 
 ### 可选题
 

@@ -52,8 +52,10 @@ const JSONL_QTYPE_CODES: Readonly<Record<string, NumericQuestionType>> = {
   "商品题": { q_type: 4, q_subtype: 403 },
   "单项填空": { q_type: 5, q_subtype: 5 },
   "简答题": { q_type: 5, q_subtype: 5 },
-  "考试单项填空": { q_type: 5, q_subtype: 5 },
-  "考试简答": { q_type: 5, q_subtype: 5 },
+  // Both exam blanks and exam short answers currently share q_type=5 and
+  // q_subtype=5 in get_survey. Leave them unmapped rather than reporting a
+  // false-positive type match; preflight still validates their distinct JSONL
+  // contracts and post-verification reports the deliberate limitation.
   "多级下拉": { q_type: 5, q_subtype: 501 },
   "多项填空": { q_type: 6, q_subtype: 6 },
   "考试多项填空": { q_type: 6, q_subtype: 601 },

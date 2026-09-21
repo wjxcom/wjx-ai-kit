@@ -25,6 +25,23 @@ function resolveAiPageHtml(values) {
     }
     throw new CliError("INPUT_ERROR", "必须提供 --html_content 或 --file 参数");
 }
+function aiPageHtml(data) {
+    if (!data)
+        return undefined;
+    for (const key of ["html_content", "html", "content"]) {
+        const value = data[key];
+        if (typeof value === "string" && value.trim())
+            return value;
+    }
+    return undefined;
+}
+function normalizeAiPageHtml(value) {
+    return value.replace(/\r\n?/g, "\n").trim();
+}
+function aiPageType(data) {
+    const raw = data?.page_type ?? data?.pageType;
+    return numericCode(raw);
+}
 const SETTING_KEYS = [
     "api_setting",
     "after_submit_setting",
@@ -32,6 +49,22 @@ const SETTING_KEYS = [
     "sojumpparm_setting",
     "time_setting",
 ];
+/**
+ * The delete API still requires the creator username for its ownership check,
+ * but get_survey already returns that value for the requested survey. Keep the
+ * fallback local to the CLI so omitting --username never weakens the server's
+ * authorization check or invents an identity.
+ */
+function surveyCreator(data) {
+    if (!data)
+        return undefined;
+    for (const key of ["creater", "creator", "username", "user_name", "owner"]) {
+        const value = data[key];
+        if (typeof value === "string" && value.trim())
+            return value.trim();
+    }
+    return undefined;
+}
 function asRecord(value) {
     return value && typeof value === "object" && !Array.isArray(value)
         ? value
@@ -497,6 +530,76 @@ export function registerSurveyCommands(program) {
                     service: "default", action: Action.UPDATE_AI_PAGE, url: context?.apiUrl,
                     body: Object.fromEntries(Object.entries({ action: Action.UPDATE_AI_PAGE, vid: input.vid, html_content: input.html_content, title: input.title }).filter(([, value]) => value !== undefined)),
                 })],
+            preRead: async (input, credentials, requestOptions) => {
+                const current = await getSurvey({ vid: input.vid, get_questions: false, get_items: false, showtitle: true }, credentials, undefined, requestOptions);
+                if (current.result !== true) {
+                    const details = [current.errormsg, current.errorcode, current.traceid]
+                        .filter((value) => value !== undefined && value !== null && String(value).trim())
+                        .map(String)
+                        .join(" ");
+                    throw new CliError("API_ERROR", current.errormsg || `无法读取 AI 主页 ${String(input.vid)} 的完整 HTML，已停止更新`, {
+                        action: Action.UPDATE_AI_PAGE,
+                        vid: input.vid,
+                        ...(current.errorcode === undefined ? {} : { errorcode: current.errorcode }),
+                        ...(current.traceid === undefined ? {} : { traceid: current.traceid }),
+                        upstream: details || undefined,
+                    });
+                }
+                const data = asRecord(current.data);
+                if (!surveyIdentityMatches(data, input.vid)) {
+                    throw new CliError("API_ERROR", `AI 主页 ${String(input.vid)} 的读回身份不匹配，已停止更新`);
+                }
+                const existingHtml = aiPageHtml(data);
+                if (!existingHtml) {
+                    throw new CliError("API_ERROR", `AI 主页 ${String(input.vid)} 的读回结果缺少完整 html_content，已停止更新`);
+                }
+                const pageType = aiPageType(data);
+                if (pageType === undefined) {
+                    throw new CliError("API_ERROR", `AI 主页 ${String(input.vid)} 的读回结果缺少 page_type，无法确认页面类型未改变`);
+                }
+                if (!AI_PAGE_PAGE_TYPES.includes(pageType)) {
+                    throw new CliError("API_ERROR", `AI 主页 ${String(input.vid)} 的 page_type 无效，已停止更新`);
+                }
+                return { data, existingHtml, pageType };
+            },
+            postVerify: async (_result, input, credentials, preReadResult) => {
+                const before = preReadResult;
+                try {
+                    const current = await getSurvey({ vid: input.vid, get_questions: false, get_items: false, showtitle: true }, credentials);
+                    const data = asRecord(current.data);
+                    const actualHtml = aiPageHtml(data);
+                    const actualPageType = aiPageType(data);
+                    const identity = surveyIdentityMatches(data, input.vid);
+                    const htmlMatches = typeof input.html_content === "string"
+                        && typeof actualHtml === "string"
+                        && normalizeAiPageHtml(actualHtml) === normalizeAiPageHtml(input.html_content);
+                    const pageTypeMatches = before?.pageType !== undefined
+                        && actualPageType === before.pageType;
+                    return {
+                        verification: {
+                            structure: identity && Boolean(actualHtml) && htmlMatches,
+                            status: pageTypeMatches,
+                            link: true,
+                        },
+                        outcome: identity && Boolean(actualHtml) && htmlMatches && pageTypeMatches ? "verified" : "unknown",
+                        warnings: [
+                            ...(identity ? [] : ["AI 主页读回身份不匹配"]),
+                            ...(actualHtml ? [] : ["AI 主页读回结果缺少完整 html_content"]),
+                            ...(htmlMatches ? [] : ["AI 主页读回 HTML 与提交内容不一致"]),
+                            ...(pageTypeMatches ? [] : ["AI 主页 page_type 在更新后发生变化"]),
+                        ],
+                        page_type: actualPageType,
+                    };
+                }
+                catch (error) {
+                    return {
+                        verification: { structure: false, status: false, link: true },
+                        outcome: "unknown",
+                        warnings: ["AI 主页更新后的完整 HTML 读回失败", error instanceof Error ? error.message : String(error)],
+                    };
+                }
+            },
+            requiredVerification: ["structure", "status"],
             execute: (input, credentials, requestOptions) => updateAiPage(input, credentials, undefined, requestOptions),
         });
     });
@@ -510,10 +613,9 @@ export function registerSurveyCommands(program) {
         .action(async (_opts, cmd) => {
         await executeRuntimeAction(program, cmd, deleteSurvey, (m) => {
             requireField(m, "vid");
-            requireField(m, "username");
             return {
                 vid: m.vid,
-                username: m.username,
+                ...(typeof m.username === "string" && m.username.trim() ? { username: m.username.trim() } : {}),
                 completely_delete: m.completely,
             };
         }, {
@@ -529,6 +631,17 @@ export function registerSurveyCommands(program) {
                     throw new CliError("API_ERROR", `问卷 ${String(input.vid)} 的读回身份不匹配，已停止删除`);
                 }
                 return state;
+            },
+            transformInput: async (input, _credentials, _requestOptions, preReadResult) => {
+                if (typeof input.username === "string" && input.username.trim()) {
+                    return { ...input, username: input.username.trim() };
+                }
+                const snapshot = preReadResult;
+                const username = surveyCreator(snapshot?.data);
+                if (!username) {
+                    throw new CliError("API_ERROR", `问卷 ${String(input.vid)} 的读回结果缺少 creater，无法安全删除；请显式传入 --username`);
+                }
+                return { ...input, username };
             },
             postVerify: async (_result, input, credentials, _preReadResult) => {
                 let state;

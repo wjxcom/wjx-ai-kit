@@ -118,7 +118,7 @@
 | 参数 | 类型 | 必填 | 说明 |
 |------|------|------|------|
 | `vid` | number | 是 | 问卷编号 |
-| `username` | string | 是 | 用户名 |
+| `username` | string | 否 | 用户名；省略时工具先读问卷并使用返回的 `creater`，缺少创建者会停止删除 |
 | `completely_delete` | boolean | 否 | 传 `true` 才彻底删除（status=4，不可恢复）；不传则进入回收站（status=3，可恢复） |
 
 工具只发送一次删除请求，随后以有界只读轮询等待状态落库。普通删除必须读回 `status=3` 才算 `verified`；彻底删除必须证明 `status=4`。单纯 not-found 不足以证明任一删除状态，会返回 `outcome: "unknown"`。

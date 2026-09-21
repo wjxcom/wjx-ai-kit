@@ -223,7 +223,7 @@ wjx survey update-settings --vid 12345 --msg_setting '{"post_url":"https://examp
 
 ```bash
 wjx survey delete --vid 12345 --username admin
-wjx survey delete --vid 12345 --username admin --completely   # 彻底删除，不进回收站
+wjx survey delete --vid 12345 --completely   # 未传用户名时从问卷 creater 读回
 ```
 
 删除请求只发送一次。CLI 会在写后以有界只读轮询等待服务端状态收敛：普通删除必须读回 `status=3`，`--completely` 必须读回 `status=4`。仅返回“问卷不存在”不能证明任一删除状态，结果会报告为 `unknown`。
@@ -231,7 +231,7 @@ wjx survey delete --vid 12345 --username admin --completely   # 彻底删除，�
 | Flag | 必填 | 说明 |
 |------|------|------|
 | `--vid <n>` | 是 | 问卷编号 |
-| `--username <s>` | 是 | 用户名 |
+| `--username <s>` | 否 | 用户名；省略时 CLI 先读取问卷并使用读回的 `creater`，读回缺少创建者会停止删除 |
 | `--completely` | 否 | 彻底删除（不进回收站） |
 
 ## wjx survey url

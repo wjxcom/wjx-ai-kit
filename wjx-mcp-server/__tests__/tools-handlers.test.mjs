@@ -644,7 +644,7 @@ describe("survey tools validation via MCP", () => {
       assert.equal(result.isError, true);
     });
 
-    it("rejects missing username", async () => {
+    it("allows omitted username so the handler can resolve creater after its pre-read", async () => {
       const result = await client.callTool({
         name: "delete_survey",
         arguments: { vid: 1 },

@@ -371,6 +371,19 @@ describe("JSONL qtype verification mapping", () => {
     const check = compareJsonlQuestionTypes(expected, [{ q_type: 3, q_subtype: 3 }]);
     assert.equal(check.matches, false);
   });
+
+  it("does not claim a numeric mapping for exam blanks and short answers", () => {
+    assert.equal(getJsonlQuestionTypeCode("考试单项填空"), undefined);
+    assert.equal(getJsonlQuestionTypeCode("考试简答"), undefined);
+    const expected = extractJsonlQuestionTypeExpectations([
+      '{"qtype":"问卷基础信息","title":"考试"}',
+      '{"qtype":"考试简答","title":"Q"}',
+    ].join("\n"));
+    const check = compareJsonlQuestionTypes(expected, [{ q_type: 5, q_subtype: 5 }]);
+    assert.equal(check.matches, true);
+    assert.deepEqual(check.unknownQtypes, ["考试简答"]);
+    assert.match(check.warnings.join(" "), /没有可靠.*映射/);
+  });
 });
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -516,7 +529,7 @@ describe("createSurveyByJson 默认必答 & atype 推断 & 标题校验", () => 
     for (const qtype of FRAMEWORK_ONLY_JSONL_QTYPES) {
       const jsonl = [
         JSON.stringify({ qtype: "问卷基础信息", title: `框架题测试-${qtype}` }),
-        JSON.stringify({ qtype, title: "待二次编辑" }),
+        JSON.stringify({ qtype, title: "待二次编辑", ...(qtype === "考试代码" ? { codetype: "python" } : {}) }),
       ].join("\n");
       assert.equal(hasFrameworkOnlyJsonlQtype(jsonl), true, `${qtype} must be detected`);
       if (JSONL_READ_ONLY_OR_WEB_EDITOR_QTYPES.has(qtype)) {
@@ -962,6 +975,54 @@ describe("preflightJsonl", () => {
       '{"qtype":"单选","title":"性别","select":["男","女"]}',
     ].join("\n");
     assert.doesNotThrow(() => preflightJsonl(jsonl));
+  });
+
+  it("requires a language and rejects standard answers for exam code questions", () => {
+    const missingLanguage = [
+      '{"qtype":"问卷基础信息","title":"代码考试"}',
+      '{"qtype":"考试代码","title":"实现函数"}',
+    ].join("\n");
+    assert.throws(() => preflightJsonl(missingLanguage), /codetype/);
+
+    const answerOnCode = [
+      '{"qtype":"问卷基础信息","title":"代码考试"}',
+      '{"qtype":"考试代码","title":"实现函数","codetype":"python","correctselect":["答案"]}',
+    ].join("\n");
+    assert.throws(() => preflightJsonl(answerOnCode), /不能设置 correctselect/);
+
+    const valid = [
+      '{"qtype":"问卷基础信息","title":"代码考试"}',
+      '{"qtype":"考试代码","title":"实现函数","codetype":"python"}',
+    ].join("\n");
+    assert.doesNotThrow(() => preflightJsonl(valid));
+    assert.throws(() => preflightJsonl(valid.replace('"codetype":"python"', '"codetype":"python","code":"pass"')), /不会被服务端保存/);
+    assert.throws(() => preflightJsonl(valid.replace('"codetype":"python"', '"codetype":"python","answer":["pass"]')), /不能设置.*标准答案/);
+  });
+
+  it("keeps subjective questions on the correct semantic path", () => {
+    const ordinary = [
+      '{"qtype":"问卷基础信息","title":"调查"}',
+      '{"qtype":"简答题","title":"您的意见"}',
+    ].join("\n");
+    assert.doesNotThrow(() => preflightJsonl(ordinary));
+
+    const accidentalExam = [
+      '{"qtype":"问卷基础信息","title":"调查"}',
+      '{"qtype":"简答题","title":"您的意见","isquiz":"1"}',
+    ].join("\n");
+    assert.throws(() => preflightJsonl(accidentalExam), /考试简答/);
+
+    const wrongFillContract = [
+      '{"qtype":"问卷基础信息","title":"考试"}',
+      '{"qtype":"考试简答","title":"开放题","correctselect":["答案"]}',
+    ].join("\n");
+    assert.throws(() => preflightJsonl(wrongFillContract), /不能设置 correctselect/);
+    const missingFillAnswer = [
+      '{"qtype":"问卷基础信息","title":"考试"}',
+      '{"qtype":"考试单项填空","title":"中国首都"}',
+    ].join("\n");
+    assert.throws(() => preflightJsonl(missingFillAnswer), /必须提供非空 correctselect/);
+    assert.doesNotThrow(() => preflightJsonl(missingFillAnswer.replace('"中国首都"', '"中国首都","correctselect":["北京"]')));
   });
 
   it("用 q_type 字段时给出明确改名提示", () => {

@@ -52,6 +52,9 @@ test("generateWjxDsl accepts query-style matrix children and protocol matrices",
     node "Question" { attr "Type" = "matrix"; attr "Topic" = "3"; attr "Mode" = "201";
       attr "Verify" = "aiInterview";
     };
+    node "Question" { attr "Type" = "matrix"; attr "Topic" = "4"; attr "Mode" = "302";
+      attr "Verify" = "circulate"; attr "CirculateRounds" = "2"; attr "CirculateObjects" = "员工、主管";
+    };
   };`;
   const result = generateWjxDsl(queryStyle);
   assert.equal(result.valid, true, JSON.stringify(result.diagnostics));
@@ -105,6 +108,95 @@ test("verifyWjxDslWrite reads back identity, DSL structure, status, and link", a
   const verified = await verifyWjxDslWrite({ vid: 42, expectedDsl: dsl, credentials: { apiKey: "key", baseUrl: "https://example.test" }, fetchImpl });
   assert.equal(verified.outcome, "verified");
   assert.deepEqual(verified.verification, { structure: true, status: true, link: true });
+});
+
+test("DSL draft read-back does not require a respondent link", async () => {
+  const dsl = 'wjx-dsl 1; questionnaire { attr "Title" = "草稿"; };';
+  const verified = await verifyWjxDslWrite({
+    vid: 42,
+    expectedDsl: dsl,
+    credentials: { apiKey: "key" },
+    fetchImpl: async () => new Response(JSON.stringify({ result: true, data: { vid: 42, dsl, status: 0 } }), { headers: { "content-type": "application/json" } }),
+  });
+  assert.equal(verified.outcome, "verified");
+  assert.deepEqual(verified.verification, { structure: true, status: true, link: true });
+});
+
+test("DSL read-back detects changed question settings and options under the same Topic", async () => {
+  const expected = `wjx-dsl 1; questionnaire {
+    attr "Title" = "比例题";
+    question matrix { attr "Topic" = "1"; attr "Title" = "分配比例"; attr "Total" = "100";
+      row { attr "Title" = "食堂"; };
+      row { attr "Title" = "咖啡厅"; };
+    };
+  };`;
+  const actual = expected.replace('attr "Total" = "100"', 'attr "Total" = "0"');
+  const fetchImpl = async () => new Response(JSON.stringify({
+    result: true, data: { vid: 42, dsl: actual, status: 0, sid: "shortId" },
+  }), { headers: { "content-type": "application/json" } });
+  const result = await verifyWjxDslWrite({ vid: 42, expectedDsl: expected, credentials: { apiKey: "key" }, fetchImpl });
+  assert.equal(result.outcome, "unknown");
+  assert.equal(result.verification.structure, false);
+  assert.match(result.warnings.join(" "), /attribute|row|option/);
+
+  const missingRow = expected.replace('row { attr "Title" = "咖啡厅"; };', "");
+  const rowResult = await verifyWjxDslWrite({
+    vid: 42, expectedDsl: expected, credentials: { apiKey: "key" },
+    fetchImpl: async () => new Response(JSON.stringify({ result: true, data: { vid: 42, dsl: missingRow, status: 0, sid: "shortId" } }), { headers: { "content-type": "application/json" } }),
+  });
+  assert.equal(rowResult.verification.structure, false);
+
+  const reordered = expected
+    .replace('row { attr "Title" = "食堂"; };', 'row { attr "Title" = "占位"; };')
+    .replace('row { attr "Title" = "咖啡厅"; };', 'row { attr "Title" = "食堂"; };')
+    .replace('row { attr "Title" = "占位"; };', 'row { attr "Title" = "咖啡厅"; };');
+  const orderResult = await verifyWjxDslWrite({
+    vid: 42, expectedDsl: expected, credentials: { apiKey: "key" },
+    fetchImpl: async () => new Response(JSON.stringify({ result: true, data: { vid: 42, dsl: reordered, status: 0, sid: "shortId" } }), { headers: { "content-type": "application/json" } }),
+  });
+  assert.equal(orderResult.verification.structure, false);
+});
+
+test("DSL read-back rejects a file upload downgraded to a text question", async () => {
+  const expected = 'wjx-dsl 1; questionnaire { attr "Title" = "文件调查"; question fileupload { attr "Topic" = "1"; attr "Title" = "请上传文件"; attr "MaxSize" = "1024"; }; };';
+  const actual = expected.replace("question fileupload", "question question");
+  const result = await verifyWjxDslWrite({
+    vid: 42, expectedDsl: expected, credentials: { apiKey: "key" },
+    fetchImpl: async () => new Response(JSON.stringify({ result: true, data: { vid: 42, dsl: actual, status: 0, sid: "shortId" } }), { headers: { "content-type": "application/json" } }),
+  });
+  assert.equal(result.verification.structure, false);
+  assert.equal(result.outcome, "unknown");
+});
+
+test("DSL read-back permits server-owned defaults while preserving explicit content", async () => {
+  const expected = `wjx-dsl 1; questionnaire {
+    attr "Title" = "问卷";
+    question radio { attr "Topic" = "1"; attr "Title" = "选择";
+      item { attr "ItemTitle" = "是"; attr "ItemValue" = "1"; };
+    };
+  };`;
+  const actual = expected.replace('attr "ItemValue" = "1";', 'attr "ItemValue" = "1"; attr "IsShow" = "true";');
+  const result = await verifyWjxDslWrite({
+    vid: 42, expectedDsl: expected, credentials: { apiKey: "key" },
+    fetchImpl: async () => new Response(JSON.stringify({ result: true, data: { vid: 42, dsl: actual, status: 0, sid: "shortId" } }), { headers: { "content-type": "application/json" } }),
+  });
+  assert.equal(result.outcome, "verified", result.warnings.join("; "));
+});
+
+test("DSL verification ignores keywords inside quoted titles and comments", async () => {
+  const dsl = `wjx-dsl 1; questionnaire {
+    attr "Title" = "问卷";
+    // question radio { attr "Topic" = "99"; }
+    question question { attr "Topic" = "1"; attr "Title" = "请描述 question radio { item { 的含义";
+      attr "Verify" = "不验证";
+    };
+  };`;
+  const result = await verifyWjxDslWrite({
+    vid: 42, expectedDsl: dsl, credentials: { apiKey: "key" },
+    fetchImpl: async () => new Response(JSON.stringify({ result: true, data: { vid: 42, dsl, status: 0, sid: "shortId" } }), { headers: { "content-type": "application/json" } }),
+  });
+  assert.equal(result.outcome, "verified", result.warnings.join("; "));
+  assert.equal(result.actualQuestionCount, 1);
 });
 
 test("local DSL validation normalizes aliases and rejects duplicate Topics", () => {

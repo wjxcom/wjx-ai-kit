@@ -101,6 +101,10 @@ function field(record, ...names) {
     }
     return undefined;
 }
+function surveyCreator(data) {
+    const value = field(data ?? {}, "creater", "creator", "username", "user_name", "owner");
+    return typeof value === "string" && value.trim() ? value.trim() : undefined;
+}
 function respondentUrl(value, origins, vid, relativeOrigin) {
     if (typeof value !== "string" || !value.trim())
         return undefined;
@@ -805,7 +809,7 @@ export function registerSurveyTools(server) {
         description: "删除问卷。普通删除进入回收站（status=3，可恢复）；设置 completely_delete=true 才会彻底删除（status=4，不可恢复）。请谨慎使用。",
         inputSchema: {
             vid: z.number().int().positive().describe("问卷编号"),
-            username: z.string().min(1).describe("用户名（主账户/系统管理员/问卷创建者子账号）"),
+            username: z.string().min(1).optional().describe("用户名（可省略；将从问卷读回的 creater 补齐）"),
             completely_delete: z.boolean().optional().describe("是否彻底删除（status=4，不可恢复；不传则进入回收站 status=3，可恢复）"),
         },
         annotations: {
@@ -819,11 +823,16 @@ export function registerSurveyTools(server) {
             return runVerifiedWrite({
                 operation: "delete_survey",
                 preRead: () => surveyReadOrThrow(args.vid),
-                write: () => deleteSurvey({
-                    vid: args.vid,
-                    username: args.username,
-                    completely_delete: args.completely_delete,
-                }),
+                write: (preRead) => {
+                    const username = args.username?.trim() || surveyCreator(responseData(preRead));
+                    if (!username)
+                        throw new Error(`问卷 ${args.vid} 读回结果缺少 creater，无法安全删除；请显式提供 username`);
+                    return deleteSurvey({
+                        vid: args.vid,
+                        username,
+                        completely_delete: args.completely_delete,
+                    });
+                },
                 verify: ({ phase }) => verifyDeletedSurvey(args.vid, args.completely_delete === true, phase),
             });
         }
@@ -992,7 +1001,7 @@ export function registerSurveyTools(server) {
             "【核心字段】qtype（题型名称）、title（标题，只写题目正文，不写题目类型）、select（选项数组）、rowtitle（行标题或表格字段名）、requir（是否必填；缺省时 SDK 注入 true）。" +
             "【必答规则】默认所有题型都是必答题，包括单项填空、简答题、意见建议题、开放题；只有用户明确指定某个题号/题目/字段为选填时，才给该题传 requir=false。" +
             "【专业模型】支持 BWS/MaxDiff(mdattr+pertaskcount+tasklength)、联合分析(columntitle)、品牌漏斗(brands)、Kano模型、SUS模型、PSM模型等。" +
-            "【考试题型】支持 correctselect（正确答案）、quizscore（分值）、answeranalysis（答案解析）。" +
+            "【考试题型】客观题支持 correctselect（正确答案）、quizscore（分值）、answeranalysis（答案解析）；考试简答不要设置 correctselect，考试代码必须提供 codetype（编程语言），不要生成标准答案。普通主观题使用简答题，考试填空仅用于有标准答案的填空。" +
             "【关联逻辑】支持 relation（显示条件）、referselect（引用前题选项）。" +
             "【硬性校验 — 不满足会被 SDK 拒绝】1) 标题不得为空、占位符（??? / 无标题 / TODO / xxx 等）或少于 2 字；2) JSONL 必须包含至少 1 道真实题目（_meta/分页栏/段落说明/知情同意书不计入）。" +
             "【多项填空必看】多项填空 qtype='多项填空'，子填空位数量由 title 中的 {_} 占位符数量决定，例如 title='电话 {_}，邮箱 {_}，微信 {_}' 会生成 3 个空位；**禁止用 rowtitle 数组**（多项填空不支持该字段，服务端会忽略并只生成 1 个空位）。考试多项填空同理；考试完形填空不在当前 JSONL 创建支持集合中。" +
@@ -1031,7 +1040,7 @@ export function registerSurveyTools(server) {
                 "硬性规则：投票（含投票单选/投票多选） → 必传 atype=3；表单 → 必传 atype=7；考试 → 必传 atype=6；测评 → 必传 atype=2。" +
                 "兜底（仅用于调用方遗漏时挽救，不应作为正常路径）：含考试题型→6；含投票题型或标题含「投票/评选」→3；含「表单/报名表/登记表/申请表」→7；含「测评」→2；其余 1。" +
                 "显式传值始终优先于兜底推断。"),
-            publish: z.boolean().optional().describe("是否立即发布；未指定时普通题型默认发布，包含纯框架题型（需二次编辑完善）时默认保持草稿"),
+            publish: z.boolean().optional().describe("是否立即发布；未指定时普通题型默认发布，包含纯框架题型（含循环评价、考试代码，需二次编辑完善）时默认保持草稿"),
             creater: z.string().optional().describe("创建者子账号用户名"),
         },
         annotations: {
@@ -1099,9 +1108,10 @@ export function registerSurveyTools(server) {
                         warnings.push("创建后的题目数量与请求不一致或未返回");
                     if (!status)
                         warnings.push("创建后的问卷状态无法从读回响应确认");
+                    const draft = statusLabel(data?.status) === "draft";
                     const baseUrl = currentBaseUrl();
                     let linkEvidence = resolveRespondentLink(data, vid, baseUrl);
-                    if (!linkEvidence.fillUrl) {
+                    if (!draft && !linkEvidence.fillUrl) {
                         try {
                             const listed = await findListRecord(vid);
                             const fallback = resolveRespondentLink(listed, vid, baseUrl);
@@ -1112,8 +1122,8 @@ export function registerSurveyTools(server) {
                             warnings.push(`创建后的问卷列表回退读取失败：${error instanceof Error ? error.message : String(error)}`);
                         }
                     }
-                    const link = Boolean(linkEvidence.fillUrl);
-                    if (!link)
+                    const link = Boolean(linkEvidence.fillUrl) || draft;
+                    if (!link && !draft)
                         warnings.push("创建后的问卷没有可验证的答题链接；未根据 vid 猜测公开链接");
                     const verified = structure && status && link;
                     return {

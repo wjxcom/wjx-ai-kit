@@ -172,7 +172,7 @@ ${JSONL_CONSTRAINTS}${JSONL_FORMAT_INSTRUCTIONS}`,
 1. 覆盖知识范围的核心概念，确保题目多样（测试记忆、理解、应用能力）
 2. 题目表述清晰、无歧义，避免文化或性别偏见
 3. 普通题目（收集考生基础信息）放在最前面，正式考试题目在后
-4. 正式考试题目必须包含分值（quizscore）、正确答案（correctselect）和答案解析（answeranalysis）
+4. 正式考试客观题必须包含分值（quizscore）、正确答案（correctselect）和答案解析（answeranalysis）。考试简答和考试代码不设置 correctselect：前者交由人工阅卷，后者需要编程语言和判题配置。
 
 题目数量硬性要求（总和 ≥ 1，通常 15+ 道）：考试单选 ${single_count ?? "10"} 题，考试多选 ${multi_count ?? "5"} 题，考试判断 ${judge_count ?? "5"} 题，考试填空 ${fill_count ?? "5"} 题。必须严格按照各题型数量生成，不得漏生成或只生成基础信息行。
 
@@ -182,6 +182,10 @@ ${JSONL_CONSTRAINTS}${JSONL_FORMAT_INSTRUCTIONS}`,
 考试多选：{"qtype":"考试多选","title":"题目?","select":["A","B","C","D"],"correctselect":["A","C"],"quizscore":"5","answeranalysis":"解析..."}
 考试单项填空：{"qtype":"考试单项填空","title":"填空题","correctselect":["正确答案1","正确答案2"],"quizscore":"5","answeranalysis":"解析..."}
 考试多项填空：{"qtype":"考试多项填空","title":"The boy {_} a student, he {_} very smart","answerlists":[{"correctselect":["is"],"quizscore":"2","include":true},{"correctselect":["is"],"quizscore":"2","include":true}],"answeranalysis":"解析..."}（每个 {_} 对应一个填空，不要用下划线/rowtitle）
+考试简答：{"qtype":"考试简答","title":"请说明你的解题思路","quizscore":"10","answeranalysis":"人工阅卷"}
+考试代码：{"qtype":"考试代码","title":"实现一个求和函数","codetype":"python","quizscore":"10"}（必须有 codetype；禁止 correctselect/answer，初始代码与判题/运行配置在 Web 编辑器补充）
+
+普通调查中的主观题使用“简答题”；只有考试问卷的开放回答才使用“考试简答”。不要把主观题写成“考试单项填空”，后者仅用于有标准答案的填空题。
 
 ${qtypeConstraint()}
 ${JSONL_CONSTRAINTS}

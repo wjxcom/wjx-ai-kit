@@ -160,7 +160,8 @@ function sampleQuestion(qtype) {
       { correctselect: "三年二班", quizscore: "3" },
     ];
   }
-  if (qtype.startsWith("考试") && !["考试单项填空", "考试多项填空"].includes(qtype)) {
+  if (qtype === "考试代码") question.codetype = "python";
+  if (qtype.startsWith("考试") && !["考试单项填空", "考试多项填空", "考试简答", "考试代码"].includes(qtype)) {
     question.correctselect = ["选项一"];
     question.quizscore = "1";
   }
