@@ -199,6 +199,25 @@ test("DSL verification ignores keywords inside quoted titles and comments", asyn
   assert.equal(result.actualQuestionCount, 1);
 });
 
+test("DSL validation rejects path records incorrectly separated by multiple LevelData delimiters", () => {
+  const invalid = generateWjxDsl(`wjx-dsl 1; questionnaire {
+    question multi_level_dropdown {
+      attr "Topic" = "1"; attr "Title" = "区域"; attr "Verify" = "多级下拉";
+      attr "LevelData" = "省份|城市|区〒湖南|长沙|岳麓〒湖北|武汉|武昌";
+    };
+  };`);
+  assert.equal(invalid.valid, false);
+  assert.ok(invalid.diagnostics.some((item) => item.code === "DSL_LEVELDATA_SHAPE"));
+
+  const valid = generateWjxDsl(`wjx-dsl 1; questionnaire {
+    question multi_level_dropdown {
+      attr "Topic" = "1"; attr "Title" = "区域"; attr "Verify" = "多级下拉";
+      attr "LevelData" = "湖南\\n湖北|---湖南\\n长沙|---湖北\\n武汉〒省份|城市";
+    };
+  };`);
+  assert.equal(valid.valid, true, JSON.stringify(valid.diagnostics));
+});
+
 test("local DSL validation normalizes aliases and rejects duplicate Topics", () => {
   const duplicate = generateWjxDsl(`wjx-dsl 1; questionnaire {
     question matrix_single { attr "Topic" = "1"; attr "Title" = "A"; row { }; item { }; };

@@ -135,6 +135,35 @@ function validateFileUploadMaxSizes(value: string, diagnostics: WjxDslDiagnostic
   }
 }
 
+function validateLevelDataShape(body: string, diagnostics: WjxDslDiagnostic[]): void {
+  const verify = (topLevelAttribute(body, "Verify") ?? "").trim();
+  if (verify !== "多级下拉") return;
+  const levelData = topLevelAttribute(body, "LevelData");
+  if (!levelData) return;
+
+  const segments = levelData.split("〒");
+  const dataBlocks = segments.slice(0, -1);
+  // The editor stores one `〒` separator before the optional level-title
+  // block. Additional separators with pipe-delimited paths are the common AI
+  // mistake: they turn each full path into a fake level and cause the page to
+  // report that a second-level option is absent from the third level.
+  if (segments.length > 2 && dataBlocks.some((segment) => segment.indexOf("|") >= 0)) {
+    diagnostics.push(diagnostic(
+      "DSL_LEVELDATA_SHAPE",
+      "多级下拉 LevelData 格式错误：只能使用一个 `〒` 分隔级别标题；各级数据块用 `|` 分隔，并用 `---父级路径` + 换行声明子级。不要用多个 `〒` 连接完整路径。",
+    ));
+    return;
+  }
+
+  const blocks = (segments[0] ?? "").split("|");
+  if (blocks.length > 1 && blocks.slice(1).some((block) => block.trim() && !block.includes("---"))) {
+    diagnostics.push(diagnostic(
+      "DSL_LEVELDATA_PARENT",
+      "多级下拉 LevelData 的二级及以后数据块必须使用 `---父级路径` 标记父选项，并用换行分隔子选项。",
+    ));
+  }
+}
+
 function countTopLevelBlocks(body: string, names: string[]): number {
   const masked = maskDslComments(body);
   const wanted = new Set(names.map((name) => name.toLowerCase()));
@@ -226,6 +255,7 @@ function validateQuestionSemantics(value: string, diagnostics: WjxDslDiagnostic[
     const columns = countTopLevelBlocks(body, ["column", "itemcolumn"]);
     const referTopic = Number(topLevelAttribute(body, "ReferTopic"));
     const reference = Number.isInteger(referTopic) && referTopic > 0;
+    validateLevelDataShape(body, diagnostics);
     if (["radio", "radio_down", "check"].includes(type) && items === 0 && !reference && !normalized.allowEmptyItems && !normalized.skipShape) diagnostics.push(diagnostic("DSL_QUESTION_SHAPE", `题型 ${type} 至少需要一个 Item。`));
     if (type === "gapfill") {
       const count = Number(topLevelAttribute(body, "GapCount"));

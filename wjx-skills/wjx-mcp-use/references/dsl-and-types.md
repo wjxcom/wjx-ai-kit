@@ -45,6 +45,8 @@ DSL 是花括号文本，**不是** `序号. 标题[题型标记]` 那种旧文�
 
 常用语义别名：`scale`（量表）、`true_false`（判断）、`scenario`（情景）、`commodity`（商品）、`multi_level_dropdown`（多级下拉）、`matrix_single`/`matrix_multi`/`matrix_scale`（矩阵单选/多选/量表）、`matrix_fill`（矩阵填空）等。完整别名与 `Mode` 取值以服务端支持矩阵为准。
 
+多级下拉的 `LevelData` 必须遵循编辑器分块格式：只有一个 `〒`，左侧各级数据块用 `|` 分隔；第一级用换行列根选项，后续级别用 `---父级路径` 标记父项并用换行列子项；`〒` 右侧可用 `|` 写级别标题。不要把完整路径用多个 `〒` 拼接，否则答题页会把路径片段当作不同级别并报选项不存在。
+
 > 注意：`checkbox`、`text`、`upload`、`weight`、`matrix_radio` 等**不是**后端题型标识；对应能力分别用 `check`、`question`/`gapfill`、`fileupload`、`sum`、`matrix_single`。
 
 ### 别名未覆盖的高级题型（raw node）

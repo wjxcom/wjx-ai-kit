@@ -53,7 +53,7 @@ wjx survey create --file survey.jsonl
 | `code` / `initialcode` | 当前 JSONL 服务端不会保存这两个字段；SDK 会拒绝，请到 Web 编辑器设置初始代码 |
 | `types` / `selects` | 表格组合各列的输入类型和对应选项；自增表格的 `selects` 只有一行模板 |
 | `min_rows` / `max_rows` | 自增表格可添加行数的可选边界 |
-| `leveldata` | 多级下拉的层级数据 |
+| `leveldata` | JSONL 多级下拉的级联数据；DSL 多级下拉使用 `LevelData` 编辑器分块格式 |
 | `ext` / `maxsize` / `uploadlimit` | 文件上传的扩展名、大小和数量限制 |
 
 ## 常用 qtype
@@ -77,6 +77,8 @@ wjx survey create --file survey.jsonl
 以下题型也只能读取既有问卷或在 Web 编辑器中配置，当前 JSONL 创建接口会明确拒绝：`VlookUp问卷关联`、`多项文件题`、`多项简答题`、`当前语音`。它们仍保留在读取题型映射中；CLI/MCP 会在本地预检阶段停止，不会重试服务端创建。需要多文件或多段文字采集时，请改用多个普通 `文件上传`/`简答题`，并在创建前重新生成完整 JSONL。
 
 `循环评价` 目前可通过 XML DSL 透传 `matrix` + `Verify="circulate"`（通常还要由服务端或网页配置评价对象、轮次和随机规则），并可查询和回读协议结构；JSONL 只接受题型名称，不能表达完整循环配置。CLI 不把 DSL 解析成功当作答题页闭环已验证，创建或更新后必须用真实预览/答题页验收，缺少配置时转 Web 编辑器补全。
+
+DSL 多级下拉的 `LevelData` 只能有一个 `〒`：左侧各级数据块用 `|` 分隔，二级及以后用 `---父级路径` + 换行声明子选项，右侧可写级别标题。不要用多个 `〒` 连接完整路径；CLI 会在本地预检阶段拒绝这种格式。
 
 ## NPS 量表（唯一规范写法）
 

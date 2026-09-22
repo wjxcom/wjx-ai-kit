@@ -246,6 +246,17 @@ node "Question" {
 | `RowWidth` / `RowRightWidth` / `Width` | 行标题、右侧行和列宽度 | 矩阵、表格 |
 | `MobileRowTitleVertical` | 移动端行标题是否竖排 | 矩阵、表格 |
 | `LevelData` / `OnlySearch` / `Search` / `FuzzyQuery` | 级联数据、仅搜索、允许搜索、模糊搜索 | 多级下拉 |
+
+多级下拉的 `LevelData` 是编辑器专用的分块格式：只有一个 `〒` 分隔符，左侧各级数据块用 `|` 分隔；第一级用换行列出根选项，后续级别用 `---父级路径` 标记父节点，再用换行列出子选项；`〒` 右侧可用 `|` 提供各级下拉框标题。不要把多条完整路径写成 `路径1〒路径2〒路径3`，那会被前端解释为多个级别并触发“某级选项不存在”。
+
+```text
+question multi_level_dropdown {
+  attr "Topic" = "1";
+  attr "Title" = "您所在的区域";
+  attr "Verify" = "多级下拉";
+  attr "LevelData" = "湖南\\n湖北|---湖南\\n长沙\\n株洲|---湖北\\n武汉〒省份|城市";
+};
+```
 | `PositionInfo` | 定位标记的结构化位置数据 | 段落/定位 |
 | `AloneAnswer` | 矩阵单题作答/独立作答 | 矩阵 |
 | `IsRandomLabel` / `IsRandomLabelChoice` | 行/选项分组随机及随机入组 | 矩阵、选择题 |
