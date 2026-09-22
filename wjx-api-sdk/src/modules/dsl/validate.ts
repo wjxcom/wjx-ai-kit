@@ -141,13 +141,14 @@ function validateLevelDataShape(body: string, diagnostics: WjxDslDiagnostic[]): 
   const levelData = topLevelAttribute(body, "LevelData");
   if (!levelData) return;
 
-  const segments = levelData.split("〒");
-  const dataBlocks = segments.slice(0, -1);
-  // The editor stores one `〒` separator before the optional level-title
-  // block. Additional separators with pipe-delimited paths are the common AI
-  // mistake: they turn each full path into a fake level and cause the page to
-  // report that a second-level option is absent from the third level.
-  if (segments.length > 2 && dataBlocks.some((segment) => segment.indexOf("|") >= 0)) {
+  // DSL string literals carry editor line breaks as the two-character escape
+  // `\\n`; normalize it before inspecting the editor's data blocks.
+  const normalizedLevelData = levelData.replace(/\\n/g, "\n");
+  const segments = normalizedLevelData.split("〒");
+  // The server parser requires exactly one separator between the data blocks
+  // and the level-title block. Extra separators turn full paths into fake
+  // levels; a missing separator makes the server discard the cascade data.
+  if (segments.length !== 2) {
     diagnostics.push(diagnostic(
       "DSL_LEVELDATA_SHAPE",
       "多级下拉 LevelData 格式错误：只能使用一个 `〒` 分隔级别标题；各级数据块用 `|` 分隔，并用 `---父级路径` + 换行声明子级。不要用多个 `〒` 连接完整路径。",
@@ -156,11 +157,59 @@ function validateLevelDataShape(body: string, diagnostics: WjxDslDiagnostic[]): 
   }
 
   const blocks = (segments[0] ?? "").split("|");
-  if (blocks.length > 1 && blocks.slice(1).some((block) => block.trim() && !block.includes("---"))) {
-    diagnostics.push(diagnostic(
-      "DSL_LEVELDATA_PARENT",
-      "多级下拉 LevelData 的二级及以后数据块必须使用 `---父级路径` 标记父选项，并用换行分隔子选项。",
-    ));
+  const rootOptions = new Set(
+    (blocks[0] ?? "")
+      .split(/\r?\n/)
+      .map((line) => line.trim())
+      .filter((line) => line && !line.startsWith("---")),
+  );
+  if (rootOptions.size === 0) {
+    diagnostics.push(diagnostic("DSL_LEVELDATA_PARENT", "多级下拉 LevelData 必须先用换行声明至少一个一级选项。"));
+  }
+  for (let index = 1; index < blocks.length; index += 1) {
+    const previousOptions = new Set(
+      (blocks[index - 1] ?? "")
+        .split(/\r?\n/)
+        .map((line) => line.trim())
+        .filter((line) => line && !line.startsWith("---")),
+    );
+    const coveredParents = new Set<string>();
+    let currentParent: string | undefined;
+    for (const rawLine of (blocks[index] ?? "").split(/\r?\n/)) {
+      const line = rawLine.trim();
+      if (!line) continue;
+      if (line.startsWith("---")) {
+        const parent = line.slice(3).trim();
+        if (!parent) {
+          diagnostics.push(diagnostic("DSL_LEVELDATA_PARENT", "多级下拉 LevelData 的父标记不能只有 `---`。"));
+          currentParent = undefined;
+          continue;
+        }
+        if (!previousOptions.has(parent)) {
+          diagnostics.push(diagnostic(
+            "DSL_LEVELDATA_PARENT",
+            `多级下拉 LevelData 的父节点「${parent}」不在上一级选项中；父标记必须使用上一级显示名称（例如 ---A栋），不能使用完整路径。`,
+          ));
+        }
+        coveredParents.add(parent);
+        currentParent = parent;
+        continue;
+      }
+      if (!currentParent) {
+        diagnostics.push(diagnostic(
+          "DSL_LEVELDATA_PARENT",
+          "多级下拉 LevelData 的二级及以后数据块必须先使用 `---父级` 标记，再用换行列出子选项。",
+        ));
+      }
+    }
+    for (const option of previousOptions) {
+      if (!coveredParents.has(option)) {
+        diagnostics.push(diagnostic(
+          "DSL_LEVELDATA_PARENT",
+          `多级下拉 LevelData 的父节点「${option}」没有对应的子选项分组；每个上一级选项都必须有一个 ---父级标记。`,
+        ));
+      }
+    }
   }
 }
 

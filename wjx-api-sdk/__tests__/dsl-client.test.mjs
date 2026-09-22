@@ -212,10 +212,48 @@ test("DSL validation rejects path records incorrectly separated by multiple Leve
   const valid = generateWjxDsl(`wjx-dsl 1; questionnaire {
     question multi_level_dropdown {
       attr "Topic" = "1"; attr "Title" = "区域"; attr "Verify" = "多级下拉";
-      attr "LevelData" = "湖南\\n湖北|---湖南\\n长沙|---湖北\\n武汉〒省份|城市";
+      attr "LevelData" = "湖南\\n湖北|---湖南\\n长沙\\n---湖北\\n武汉|---长沙\\n岳麓\\n---武汉\\n武昌〒省份|城市|区";
     };
   };`);
   assert.equal(valid.valid, true, JSON.stringify(valid.diagnostics));
+
+  const invalidParent = generateWjxDsl(`wjx-dsl 1; questionnaire {
+    question multi_level_dropdown {
+      attr "Topic" = "1"; attr "Title" = "区域"; attr "Verify" = "多级下拉";
+      attr "LevelData" = "湖南\\n湖北|---湖南\\n长沙|---湖南‐长沙\\n岳麓〒省份|城市|区";
+    };
+  };`);
+  assert.equal(invalidParent.valid, false);
+  assert.ok(invalidParent.diagnostics.some((item) => item.code === "DSL_LEVELDATA_PARENT"));
+});
+
+test("DSL validation rejects incomplete LevelData block structure", () => {
+  const missingTitleBlock = generateWjxDsl(`wjx-dsl 1; questionnaire {
+    question multi_level_dropdown {
+      attr "Topic" = "1"; attr "Title" = "区域"; attr "Verify" = "多级下拉";
+      attr "LevelData" = "甲\\n乙|---甲\\n丙";
+    };
+  };`);
+  assert.equal(missingTitleBlock.valid, false);
+  assert.ok(missingTitleBlock.diagnostics.some((item) => item.code === "DSL_LEVELDATA_SHAPE"));
+
+  const childBeforeParent = generateWjxDsl(`wjx-dsl 1; questionnaire {
+    question multi_level_dropdown {
+      attr "Topic" = "1"; attr "Title" = "区域"; attr "Verify" = "多级下拉";
+      attr "LevelData" = "甲\\n乙|丙\\n---甲\\n丁\\n---乙\\n戊〒一级|二级";
+    };
+  };`);
+  assert.equal(childBeforeParent.valid, false);
+  assert.ok(childBeforeParent.diagnostics.some((item) => item.code === "DSL_LEVELDATA_PARENT"));
+
+  const missingParentGroup = generateWjxDsl(`wjx-dsl 1; questionnaire {
+    question multi_level_dropdown {
+      attr "Topic" = "1"; attr "Title" = "区域"; attr "Verify" = "多级下拉";
+      attr "LevelData" = "甲\\n乙|---甲\\n丙〒一级|二级";
+    };
+  };`);
+  assert.equal(missingParentGroup.valid, false);
+  assert.ok(missingParentGroup.diagnostics.some((item) => item.code === "DSL_LEVELDATA_PARENT"));
 });
 
 test("local DSL validation normalizes aliases and rejects duplicate Topics", () => {
