@@ -200,8 +200,8 @@ function validateQuestionIndexes(
   warnings: string[],
 ): boolean {
   const indexed = filterJsonlVerificationQuestions(questions)
-    .map((question) => field(question, "q_index", "qIndex"))
-    .filter((value) => value !== undefined && value !== null);
+    .map((question: Record<string, unknown>) => field(question, "q_index", "qIndex"))
+    .filter((value: unknown) => value !== undefined && value !== null);
   if (indexed.length === 0) return true;
   const normalized: number[] = [];
   for (const value of indexed) {

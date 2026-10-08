@@ -4,6 +4,10 @@ node_modules/
 # 构建产物
 dist/
 **/dist/
+!wjx-api-sdk/dist/
+!wjx-api-sdk/dist/**
+!wjx-cli/dist/
+!wjx-cli/dist/**
 build/
 **/build/
 

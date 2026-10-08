@@ -13,7 +13,7 @@
   "scripts": {
     "build": "node scripts/clean-dist.mjs && npx -p typescript tsc -p tsconfig.json",
     "test": "npm run build && node --test __tests__/*.test.mjs",
-    "clean": "rm -rf dist",
+    "clean": "node scripts/clean-dist.mjs",
     "prepublishOnly": "npm run build"
   },
   "keywords": [

@@ -7,6 +7,7 @@ import {
   updateWjxDsl,
   verifyWjxDslWrite,
 } from "wjx-api-sdk";
+import type { WjxDslDiagnostic } from "wjx-api-sdk";
 import { getMerged, requireField, strictInt } from "../lib/command-helpers.js";
 import { CliError, handleError } from "../lib/errors.js";
 import { formatOutput } from "../lib/output.js";
@@ -103,7 +104,7 @@ export function registerDslCommands(program: Command): void {
       const dslText = resolveDsl(command, _options);
       const result = generateWjxDsl(dslText);
       const options = program.opts();
-      if (!result.valid) throw new CliError("INPUT_ERROR", result.diagnostics.map((item) => item.message).join("；"), { data: result });
+      if (!result.valid) throw new CliError("INPUT_ERROR", result.diagnostics.map((item: WjxDslDiagnostic) => item.message).join("；"), { data: result });
       if (typeof command.opts().out === "string") writeFileSync(command.opts().out, result.dsl, "utf8");
       if (options.format === "table" || command.opts().out === undefined) console.log(result.dsl);
       else formatOutput(result, options);

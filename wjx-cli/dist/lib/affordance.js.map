@@ -1,0 +1,1 @@
+{"version":3,"file":"affordance.js","sourceRoot":"","sources":["../../src/lib/affordance.ts"],"names":[],"mappings":"AAAA,OAAO,EAAE,gBAAgB,EAAE,MAAM,uBAAuB,CAAC;AAEzD,MAAM,UAAU,iBAAiB,CAAC,OAAe;IAC/C,OAAO,gBAAgB,CAAC,OAAO,CAAC,CAAC,CAAC,CAAC,EAAE,OAAO,EAAE,IAAI,EAAE,6BAA6B,EAAE,aAAa,EAAE,EAAE,EAAE,KAAK,EAAE,aAAa,EAAE,CAAC,CAAC,CAAC,SAAS,CAAC;AAC3I,CAAC"}

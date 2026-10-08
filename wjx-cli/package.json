@@ -20,7 +20,7 @@
     "manifest:export": "node scripts/export-manifest.mjs",
     "manifest:check": "node scripts/export-manifest.mjs --check",
     "architecture:check": "node scripts/check-architecture-contract.mjs",
-    "clean": "rm -rf dist",
+    "clean": "node scripts/clean-dist.mjs",
     "sync-bundled": "node scripts/sync-bundled.mjs",
     "sync-bundled:check": "node scripts/sync-bundled.mjs --check",
     "protocol:check": "node scripts/check-protocol-contract.mjs",

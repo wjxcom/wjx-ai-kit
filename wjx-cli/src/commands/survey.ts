@@ -29,6 +29,7 @@ import {
   getJsonlQuestionTypeCode,
   Action,
 } from "wjx-api-sdk";
+import type { JsonlQuestionTypeExpectation } from "wjx-api-sdk";
 import { enrichSurveyListOutput, formatOutput } from "../lib/output.js";
 import { CliError, ensureApiSuccess, handleError } from "../lib/errors.js";
 import { applyProfileCredentials, getCredentials, getProfileBaseUrl } from "../lib/auth.js";
@@ -517,7 +518,7 @@ export function registerSurveyCommands(program: Command): void {
             );
             // Count the same real-question rows used by qtype verification;
             // page/paragraph/consent scaffolding is not a question count.
-            expectedQuestionCount = expectedQuestionTypes.filter((item) => item.q_type !== undefined).length;
+            expectedQuestionCount = expectedQuestionTypes.filter((item: JsonlQuestionTypeExpectation) => item.q_type !== undefined).length;
           }
           return verifySurveyPostWrite({
             vid,
