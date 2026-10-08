@@ -76,7 +76,9 @@ wjx survey create --file survey.jsonl
 
 以下题型也只能读取既有问卷或在 Web 编辑器中配置，当前 JSONL 创建接口会明确拒绝：`VlookUp问卷关联`、`多项文件题`、`多项简答题`、`当前语音`。它们仍保留在读取题型映射中；CLI/MCP 会在本地预检阶段停止，不会重试服务端创建。需要多文件或多段文字采集时，请改用多个普通 `文件上传`/`简答题`，并在创建前重新生成完整 JSONL。
 
-`循环评价` 目前可通过 XML DSL 透传 `matrix` + `Verify="circulate"`（通常还要由服务端或网页配置评价对象、轮次和随机规则），并可查询和回读协议结构；JSONL 只接受题型名称，不能表达完整循环配置。CLI 不把 DSL 解析成功当作答题页闭环已验证，创建或更新后必须用真实预览/答题页验收，缺少配置时转 Web 编辑器补全。
+XML DSL 的 `question circulate` 会补齐默认评价对象、评价列以及 80001..89999 隐藏子题；显式列仍可用 `Connect` 关联自定义隐藏题。`question image_pk` 至少需要 3 个带 HTTP(S) `ItemImg` 的 `item`；视频题可提供直接视频文件 URL，服务端会统一包装成 WjxVideo 播放器，持久化 XML 不能把 MP4 直接当 iframe 地址；`question psych_embed` 必须提供 `PsychLink`。考试须知/知情同意书使用问卷根属性 `IsInformed`、`InformedTitle`、`InformedDesc`，部门/其它信息使用 `department` / `other_info`。创建或更新后仍必须用真实预览/答题页验收。
+
+XML DSL 的 `question vlookup` 使用 `VlookupActivityId`、`VlookupQueryQuestionIndex`、`VlookupRefQuestionIndex` 表达来源问卷、查询字段和回填字段；同一 DSL 还必须包含 `Topic=70001..79999` 且 `Relation="-1"` 的完整隐藏回填题。JSONL 的 `VlookUp问卷关联` 仍属于读取/Web 编辑器边界，两条创建路径不要混用。
 
 DSL 多级下拉的 `LevelData` 只能有一个 `〒`：左侧各级数据块用 `|` 分隔，二级及以后用 `---父级路径` + 换行声明子选项，右侧可写级别标题。不要用多个 `〒` 连接完整路径；CLI 会在本地预检阶段拒绝这种格式。
 

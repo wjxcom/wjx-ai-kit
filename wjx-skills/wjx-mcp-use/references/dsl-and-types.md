@@ -43,7 +43,7 @@ DSL 是花括号文本，**不是** `序号. 标题[题型标记]` 那种旧文�
 | `matrix` | 矩阵/表格系列，形态由 `Mode` 决定 | `row`、`item` |
 | `page` / `cut` | 分页 / 段落说明 | — |
 
-常用语义别名：`scale`（量表）、`true_false`（判断）、`scenario`（情景）、`commodity`（商品）、`multi_level_dropdown`（多级下拉）、`matrix_single`/`matrix_multi`/`matrix_scale`（矩阵单选/多选/量表）、`matrix_fill`（矩阵填空）等。完整别名与 `Mode` 取值以服务端支持矩阵为准。
+常用语义别名：`scale`（量表）、`evaluate`（评价题）、`true_false`（判断）、`scenario`（情景）、`commodity`（商品）、`department`（部门）、`other_info`（其它信息）、`multi_level_dropdown`（多级下拉）、`matrix_single`/`matrix_multi`/`matrix_scale`（矩阵单选/多选/量表）、`matrix_fill`（矩阵填空）、`image_pk`（图片 PK）、`psych_embed`（实验嵌入）和 `vlookup`（问卷关联）等。完整别名与 `Mode` 取值以服务端支持矩阵为准。
 
 多级下拉的 `LevelData` 必须遵循编辑器分块格式：只有一个 `〒`，左侧各级数据块用 `|` 分隔；第一级用换行列根选项，后续级别用 `---父级路径` 标记父项并用换行列子项；`〒` 右侧可用 `|` 写级别标题。不要把完整路径用多个 `〒` 拼接，否则答题页会把路径片段当作不同级别并报选项不存在。
 
@@ -51,9 +51,9 @@ DSL 是花括号文本，**不是** `序号. 标题[题型标记]` 那种旧文�
 
 ### 别名未覆盖的高级题型（raw node）
 
-别名表没有的高级题型，部分可用 Generic 别名 `node "Question" { ... }` 透传：基础 Type + 后端读取的标识属性（`Mode`/`Verify`/`HasValue`/`IsCeShi`/`IsSignature`/`IsQingJing`/`IsEvaluate`/`IsLadder`/`IsTouPiao`/`IsShop`/`IsShelf`/`IsAppointment`/`Relation`/`Height`）。常用取值：NPS=`radio`+`Mode="6"`+`HasValue`；评价星级=`radio`+`IsEvaluate`+`HasValue`；社会阶层=`radio`+`IsLadder`；性别/学历等=`radio`+`Verify="性别"`；手机/日期/邮箱=`question`+`Verify="手机"`/`日期`/`Email`；矩阵高级模型=`matrix`+`Mode`(如 `302`)+`Verify`(`conjoint`/`maxdiff`/`bpto` 等)。vlookup、ocr、热力图、折叠栏目、轮播图等字段只能透传并需要服务端/Web 编辑器验收；不能据此宣称一定可创建。完整对照表见权威参考 [wjx-xml-dsl-v1.md](../../../wjx-docs/reference/wjx-xml-dsl-v1.md) 的「高级题型（raw node + 标识属性）」。
+别名表没有的高级题型，部分可用 Generic 别名 `node "Question" { ... }` 透传：基础 Type + 后端读取的标识属性（`Mode`/`Verify`/`HasValue`/`IsCeShi`/`IsSignature`/`IsQingJing`/`IsEvaluate`/`IsLadder`/`IsTouPiao`/`IsShop`/`IsShelf`/`IsAppointment`/`Relation`/`Height`）。常用取值：NPS=`radio`+`Mode="6"`+`HasValue`；社会阶层=`radio`+`IsLadder`；性别/学历等=`radio`+`Verify="性别"`；手机/日期/邮箱=`question`+`Verify="手机"`/`日期`/`Email`；矩阵高级模型=`matrix`+`Mode`(如 `302`)+`Verify`(`conjoint`/`maxdiff`/`bpto` 等)。OCR 等仍可 raw 透传；评价、图片 PK、实验嵌入和 VLookUp 应优先使用专用别名及其严格配置。完整对照表见权威参考 [wjx-xml-dsl-v1.md](../../../wjx-docs/reference/wjx-xml-dsl-v1.md) 的「高级题型（raw node + 标识属性）」。
 
-> 标识不在 `<Question>` 属性上的题型（热力图、折叠栏目、轮播图、知情同意书、品牌漏斗、部门/其它信息，以及 `langv`/`clock` 等渲染由后端决定的 `Verify`）不要用 raw node 硬凑，改用编辑器或 JSONL 创建（`create_survey_by_json` 传中文 `qtype`，后端会正确落全部标识）。
+> 热力图、折叠栏目、轮播图和品牌漏斗不要用 raw node 硬凑。考试须知/知情同意书使用根属性 `IsInformed` + `InformedTitle` + `InformedDesc`；部门/其它信息使用 `department` / `other_info`。视频题可传直接视频文件 URL，服务端会统一包装为 WjxVideo 播放器；持久化 XML 不能把 MP4 直接当 iframe 地址。循环评价、图片 PK、实验嵌入和 VLookUp 的完整写法与必填属性见权威参考，缺配置时本地预检会拒绝创建。
 
 ### 题型示例
 

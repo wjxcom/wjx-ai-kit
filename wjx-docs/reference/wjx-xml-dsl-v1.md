@@ -54,7 +54,7 @@ questionnaire {
 | `matrix` | 矩阵/表格系列，形态由 `Mode` 决定 | `row`、`rightrow`、`column`、`item` |
 | `page` / `cut` | 分页 / 段落说明 | — |
 
-常用语义别名：`scale`（量表）、`true_false`（判断）、`scenario`（情景）、`commodity`（商品）、`multi_level_dropdown`（多级下拉）、`matrix_single`/`matrix_multi`/`matrix_scale`（矩阵单选/多选/量表）、`matrix_fill`/`matrix_slider`/`matrix_numeric`（矩阵填空/滑块/数字）、`table_fill`/`table_dropdown`/`table_combo`（表格填空/下拉/组合）、`multi_file`/`multi_textarea`（多项文件/多项简答）、`exam_multi_fill`/`exam_cloze`（考试多空填空/完形）。完整别名清单与 `Mode` 取值以服务端支持矩阵为准。
+常用语义别名：`scale`（量表）、`evaluate`（评价题）、`true_false`（判断）、`scenario`（情景）、`commodity`（商品）、`department`（部门）、`other_info`（其它信息）、`multi_level_dropdown`（多级下拉）、`matrix_single`/`matrix_multi`/`matrix_scale`（矩阵单选/多选/量表）、`matrix_fill`/`matrix_slider`/`matrix_numeric`（矩阵填空/滑块/数字）、`table_fill`/`table_dropdown`/`table_combo`（表格填空/下拉/组合）、`multi_file`/`multi_textarea`（多项文件/多项简答）、`exam_multi_fill`/`exam_cloze`（考试多空填空/完形）、`image_pk`（图片 PK）、`psych_embed`（实验嵌入）和 `vlookup`（问卷关联）。完整别名清单与 `Mode` 取值以服务端支持矩阵为准。
 
 > 注意：`checkbox`、`text`、`multi_text`、`upload`、`weight`、`matrix_radio`、`matrix_checkbox`、`matrix_text` 等**不是**后端题型标识，请勿使用；对应能力分别用 `check`、`question`/`gapfill`、`fileupload`、`sum`、`matrix_single`、`matrix_multi`、`matrix_fill`。
 
@@ -146,6 +146,7 @@ question matrix {
 | NPS 量表 | `radio` | `Mode="6"` + `HasValue="true"` |
 | 评分量表 | `radio` | `Mode="1"` |
 | 评价星级 | `radio` | `IsEvaluate="true"` + `HasValue="true"` |
+| 部门 / 其它信息 | `radio` / `question` | 使用 `department` / `other_info` 别名 |
 | 社会阶层 | `radio` | `IsLadder="true"` |
 | 情景随机 | `radio` | `IsQingJing="true"`（或用别名 `scenario`） |
 | 投票单选 | `radio` | `IsTouPiao="true"` |
@@ -170,6 +171,7 @@ question matrix {
 | 层次分析 / 选项分类 / 文字点睛 | `matrix` | `Mode="103"` + `Verify="level"` / `classify` / `texthighlights` |
 | 图片OCR / VlookUp / 设备信息 / 企业信息 / AI访谈 | `matrix` | `Mode="201"` + `Verify="ocr"` / `vlookup` / `device` / `company` / `aiInterview` |
 | 签名题 | `fileupload` | `IsSignature="true"`（或别名 `signature`） |
+| 实验嵌入 | `fileupload` | `IsPsych="1"` + `PsychLink`（或别名 `psych_embed`） |
 | 考试题（任意基础 Type 计分） | 同原题型 | `IsCeShi="true"` + `CeShiValue="<分值>"`（考试文件 `fileupload`+`IsCeShi`，考试绘图再加 `IsSignature`） |
 
 示例——社会阶层、NPS、手机验证（同一份 DSL 里的三道 raw node 题）：
@@ -198,7 +200,60 @@ node "Question" {
 };
 ```
 
-> 标识落在内容/结构而非 `<Question>` 属性上的题型，**不要**用 raw node 硬凑，改用问卷编辑器或 JSONL 创建（`create_survey_by_json` 传中文 `qtype`，后端会正确落全部标识）：热力图、折叠栏目、轮播图、知情同意书、品牌漏斗（后端展开为多道多选）、部门/其它信息（无对应后端题型）。同理，`langv`（当前语言）、`clock`（分页计时器）等 `Verify` 标识的渲染由后端决定，能力矩阵未确认前优先走 JSONL。
+> 热力图、折叠栏目、轮播图和品牌漏斗的标识落在内容/结构而非单个 `<Question>` 属性上，仍不要用 raw node 硬凑。`langv`（当前语言）、`clock`（分页计时器）等 `Verify` 标识的渲染由后端决定，能力矩阵未确认前优先走 JSONL。考试须知/知情同意书是问卷级配置，写法见下节，不是普通题目。
+
+### 考试须知 / 知情同意书
+
+两者共用问卷级 `ActivityInformed` 配置。在 `questionnaire` 根节点声明以下属性，创建和更新接口会同步独立配置记录，查询时也会回填到 DSL：
+
+```text
+questionnaire {
+  attr "IsInformed" = "true";
+  attr "InformedTitle" = "考试须知";
+  attr "InformedDesc" = "请确认网络稳定后开始作答。";
+  attr "InformedYes" = "同意并继续";
+  attr "InformedNo" = "不同意并退出";
+  // questions...
+};
+```
+
+`InformedTitle` 必须为 1..100 字符，`InformedDesc` 必须为 1..20000 字符。考试问卷显示为“考试须知”，其它问卷显示为“知情同意书”。设置 `IsInformed="false"` 会关闭该配置。
+
+### 循环评价、图片 PK、视频与实验嵌入
+
+- `question circulate` 会为默认评价列生成实际的 80001..89999 隐藏子题，并把 `ItemColumn.Connect` 指向对应子题；不能只保留悬空的 `Connect`。
+- `question image_pk` 必须提供至少 3 个带 `ItemImg` 的 `item`，或显式提供数量一致的 `MaxDiffAttr` 与 `MaxDiffSrc`。每个图片地址必须是上传后可访问的 HTTP(S) URL。
+- 视频题的 `VideoUrl` 可直接写带视频扩展名的 HTTP(S) 媒体地址；无论使用 `question video` 还是 raw `Verify="video"` 节点，服务端都会将直接媒体 URL 规范化为 `/wjx/join/WjxVideo.html?url=...&type=True` 播放器地址。持久化 XML 不能把 MP4 地址直接当 iframe 地址，否则答题页追加 `playdetail` 参数后会显示 `Document not found`。
+- `question psych_embed` 必须显式提供 HTTP(S) `PsychLink`；可选 `PsychType`（默认 `jsPsych`）、`PsychFileName` 和 `PsychAllowMobile`。
+
+图片 PK 示例：
+
+```text
+question image_pk {
+  attr "Topic" = "3";
+  attr "Title" = "请选择更喜欢的方案";
+  item { attr "ItemTitle" = "方案 A"; attr "ItemImg" = "{{asset:a}}"; };
+  item { attr "ItemTitle" = "方案 B"; attr "ItemImg" = "{{asset:b}}"; };
+  item { attr "ItemTitle" = "方案 C"; attr "ItemImg" = "{{asset:c}}"; };
+};
+```
+
+### VLookUp 问卷关联
+
+`question vlookup` 可用可读属性声明关联问卷、查询字段和回填字段；服务端会把它们编译为 `Verify="vlookup┋<Base64 JSON>"`：
+
+```text
+question vlookup {
+  attr "Topic" = "4";
+  attr "Title" = "员工信息查询";
+  attr "VlookupActivityId" = "来源问卷 vid";
+  attr "VlookupQueryQuestionIndex" = "10000,20001";
+  attr "VlookupRefQuestionIndex" = "3,4";
+  attr "VlookupNeedSearch" = "true";
+};
+```
+
+一份问卷只能创建一个 VLookUp 关联题。回填字段还必须在同一 DSL 中以 `Topic=70001..79999` 的隐藏题完整描述，数量与 `VlookupRefQuestionIndex` 一致；根节点 `VlookupSet` 会由这些题号生成。隐藏题的基础 Type 必须与来源字段一致，且应设置 `Relation="-1"`。DSL 不会跨问卷猜测或复制字段结构；缺少关联载荷或隐藏回填题时，严格校验会拒绝创建。查询既有 VLookUp 问卷时，原始 `Verify`、`VlookupSet`、`ReferVlookup` 和隐藏题会无损保留。
 
 ## 逻辑 DSL
 

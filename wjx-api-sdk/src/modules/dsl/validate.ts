@@ -115,7 +115,7 @@ export function isInsideQuotedString(value: string, index: number): boolean {
 
 function validateFileUploadMaxSizes(value: string, diagnostics: WjxDslDiagnostic[]): void {
   const masked = maskDslComments(value);
-  const candidatePattern = /\bquestion(?:\s+(fileupload|signature|drawing))?\s*\{|\bnode\s+"Question"\s*\{/gi;
+  const candidatePattern = /\bquestion(?:\s+(fileupload|signature|drawing|psych|psych_embed|experiment_embed))?\s*\{|\bnode\s+"Question"\s*\{/gi;
   let match: RegExpExecArray | null;
   while ((match = candidatePattern.exec(masked)) !== null) {
     if (isInsideQuotedString(masked, match.index)) continue;
@@ -124,10 +124,12 @@ function validateFileUploadMaxSizes(value: string, diagnostics: WjxDslDiagnostic
     if (openIndex < 0 || closeIndex < 0) continue;
     const body = value.slice(openIndex + 1, closeIndex);
     const alias = (match[1] ?? "").toLowerCase();
-    const type = alias || (topLevelAttribute(body, "Type") ?? "").toLowerCase();
+    const type = ["psych", "psych_embed", "experiment_embed"].includes(alias)
+      ? "fileupload"
+      : alias || (topLevelAttribute(body, "Type") ?? "").toLowerCase();
     if (type !== "fileupload") continue;
     const maxSize = topLevelAttribute(body, "MaxSize");
-    if (maxSize === undefined && (alias === "signature" || alias === "drawing")) continue;
+    if (maxSize === undefined && ["signature", "drawing", "psych", "psych_embed", "experiment_embed"].includes(alias)) continue;
     const parsed = maxSize === undefined ? NaN : Number(maxSize);
     if (maxSize === undefined || !/^\d+$/.test(maxSize) || !Number.isSafeInteger(parsed) || parsed < 1 || parsed > MAX_FILE_UPLOAD_SIZE) {
       diagnostics.push(diagnostic("DSL_FILE_LIMIT", "fileupload MaxSize must be explicitly set to an integer from 1 to 2048000.", lineNumber(value, openIndex)));
@@ -235,23 +237,23 @@ function normalizedQuestionType(type: string, body: string): { type: string; mod
   const aliases: Record<string, { type: string; mode?: number; allowEmptyItems?: boolean; skipShape?: boolean }> = {
     dropdown: { type: "radio_down" }, select: { type: "radio_down" },
     sort: { type: "check", mode: 1 }, ranking: { type: "check", mode: 1 },
-    scale: { type: "radio", mode: 101 }, rating: { type: "radio", mode: 101 },
+    scale: { type: "radio", mode: 101 }, rating: { type: "radio", mode: 101 }, evaluate: { type: "radio", mode: 2, allowEmptyItems: true }, evaluation: { type: "radio", mode: 2, allowEmptyItems: true },
     true_false: { type: "radio" }, truefalse: { type: "radio" }, judgement: { type: "radio" }, panduan: { type: "radio" },
-    scenario: { type: "radio" }, qingjing: { type: "radio" }, commodity: { type: "check" }, shop: { type: "check" }, shelf: { type: "check" },
+    scenario: { type: "radio" }, qingjing: { type: "radio" }, department: { type: "radio", allowEmptyItems: true }, commodity: { type: "check" }, shop: { type: "check" }, shelf: { type: "check" },
     appointment: { type: "check" }, reservation: { type: "check" },
     multi_level_dropdown: { type: "question" }, multilevel_dropdown: { type: "question" }, multilevel: { type: "question" },
-    signature: { type: "fileupload" }, drawing: { type: "fileupload" },
+    signature: { type: "fileupload" }, drawing: { type: "fileupload" }, psych: { type: "fileupload" }, psych_embed: { type: "fileupload" }, experiment_embed: { type: "fileupload" },
     scoring_single: { type: "radio" }, score_single: { type: "radio" }, scoring_multi: { type: "check" }, score_multi: { type: "check" },
     exam_multi_fill: { type: "gapfill" }, exam_cloze: { type: "gapfill" }, cloze: { type: "gapfill" },
     conjoint: { type: "matrix", mode: 302, skipShape: true }, maxdiff: { type: "matrix", mode: 302, skipShape: true }, bws: { type: "matrix", mode: 302, skipShape: true },
-    circulate: { type: "matrix", mode: 302, skipShape: true }, kano: { type: "matrix", mode: 101, skipShape: true },
+    circulate: { type: "matrix", mode: 302, skipShape: true }, image_pk: { type: "matrix", mode: 302, skipShape: true }, picture_pk: { type: "matrix", mode: 302, skipShape: true }, pkmode: { type: "matrix", mode: 302, skipShape: true }, kano: { type: "matrix", mode: 101, skipShape: true },
     ai_grading: { type: "question" }, texthighlights: { type: "matrix", mode: 103, skipShape: true }, text_highlights: { type: "matrix", mode: 103, skipShape: true },
-    video: { type: "matrix", mode: 201, skipShape: true }, ocr: { type: "matrix", mode: 201, skipShape: true }, sus: { type: "matrix", mode: 101, skipShape: true },
+    video: { type: "matrix", mode: 201, skipShape: true }, vlookup: { type: "matrix", mode: 201, skipShape: true }, ocr: { type: "matrix", mode: 201, skipShape: true }, sus: { type: "matrix", mode: 101, skipShape: true },
     bpto: { type: "matrix", mode: 302, skipShape: true }, price_breakpoint: { type: "matrix", mode: 101, skipShape: true }, price_break: { type: "matrix", mode: 101, skipShape: true },
     classify: { type: "matrix", mode: 103, skipShape: true }, device: { type: "matrix", mode: 201, skipShape: true }, company: { type: "matrix", mode: 201, skipShape: true },
     psm: { type: "matrix", mode: 202, skipShape: true }, level: { type: "matrix", mode: 103, skipShape: true }, test: { type: "matrix", mode: 302, skipShape: true },
     ai_interview: { type: "matrix", mode: 201, skipShape: true }, citylevel: { type: "radio", allowEmptyItems: true, skipShape: true }, radio_cati: { type: "radio", allowEmptyItems: true, skipShape: true },
-    contacts_user: { type: "question" }, map: { type: "question" }, map_location: { type: "question" }, date: { type: "question" }, datetime: { type: "question" },
+    contacts_user: { type: "question" }, other_info: { type: "question" }, other_information: { type: "question" }, map: { type: "question" }, map_location: { type: "question" }, date: { type: "question" }, datetime: { type: "question" },
     ai: { type: "question" }, ai_followup: { type: "question" }, ai_hci: { type: "question" }, ai_hci_process: { type: "question" }, store_select: { type: "question" }, shop_select: { type: "question" },
     name: { type: "question" }, id_number: { type: "question" }, idcard: { type: "question" }, country_region: { type: "question" }, city_select: { type: "question" }, region: { type: "question" }, province_city: { type: "question" }, address_region: { type: "question" }, email: { type: "question" }, phone: { type: "question" }, mobile: { type: "question" }, university: { type: "question" }, password: { type: "question" },
     matrix_single: { type: "matrix", mode: 103 }, matrix_multi: { type: "matrix", mode: 102 }, matrix_scale: { type: "matrix", mode: 101 }, matrix_fill: { type: "matrix", mode: 201 }, matrix_slider: { type: "matrix", mode: 202 }, matrix_numeric: { type: "matrix", mode: 301 }, table_numeric: { type: "matrix", mode: 301 }, table_fill: { type: "matrix", mode: 302 }, table_question: { type: "matrix", mode: 302 }, table_dropdown: { type: "matrix", mode: 303 }, table_down: { type: "matrix", mode: 303 }, table_combo: { type: "matrix", mode: 302 }, table_incremental: { type: "matrix", mode: 302 }, multi_file: { type: "matrix", mode: 203 }, multifile: { type: "matrix", mode: 203 }, multi_textarea: { type: "matrix", mode: 204 }, multi_question: { type: "matrix", mode: 204 }, multiquestion: { type: "matrix", mode: 204 },
@@ -288,6 +290,171 @@ function validateDuplicateTopics(value: string, diagnostics: WjxDslDiagnostic[])
   }
 }
 
+function allAttributeValues(body: string, name: string): string[] {
+  const pattern = new RegExp(`\\battr\\s+(?:"${name}"|${name})\\s*=\\s*(?:"([^"\\\\]*(?:\\\\.[^"\\\\]*)*)"|([^;\\s]+))`, "gi");
+  const values: string[] = [];
+  let match: RegExpExecArray | null;
+  while ((match = pattern.exec(body)) !== null) values.push(match[1] ?? match[2] ?? "");
+  return values;
+}
+
+function isHttpUrl(value: string | undefined): boolean {
+  if (!value) return false;
+  try {
+    const parsed = new URL(value);
+    return parsed.protocol === "http:" || parsed.protocol === "https:";
+  } catch {
+    return false;
+  }
+}
+
+const VIDEO_EXTENSIONS = [".mp4", ".avi", ".mov", ".wmv", ".m3u8", ".flv", ".f4v", ".webm", ".m4v", ".3gp"];
+
+function isDirectVideoUrl(value: string | undefined): boolean {
+  if (!isHttpUrl(value)) return false;
+  try {
+    const path = decodeURIComponent(new URL(value ?? "").pathname).toLowerCase();
+    return VIDEO_EXTENSIONS.some((extension) => path.endsWith(extension));
+  } catch {
+    return false;
+  }
+}
+
+function unwrapWjxVideoPlayerUrl(value: string | undefined): string | undefined {
+  if (!value) return undefined;
+  try {
+    const parsed = new URL(value, "https://www.wjx.cn");
+    if (parsed.pathname.toLowerCase() !== "/wjx/join/wjxvideo.html") return undefined;
+    const type = parsed.searchParams.get("type")?.toLowerCase();
+    if (type !== "true" && type !== "1") return undefined;
+    const media = parsed.searchParams.get("url") ?? undefined;
+    return isDirectVideoUrl(media) ? media : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+function validateSpecialQuestionConfig(alias: string, body: string, diagnostics: WjxDslDiagnostic[]): void {
+  const type = (topLevelAttribute(body, "Type") ?? "").trim().toLowerCase();
+  const verify = (topLevelAttribute(body, "Verify") ?? "").trim();
+  const normalizedAlias = alias.toLowerCase();
+  const imagePk = ["image_pk", "picture_pk", "pkmode"].includes(normalizedAlias)
+    || (type === "matrix" && verify.toLowerCase() === "maxdiff" && topLevelAttribute(body, "MaxDiffTaskCount") === "2");
+  if (imagePk) {
+    const explicitTitles = (topLevelAttribute(body, "MaxDiffAttr") ?? "").replace(/\\n/g, "\n").split(/\r?\n/).filter(Boolean);
+    const explicitSources = (topLevelAttribute(body, "MaxDiffSrc") ?? "").split(",").filter(Boolean);
+    const itemTitles = allAttributeValues(body, "ItemTitle").filter(Boolean);
+    const itemSources = allAttributeValues(body, "ItemImg").concat(allAttributeValues(body, "Src")).filter(Boolean);
+    const titleCount = explicitTitles.length || itemTitles.length;
+    const sourceValues = explicitSources.length ? explicitSources.map((item) => {
+      try { return decodeURIComponent(item); } catch { return ""; }
+    }) : itemSources;
+    if (titleCount < 3 || sourceValues.length !== titleCount || sourceValues.some((item) => !isHttpUrl(item))) {
+      diagnostics.push(diagnostic("DSL_IMAGE_PK_CONFIG", "图片 PK 至少需要 3 个对象，且每个对象必须有 HTTP(S) 图片地址。"));
+    }
+  }
+
+  if (normalizedAlias === "video" || (type === "matrix" && verify.toLowerCase() === "video")) {
+    const videoUrl = topLevelAttribute(body, "VideoUrl");
+    const valid = isDirectVideoUrl(videoUrl) || Boolean(unwrapWjxVideoPlayerUrl(videoUrl));
+    if (!valid) {
+      diagnostics.push(diagnostic(
+        "DSL_VIDEO_CONFIG",
+        "视频题必须提供带视频扩展名的 HTTP(S) 媒体 URL 或问卷星 WjxVideo 播放器地址；直接媒体 URL 会由服务端自动包装。",
+      ));
+    }
+  }
+
+  const psych = ["psych", "psych_embed", "experiment_embed"].includes(normalizedAlias)
+    || topLevelAttribute(body, "IsPsych") === "1";
+  if (psych && !isHttpUrl(topLevelAttribute(body, "PsychLink"))) {
+    diagnostics.push(diagnostic("DSL_PSYCH_CONFIG", "实验嵌入必须显式提供可访问的 HTTP(S) PsychLink。"));
+  }
+
+  const vlookup = normalizedAlias === "vlookup"
+    || verify.toLowerCase() === "vlookup"
+    || verify.toLowerCase().startsWith("vlookup┋");
+  if (vlookup) {
+    const hasFriendlyConfig = Boolean(
+      topLevelAttribute(body, "VlookupActivityId")
+      && topLevelAttribute(body, "VlookupQueryQuestionIndex")
+      && topLevelAttribute(body, "VlookupRefQuestionIndex"),
+    );
+    const payload = verify.includes("┋") ? verify.slice(verify.indexOf("┋") + 1) : "";
+    let hasPayload = false;
+    if (payload) {
+      try {
+        const decoded = Buffer.from(payload, "base64").toString("utf8");
+        hasPayload = decoded.includes('"ActivityId"')
+          && decoded.includes('"QueryQuestionIndex"')
+          && decoded.includes('"RefQuestionIndex"');
+      } catch {
+        hasPayload = false;
+      }
+    }
+    if (!hasFriendlyConfig && !hasPayload) {
+      diagnostics.push(diagnostic("DSL_VLOOKUP_CONFIG", "VLookUp 必须提供关联问卷、查询字段和回填字段，不能只写 Verify=\"vlookup\"。"));
+    }
+  }
+}
+
+function validateQuestionnaireSettings(value: string, diagnostics: WjxDslDiagnostic[]): void {
+  const masked = maskDslComments(value);
+  const match = /\bquestionnaire\s*\{/i.exec(masked);
+  if (!match) return;
+  const open = masked.indexOf("{", match.index);
+  const close = matchingBrace(masked, open);
+  if (open < 0 || close < 0) return;
+  const body = value.slice(open + 1, close);
+  const flag = topLevelAttribute(body, "IsInformed");
+  const title = topLevelAttribute(body, "InformedTitle");
+  const description = topLevelAttribute(body, "InformedDesc");
+  const enabled = flag === undefined ? Boolean(title || description) : /^(?:true|1)$/i.test(flag);
+  if (flag !== undefined && !/^(?:true|false|1|0)$/i.test(flag)) {
+    diagnostics.push(diagnostic("DSL_INFORMED_CONFIG", "IsInformed 只允许 true/false/1/0。"));
+  }
+  if (enabled && (!title || title.length > 100 || !description || description.length > 20000)) {
+    diagnostics.push(diagnostic("DSL_INFORMED_CONFIG", "考试须知/知情同意书必须提供 InformedTitle（1..100 字符）和 InformedDesc（1..20000 字符）。"));
+  }
+
+  const questionPattern = /\bquestion\s+([A-Za-z_][A-Za-z0-9_]*)\s*\{|\bnode\s+"Question"\s*\{/gi;
+  const maskedBody = maskDslComments(body);
+  const hiddenTopics = new Set<string>();
+  let vlookupCount = 0;
+  let expectedHiddenCount: number | undefined;
+  let questionMatch: RegExpExecArray | null;
+  while ((questionMatch = questionPattern.exec(maskedBody)) !== null) {
+    const questionOpen = maskedBody.indexOf("{", questionMatch.index);
+    const questionClose = matchingBrace(maskedBody, questionOpen);
+    if (questionOpen < 0 || questionClose < 0) continue;
+    const questionBody = body.slice(questionOpen + 1, questionClose);
+    const topic = topLevelAttribute(questionBody, "Topic") ?? "";
+    const topicNumber = Number(topic);
+    if (Number.isInteger(topicNumber) && topicNumber > 70000 && topicNumber < 80000) hiddenTopics.add(topic);
+    const questionAlias = (questionMatch[1] ?? "").toLowerCase();
+    const questionVerify = (topLevelAttribute(questionBody, "Verify") ?? "").toLowerCase();
+    if (questionAlias === "vlookup" || questionVerify === "vlookup" || questionVerify.startsWith("vlookup┋")) {
+      vlookupCount += 1;
+      if (questionAlias === "vlookup") {
+        expectedHiddenCount = (topLevelAttribute(questionBody, "VlookupRefQuestionIndex") ?? "")
+          .split(/[,|\r\n]+/)
+          .map((item) => item.trim())
+          .filter(Boolean).length;
+      }
+    }
+    questionPattern.lastIndex = questionClose + 1;
+  }
+  if (vlookupCount > 0 && vlookupCount !== 1) {
+    diagnostics.push(diagnostic("DSL_VLOOKUP_CONFIG", "一份问卷只能创建一个 VLookUp 关联题。"));
+  }
+  if (vlookupCount > 0 && hiddenTopics.size === 0) {
+    diagnostics.push(diagnostic("DSL_VLOOKUP_CONFIG", "VLookUp 必须包含 Topic=70001..79999 的隐藏回填题。"));
+  }
+  if (expectedHiddenCount !== undefined && hiddenTopics.size !== expectedHiddenCount) {
+    diagnostics.push(diagnostic("DSL_VLOOKUP_CONFIG", "VLookUp 隐藏回填题数量必须与 VlookupRefQuestionIndex 字段数量一致。"));
+  }
+}
+
 function validateQuestionSemantics(value: string, diagnostics: WjxDslDiagnostic[]): void {
   const masked = maskDslComments(value);
   const pattern = /\bquestion\s+([A-Za-z_][A-Za-z0-9_]*)\s*\{|\bnode\s+"Question"\s*\{/gi;
@@ -297,13 +464,15 @@ function validateQuestionSemantics(value: string, diagnostics: WjxDslDiagnostic[
     const close = matchingBrace(masked, open);
     if (open < 0 || close < 0) continue;
     const body = value.slice(open + 1, close);
-    const normalized = normalizedQuestionType(match[1] ?? topLevelAttribute(body, "Type") ?? "", body);
+    const alias = match[1] ?? "";
+    const normalized = normalizedQuestionType(alias || (topLevelAttribute(body, "Type") ?? ""), body);
     const type = normalized.type;
     const items = countTopLevelBlocks(body, ["item"]);
     const rows = countTopLevelBlocks(body, ["row", "itemrow"]);
     const columns = countTopLevelBlocks(body, ["column", "itemcolumn"]);
     const referTopic = Number(topLevelAttribute(body, "ReferTopic"));
     const reference = Number.isInteger(referTopic) && referTopic > 0;
+    validateSpecialQuestionConfig(alias, body, diagnostics);
     validateLevelDataShape(body, diagnostics);
     if (["radio", "radio_down", "check"].includes(type) && items === 0 && !reference && !normalized.allowEmptyItems && !normalized.skipShape) diagnostics.push(diagnostic("DSL_QUESTION_SHAPE", `题型 ${type} 至少需要一个 Item。`));
     if (type === "gapfill") {
@@ -375,6 +544,7 @@ export function validateWjxDsl(
   validateFileUploadMaxSizes(value, diagnostics);
   validateDuplicateTopics(value, diagnostics);
   validateQuestionSemantics(value, diagnostics);
+  validateQuestionnaireSettings(value, diagnostics);
   return diagnostics.slice(0, options.maxDiagnostics ?? 100);
 }
 

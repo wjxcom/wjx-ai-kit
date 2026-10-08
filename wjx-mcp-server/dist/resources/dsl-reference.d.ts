@@ -37,6 +37,14 @@ export declare const DSL_SYNTAX_GUIDE: {
         考试题: string;
     };
     advanced_types_caveat: string;
+    questionnaire_settings: {
+        informed: string;
+        circulate: string;
+        image_pk: string;
+        video: string;
+        psych_embed: string;
+        vlookup: string;
+    };
     attribute_labels: {
         Title: string;
         Type: string;

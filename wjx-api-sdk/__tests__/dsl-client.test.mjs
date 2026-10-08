@@ -74,6 +74,59 @@ test("generateWjxDsl validates file upload MaxSize before transport", () => {
   assert.equal(generateWjxDsl('wjx-dsl 1; questionnaire { question signature { attr "Topic" = "1"; }; };').valid, true);
 });
 
+test("generateWjxDsl validates reported advanced question protocols", () => {
+  const valid = generateWjxDsl(`wjx-dsl 1; questionnaire {
+    attr "IsInformed" = "true";
+    attr "InformedTitle" = "考试须知";
+    attr "InformedDesc" = "请确认网络稳定后开始作答。";
+    question evaluate { attr "Topic" = "1"; };
+    question department { attr "Topic" = "2"; };
+    question other_info { attr "Topic" = "3"; };
+    question circulate { attr "Topic" = "4"; };
+    question image_pk {
+      attr "Topic" = "5";
+      item { attr "ItemTitle" = "A"; attr "ItemImg" = "https://example.test/a.png"; };
+      item { attr "ItemTitle" = "B"; attr "ItemImg" = "https://example.test/b.png"; };
+      item { attr "ItemTitle" = "C"; attr "ItemImg" = "https://example.test/c.png"; };
+    };
+    question video { attr "Topic" = "6"; attr "VideoUrl" = "https://example.test/demo.mp4"; };
+    question psych_embed { attr "Topic" = "7"; attr "PsychLink" = "https://example.test/experiment/index.html"; };
+    question vlookup {
+      attr "Topic" = "8";
+      attr "VlookupActivityId" = "source-vid";
+      attr "VlookupQueryQuestionIndex" = "10000";
+      attr "VlookupRefQuestionIndex" = "2";
+    };
+    node "Question" {
+      attr "Type" = "question";
+      attr "Topic" = "70001";
+      attr "Relation" = "-1";
+      attr "Height" = "1";
+    };
+  };`);
+  assert.equal(valid.valid, true, JSON.stringify(valid.diagnostics));
+
+  const invalid = generateWjxDsl(`wjx-dsl 1; questionnaire {
+    attr "IsInformed" = "true";
+    question image_pk { attr "Topic" = "1"; };
+    question video { attr "Topic" = "2"; };
+    question psych_embed { attr "Topic" = "3"; };
+    question vlookup { attr "Topic" = "4"; };
+  };`);
+  for (const code of ["DSL_INFORMED_CONFIG", "DSL_IMAGE_PK_CONFIG", "DSL_VIDEO_CONFIG", "DSL_PSYCH_CONFIG", "DSL_VLOOKUP_CONFIG"]) {
+    assert.equal(invalid.diagnostics.some((item) => item.code === code), true, `${code} was not reported`);
+  }
+
+  const directDocument = generateWjxDsl('wjx-dsl 1; questionnaire { question video { attr "Topic" = "1"; attr "VideoUrl" = "https://example.test/player"; }; };');
+  assert.equal(directDocument.diagnostics.some((item) => item.code === "DSL_VIDEO_CONFIG"), true);
+
+  const rawMedia = generateWjxDsl('wjx-dsl 1; questionnaire { node "Question" { attr "Type" = "matrix"; attr "Topic" = "1"; attr "Mode" = "201"; attr "Verify" = "video"; attr "VideoUrl" = "https://example.test/demo.mp4"; }; };');
+  assert.equal(rawMedia.valid, true, JSON.stringify(rawMedia.diagnostics));
+
+  const rawPlayer = generateWjxDsl('wjx-dsl 1; questionnaire { node "Question" { attr "Type" = "matrix"; attr "Topic" = "1"; attr "Mode" = "201"; attr "Verify" = "video"; attr "VideoUrl" = "/wjx/join/WjxVideo.html?url=https%3A%2F%2Fexample.test%2Fdemo.mp4&type=True"; }; };');
+  assert.equal(rawPlayer.valid, true, JSON.stringify(rawPlayer.diagnostics));
+});
+
 test("DSL clients route the three actions and do not send CAS fields", async () => {
   const calls = [];
   const credentials = { apiKey: "dsl-test-key", baseUrl: "https://example.test" };
@@ -120,6 +173,19 @@ test("DSL draft read-back does not require a respondent link", async () => {
   });
   assert.equal(verified.outcome, "verified");
   assert.deepEqual(verified.verification, { structure: true, status: true, link: true });
+});
+
+test("DSL read-back treats a server-wrapped video player URL as the requested media URL", async () => {
+  const expected = 'wjx-dsl 1; questionnaire { attr "Title" = "视频"; question video { attr "Topic" = "1"; attr "VideoUrl" = "https://media.example.test/demo.mp4"; }; };';
+  const actual = 'wjx-dsl 1; questionnaire { attr "Title" = "视频"; node "Question" { attr "Type" = "matrix"; attr "Topic" = "1"; attr "VideoUrl" = "/wjx/join/WjxVideo.html?url=https%3A%2F%2Fmedia.example.test%2Fdemo.mp4&type=True"; attr "Mode" = "201"; attr "Verify" = "video"; }; };';
+  const result = await verifyWjxDslWrite({
+    vid: 42,
+    expectedDsl: expected,
+    credentials: { apiKey: "key" },
+    fetchImpl: async () => new Response(JSON.stringify({ result: true, data: { vid: 42, dsl: actual, status: 0 } }), { headers: { "content-type": "application/json" } }),
+  });
+  assert.equal(result.outcome, "verified", result.warnings.join("; "));
+  assert.equal(result.verification.structure, true);
 });
 
 test("DSL read-back detects changed question settings and options under the same Topic", async () => {

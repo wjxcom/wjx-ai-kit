@@ -81,7 +81,22 @@ function questionBlocks(value: string): DslBlock[] {
 }
 
 function containsAttributes(actual: Record<string, string>, expected: Record<string, string>): boolean {
-  return Object.entries(expected).every(([name, value]) => actual[name] === value);
+  return Object.entries(expected).every(([name, value]) => {
+    if (actual[name] === value) return true;
+    if (name !== "VideoUrl") return false;
+    return unwrapVideoPlayerUrl(actual[name]) === value;
+  });
+}
+
+function unwrapVideoPlayerUrl(value: string | undefined): string | undefined {
+  if (!value) return undefined;
+  try {
+    const parsed = new URL(value, "https://www.wjx.cn");
+    if (parsed.pathname.toLowerCase() !== "/wjx/join/wjxvideo.html") return undefined;
+    return parsed.searchParams.get("url") ?? undefined;
+  } catch {
+    return undefined;
+  }
 }
 
 function containsChildren(actual: DslBlock["children"], expected: DslBlock["children"]): boolean {
