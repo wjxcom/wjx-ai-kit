@@ -19,7 +19,6 @@ fn(input, credentials?, fetchImpl?, requestOptions?)
 | contacts | `queryContacts`, `addContacts` |
 | user system（兼容/已过时） | `addParticipants`, `modifyParticipants`, `deleteParticipants`, `bindActivity`, `querySurveyBinding`, `queryUserSurveys`；仅用于已有系统 |
 | SSO | `buildSsoSubaccountUrl`, `buildSsoUserSystemUrl`, `buildSurveyUrl`, `buildPreviewUrl` |
-| XML DSL | `queryWjxDsl`, `createSurveyByWjxDsl`, `updateWjxDsl`, `verifyWjxDslWrite`, `validateWjxDsl` |
 
 ## 凭据优先级
 
@@ -48,7 +47,6 @@ await createSurveyByJson(input, credentials, fetch, {
 });
 ```
 
-问卷创建支持 `createSurveyByJson`（JSONL）和 `createSurveyByWjxDsl`（完整 XML DSL）。修改使用 `updateWjxDsl`，查询使用 `queryWjxDsl`；`verifyWjxDslWrite` 用于写入后的 DSL、身份、状态和链接回读验证。SDK 仍不把结构化业务对象转换成 DSL，题型语义由服务端最终判断。
 
 创建 `atype` 支持 `1/2/3/4/5/6/7/9/10/11`；`8` 用户体系不能新建。
 
@@ -85,3 +83,36 @@ SDK 直接返回问卷星 OpenAPI 原始响应，业务失败通常返回 `resul
 CLI 会将该响应转换为 `UPGRADE_REQUIRED` 错误，并保留服务端实际提供的最低版本、升级命令和 trace id；未提供的可选升级字段不会由客户端臆造。旧于 `0.4.1` 的 CLI 不会发送版本请求头；服务端应同时将旧创建 action 或缺少客户端版本头的创建请求判定为升级场景。
 
 `wjx-cli` 当前源码版本为 `0.4.4`；发布后 CLI 用户可先执行 `npm install -g wjx-cli@latest`，成功后再执行 `wjx skill install --force` 获取 CLI 并启用 `wjx-cli-use`。npm 包名是 `wjx-cli`，安装后的命令名是 `wjx`，验证时运行 `wjx --version`。发布前按 [CLI 快速开始](../start/cli.md) 从源码构建。
+
+
+## Survey JSON 与逻辑
+
+问卷创建统一使用 Survey JSON（JSONL），修改使用同一内容格式。涉及题目关联时增加可选节点：
+
+```json
+{"dsl":{"logic":"logic { if \"2::1\" then show \"3\"; };"}}
+```
+
+完整请求的 `jsonl` 是 JSONL 字符串；`dsl` 是对象，只包含 `logic`。无逻辑时省略 `dsl`。已有 `relation/referselect` 字段继续保留，冲突时 DSL 优先。
+
+SDK 使用 `createSurveyByJson` / `updateSurveyByJson`；CLI 使用 `survey create` / `survey update`；MCP 使用 `create_survey_by_json` / `update_survey_by_json`。普通查询 `getSurvey` / `survey get` / `get_survey` 从实际 XML 返回可编辑的 `dsl.logic`。
+
+仅修改逻辑时提交 `vid + dsl`；修改题目时提交 `vid + jsonl`，可同时提交 `dsl`。修改不会隐式重新发布或迁移创建者。修改请求执行一次，之后从普通查询验证实际保存结果。
+
+服务端将 DSL 解析并转换为 XML 的 Relation、ItemRelation、AnytimeJumpto、ReferTopic 等原生逻辑属性。XML 中不保存 DSL 原文或新增的 DSL 节点。仅修改逻辑时在原 XML 上更新对应属性，保留题目、选项、分页、设置和扩展数据。
+
+```text
+创建：Survey JSON -> 题目 XML；dsl.logic -> 原生 XML 逻辑；校验后保存 XML
+修改逻辑：实际 XML -> dsl.logic -> AI 修改 -> 原生 XML 逻辑 -> 更新原 XML
+```
+
+CLI 示例：
+
+```powershell
+wjx survey create --file survey.jsonl --dsl '{"logic":"logic { if \"2::1\" then show \"3\"; };"}'
+wjx survey get --vid 12345
+wjx --yes survey update --vid 12345 --dsl '{"logic":"logic { if \"2::2\" then show \"3\"; };"}'
+wjx --yes survey update --vid 12345 --file survey.jsonl
+```
+
+修改问卷结构时，已有的答卷索引保护继续生效；无答卷问卷确需结构变更时显式使用 `--allow-breaking-changes`（SDK 为 `allowBreakingChanges`，MCP 为 `allow_breaking_changes`）。

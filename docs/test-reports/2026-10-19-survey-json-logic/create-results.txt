@@ -1,0 +1,20 @@
+PASS create-hidden-only-question-enables-answer-runtime
+PASS create-without-logic
+PASS explicit-surveyinfo-introduction-remains-supported
+PASS create-user-complete-or-example
+PASS create-json-relation-legacy
+PASS create-dsl-priority-over-json-relation
+PASS create-invalid-topic-rejected
+PASS create-invalid-option-rejected
+PASS create-empty-logic-module
+PASS create-question-jump-enables-answer-runtime
+PASS create-option-jump-enables-answer-runtime
+PASS create-option-display-enables-answer-runtime
+PASS create-options-reference-enables-answer-runtime
+PASS partial-update-cannot-introduce-cycle-with-existing-logic
+PASS ordinary-query-projects-native-display-condition
+PASS ordinary-query-proves-unconditional-show-cleared-condition
+PASS conditional-hide-does-not-silently-become-unconditional
+PASS conditional-jump-does-not-silently-become-unconditional
+PASS question-only-condition-cannot-silently-clear-display-condition
+Creation integration: 19 passed, 0 failed.

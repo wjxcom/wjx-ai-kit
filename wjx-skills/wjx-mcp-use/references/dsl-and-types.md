@@ -1,161 +1,35 @@
-# DSL 语法与题型参考
+# 题目逻辑与 JSONL 题型
 
-## WJX XML DSL v1
+## Survey JSON 与逻辑
 
-> AI 按本规范直接生成完整 `wjx-dsl 1` 文本，MCP/SDK 负责轻量校验和传输，后端负责最终解析、Diff 与写入。
+问卷创建统一使用 Survey JSON（JSONL），修改使用同一内容格式。涉及题目关联时增加可选节点：
 
-### 创建、修改和查询工具
-
-- `query_wjx_dsl` 调用 `A1000006`，返回原查询内容和 DSL 往返结果。
-- `generate_wjx_dsl` 只校验/规范化 AI 生成的 DSL，不写服务器。
-- `create_survey_from_definition` 接收完整 DSL，校验后调用 `A1000109`。
-- `update_survey_from_definition` 接收传统 `vid` 和修改后的完整 DSL，校验后一次调用 `A1000110`。
-- 不使用结构化 JSON 到 DSL 的隐式转换，也不使用增量 Patch DSL。
-
-### 语法结构
-
-DSL 是花括号文本，**不是** `序号. 标题[题型标记]` 那种旧文本格式，也不接受 `min~max` 之类简写：
-
-- 第一行必须是 `wjx-dsl 1;`，可选 `xml version` / `xml encoding` 声明。
-- 根节点是 `questionnaire { ... };`；问卷标题用 `attr "Title" = "..."`。
-- 题目为 `question <type> { ... };`，内部用 `attr "Name" = "Value";` 和 `item { ... };` / `row { ... };` 子块。`gapfill` 标题使用 `___` 空位（客户端兼容归一化 `{_}`，但服务端原生解析格式是 `___`）。
-- 分页用 `page { ... };` 块，不是 `=== 分页 ===`。
-- 段落说明用 `question cut { ... };`，不会被静默过滤。
-- 字符串一律双引号，布尔/数字/编码也按字符串传输（`"true"` / `"1"`）。
-- 未建模的高级字段用 `raw` 显式保留，客户端不删除未知字段。
-
-完整最小示例、逻辑 DSL 和错误码见权威参考 [wjx-xml-dsl-v1.md](../../../wjx-docs/reference/wjx-xml-dsl-v1.md)。
-
-### 题型（基础 Type）
-
-`question <type>` 的 `<type>` 用后端**基础 Type** 名或已验证的**语义别名**，**不要**用 q_type/q_subtype 数字编码，也不要用 `[题型标记]`：
-
-| Type | 说明 | 子块 |
-|------|------|------|
-| `radio` | 单选 | `item` |
-| `radio_down` | 下拉（别名 `dropdown`） | `item` |
-| `check` | 多选（`Mode=1` 即排序，别名 `sort`） | `item` |
-| `question` | 简答/文本，题型由 `Verify` 决定 | 无（可带 `raw`） |
-| `gapfill` | 填空/完形（`GapCount` + 每空一个 `row`） | `row` |
-| `fileupload` | 文件上传/签名（别名 `signature`/`drawing`） | 无 |
-| `sum` | 比重题（`Total` + 每行一个 `row`） | `row` |
-| `slider` | 滑动条 | 无 |
-| `matrix` | 矩阵/表格系列，形态由 `Mode` 决定 | `row`、`item` |
-| `page` / `cut` | 分页 / 段落说明 | — |
-
-常用语义别名：`scale`（量表）、`evaluate`（评价题）、`true_false`（判断）、`scenario`（情景）、`commodity`（商品）、`department`（部门）、`other_info`（其它信息）、`multi_level_dropdown`（多级下拉）、`matrix_single`/`matrix_multi`/`matrix_scale`（矩阵单选/多选/量表）、`matrix_fill`（矩阵填空）、`image_pk`（图片 PK）、`psych_embed`（实验嵌入）和 `vlookup`（问卷关联）等。完整别名与 `Mode` 取值以服务端支持矩阵为准。
-
-多级下拉的 `LevelData` 必须遵循编辑器分块格式：只有一个 `〒`，左侧各级数据块用 `|` 分隔；第一级用换行列根选项，后续级别用 `---父级路径` 标记父项并用换行列子项；`〒` 右侧可用 `|` 写级别标题。不要把完整路径用多个 `〒` 拼接，否则答题页会把路径片段当作不同级别并报选项不存在。
-
-> 注意：`checkbox`、`text`、`upload`、`weight`、`matrix_radio` 等**不是**后端题型标识；对应能力分别用 `check`、`question`/`gapfill`、`fileupload`、`sum`、`matrix_single`。
-
-### 别名未覆盖的高级题型（raw node）
-
-别名表没有的高级题型，部分可用 Generic 别名 `node "Question" { ... }` 透传：基础 Type + 后端读取的标识属性（`Mode`/`Verify`/`HasValue`/`IsCeShi`/`IsSignature`/`IsQingJing`/`IsEvaluate`/`IsLadder`/`IsTouPiao`/`IsShop`/`IsShelf`/`IsAppointment`/`Relation`/`Height`）。常用取值：NPS=`radio`+`Mode="6"`+`HasValue`；社会阶层=`radio`+`IsLadder`；性别/学历等=`radio`+`Verify="性别"`；手机/日期/邮箱=`question`+`Verify="手机"`/`日期`/`Email`；矩阵高级模型=`matrix`+`Mode`(如 `302`)+`Verify`(`conjoint`/`maxdiff`/`bpto` 等)。OCR 等仍可 raw 透传；评价、图片 PK、实验嵌入和 VLookUp 应优先使用专用别名及其严格配置。完整对照表见权威参考 [wjx-xml-dsl-v1.md](../../../wjx-docs/reference/wjx-xml-dsl-v1.md) 的「高级题型（raw node + 标识属性）」。
-
-> 热力图、折叠栏目、轮播图和品牌漏斗不要用 raw node 硬凑。考试须知/知情同意书使用根属性 `IsInformed` + `InformedTitle` + `InformedDesc`；部门/其它信息使用 `department` / `other_info`。视频题可传直接视频文件 URL，服务端会统一包装为 WjxVideo 播放器；持久化 XML 不能把 MP4 直接当 iframe 地址。循环评价、图片 PK、实验嵌入和 VLookUp 的完整写法与必填属性见权威参考，缺配置时本地预检会拒绝创建。
-
-### 题型示例
-
-```text
-wjx-dsl 1;
-questionnaire {
-  attr "Title" = "员工满意度调查";
-
-  question radio_down {
-    attr "Topic" = "1";
-    attr "Title" = "您的部门";
-    item { attr "ItemTitle" = "技术部"; attr "ItemValue" = "1"; };
-    item { attr "ItemTitle" = "市场部"; attr "ItemValue" = "2"; };
-  };
-
-  question check {
-    attr "Topic" = "2";
-    attr "Title" = "您认为最重要的福利";
-    item { attr "ItemTitle" = "薪资"; attr "ItemValue" = "1"; };
-    item { attr "ItemTitle" = "假期"; attr "ItemValue" = "2"; };
-  };
-
-  page {};
-
-  question matrix {
-    attr "Topic" = "3";
-    attr "Title" = "请对以下维度评分";
-    attr "Mode" = "2";
-    row { attr "Title" = "沟通效率"; };
-    row { attr "Title" = "团队协作"; };
-    item { attr "ItemTitle" = "满意"; attr "ItemValue" = "1"; };
-    item { attr "ItemTitle" = "一般"; attr "ItemValue" = "2"; };
-  };
-};
+```json
+{"dsl":{"logic":"logic { if \"2::1\" then show \"3\"; };"}}
 ```
 
-### 逻辑与限制
+完整请求的 `jsonl` 是 JSONL 字符串；`dsl` 是对象，只包含 `logic`。无逻辑时省略 `dsl`。已有 `relation/referselect` 字段继续保留，冲突时 DSL 优先。
 
-分支逻辑、验证规则、评分权重、随机化等可用 DSL 的逻辑动作（`if`/`show`/`hide`/`jump`/`branch`/`reference`/`random`/`raw`）透传；无法安全建模的字段用 `raw` 保留。客户端只做轻量结构校验，当前没有随机化、配额、piping 或复杂分支的通用配置与页面闭环验证，不能据此宣称完整支持。题型编码、必填属性、矩阵 `Mode` 及高级属性均以服务端能力矩阵为最终准绳。
+SDK 使用 `createSurveyByJson` / `updateSurveyByJson`；CLI 使用 `survey create` / `survey update`；MCP 使用 `create_survey_by_json` / `update_survey_by_json`。普通查询 `getSurvey` / `survey get` / `get_survey` 从实际 XML 返回可编辑的 `dsl.logic`。
 
-### 查询结果的中文解读
+仅修改逻辑时提交 `vid + dsl`；修改题目时提交 `vid + jsonl`，可同时提交 `dsl`。修改不会隐式重新发布或迁移创建者。修改请求执行一次，之后从普通查询验证实际保存结果。
 
-`query_wjx_dsl`（`A1000006`）返回的往返 DSL 用 **Generic 别名**（`node "Question" { attr "Type" = ...; }`），属性名是后端**英文原名**且原样保留以保证无损往返，DSL 原文不做中文化。向用户解释查询结果时：
+服务端将 DSL 解析并转换为 XML 的 Relation、ItemRelation、AnytimeJumpto、ReferTopic 等原生逻辑属性。XML 中不保存 DSL 原文或新增的 DSL 节点。仅修改逻辑时在原 XML 上更新对应属性，保留题目、选项、分页、设置和扩展数据。
 
-- 把英文属性译成中文再讲（`Title` 标题、`Requir` 必答、`Ext` 允许上传的文件类型、`MaxSize` 单文件上限 KB、`ItemImg` 选项图片路径、`ItemImgText` 是否同时显示选项文字、`IsCeShi`/`CeShiValue` 计分/分值 等），未收录的字段保留英文原名并注明是高级/协议字段。
-- **列表型字段（尤其 `Ext` 上传类型）必须逐项完整列出，不得截断或概括。**
-- 协议值解读：`RandomChoice=1` 表示「全部选项随机」（不是「随机 1 个选项」）；`PartSet "1;5;2"` 表示「从第 1~5 题中随机抽取 2 题展示」。
-- 选项图片 `ItemImg` 的值必须是问卷星**已上传图片的相对路径**（非任意外链 URL），凭空 URL 作答页不显示；DSL 编解码对 `ItemImg`/`ItemImgText` 无损透传。
+```text
+创建：Survey JSON -> 题目 XML；dsl.logic -> 原生 XML 逻辑；校验后保存 XML
+修改逻辑：实际 XML -> dsl.logic -> AI 修改 -> 原生 XML 逻辑 -> 更新原 XML
+```
 
-完整对照表与协议值解读见权威参考 [wjx-xml-dsl-v1.md](../../../wjx-docs/reference/wjx-xml-dsl-v1.md) 的「查询结果的中文解读」一节。
+CLI 示例：
 
-### 投票问卷
+```powershell
+wjx survey create --file survey.jsonl --dsl '{"logic":"logic { if \"2::1\" then show \"3\"; };"}'
+wjx survey get --vid 12345
+wjx --yes survey update --vid 12345 --dsl '{"logic":"logic { if \"2::2\" then show \"3\"; };"}'
+wjx --yes survey update --vid 12345 --file survey.jsonl
+```
 
-投票问卷用 `atype: 3`（`create_survey_from_definition` 的 `atype` 参数），题目仍是普通 `radio`/`check`，不存在专门的「投票题型」；`atype` 只控制展示样式。
+修改问卷结构时，已有的答卷索引保护继续生效；无答卷问卷确需结构变更时显式使用 `--allow-breaking-changes`（SDK 为 `allowBreakingChanges`，MCP 为 `allow_breaking_changes`）。
 
-### DSL 与 JSONL 是两条独立链路
-
-XML DSL（`create_survey_from_definition` → `A1000109`）和 JSONL（`create_survey_by_json` → `A1000106`）互不转换。JSONL 用**中文 `qtype` 字符串**（如 `"单选"`、`"矩阵单选"`），不要传 q_type/q_subtype 数字；XML DSL 用上表的基础 Type 名。两者都不接受 q_type/q_subtype 作为创建输入。
-
----
-
-## 问卷类型编码
-
-| 编码 | 类型 |
-|------|------|
-| 1 | 调查 |
-| 2 | 测评 |
-| 3 | 投票 |
-| 4 | 360度评估 |
-| 5 | 360评估(无测评关系) |
-| 6 | 考试 |
-| 7 | 表单 |
-| 8 | 用户体系 |
-| 9 | 教学评估 |
-| 10 | 量表 |
-| 11 | 民主评议 |
-
-## 问卷状态码
-
-| 编码 | 状态 |
-|------|------|
-| 0 | 未发布 |
-| 1 | 已发布 |
-| 2 | 已暂停 |
-| 3 | 已删除 |
-| 4 | 彻底删除 |
-| 5 | 被审核 |
-
-## 审核状态
-
-| 编码 | 状态 |
-|------|------|
-| 1 | 已通过 |
-| 2 | 审核中 |
-| 3 | 未通过 |
-| 4 | 待实名 |
-
-## 关于 q_type / q_subtype
-
-`q_type` / `q_subtype` 是服务端内部的题型数字编码，**只出现在查询结果里，不能作为创建输入**：
-
-- XML DSL 创建/修改：用 `question <type>` 的基础 Type 名（见上文题型表）。
-- JSONL 创建（`create_survey_by_json`）：用中文 `qtype` 字符串，如 `"单选"`、`"多选"`、`"矩阵单选"`。
-
-两条链路都不接受 `q_type`/`q_subtype` 数字或 `[题型标记]` 作为输入。
+中文 qtype 创建格式见 tools-survey.md；查询结果中的 q_type/q_subtype 是服务端读取编码。

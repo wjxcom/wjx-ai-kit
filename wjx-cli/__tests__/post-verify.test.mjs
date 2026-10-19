@@ -6,6 +6,19 @@ import { extractJsonlQuestionTypeExpectations } from "wjx-api-sdk";
 const ok = (data) => ({ result: true, data });
 
 describe("verifySurveyPostWrite", () => {
+  it("verifies unconditional show from native question evidence after the last logic rule disappears", async () => {
+    const saved = { vid: 42, title: "清除关联", status: 0, questions: [
+      { q_index: 3, q_type: 3, q_subtype: 3, relation: "" },
+    ] };
+    const result = await verifySurveyPostWrite({ vid: 42, expectedLogic: 'logic { show "3"; };',
+      getSurveyFn: async () => ok(saved) });
+    assert.equal(result.verification.structure, true);
+    saved.questions[0].relation = "2,1";
+    const stale = await verifySurveyPostWrite({ vid: 42, expectedLogic: 'logic { show "3"; };',
+      getSurveyFn: async () => ok(saved) });
+    assert.equal(stale.verification.structure, false);
+  });
+
   it("fails closed when the read-back survey identity differs from the requested vid", async () => {
     const result = await verifySurveyPostWrite({
       vid: 42,

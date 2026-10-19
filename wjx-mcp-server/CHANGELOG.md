@@ -1,5 +1,10 @@
 # 更新日志
 
+## 未发布
+
+- 创建和修改统一使用 Survey JSON，按需附加 dsl.logic；DSL 转换为原生 XML 逻辑，冲突时优先。
+- 新增 updateSurveyByJson、survey update、update_survey_by_json；原完整 DSL 独立创建、查询、修改和校验入口已移除。
+
 本文件记录项目的所有重要变更。
 
 > 说明：以下 0.x 条目保留为历史记录。条目中出现的 `create_survey`、`create_survey_by_text` 或 DSL 创建能力已移除，不属于当前 Server，也不得据此恢复工具。当前问卷创建唯一使用 `create_survey_by_json`。

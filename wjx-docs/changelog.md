@@ -1,5 +1,10 @@
 # 变更记录
 
+## Survey JSON 逻辑改造（未发布）
+
+- 创建和修改统一使用 Survey JSON，可选 `dsl.logic` 由服务端转换为 XML 原生逻辑属性。
+- 删除完整问卷 DSL 的独立接口、命令、工具、资源及专用底层实现。
+
 ## 0.4.4 (2026-09-07)
 
 - SDK、CLI、MCP Server 统一升级至 0.4.4。
@@ -29,12 +34,12 @@
 
 - `wjx-api-sdk`、`wjx-mcp-server`、`wjx-cli` 曾统一发布 `0.4.0`，现已废弃，不能作为当前安装目标。
 - 问卷创建统一使用 `createSurveyByJson` / `create_survey_by_json` / `survey create` 的 action `1000106` JSONL 链路。
-- 旧 JSON 数组和 DSL 创建入口已移除；读取和迁移旧 DSL 的能力仍保留。
+- 当时移除了旧 JSON 数组和 DSL 创建入口；完整问卷 DSL 的读取和迁移能力已在本次 Survey JSON 改造中移除。
 
 ## 文档更新
 
 - 首页按用户目标分流，提供 CLI、MCP 和 SDK 的清晰入口。
-- 问卷创建唯一使用 action `1000106` 的 JSONL 链路；旧 JSON 数组和 DSL 创建入口已移除，DSL 仅用于读取、审阅和离线迁移。
+- 问卷创建使用 action `1000106` 的 JSONL 链路，修改使用 action `1000109`；涉及题目关联时提供可选 `dsl.logic`。
 - 补充题型、MCP 工具、认证、HTTP 部署和迁移说明。
 - 标明已过时的用户体系能力和历史 `0.4.0` npm 发布方式。
-- 明确问卷创建入口统一为 CLI `survey create`、SDK `createSurveyByJson` 和 MCP `create_survey_by_json`；XML DSL v1 通过独立的 query/generate/create/update 链路处理，不与 JSONL 互相转换。
+- 问卷逻辑随 JSON 创建和修改接口提交，查询从实际保存的 XML 提取 `dsl.logic`。

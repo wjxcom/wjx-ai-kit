@@ -27,9 +27,9 @@ flowchart TD
     E --> F
 
     F --> G[McpServer]
-    G --> H[Resources 13]
+    G --> H[Resources 12]
     G --> I[Prompts 15]
-    G --> J[Tools 66]
+    G --> J[Tools 63]
 
     J --> M1[survey]
     J --> M2[response]
@@ -38,7 +38,6 @@ flowchart TD
     J --> M5[multi-user]
     J --> M6[sso]
     J --> M7[analytics]
-    J --> M8[dsl]
 
     M1 --> N1[src/modules/*/client.ts]
     M2 --> N1
@@ -97,17 +96,16 @@ flowchart TD
 
 | 模块 | Tool 数量 | 主要职责 | 核心 API / 入口 |
 | --- | ---: | --- | --- |
-| `survey` | 13 | 问卷 JSONL/AI 主页创建、查询、设置读写、标签、回收站和文件上传 | `createSurveyByJson()`、`getSurvey()`、`updateSurveySettings()`、`clearRecycleBin()` |
+| `survey` | 14 | 问卷 JSONL/AI 主页创建和修改、题目逻辑、查询、设置读写、标签、回收站和文件上传 | `createSurveyByJson()`、`updateSurveyByJson()`、`getSurvey()`、`updateSurveySettings()`、`clearRecycleBin()` |
 | `response` | 11 | 答卷查询、计数、下载、报告、提交、模板、修改、清空 | `queryResponses()`、`downloadResponses()`、`getReport()`、`submitResponse()`、`buildSubmitTemplate()` |
 | `contacts` | 14 | 通讯录成员、管理员、部门、标签管理 | `queryContacts()`、`addContacts()`、`listDepartments()`、`listTags()` |
 | `sso` | 6 | 子账号 SSO、用户体系 SSO、代理商 SSO、问卷创建/编辑/预览链接、问卷短链接 | `buildSsoSubaccountUrl()`、`buildSsoUserSystemUrl()`、`buildSsoPartnerUrl()`、`buildSurveyUrl()`、`buildPreviewUrl()`、`getShortLink()` |
 | `user-system` | 6 | 参与者管理、活动绑定、问卷绑定查询、用户关联问卷查询 | `addParticipants()`、`bindActivity()`、`querySurveyBinding()`、`queryUserSurveys()` |
 | `multi-user` | 5 | 子账号创建、修改、删除、恢复、查询 | `addSubAccount()`、`modifySubAccount()`、`querySubAccounts()` |
 | `analytics` | 6 | 答卷解码、推送解密、NPS/CSAT、本地异常检测、指标对比 | `decodeResponses()`、`decodePushPayload()`、`calculateNps()`、`calculateCsat()`、`detectAnomalies()`、`compareMetrics()` |
-| `dsl` | 4 | WJX XML DSL v1 查询、校验、创建和修改 | `queryWjxDsl()`、`generateWjxDsl()`、`createSurveyByWjxDsl()`、`updateWjxDsl()` |
 | `server`（诊断） | 1 | 配置与运行环境诊断 | `get_config` |
 
-业务模块中的 Tool 数量直接对应各 `src/modules/*/tools.ts` 中 `server.registerTool()` 的出现次数，共 65 个；`src/server.ts` 另注册 1 个 `get_config` 诊断工具，总计 66 个。资源数量以 `src/resources/index.ts` 的 13 个 `server.resource()` 注册为准。
+业务模块中的 Tool 数量直接对应各 `src/modules/*/tools.ts` 中 `server.registerTool()` 的出现次数，共 62 个；`src/server.ts` 另注册 1 个 `get_config` 诊断工具，总计 63 个。资源数量以 `src/resources/index.ts` 的 12 个 `server.resource()` 注册为准。题目逻辑由 `survey` 模块的 JSON 创建、修改和普通查询接口处理。
 
 ### 5.2 survey 模块
 
@@ -124,7 +122,6 @@ flowchart TD
 - `upload_file`
 - `clear_recycle_bin`
 - `create_survey_by_json`（唯一当前创建入口）
-- `create_survey_from_definition`、`update_survey_from_definition`、`query_wjx_dsl`、`generate_wjx_dsl`
 
 
 特点：
@@ -302,7 +299,7 @@ server.registerTool("tool_name", { inputSchema }, async (args) => {
 
 ### 8.1 Resources
 
-当前注册了 13 个只读资源：
+当前注册了 12 个只读资源：
 
 - `wjx://reference/jsonl-qtypes`
 - `wjx://reference/survey-types`
@@ -316,7 +313,6 @@ server.registerTool("tool_name", { inputSchema }, async (args) => {
 - `wjx://reference/response-format`
 - `wjx://reference/user-roles`
 - `wjx://reference/push-format`
-- `wjx://reference/wjx-xml-dsl`
 
 资源层的作用是把稳定字典、格式规范和分析基准放进 MCP 上下文，而不是每次让模型重复猜测编码意义。
 
@@ -448,3 +444,36 @@ HTTP 模式基于 `StreamableHTTPServerTransport`，提供：
 - MCP 原语能力：通过 tools、resources、prompts 让 Agent 既能“调用”，也能“理解”和“规划”
 
 因此，它本质上是一个面向 AI Agent 的问卷运营中台接入层，而不是传统的 OpenAPI SDK 包装器。
+
+
+## Survey JSON 与逻辑
+
+问卷创建统一使用 Survey JSON（JSONL），修改使用同一内容格式。涉及题目关联时增加可选节点：
+
+```json
+{"dsl":{"logic":"logic { if \"2::1\" then show \"3\"; };"}}
+```
+
+完整请求的 `jsonl` 是 JSONL 字符串；`dsl` 是对象，只包含 `logic`。无逻辑时省略 `dsl`。已有 `relation/referselect` 字段继续保留，冲突时 DSL 优先。
+
+SDK 使用 `createSurveyByJson` / `updateSurveyByJson`；CLI 使用 `survey create` / `survey update`；MCP 使用 `create_survey_by_json` / `update_survey_by_json`。普通查询 `getSurvey` / `survey get` / `get_survey` 从实际 XML 返回可编辑的 `dsl.logic`。
+
+仅修改逻辑时提交 `vid + dsl`；修改题目时提交 `vid + jsonl`，可同时提交 `dsl`。修改不会隐式重新发布或迁移创建者。修改请求执行一次，之后从普通查询验证实际保存结果。
+
+服务端将 DSL 解析并转换为 XML 的 Relation、ItemRelation、AnytimeJumpto、ReferTopic 等原生逻辑属性。XML 中不保存 DSL 原文或新增的 DSL 节点。仅修改逻辑时在原 XML 上更新对应属性，保留题目、选项、分页、设置和扩展数据。
+
+```text
+创建：Survey JSON -> 题目 XML；dsl.logic -> 原生 XML 逻辑；校验后保存 XML
+修改逻辑：实际 XML -> dsl.logic -> AI 修改 -> 原生 XML 逻辑 -> 更新原 XML
+```
+
+CLI 示例：
+
+```powershell
+wjx survey create --file survey.jsonl --dsl '{"logic":"logic { if \"2::1\" then show \"3\"; };"}'
+wjx survey get --vid 12345
+wjx --yes survey update --vid 12345 --dsl '{"logic":"logic { if \"2::2\" then show \"3\"; };"}'
+wjx --yes survey update --vid 12345 --file survey.jsonl
+```
+
+修改问卷结构时，已有的答卷索引保护继续生效；无答卷问卷确需结构变更时显式使用 `--allow-breaking-changes`（SDK 为 `allowBreakingChanges`，MCP 为 `allow_breaking_changes`）。

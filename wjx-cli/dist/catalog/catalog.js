@@ -29,18 +29,11 @@ const builtinEntry = (id, risk = "read") => ({
     identities: ["user", "bot"],
     source: "builtin",
 });
-const dslEntry = (id, action, risk = "read") => ({
-    ...apiEntry(id, action, risk),
-    command: id.replace(/^survey\.dsl\./, "dsl."),
-});
 /** Complete public command catalog used by raw API, schema, completion and manifest checks. */
 export const CATALOG = Object.freeze([
-    dslEntry("survey.dsl.query", Action.QUERY_WJX_DSL),
-    dslEntry("survey.dsl.create", Action.CREATE_SURVEY_BY_WJX_DSL, "write"),
-    dslEntry("survey.dsl.update", Action.UPDATE_WJX_DSL, "high-risk-write"),
-    { ...builtinEntry("survey.dsl.generate"), command: "dsl.generate" },
     apiEntry("survey.get", Action.GET_SURVEY),
     apiEntry("survey.list", Action.LIST_SURVEYS),
+    apiEntry("survey.update", Action.UPDATE_SURVEY_BY_JSON, "high-risk-write"),
     apiEntry("survey.create", Action.CREATE_SURVEY_BY_JSON, "write"),
     apiEntry("survey.create-ai-page", Action.CREATE_AI_PAGE, "write"),
     apiEntry("survey.update-ai-page", Action.UPDATE_AI_PAGE, "high-risk-write"),

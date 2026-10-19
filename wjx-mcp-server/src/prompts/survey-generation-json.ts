@@ -32,6 +32,7 @@ const JSONL_FORMAT_INSTRUCTIONS = `
    - 360评估无测评关系 → **必须显式传 atype=5**
    - 民主测评 / 民主评议 → **必须显式传 atype=11**
    - 普通调查 → atype=1（默认值，可省略）
+【题目关联逻辑】先生成题目 JSONL，再生成可选 dsl 对象，其 logic 字符串使用现有语法：logic { if "2::1" then show "3"; };。logic 内只描述题目关联，不包含题目定义或问卷设置。无关联逻辑时省略 dsl；与 relation/referselect 冲突时 DSL 优先。服务端会解析转换为 XML 原生逻辑属性。修改时先 get_survey 读取实际 XML 投影的 dsl.logic，再调用 update_survey_by_json；仅修改逻辑时不必重新生成题目 JSONL。
 9. 【多项填空特别说明】多项填空必须在 title 中用 {_} 占位符表示每个子填空位，每个 {_} 对应一个输入框。例：{"qtype":"多项填空","title":"姓名{_}，年龄{_}，电话{_}"} 会生成 3 个空位。**禁止用 rowtitle 数组定义多项填空的子项**（rowtitle 仅用于矩阵题/比重题/Kano/PSM/表格题 等）— 否则服务端只会生成 1 个空位。
 10. 【矩阵题 & 表格题 用法指南】qtype 必须使用下列精确名称之一，不要凭想象造新名字（如"矩阵""矩阵题""通用矩阵""表格题"等模糊值会创建失败）：
 

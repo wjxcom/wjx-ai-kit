@@ -40,8 +40,11 @@ export {
 } from "./core/api-client.js";
 
 // Survey module
+export { prepareSurveyDslJson, surveyLogicMatches } from "./modules/survey/logic.js";
+export { verifySurveyJsonUpdate } from "./modules/survey/verify.js";
 export {
   createSurveyByJson,
+  updateSurveyByJson,
   CREATABLE_SURVEY_ATYPES,
   getSurvey,
   listSurveys,
@@ -94,6 +97,8 @@ export type {
 } from "./modules/survey/qtype-mapping.js";
 export type {
   CreateSurveyByJsonInput,
+  UpdateSurveyByJsonInput,
+  SurveyDslJson,
   GetSurveyInput,
   ListSurveysInput,
   UpdateSurveyStatusInput,
@@ -108,37 +113,6 @@ export type {
   SurveyQuestion,
   SurveyDetail,
 } from "./modules/survey/types.js";
-
-// WJX XML DSL module
-export {
-  queryWjxDsl,
-  createSurveyByWjxDsl,
-  updateWjxDsl,
-} from "./modules/dsl/client.js";
-export { verifyWjxDslWrite } from "./modules/dsl/verify.js";
-export {
-  generateWjxDsl,
-  normalizeWjxDsl,
-  validateWjxDsl,
-  MAX_WJX_DSL_BYTES,
-} from "./modules/dsl/validate.js";
-export type {
-  WjxDslStatus,
-  WjxDslDiagnostic,
-  WjxDslOperationData,
-  WjxDslLimits,
-  QueryWjxDslInput,
-  QueryWjxDslResult,
-  CreateWjxDslSurveyInput,
-  CreateWjxDslSurveyResult,
-  UpdateWjxDslInput,
-  UpdateWjxDslResult,
-  WjxDslFailureData,
-  WjxDslValidationOptions,
-  WjxDslGenerationResult,
-  VerifyWjxDslWriteInput,
-  VerifyWjxDslWriteResult,
-} from "./modules/dsl/types.js";
 
 // AI homepage module
 export { createAiPage, updateAiPage } from "./modules/ai-page/client.js";

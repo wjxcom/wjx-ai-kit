@@ -50,10 +50,11 @@ wjx-cli 是问卷星 OpenAPI 的命令行工具。命令格式：`wjx <模块> <
 
 ## AI Agent 行为准则（必读）
 
-### 规则 0：按场景选择 JSONL 或 XML DSL
+### 规则 0：使用 Survey JSON 与可选题目逻辑
 
+先运行 `wjx survey jsonl-template --type <问卷类型> --raw` 获取骨架，再执行 `wjx survey create`。题目逻辑使用可选 `--dsl '{"logic":"logic { ... };"}'` 或 stdin 的 `dsl` 对象。服务端将 DSL 转换为 XML 原生逻辑属性，冲突时优先于 JSON 中的 relation/referselect。
 
-创建 JSONL 问卷先运行 `wjx survey jsonl-template --type <问卷类型> --raw` 获取骨架，再执行 `wjx survey create`。创建 XML DSL 问卷使用 `wjx dsl generate` 校验后执行 `wjx dsl create`；传统问卷修改使用 `wjx dsl update`（服务端 action `A1000110`），查询使用 `wjx dsl query`。AI 主页修改必须使用 `wjx survey update-ai-page`（服务端 action `A1000108`），不能把 AI 主页 vid 传给 `wjx dsl update`。每个非空 JSONL 行必须是完整 JSON 对象；XML DSL 必须以 `wjx-dsl 1;` 开头。
+修改前先执行 `wjx survey get --vid <vid>`，使用返回的 `dsl.logic` 修改逻辑，通过 `wjx survey update --vid <vid>` 提交。仅修改逻辑时不用提供 JSONL；修改题目时提供完整 JSONL。AI 主页使用 `survey update-ai-page`。
 
 不要把旧接口的 `_meta`、`q_type`、`q_subtype`、`q_title`、`items` 结构传给 `create`；CLI 会将其判为输入错误。
 
@@ -279,8 +280,7 @@ wjx doctor
 
 | 模块 | 命令 | 说明 |
 |------|------|------|
-| `survey` | list, get, create, create-ai-page, update-ai-page, jsonl-template, delete, status, settings, update-settings, tags, tag-details, clear-bin, upload, url, preview-url, shortlink, dsl.query, dsl.create, dsl.update | 问卷增删改查、AI 主页、配置、预览链接与短信短链接 |
-| `dsl` | query, generate, create, update | XML DSL 查询、校验、创建和修改 |
+| `survey` | list, get, create, update, create-ai-page, update-ai-page, jsonl-template, delete, status, settings, update-settings, tags, tag-details, clear-bin, upload, url, preview-url, shortlink | 问卷增删改查、AI 主页、配置、预览链接与短信短链接 |
 | `response` | query, realtime, download, submit-template, submit, modify, clear, report, count, winners, 360-report | 答卷数据操作 |
 | `contacts` | query, add, delete | 联系人管理（需 WJX_CORP_ID） |
 | `department` | list, add, modify, delete | 部门管理 |
@@ -294,9 +294,9 @@ wjx doctor
 
 ## 核心工作流
 
-### 创建问卷（JSONL 或 XML DSL 格式）
+### 创建问卷（Survey JSON 与可选逻辑）
 
-> **重要**：创建任何新问卷都必须执行 `wjx survey create` 或 `wjx dsl create` 命令。只生成 JSONL/DSL 文本而不执行命令，问卷不会被创建到问卷星平台上。
+> **重要**：创建任何新问卷都必须执行 `wjx survey create` 命令。只生成 JSONL/DSL 文本而不执行命令，问卷不会被创建到问卷星平台上。
 
 ```bash
 wjx survey jsonl-template --type 1 --raw > survey.jsonl
@@ -349,3 +349,36 @@ JSONL 每个非空行放一个 JSON 对象，且首行必须是问卷基础信�
 - [JSONL 题型](references/question-types.md) — `create` 的字段格式、中文 `qtype` 与示例
 - [计算公式](references/formula-helper.md) — 问卷星计算公式与Excel函数功能指南，帮助AI在问卷中正确编写计算公式。涵盖题目引用、数组写法、赋值判断逻辑、各题型的推送数据格式、函数参考（日期时间/数学计算/文本合并/条件判断/逻辑/查找统计）及实战案例。
 - [安装 Node.js](references/install-nodejs.md) — 各平台 Node.js 安装方式
+
+
+## Survey JSON 与逻辑
+
+问卷创建统一使用 Survey JSON（JSONL），修改使用同一内容格式。涉及题目关联时增加可选节点：
+
+```json
+{"dsl":{"logic":"logic { if \"2::1\" then show \"3\"; };"}}
+```
+
+完整请求的 `jsonl` 是 JSONL 字符串；`dsl` 是对象，只包含 `logic`。无逻辑时省略 `dsl`。已有 `relation/referselect` 字段继续保留，冲突时 DSL 优先。
+
+SDK 使用 `createSurveyByJson` / `updateSurveyByJson`；CLI 使用 `survey create` / `survey update`；MCP 使用 `create_survey_by_json` / `update_survey_by_json`。普通查询 `getSurvey` / `survey get` / `get_survey` 从实际 XML 返回可编辑的 `dsl.logic`。
+
+仅修改逻辑时提交 `vid + dsl`；修改题目时提交 `vid + jsonl`，可同时提交 `dsl`。修改不会隐式重新发布或迁移创建者。修改请求执行一次，之后从普通查询验证实际保存结果。
+
+服务端将 DSL 解析并转换为 XML 的 Relation、ItemRelation、AnytimeJumpto、ReferTopic 等原生逻辑属性。XML 中不保存 DSL 原文或新增的 DSL 节点。仅修改逻辑时在原 XML 上更新对应属性，保留题目、选项、分页、设置和扩展数据。
+
+```text
+创建：Survey JSON -> 题目 XML；dsl.logic -> 原生 XML 逻辑；校验后保存 XML
+修改逻辑：实际 XML -> dsl.logic -> AI 修改 -> 原生 XML 逻辑 -> 更新原 XML
+```
+
+CLI 示例：
+
+```powershell
+wjx survey create --file survey.jsonl --dsl '{"logic":"logic { if \"2::1\" then show \"3\"; };"}'
+wjx survey get --vid 12345
+wjx --yes survey update --vid 12345 --dsl '{"logic":"logic { if \"2::2\" then show \"3\"; };"}'
+wjx --yes survey update --vid 12345 --file survey.jsonl
+```
+
+修改问卷结构时，已有的答卷索引保护继续生效；无答卷问卷确需结构变更时显式使用 `--allow-breaking-changes`（SDK 为 `allowBreakingChanges`，MCP 为 `allow_breaking_changes`）。

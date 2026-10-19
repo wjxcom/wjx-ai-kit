@@ -25,7 +25,6 @@ const RESOURCE_URIS = [
   "wjx://reference/table-display-types",
   "wjx://reference/survey-setting-types",
   "wjx://reference/user-roles",
-  "wjx://reference/wjx-xml-dsl",
 ];
 
 const PROMPT_ARGS = {
@@ -90,7 +89,7 @@ test("MCP idempotent hints fail closed for every unsafe or unknown SDK operation
     "upload_file",
     "clear_recycle_bin",
     "create_survey_by_json",
-    "create_survey_from_definition",
+    "update_survey_by_json",
     // Response writes and operations that may create/consume server work.
     "query_responses_realtime",
     "download_responses",
@@ -123,7 +122,6 @@ test("MCP idempotent hints fail closed for every unsafe or unknown SDK operation
     "delete_sub_account",
     "restore_sub_account",
     "update_ai_page",
-    "update_survey_from_definition",
   ]);
   const actualNonIdempotent = new Set(
     listed.tools

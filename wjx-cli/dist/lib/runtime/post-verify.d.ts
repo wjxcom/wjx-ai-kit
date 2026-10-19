@@ -17,6 +17,7 @@ export interface PostVerificationResult {
     warnings: string[];
 }
 interface VerifyInput {
+    expectedLogic?: string;
     vid: number;
     sid?: string;
     expectedTitle?: string;

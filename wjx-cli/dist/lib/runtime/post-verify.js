@@ -1,4 +1,4 @@
-import { buildPreviewUrl, getSurvey, listSurveys, getWjxBaseUrl } from "wjx-api-sdk";
+import { buildPreviewUrl, getSurvey, listSurveys, getWjxBaseUrl, surveyLogicMatches } from "wjx-api-sdk";
 import { compareJsonlQuestionTypes, filterJsonlVerificationQuestions } from "wjx-api-sdk";
 import { surveyIdentityMatches } from "./identity.js";
 const STATUS = {
@@ -308,6 +308,10 @@ export async function verifySurveyPostWrite(input) {
         });
         if (actual.length !== input.expectedQtypes.length || actual.some((q, i) => q !== input.expectedQtypes[i]))
             structure = false;
+    }
+    if (input.expectedLogic !== undefined && !surveyLogicMatches(input.expectedLogic, data.dsl?.logic, Array.isArray(data.questions) ? data.questions : undefined)) {
+        structure = false;
+        warnings.push("保存后的 XML 逻辑投影与请求不一致或未返回");
     }
     if (!structure)
         warnings.push("verified survey structure differs from the requested input");

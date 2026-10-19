@@ -1,0 +1,25 @@
+PASS logic-only-persists-native-xml-and-preserves-content
+PASS logic-partial-update-preserves-unrelated-rules
+PASS logic-unconditional-show-clears-condition
+PASS content-and-logic-use-final-topics-and-dsl-priority
+PASS content-update-preserves-interleaved-extension-position
+PASS json-reference-enables-root-runtime-gate
+PASS json-reference-runtime-gate-survives-jump-only-dsl
+PASS explicit-title-overrides-jsonl-metadata
+PASS missing-jsonl-title-preserves-previous-title
+PASS invalid-jsonl-title-is-rejected-before-write
+PASS invalid-topic-does-not-write
+PASS invalid-option-does-not-write
+PASS invalid-content-and-logic-does-not-write
+PASS new-jump-cycle-does-not-write
+PASS new-jump-cannot-cycle-with-preserved-rule
+PASS overwriting-jump-removes-old-edge-before-cycle-check
+PASS structural-removal-needs-explicit-consent
+PASS structural-removal-with-no-answers-can-save
+PASS existing-answers-protect-structural-removal
+PASS unknown-answer-count-blocks-structural-write
+PASS readback-mismatch-is-not-success
+PASS publish-failure-reports-content-already-saved
+PASS ownership-is-checked-before-reading-or-writing
+PASS unchanged-logic-module-is-no-op
+Update integration: 24 passed, 0 failed.

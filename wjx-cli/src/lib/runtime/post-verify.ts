@@ -1,4 +1,4 @@
-import { buildPreviewUrl, getSurvey, listSurveys, getWjxBaseUrl } from "wjx-api-sdk";
+import { buildPreviewUrl, getSurvey, listSurveys, getWjxBaseUrl, surveyLogicMatches } from "wjx-api-sdk";
 import type { WjxApiResponse, WjxCredentials, FetchLike } from "wjx-api-sdk";
 import { compareJsonlQuestionTypes, filterJsonlVerificationQuestions } from "wjx-api-sdk";
 import type { JsonlQuestionTypeExpectation } from "wjx-api-sdk";
@@ -19,6 +19,7 @@ export interface PostVerificationResult {
 }
 
 interface VerifyInput {
+  expectedLogic?: string;
   vid: number;
   sid?: string;
   expectedTitle?: string;
@@ -337,6 +338,11 @@ export async function verifySurveyPostWrite(input: VerifyInput): Promise<PostVer
       return undefined;
     });
     if (actual.length !== input.expectedQtypes.length || actual.some((q, i) => q !== input.expectedQtypes![i])) structure = false;
+  }
+  if (input.expectedLogic !== undefined && !surveyLogicMatches(input.expectedLogic, (data.dsl as { logic?: unknown } | undefined)?.logic,
+    Array.isArray(data.questions) ? data.questions as Record<string, unknown>[] : undefined)) {
+    structure = false;
+    warnings.push("保存后的 XML 逻辑投影与请求不一致或未返回");
   }
   if (!structure) warnings.push("verified survey structure differs from the requested input");
 

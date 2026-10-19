@@ -1,5 +1,5 @@
 import { readFileSync } from "node:fs";
-import { createSurveyByJson, createAiPage, updateAiPage, AI_PAGE_MAX_HTML_LENGTH, AI_PAGE_PAGE_TYPES, CREATABLE_SURVEY_ATYPES, getSurvey, listSurveys, updateSurveyStatus, getSurveySettings, updateSurveySettings, deleteSurvey, getQuestionTags, getTagDetails, clearRecycleBin, uploadFile, buildSurveyUrl, buildPreviewUrl, getShortLink, getWjxShortLinkUrl, MAX_JSONL_SIZE, preflightJsonl, parseJsonl, jsonToSurvey, extractJsonlQuestionTypeExpectations, getJsonlQuestionTypeCode, Action, } from "wjx-api-sdk";
+import { createSurveyByJson, updateSurveyByJson, prepareSurveyDslJson, verifySurveyJsonUpdate, createAiPage, updateAiPage, AI_PAGE_MAX_HTML_LENGTH, AI_PAGE_PAGE_TYPES, CREATABLE_SURVEY_ATYPES, getSurvey, listSurveys, updateSurveyStatus, getSurveySettings, updateSurveySettings, deleteSurvey, getQuestionTags, getTagDetails, clearRecycleBin, uploadFile, buildSurveyUrl, buildPreviewUrl, getShortLink, getWjxShortLinkUrl, MAX_JSONL_SIZE, preflightJsonl, parseJsonl, jsonToSurvey, extractJsonlQuestionTypeExpectations, getJsonlQuestionTypeCode, Action, } from "wjx-api-sdk";
 import { enrichSurveyListOutput, formatOutput } from "../lib/output.js";
 import { CliError, ensureApiSuccess, handleError } from "../lib/errors.js";
 import { getProfileBaseUrl } from "../lib/auth.js";
@@ -10,6 +10,15 @@ import { verifySurveyPostWrite } from "../lib/runtime/post-verify.js";
 import { surveyIdentityMatches } from "../lib/runtime/identity.js";
 import { buildRequestPlan } from "../lib/runtime/request-plan.js";
 import { CLI_CLIENT_NAME, CLI_CLIENT_VERSION } from "../lib/client-info.js";
+function resolveSurveyDsl(value) {
+    const json = ensureJsonObject(value, "dsl");
+    try {
+        return prepareSurveyDslJson(json === undefined ? undefined : JSON.parse(json));
+    }
+    catch (error) {
+        throw new CliError("INPUT_ERROR", error instanceof Error ? error.message : String(error));
+    }
+}
 function resolveAiPageHtml(values) {
     if (typeof values.html_content === "string" && values.html_content.trim().length > 0)
         return values.html_content;
@@ -366,6 +375,7 @@ export function registerSurveyCommands(program) {
     // --- create ---
     survey
         .command("create")
+        .option("--dsl <json>", '题目逻辑模块 JSON：{"logic":"logic { ... };"}')
         .description("用 JSONL 格式创建问卷（支持 70+ 题型，推荐 AI Agent 使用）")
         .option("--jsonl <s>", "JSONL 格式问卷文本")
         .option("--file <path>", "从文件读取 JSONL 文本")
@@ -408,6 +418,7 @@ export function registerSurveyCommands(program) {
             preflightJsonl(jsonlText);
             return {
                 jsonl: jsonlText,
+                dsl: resolveSurveyDsl(merged.dsl),
                 title: merged.title,
                 atype: (() => {
                     if (merged.type !== undefined) {
@@ -462,6 +473,7 @@ export function registerSurveyCommands(program) {
                     vid,
                     sid: typeof data.sid === "string" ? data.sid : undefined,
                     expectedTitle,
+                    expectedLogic: input.dsl?.logic,
                     expectedQuestionCount,
                     expectedQuestionTypes,
                     allowAdditionalQuestionRows,
@@ -470,6 +482,63 @@ export function registerSurveyCommands(program) {
                     listSurveysFn: (listInput, listCredentials, listFetch) => listSurveys(listInput, listCredentials, listFetch),
                 });
             },
+        });
+    });
+    // --- update ---
+    survey.command("update")
+        .description("使用 Survey JSON 和可选题目逻辑修改问卷；仅修改逻辑时省略 JSONL")
+        .option("--vid <n>", "传统问卷编号", strictInt)
+        .option("--jsonl <s>", "完整问卷 JSONL")
+        .option("--file <path>", "从文件读取完整 JSONL")
+        .option("--dsl <json>", '题目逻辑模块 JSON：{"logic":"logic { ... };"}')
+        .option("--title <s>", "覆盖问卷标题")
+        .option("--type <n>", "现有问卷类型", strictInt)
+        .option("--optional_titles <json>", "允许选填的题目标题 JSON 数组")
+        .option("--publish", "保存后发布")
+        .option("--no-publish", "保存后保持草稿或暂停")
+        .option("--allow-breaking-changes", "允许无答卷问卷的结构变更")
+        .action(async (_opts, command) => {
+        await executeRuntimeAction(program, command, updateSurveyByJson, (values) => {
+            requirePositiveInt(values, "vid");
+            let jsonl = values.jsonl;
+            if (jsonl === undefined && typeof values.file === "string") {
+                try {
+                    jsonl = readFileSync(values.file, "utf8");
+                }
+                catch {
+                    throw new CliError("INPUT_ERROR", "无法读取问卷 JSONL 文件");
+                }
+            }
+            if (jsonl === undefined && values.dsl === undefined)
+                throw new CliError("INPUT_ERROR", "jsonl 或 dsl.logic 至少提供一项");
+            if (jsonl !== undefined) {
+                if (typeof jsonl !== "string" || Buffer.byteLength(jsonl, "utf8") > MAX_JSONL_SIZE)
+                    throw new CliError("INPUT_ERROR", "JSONL 类型错误或超过大小上限");
+                try {
+                    preflightJsonl(jsonl);
+                    parseJsonl(jsonl);
+                }
+                catch (error) {
+                    throw new CliError("INPUT_ERROR", error instanceof Error ? error.message : String(error));
+                }
+            }
+            return { vid: values.vid, jsonl, title: values.title, atype: values.type,
+                optionalTitles: ensureStringArray(values.optional_titles, "optional_titles"),
+                dsl: resolveSurveyDsl(values.dsl),
+                publish: values.publish,
+                allowBreakingChanges: values.allowBreakingChanges ?? values.allow_breaking_changes };
+        }, {
+            preRead: async (input, credentials) => {
+                const current = await getSurvey({ vid: Number(input.vid) }, credentials);
+                ensureApiSuccess(current);
+                if (current.result !== true || !surveyIdentityMatches(current.data, Number(input.vid)))
+                    throw new CliError("API_ERROR", "问卷读取身份不匹配，已停止更新");
+                if (Number(current.data.atype) === 12)
+                    throw new CliError("INPUT_ERROR", "AI 主页请使用 survey update-ai-page");
+                return current.data;
+            },
+            requiredVerification: ["structure", "status"],
+            postVerify: (_result, input, credentials, before) => verifySurveyJsonUpdate(input, before, credentials),
         });
     });
     // --- create-ai-page ---

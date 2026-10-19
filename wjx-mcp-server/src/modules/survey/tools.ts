@@ -2,6 +2,7 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import {
   createSurveyByJson,
+  updateSurveyByJson,
   createAiPage,
   updateAiPage,
   AI_PAGE_MAX_HTML_LENGTH,
@@ -23,7 +24,7 @@ import {
   compareJsonlQuestionTypes,
   filterJsonlVerificationQuestions,
 } from "./client.js";
-import { buildPreviewUrl, getWjxBaseUrl, getWjxCredentials } from "wjx-api-sdk";
+import { prepareSurveyDslJson, verifySurveyJsonUpdate, surveyLogicMatches, buildPreviewUrl, getWjxBaseUrl, getWjxCredentials } from "wjx-api-sdk";
 import type { SurveyDetail } from "./client.js";
 import { assertApiResponse, toolApiResult, toolResult, toolError } from "../../helpers.js";
 import { QUESTION_TYPES } from "../../resources/survey-reference.js";
@@ -1120,6 +1121,7 @@ export function registerSurveyTools(server: McpServer): void {
         '{"qtype":"投票多选","title":"哪些网站是你经常使用的","select":["淘宝网","开心网","百度","腾讯","人人网"]}\n' +
         '{"qtype":"量表题","title":"满意度评分","select":["1","2","3","4","5"],"minvaluetext":"非常不满意","maxvaluetext":"非常满意"}',
       inputSchema: {
+        dsl: z.object({ logic: z.string().min(1) }).strict().optional().describe("仅包含 logic 模块，服务端转换为 XML 原生逻辑；冲突时 DSL 优先"),
         jsonl: z.string().min(1).refine(
           (value) => Buffer.byteLength(value, "utf8") <= MAX_JSONL_SIZE,
           `JSONL UTF-8 字节数不能超过 ${MAX_JSONL_SIZE}`,
@@ -1171,6 +1173,7 @@ export function registerSurveyTools(server: McpServer): void {
           operation: "create_survey_by_json",
           write: () => createSurveyByJson({
             jsonl: args.jsonl,
+            dsl: args.dsl,
             title: args.title,
             atype: args.atype,
             optionalTitles: args.optional_titles,
@@ -1219,9 +1222,12 @@ export function registerSurveyTools(server: McpServer): void {
               ? compareJsonlQuestionTypes(expectedQuestionTypes, questions)
               : { matches: false, warnings: ["创建后的问卷未返回题目列表，无法校验 q_type/q_subtype"] };
             const identityMatches = surveyIdentityMatches(data, vid);
-            const structure = identityMatches && titleMatches && countMatches && typeCheck.matches;
+            const logicMatches = args.dsl === undefined || surveyLogicMatches(args.dsl.logic, (data?.dsl as { logic?: unknown } | undefined)?.logic,
+              Array.isArray(questions) ? questions as Record<string, unknown>[] : undefined);
+            const structure = identityMatches && titleMatches && countMatches && typeCheck.matches && logicMatches;
             const status = statusLabel(data?.status) !== undefined;
             const warnings: string[] = [...typeCheck.warnings];
+            if (!logicMatches) warnings.push("保存后的 XML 逻辑投影与请求不一致或未返回");
             if (!identityMatches) warnings.push("创建后的问卷读回身份与请求不一致或缺少可验证编号");
             if (!titleMatches) warnings.push("创建后的问卷标题与请求不一致");
             if (!countMatches) warnings.push("创建后的题目数量与请求不一致或未返回");
@@ -1258,4 +1264,35 @@ export function registerSurveyTools(server: McpServer): void {
       }
     },
   );
+  server.registerTool("update_survey_by_json", {
+    title: "用 JSON 修改问卷",
+    description: "读取 get_survey 后修改既有传统问卷。传完整 jsonl 修改题目，或只传 dsl.logic 修改逻辑；服务端将逻辑转换成 XML 原生属性，保留其他问卷内容。JSON 逻辑与 DSL 同时存在时 DSL 优先。",
+    inputSchema: {
+      vid: z.union([z.number().int().positive(), z.string().regex(/^[1-9]\d*$/)]),
+      jsonl: z.string().min(1).optional(),
+      dsl: z.object({ logic: z.string().min(1) }).strict().optional(),
+      title: z.string().optional(), atype: z.number().int().positive().optional(),
+      optional_titles: z.array(z.string()).optional(), publish: z.boolean().optional(),
+      allow_breaking_changes: z.boolean().optional(),
+    },
+    annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: false, openWorldHint: true },
+  }, async (args) => {
+    try {
+      if (args.jsonl === undefined && args.dsl === undefined) throw new Error("jsonl 或 dsl.logic 至少提供一项");
+      prepareSurveyDslJson(args.dsl);
+      const before = await getSurvey<Record<string, unknown>>({ vid: Number(args.vid) });
+      assertApiResponse(before);
+      if (before.result !== true) return toolApiResult(before);
+      if (!surveyIdentityMatches(before.data, Number(args.vid))) throw new Error("问卷读取身份不匹配");
+      if (Number(before.data.atype) === 12) throw new Error("AI 主页请使用 update_ai_page");
+      const input = { vid: args.vid, jsonl: args.jsonl, dsl: args.dsl, title: args.title,
+        atype: args.atype, optionalTitles: args.optional_titles, publish: args.publish,
+        allowBreakingChanges: args.allow_breaking_changes };
+      return runVerifiedWrite({ operation: "update_survey_by_json",
+        write: () => updateSurveyByJson(input),
+        verify: () => verifySurveyJsonUpdate(input, before.data),
+      });
+    } catch (error) { return toolError(error); }
+  });
+
 }

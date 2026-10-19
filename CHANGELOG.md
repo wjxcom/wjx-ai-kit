@@ -1,5 +1,10 @@
 # Changelog
 
+## 未发布
+
+- 创建和修改统一使用 Survey JSON，按需附加 dsl.logic；DSL 转换为原生 XML 逻辑，冲突时优先。
+- 新增 updateSurveyByJson、survey update、update_survey_by_json；原完整 DSL 独立创建、查询、修改和校验入口已移除。
+
 本项目使用 [Conventional Commits](https://www.conventionalcommits.org/) 规范。
 
 各包的详细变更记录请参阅：

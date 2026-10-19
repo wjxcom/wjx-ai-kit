@@ -1,0 +1,62 @@
+{
+  "origin": "http://tanhao.sojump.cn",
+  "questionnaires": [
+    220117,
+    220118
+  ],
+  "cases": [
+    {
+      "name": "create-with-logic-real-query",
+      "status": "passed"
+    },
+    {
+      "name": "create-without-logic-real-query",
+      "status": "passed"
+    },
+    {
+      "name": "update-logic-verified",
+      "status": "passed"
+    },
+    {
+      "name": "clear-logic-verified",
+      "status": "passed"
+    },
+    {
+      "name": "hide-logic-verified",
+      "status": "passed"
+    },
+    {
+      "name": "jump-logic-verified",
+      "status": "passed"
+    },
+    {
+      "name": "update-content-after-fix-verified",
+      "status": "passed"
+    },
+    {
+      "name": "clear-condition-preserves-other-logic",
+      "status": "passed"
+    },
+    {
+      "name": "hide-compiles-native-marker",
+      "status": "passed"
+    },
+    {
+      "name": "question-jump-has-runtime-marker",
+      "status": "passed"
+    },
+    {
+      "name": "read-after-cycle-rejection-unchanged",
+      "status": "passed"
+    },
+    {
+      "name": "read-after-invalid-rejection-unchanged",
+      "status": "passed"
+    },
+    {
+      "name": "full-json-plus-logic-persists-content-description-and-logic",
+      "status": "passed"
+    }
+  ],
+  "total": 13
+}

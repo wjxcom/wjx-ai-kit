@@ -42,10 +42,10 @@ MCP 任务遵循“发现意图 -> 预检 -> 计划 -> 确认 -> 执行 -> 读�
 
 ## AI Agent 行为准则（必读）
 
-### 规则 0：按场景选择 JSONL 或 XML DSL
+### 规则 0：使用 Survey JSON 与可选题目逻辑
 
 
-问卷可通过 `create_survey_by_json`（JSONL）或 `create_survey_from_definition`（完整 XML DSL）创建。修改使用 `update_survey_from_definition`，查询 DSL 使用 `query_wjx_dsl`；XML DSL 的生成与校验使用 `generate_wjx_dsl`。所有 DSL 输入必须符合 `wjx-dsl 1` 规范并经过校验。
+问卷创建使用 create_survey_by_json，修改使用 update_survey_by_json；按需提供 dsl.logic，普通查询 get_survey 从 XML 返回逻辑投影。
 ### AI 主页
 
 AI 主页是独立的纯展示内容，与表单/问卷创建互斥：
@@ -117,7 +117,6 @@ https://www.wjx.cn/weixinlogin.aspx?redirecturl=%2Fnewwjx%2Fmanage%2Fuserinfo.as
 | 做考试/测验 | `create_survey_by_json` + prompt `generate-exam-json`，`atype: 6` |
 | 做投票 | `create_survey_by_json` + `atype: 3` |
 | 做表单/报名表 | `create_survey_by_json` + prompt `generate-form-json`，`atype: 7` |
-| 使用 XML DSL 创建/修改问卷 | `generate_wjx_dsl` → `create_survey_from_definition` / `update_survey_from_definition` |
 | 看问卷结果 | `get_report({ vid })` 统计概览，`query_responses({ vid })` 明细 |
 | 导出答卷数据 | `download_responses({ vid })` |
 | 查看填写链接 | 列表中的 `sid` / `mobile_path`；创建后优先用 `build_preview_url({ sid })`，无 sid 时才用 `build_preview_url({ vid })` 并说明暴露风险 |
@@ -129,8 +128,7 @@ https://www.wjx.cn/weixinlogin.aspx?redirecturl=%2Fnewwjx%2Fmanage%2Fuserinfo.as
 
 | 模块 | 工具数 | 说明 |
 |------|--------|------|
-| 问卷管理 | 13 | create_survey_by_json, get_survey, list_surveys, update_survey_status, get/update_survey_settings, delete_survey, get_question_tags, get_tag_details, upload_file, clear_recycle_bin, create_ai_page, update_ai_page |
-| XML DSL | 4 | query_wjx_dsl, generate_wjx_dsl, create_survey_from_definition, update_survey_from_definition |
+| 问卷管理 | 14 | create_survey_by_json, update_survey_by_json, get_survey, list_surveys, update_survey_status, get/update_survey_settings, delete_survey, get_question_tags, get_tag_details, upload_file, clear_recycle_bin, create_ai_page, update_ai_page |
 | 答卷数据 | 11 | query_responses, count_responses, query_responses_realtime, download_responses, get_report, submit_response, build_submit_template, get_winners, modify_response, get_360_report, clear_responses |
 | 通讯录 | 14 | query/add/delete_contacts, add/delete/restore_admin, list/add/modify/delete_departments, list/add/modify/delete_tags |
 | 子账号 | 5 | add/modify/delete/restore/query_sub_accounts |
@@ -143,9 +141,9 @@ https://www.wjx.cn/weixinlogin.aspx?redirecturl=%2Fnewwjx%2Fmanage%2Fuserinfo.as
 
 ## 核心工作流
 
-### 创建问卷（JSONL 或 XML DSL）
+### 创建与修改问卷（Survey JSON）
 
-JSONL 使用中文 `qtype` 名称；`get_survey` 等读取接口返回的数字 `q_type/q_subtype` 是另一套结果编码。需要 XML DSL 时，先按 `wjx-dsl 1` 规范生成完整文本，再调用 DSL 校验/创建工具；两条链路不互相转换。
+Survey JSON 使用中文 qtype。仅涉及题目逻辑时附加 dsl.logic，服务端转换为原生 XML 逻辑。
 
 ```
 1. 使用 prompt 模板生成题目 JSON（如 generate-survey-json、generate-exam-json 等）
@@ -210,7 +208,6 @@ submitdata 题号必须与 `get_survey` 返回的原始 `q_index` 对齐——**
 
 | 资源 URI | 内容 |
 |----------|------|
-| `wjx://reference/wjx-xml-dsl` | WJX XML DSL v1 生成、校验、创建和修改规范 |
 | `wjx://reference/jsonl-qtypes` | JSONL 创建题型白名单与分层 |
 | `wjx://reference/question-types` | `get_survey` 读取结果的 q_type/q_subtype 映射（不是 JSONL 创建白名单） |
 | `wjx://reference/survey-types` | 问卷类型编码及创建限制（1/2/3/4/5/6/7/9/10/11 可创建，8 用户体系不能新建） |
@@ -247,3 +244,36 @@ submitdata 题号必须与 `get_survey` 返回的原始 `q_index` 对齐——**
 - [答卷工具详解](references/tools-response.md) — 11 个答卷数据工具的完整参数
 - [其他工具详解](references/tools-other.md) — 通讯录、子账号、SSO、分析、推送工具参数
 - [错误排查](references/troubleshooting.md) — API 错误码、配置问题、自定义域名、考试限制
+
+
+## Survey JSON 与逻辑
+
+问卷创建统一使用 Survey JSON（JSONL），修改使用同一内容格式。涉及题目关联时增加可选节点：
+
+```json
+{"dsl":{"logic":"logic { if \"2::1\" then show \"3\"; };"}}
+```
+
+完整请求的 `jsonl` 是 JSONL 字符串；`dsl` 是对象，只包含 `logic`。无逻辑时省略 `dsl`。已有 `relation/referselect` 字段继续保留，冲突时 DSL 优先。
+
+SDK 使用 `createSurveyByJson` / `updateSurveyByJson`；CLI 使用 `survey create` / `survey update`；MCP 使用 `create_survey_by_json` / `update_survey_by_json`。普通查询 `getSurvey` / `survey get` / `get_survey` 从实际 XML 返回可编辑的 `dsl.logic`。
+
+仅修改逻辑时提交 `vid + dsl`；修改题目时提交 `vid + jsonl`，可同时提交 `dsl`。修改不会隐式重新发布或迁移创建者。修改请求执行一次，之后从普通查询验证实际保存结果。
+
+服务端将 DSL 解析并转换为 XML 的 Relation、ItemRelation、AnytimeJumpto、ReferTopic 等原生逻辑属性。XML 中不保存 DSL 原文或新增的 DSL 节点。仅修改逻辑时在原 XML 上更新对应属性，保留题目、选项、分页、设置和扩展数据。
+
+```text
+创建：Survey JSON -> 题目 XML；dsl.logic -> 原生 XML 逻辑；校验后保存 XML
+修改逻辑：实际 XML -> dsl.logic -> AI 修改 -> 原生 XML 逻辑 -> 更新原 XML
+```
+
+CLI 示例：
+
+```powershell
+wjx survey create --file survey.jsonl --dsl '{"logic":"logic { if \"2::1\" then show \"3\"; };"}'
+wjx survey get --vid 12345
+wjx --yes survey update --vid 12345 --dsl '{"logic":"logic { if \"2::2\" then show \"3\"; };"}'
+wjx --yes survey update --vid 12345 --file survey.jsonl
+```
+
+修改问卷结构时，已有的答卷索引保护继续生效；无答卷问卷确需结构变更时显式使用 `--allow-breaking-changes`（SDK 为 `allowBreakingChanges`，MCP 为 `allow_breaking_changes`）。

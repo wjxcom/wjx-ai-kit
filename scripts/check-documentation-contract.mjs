@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * Check that active documentation and AI consumers describe the current
- * capability boundary. Historical changelogs and the legacy DSL page are
+ * capability boundary. Historical changelogs and archived pages are
  * deliberately excluded from current-use wording checks.
  */
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
@@ -74,6 +74,7 @@ const creationWords = /创建|新建|入口|调用|使用|create|survey/i;
 const mcpFullClaims = /MCP[^\r\n]{0,100}(?:所有|全部|完整)(?:的)?(?:问卷星相关任务|能力|操作|工作流)|MCP[^\r\n]{0,100}\b(?:all|full|complete)\b[^\r\n]{0,60}(?:task|capabilit|operation|parity)/i;
 const responseCountClaim = /(?:response|答卷)[^\r\n]{0,30}9\s*(?:个|tools?|工具)|9\s*(?:个|tools?|工具)[^\r\n]{0,30}(?:response|答卷)/i;
 const dslOnlyClaim = /只有[^\r\n]{0,50}(?:已弃用|过时|deprecated)[^\r\n]{0,50}DSL/i;
+const removedDslSurface = /\b(?:queryWjxDsl|generateWjxDsl|createSurveyByWjxDsl|updateWjxDsl|query_wjx_dsl|generate_wjx_dsl|create_survey_from_definition|update_survey_from_definition)\b|wjx:\/\/reference\/wjx-xml-dsl|\bwjx\s+dsl\s+(?:query|generate|create|update)\b|--assets\b|\bquestion\s+(?:circulate|gapfill)\b|\|\s*`dsl`\s*\|/i;
 
 for (const file of activeFiles) {
   const text = readFileSync(join(ROOT, file), "utf8");
@@ -84,6 +85,9 @@ for (const file of activeFiles) {
     if (mcpFullClaims.test(line)) failures.push(`${file}:${index + 1}: MCP is described as having full parity instead of the documented core subset`);
     if (responseCountClaim.test(line)) failures.push(`${file}:${index + 1}: stale response-tool count (9)`);
     if (dslOnlyClaim.test(line)) failures.push(`${file}:${index + 1}: DSL guidance is limited to a deprecated compatibility entry`);
+    if (removedDslSurface.test(line) && !lineHasHistoricalContext(line)) {
+      failures.push(`${file}:${index + 1}: active documentation presents a removed standalone DSL capability`);
+    }
   });
 }
 

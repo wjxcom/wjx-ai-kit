@@ -58,7 +58,6 @@ const JSONL = [
   { qtype: "问卷基础信息", title: "矩阵覆盖测试", atype: 1 },
   { qtype: "单选", title: "是否满意？", select: ["是", "否"] },
 ].map(json).join("\n") + "\n";
-const DSL = 'wjx-dsl 1; questionnaire { attr "Title" = "矩阵 DSL"; };';
 
 
 /**
@@ -66,9 +65,7 @@ const DSL = 'wjx-dsl 1; questionnaire { attr "Title" = "矩阵 DSL"; };';
  * deliberately exercise the same flag names that a Skill/Agent would emit.
  */
 const REMOTE_CASES = [
-  { id: "survey.dsl.query", path: ["dsl", "query"], action: Action.QUERY_WJX_DSL, required: ["--vid"], args: ["--vid", "42", "--get-exts", "--get-setting", "--get-page-cut", "--get-tags", "--showtitle"], stdin: { vid: "42", get_exts: true, get_setting: true, get_page_cut: true, get_tags: true, showtitle: true } },
-  { id: "survey.dsl.create", path: ["dsl", "create"], action: Action.CREATE_SURVEY_BY_WJX_DSL, required: ["--dsl"], args: ["--dsl", DSL], stdin: { dsl: DSL } },
-  { id: "survey.dsl.update", path: ["dsl", "update"], action: Action.UPDATE_WJX_DSL, highRisk: true, required: ["--vid", "--dsl"], args: ["--vid", "42", "--dsl", DSL], stdin: { vid: "42", dsl: DSL } },
+  { id: "survey.update", path: ["survey", "update"], action: Action.UPDATE_SURVEY_BY_JSON, highRisk: true, required: ["--vid"], args: ["--vid", "42", "--jsonl", JSONL], stdin: { vid: 42, jsonl: JSONL } },
   { id: "survey.list", path: ["survey", "list"], action: Action.LIST_SURVEYS, args: ["--page", "1", "--page_size", "10"], stdin: {} },
   { id: "survey.get", path: ["survey", "get"], action: Action.GET_SURVEY, required: ["--vid"], args: ["--vid", "42"], stdin: { vid: 42 } },
   { id: "survey.create", path: ["survey", "create"], action: Action.CREATE_SURVEY_BY_JSON, required: ["--jsonl"], args: ["--jsonl", JSONL], stdin: { jsonl: JSONL } },
@@ -131,8 +128,7 @@ const LEAF_COMMANDS = [
   "reference", "response.count", "response.query", "response.realtime", "response.download", "response.submit", "response.modify", "response.clear", "response.report", "response.winners", "response.submit-template", "response.360-report",
   "schema", "skill.install", "skill.update", "skill.install-ppt", "skill.update-ppt",
   "sso.subaccount-url", "sso.user-system-url", "sso.partner-url",
-  "survey.list", "survey.get", "survey.create", "survey.create-ai-page", "survey.update-ai-page", "survey.delete", "survey.status", "survey.settings", "survey.update-settings", "survey.tags", "survey.tag-details", "survey.clear-bin", "survey.upload", "survey.jsonl-template", "survey.url", "survey.preview-url", "survey.shortlink",
-  "dsl.query", "dsl.generate", "dsl.create", "dsl.update",
+  "survey.list", "survey.get", "survey.create", "survey.update", "survey.create-ai-page", "survey.update-ai-page", "survey.delete", "survey.status", "survey.settings", "survey.update-settings", "survey.tags", "survey.tag-details", "survey.clear-bin", "survey.upload", "survey.jsonl-template", "survey.url", "survey.preview-url", "survey.shortlink",
   "tag.list", "tag.add", "tag.modify", "tag.delete",
   "update", "user-system.add-participants", "user-system.modify-participants", "user-system.delete-participants", "user-system.bind", "user-system.query-binding", "user-system.query-surveys", "whoami",
 ].sort();
@@ -162,7 +158,6 @@ const LOCAL_DRY_RUN_CASES = [
   { id: "sso.partner-url", args: ["sso", "partner-url", "--username", "partner-1"] },
   { id: "survey.jsonl-template", args: ["survey", "jsonl-template", "--type", "1"] },
   { id: "survey.shortlink", args: ["survey", "shortlink", "--url", "https://www.wjx.cn/vm/abc.aspx"] },
-  { id: "dsl.generate", args: ["dsl", "generate", "--dsl", DSL] },
   { id: "survey.url", args: ["survey", "url", "--mode", "create", "--name", "dry-run survey"] },
   { id: "survey.preview-url", args: ["survey", "preview-url", "--sid", "short-code", "--source", "matrix"] },
   { id: "update", args: ["update", "--silent"] },
@@ -228,12 +223,13 @@ const JSON_ARRAY_OPTION_FLAGS = new Set([
 ]);
 
 const JSON_OBJECT_OPTION_FLAGS = new Set([
+  "--dsl",
   "--api_setting", "--after_submit_setting", "--msg_setting",
   "--sojumpparm_setting", "--time_setting", "--params", "--body",
 ]);
 
 const BOOLEAN_OPTION_FLAGS = new Set([
-  "--publish", "--completely", "--del_child", "--is_xingbiao", "--query_all",
+  "--publish", "--no-publish", "--completely", "--del_child", "--is_xingbiao", "--query_all",
   "--query_note", "--distinct_user", "--distinct_sojumpparm", "--query_record",
   "--valid", "--reset_to_zero", "--auto_create_udept", "--auto_create_tag",
   "--is_radio", "--can_chg_answer", "--can_view_result", "--force_join_times",
@@ -281,6 +277,7 @@ async function coverageValue(command, option, tempDir) {
   if (!option.descriptor) return undefined;
   if (BOOLEAN_OPTION_FLAGS.has(flag)) return undefined;
 
+  if (flag === "--dsl") return JSON.stringify({ logic: "logic {};" });
   const id = `${command}:${flag}`;
   const semanticValues = new Map([
     ["analytics.csat:--scale", "5-point"],
@@ -320,7 +317,7 @@ async function coverageValue(command, option, tempDir) {
   if (flag === "--file") {
     if (command === "survey.upload") return "aGVsbG8=";
     const file = resolve(tempDir, `${command.replaceAll(".", "-")}-${flag.slice(2)}.txt`);
-    const content = command === "survey.create" ? JSONL : command.startsWith("dsl.") ? DSL : "1$1";
+    const content = ["survey.create", "survey.update"].includes(command) ? JSONL : "1$1";
     await writeFile(file, content, "utf8");
     return file;
   }
@@ -341,9 +338,8 @@ async function coverageValue(command, option, tempDir) {
   if (option.descriptor === "format") return "json";
   if (flag === "--submitdata") return "1$1";
   if (flag === "--jsonl") return JSONL;
-  if (flag === "--dsl") return DSL;
+  if (flag === "--dsl") return JSON.stringify({ logic: "logic {};" });
   if (flag === "--assets") return "assets.json";
-  if (command === "dsl.generate" && flag === "--out") return resolve(tempDir, "normalized.wjx");
   if (flag === "--file_name") return "coverage.txt";
   if (flag === "--file") return "coverage.txt";
   if (flag === "--type" && command === "survey.jsonl-template") return "1";
@@ -386,16 +382,12 @@ function optionExpectedValue(command, flag, value) {
   // Compare against the resulting wire value, not the temporary path passed
   // to the CLI.
   if (flag === "--submitdata-file") return "1$1";
-  if (command.startsWith("dsl.") && flag === "--file") return DSL;
   if (!BOOLEAN_OPTION_FLAGS.has(flag)) return value;
-  return flag === "--no-install-skill" || flag === "--no-auto-version" ? false : true;
+  return flag === "--no-install-skill" || flag === "--no-auto-version" || flag === "--no-publish" ? false : true;
 }
 
 function optionWireKeys(command, flag) {
-  if (flag === "--file" && command.startsWith("dsl.")) return ["dsl"];
-  if (command.startsWith("dsl.") && flag.startsWith("--get-")) return [flag.slice(2).replaceAll("-", "_")];
-  if (command.startsWith("dsl.") && flag === "--compress-img") return ["compress_img"];
-  if (flag === "--file" && ["survey.create", "survey.create-ai-page", "survey.update-ai-page"].includes(command)) {
+  if (flag === "--file" && ["survey.create", "survey.update", "survey.create-ai-page", "survey.update-ai-page"].includes(command)) {
     return ["file", "surveydatajson", "jsonl", "html_content"];
   }
   const aliases = {
@@ -409,6 +401,7 @@ function optionWireKeys(command, flag) {
     "--text": ["text", "questions"],
     "--optional_titles": ["optional_titles", "optionalTitles", "questions"],
     "--target-dir": ["target-dir", "targetDir"],
+    "--no-publish": ["publish"],
     "--no-install-skill": ["no-install-skill", "installSkill"],
     "--file": command === "survey.create"
       ? ["file", "surveydatajson", "jsonl"]
@@ -439,7 +432,7 @@ function assertOptionReflected(command, flag, value, envelope) {
   if (envelope.data?.input !== undefined) sources.push(envelope.data.input);
   // `--no-auto-version` is an execution policy rather than a wire field; its
   // observable contract is asserted by the dedicated workflow test.
-  if (flag === "--no-auto-version" || (command.startsWith("dsl.") && flag === "--assets")) return;
+  if (flag === "--no-auto-version") return;
   const keys = optionWireKeys(command, flag);
   const reflected = sources.some((source) => {
     if (!source || typeof source !== "object") return false;
@@ -450,7 +443,7 @@ function assertOptionReflected(command, flag, value, envelope) {
   // there is no surviving `params`/`body` wrapper to target.
   const flattenedApiInput = command === "api" && (flag === "--params" || flag === "--body")
     && sources.some((source) => expectedValues.some((candidate) => hasDeepValue(source, candidate)));
-  const transformed = (flag === "--file" && ["survey.create", "survey.create-ai-page", "survey.update-ai-page"].includes(command))
+  const transformed = (flag === "--file" && ["survey.create", "survey.update", "survey.create-ai-page", "survey.update-ai-page"].includes(command))
     || flag === "--jsonl";
   const hasTransformedField = transformed && sources.some((source) => {
     if (!source || typeof source !== "object") return false;
@@ -458,7 +451,7 @@ function assertOptionReflected(command, flag, value, envelope) {
   });
   // optional_titles is a validation-only input for create; it is
   // consumed while normalizing questions and is intentionally absent on wire.
-  assert.ok(reflected || flattenedApiInput || hasTransformedField || (flag === "--optional_titles" && command.startsWith("survey.create")),
+  assert.ok(reflected || flattenedApiInput || hasTransformedField || (flag === "--optional_titles" && ["survey.create", "survey.update"].includes(command)),
     `${command} ${flag} value ${String(expected)} was not reflected in its plan/input field`);
 }
 
@@ -478,7 +471,7 @@ describe("complete CLI command contract matrix", () => {
 
   test("leaf command inventory is exhaustive and every leaf is discoverable", async () => {
     assert.equal(new Set(LEAF_COMMANDS).size, LEAF_COMMANDS.length);
-    assert.equal(LEAF_COMMANDS.length, 81);
+    assert.equal(LEAF_COMMANDS.length, 78);
     for (const command of LEAF_COMMANDS) {
       const result = await runCli([...command.split("."), "--help"]);
       assert.equal(result.exitCode, 0, `${command}: ${result.stderr}`);
@@ -559,7 +552,7 @@ describe("complete CLI command contract matrix", () => {
 
   test("every leaf command has a safe preview or local dry-run path", async () => {
     const cases = [
-      ...REMOTE_CASES.map((item) => ({ id: item.id.replace(/^survey\.dsl\./, "dsl."), args: [...item.path, ...item.args] })),
+      ...REMOTE_CASES.map((item) => ({ id: item.id, args: [...item.path, ...item.args] })),
       ...LOCAL_DRY_RUN_CASES,
     ];
     const ids = cases.map((item) => item.id).sort();
@@ -942,7 +935,7 @@ describe("complete CLI command contract matrix", () => {
     let recycleBinCount = 1;
     let responseCount = 3;
     let responseAnswers = { "10000": "1" };
-    let dslSurvey = DSL;
+    let dslSurvey;
     let aiPageHtml = "<main>原始主页</main>";
     const settings = {
       api_setting: {},
@@ -956,9 +949,14 @@ describe("complete CLI command contract matrix", () => {
         let body = {};
         try { body = JSON.parse(request.body || "{}"); } catch { /* malformed bodies are covered by input tests */ }
         const action = String(body.action ?? "");
-        if (action === "1000006") return { result: true, data: { vid: 42, dsl: dslSurvey, status: 0, sid: "matrixReadbackSid" } };
-        if (action === "1000109" || action === "1000110") {
+        if (action === "1000109") {
           dslSurvey = body.dsl;
+          if (body.surveydatajson) {
+            const lines = body.surveydatajson.split(/\r?\n/).filter(Boolean);
+            const metadata = JSON.parse(lines[0]);
+            survey = { ...survey, title: body.title ?? metadata.title, questionCount: lines.length - 1 };
+          }
+          if (body.publish !== undefined) survey.status = body.publish ? 1 : 2;
           return { result: true, data: { vid: 42, status: 0, sid: "matrixReadbackSid" } };
         }
         if (action === "1000108") {
@@ -974,6 +972,7 @@ describe("complete CLI command contract matrix", () => {
               page_type: 0,
               html_content: aiPageHtml,
               title: survey.title,
+              ...(dslSurvey && typeof dslSurvey === "object" ? { dsl: dslSurvey } : {}),
               description: "",
               status: survey.status,
               sid: survey.sid,
@@ -1492,7 +1491,7 @@ describe("complete CLI command contract matrix", () => {
     const tempDir = await mkdtemp(resolve(process.env.TEMP ?? ".", "wjx-option-matrix-"));
     const covered = new Set();
     const expectedLocalOptions = new Set();
-    const remoteById = new Map(REMOTE_CASES.map((item) => [item.id.replace(/^survey\.dsl\./, "dsl."), item]));
+    const remoteById = new Map(REMOTE_CASES.map((item) => [item.id, item]));
     const localById = new Map(LOCAL_DRY_RUN_CASES.map((item) => [item.id, item]));
     try {
       for (const command of LEAF_COMMANDS) {
@@ -1513,7 +1512,7 @@ describe("complete CLI command contract matrix", () => {
             let baseArgs = [...remote.args];
             // Mutually exclusive input sources/aliases must be tested alone.
             if (option.flag === "--file") {
-              baseArgs = removeOption(baseArgs, command.startsWith("dsl.") ? "--dsl" : "--jsonl");
+              baseArgs = removeOption(baseArgs, "--jsonl");
             } else if (option.flag === "--submitdata-file") {
               baseArgs = removeOption(baseArgs, "--submitdata");
             } else if (option.flag === "--status") {
@@ -1548,9 +1547,6 @@ describe("complete CLI command contract matrix", () => {
           if (GLOBAL_OPTION_FLAGS.has(option.flag)) continue;
           expectedLocalOptions.add(key);
           let baseArgs = [...local.args];
-          if (command === "dsl.generate" && option.flag === "--file") {
-            baseArgs = removeOption(baseArgs, "--dsl");
-          }
           if (command === "survey.url" && option.flag === "--activity") {
             baseArgs = removeOption(removeOption(baseArgs, "--mode"), "--name");
             baseArgs.push("--mode", "edit");
@@ -1608,7 +1604,7 @@ describe("complete CLI command contract matrix", () => {
         `option matrix did not execute every command-local option (covered ${covered.size}, expected ${expectedLocalOptions.size})`);
       // This is the current command-local occurrence denominator. Keep it
       // explicit so a help/parser drift cannot silently shrink the matrix.
-      assert.equal(expectedLocalOptions.size, 283,
+      assert.equal(expectedLocalOptions.size, 274,
         "update the command-local option denominator only when the public surface intentionally changes");
     } finally {
       await rm(tempDir, { recursive: true, force: true });

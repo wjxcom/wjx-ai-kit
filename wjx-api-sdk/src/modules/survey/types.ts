@@ -1,4 +1,19 @@
+export interface SurveyDslJson {
+  /** 只包含 logic { ... };，服务端转换成 XML 原生逻辑属性。 */
+  logic: string;
+}
+
+export interface UpdateSurveyByJsonInput extends Omit<CreateSurveyByJsonInput, "jsonl" | "publish" | "creater"> {
+  vid: string | number;
+  /** 完整题目内容；仅修改逻辑时省略。 */
+  jsonl?: string;
+  publish?: boolean;
+  allowBreakingChanges?: boolean;
+}
+
 export interface CreateSurveyByJsonInput {
+  /** 可选题目逻辑模块，与 relation/referselect 冲突时优先。 */
+  dsl?: SurveyDslJson;
   /** JSONL 格式的问卷内容（每行一个 JSON 对象，首行为问卷基础信息） */
   jsonl: string;
   /** 问卷标题（可选，不传则从"问卷基础信息"条目提取） */
@@ -208,6 +223,8 @@ export interface SurveyQuestion {
 
 /** The `data` payload returned by get_survey (action=1000001). */
 export interface SurveyDetail {
+  /** 从实际存储 XML 反向转换的逻辑，未配置逻辑时省略。 */
+  dsl?: SurveyDslJson;
   vid: number;
   begin_time: string;
   update_time: string;
