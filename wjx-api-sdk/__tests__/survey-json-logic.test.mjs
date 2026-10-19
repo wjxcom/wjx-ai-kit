@@ -67,7 +67,7 @@ test("从普通查询返回 XML 逻辑投影；没有投影时不能伪称更新
 
 test("逻辑比较保留字符串中的空格，忽略规则排列和格式", () => {
   assert.equal(sdk.surveyLogicMatches('logic { if "2::1" then show "3"; hide "4"; };', 'logic {hide "4";\nif "2::1" then show "3";};',
-    [{ q_index: 4, q_type: 3, relation: "-1", is_hide: true }]), true);
+    [{ q_index: 4, q_type: 3, is_hide: true }]), true);
   assert.equal(sdk.surveyLogicMatches('logic { raw attr "Relation" question "3" = "A B"; };', 'logic { raw attr "Relation" question "3" = "AB"; };'), false);
 });
 
@@ -114,38 +114,93 @@ test("JSON 修改带有无法完整读回的高级字段时明确保留未知结
   assert.match(result.warnings.join("\n"), /lowlimit/);
 });
 
-test("无条件 show 只在真实题目明确清除 Relation 且无冲突投影时通过", () => {
+test("无条件 show 使用完整 XML 逻辑投影，无需题目返回 relation 字段", () => {
   const logic = 'logic { show "3"; };';
-  assert.equal(sdk.surveyLogicMatches(logic, undefined, [{ q_index: 3, q_type: 3, relation: "" }]), true);
-  assert.equal(sdk.surveyLogicMatches(logic, undefined, [{ q_index: 3, q_type: 3, relation: "0" }]), false);
-  assert.equal(sdk.surveyLogicMatches(logic, undefined, [{ q_index: 3, q_type: 3, relation: 0 }]), false);
-  for (const questions of [[], [{ q_index: 2, q_type: 3, relation: "" }], [{ q_index: 3, q_type: 3 }],
-    [{ q_index: 3, q_type: 3, relation: "2,1" }], [{ q_index: 3, q_type: 3, relation: "-1" }],
-    [{ q_index: 3, q_type: 3, relation: "" }, { q_index: 3, q_type: 3, relation: "" }], [{ q_index: 3, q_type: 1, relation: "" }]]) {
-    assert.equal(sdk.surveyLogicMatches(logic, undefined, questions), false, JSON.stringify(questions));
+  const empty = 'logic {\n};';
+  const questions = [{ q_index: 3, q_type: 3 }];
+  assert.equal(sdk.surveyLogicMatches(logic, empty, questions), true);
+  assert.equal(sdk.surveyLogicMatches(logic, empty, [{ ...questions[0], is_hide: false }]), true);
+  for (const targets of [[], [{ q_index: 2, q_type: 3 }],
+    [{ q_index: 3, q_type: 3 }, { q_index: 3, q_type: 3 }], [{ q_index: 3, q_type: 1 }],
+    [{ q_index: 3 }], [{ ...questions[0], is_hide: true }]]) {
+    assert.equal(sdk.surveyLogicMatches(logic, empty, targets), false, JSON.stringify(targets));
   }
-  assert.equal(sdk.surveyLogicMatches(logic, 'logic { if "2::1" then show "3"; };', [{ q_index: 3, q_type: 3, relation: "" }]), false);
-  assert.equal(sdk.surveyLogicMatches(logic, 'logic { raw attr "Relation" question "3" = "2,1"; };', [{ q_index: 3, q_type: 3, relation: "" }]), false);
+  assert.equal(sdk.surveyLogicMatches(logic, 'logic { if "2::1" then show "3"; };', questions), false);
+  for (const relation of ["0", "-1", "2,1"]) {
+    assert.equal(sdk.surveyLogicMatches(logic, `logic { raw attr "Relation" question "3" = "${relation}"; };`, questions), false);
+    assert.equal(sdk.surveyLogicMatches(logic, `logic { show "3" raw "${relation}"; };`, questions), false);
+  }
   assert.equal(sdk.surveyLogicMatches(logic, logic), false);
   assert.equal(sdk.surveyLogicMatches('logic { show "3"; if "2::1" then show "4"; };', undefined,
-    [{ q_index: 3, q_type: 3, relation: "" }, { q_index: 4, q_type: 3, relation: "" }]), false);
+    [{ q_index: 3, q_type: 3 }, { q_index: 4, q_type: 3 }]), false);
+});
+
+test("显示和隐藏核验拒绝缺失、截断或畸形的 XML 投影", () => {
+  const questions = [{ q_index: 3, q_type: 3 }];
+  for (const actual of [undefined, null, "", "logic {}", "logic {", 'logic {}; questionnaire {};',
+    '{ hide "4"; }', 'logic { hide "4" };', 'logic { invalid; };',
+    'logic { show; };', 'logic { if then show "4"; };', 'logic { if "2::1" then; };',
+    'logic { if "2::1" or then show "4"; };', 'logic { raw attr "Relation" question "3" = ; };',
+    'logic { if "2::1" then raw attr "Relation" question "3" = "2,1"; };']) {
+    assert.equal(sdk.surveyLogicMatches('logic { show "3"; };', actual, questions), false, String(actual));
+    assert.equal(sdk.surveyLogicMatches('logic { hide "3"; };', actual, questions), false, String(actual));
+  }
+  assert.equal(sdk.surveyLogicMatches('logic {};', undefined, questions), false);
+  assert.equal(sdk.surveyLogicMatches('logic {};', 'logic {};', questions), true);
+});
+
+test("显示核验只检查准确目标题，保留其他题目和选项逻辑且不误解析字符串", () => {
+  const logic = 'logic { show "3"; };';
+  const actual = `logic {
+    if "2::1" then show "13";
+    if "3::1" then show "4";
+    hide "3::2";
+    raw attr "ItemRelation" question "3" item "1" = "2,1";
+    raw attr "Relation" question "13" = "2,1";
+    raw attr "ItemRelation" question "13" item "1" = "if \\"2::1\\" then show \\"3\\";";
+  };`;
+  assert.equal(sdk.surveyLogicMatches(logic, actual, [{ q_index: 3, q_type: 3 }]), true);
+  assert.equal(sdk.surveyLogicMatches('logic { if "2::1" then show "13"; };', actual), true);
+  assert.equal(sdk.surveyLogicMatches('logic { if "2::1" then show "3"; };', actual), false);
+});
+
+test("不透明 raw 规则无法证明题目显示或隐藏状态", () => {
+  const questions = [{ q_index: 3, q_type: 3 }];
+  for (const raw of ['raw "if \\"2::1\\" then show \\"3\\";";', 'raw "unrecognized native protocol";']) {
+    assert.equal(sdk.surveyLogicMatches('logic { show "3"; };', `logic { ${raw} };`, questions), false);
+    assert.equal(sdk.surveyLogicMatches('logic { hide "3"; };', `logic { hide "3"; ${raw} };`, questions), false);
+  }
+});
+
+test("完整投影匹配继续支持跳转、引用、随机和选项级逻辑", () => {
+  const rules = [
+    'if "2::1" then show "3::2";',
+    'jump from "2" option "1" to "7";',
+    'reference options from "2" to "5";',
+    'random options mode 2 on "2" count 3;',
+    'random questions from "2" ~ "7" count 2 raw "2,7";',
+    'raw attr "ItemRelation" question "3" item "1" = "2,1";',
+  ];
+  const expected = `logic {${rules.join("\n")}};`;
+  const actual = `logic {${rules.toReversed().join("\n")}};`;
+  assert.equal(sdk.surveyLogicMatches(expected, actual), true);
 });
 
 test("仅逻辑更新成功清除最后一个关联后不要求 XML 投影保留 show 文本", async () => {
   const before = { vid: 42, title: "清除关联", status: 0, questions: [
-    { q_index: 3, q_type: 3, q_subtype: 3, q_title: "原有题目", relation: "2,1" },
-  ] };
-  const saved = structuredClone(before); saved.questions[0].relation = "";
+    { q_index: 3, q_type: 3, q_subtype: 3, q_title: "原有题目" },
+  ], dsl: { logic: 'logic { if "2::1" then show "3"; };' } };
+  const saved = { ...structuredClone(before), dsl: { logic: "logic {\n};" } };
   const input = { vid: 42, dsl: { logic: 'logic { show "3"; };' } };
   const verified = await sdk.verifySurveyJsonUpdate(input, before, credentials, transport([], saved));
   assert.equal(verified.outcome, "verified");
   const stale = await sdk.verifySurveyJsonUpdate(input, before, credentials, transport([], before));
   assert.equal(stale.outcome, "unknown");
-  for (const relation of ["0", 0]) {
-    const zero = structuredClone(saved); zero.questions[0].relation = relation;
+  for (const relation of ["0", "-1", "2,1"]) {
+    const zero = structuredClone(saved); zero.dsl.logic = `logic { raw attr "Relation" question "3" = "${relation}"; };`;
     assert.equal((await sdk.verifySurveyJsonUpdate(input, before, credentials, transport([], zero))).outcome, "unknown");
   }
-  const hidden = structuredClone(before); hidden.questions[0].relation = "-1"; hidden.questions[0].is_hide = true;
+  const hidden = structuredClone(before); hidden.dsl.logic = 'logic { raw attr "Relation" question "3" = "-1"; };'; hidden.questions[0].is_hide = true;
   const visible = structuredClone(saved); visible.questions[0].is_hide = false;
   assert.equal((await sdk.verifySurveyJsonUpdate(input, hidden, credentials, transport([], visible))).outcome, "verified");
   for (const status of [null, "", false]) {
@@ -171,17 +226,32 @@ test("仅逻辑更新比较真实查询中的 anytime_jump 时不误当正文变
   assert.equal((await sdk.verifySurveyJsonUpdate(input, before, credentials, transport([], saved))).outcome, "unknown");
 });
 
-test("hide 可通过原生隐藏值确认，不依赖反向转换的 raw 拼写", () => {
+test("hide 通过 XML 投影中的隐藏规则确认，不依赖题目 relation 或 is_hide", () => {
   const logic = 'logic { hide "3"; };';
-  const questions = [{ q_index: 3, q_type: 3, relation: "-1", is_hide: true }];
+  const questions = [{ q_index: 3, q_type: 3 }];
   assert.equal(sdk.surveyLogicMatches(logic, 'logic { raw attr "Relation" question "3" = "-1"; };', questions), true);
-  assert.equal(sdk.surveyLogicMatches(logic, undefined, questions), true);
+  assert.equal(sdk.surveyLogicMatches(logic, logic, questions), true);
+  assert.equal(sdk.surveyLogicMatches(logic, logic, [{ ...questions[0], is_hide: true }]), true);
+  assert.equal(sdk.surveyLogicMatches(logic, undefined, [{ ...questions[0], is_hide: true }]), false);
+  assert.equal(sdk.surveyLogicMatches(logic, 'logic {};', [{ ...questions[0], is_hide: true }]), false);
   for (const relation of ["", "0", "2,1"]) {
-    assert.equal(sdk.surveyLogicMatches(logic, undefined, [{ ...questions[0], relation }]), false);
+    assert.equal(sdk.surveyLogicMatches(logic, `logic { raw attr "Relation" question "3" = "${relation}"; };`, questions), false);
   }
-  assert.equal(sdk.surveyLogicMatches(logic, undefined, []), false);
-  assert.equal(sdk.surveyLogicMatches(logic, undefined, [{ ...questions[0], is_hide: false }]), false);
+  for (const targets of [[], [...questions, ...questions], [{ q_index: 3, q_type: 1 }], [{ ...questions[0], is_hide: false }]]) {
+    assert.equal(sdk.surveyLogicMatches(logic, logic, targets), false, JSON.stringify(targets));
+  }
   assert.equal(sdk.surveyLogicMatches(logic, 'logic { if "2::1" then show "3"; };', questions), false);
+  assert.equal(sdk.surveyLogicMatches(logic, 'logic { hide "13"; };', questions), false);
+  assert.equal(sdk.surveyLogicMatches(logic, 'logic { hide "3"; if "2::1" then show "3"; };', questions), false);
+});
+
+test("仅逻辑隐藏更新在查询不返回 relation 字段时仍能核验", async () => {
+  const before = { vid: 42, title: "隐藏题目", status: 0, questions: [{ q_index: 3, q_type: 3, q_title: "原有题目" }] };
+  const input = { vid: 42, dsl: { logic: 'logic { hide "3"; };' } };
+  const saved = { ...structuredClone(before), dsl: { logic: 'logic { raw attr "Relation" question "3" = "-1"; };' } };
+  assert.equal((await sdk.verifySurveyJsonUpdate(input, before, credentials, transport([], saved))).outcome, "verified");
+  delete saved.dsl;
+  assert.equal((await sdk.verifySurveyJsonUpdate(input, before, credentials, transport([], saved))).outcome, "unknown");
 });
 
 test("旧完整 DSL 公共接口已删除", () => {

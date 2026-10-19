@@ -16,7 +16,7 @@ test("MCP 仅修改逻辑：预读、JSON 更新和真实逻辑投影验证", as
     if (body.action === "1000109") logic = body.dsl.logic;
     return new Response(JSON.stringify({ result: true, data: body.action === "1000109" ? { vid: 42 } : {
       vid: 42, title: "逻辑问卷", atype: 1, status: 0,
-      questions: [{ q_index: 2, q_type: 3, q_subtype: 3, q_title: "原有题目", relation: logic }],
+      questions: [{ q_index: 2, q_type: 3, q_subtype: 3, q_title: "原有题目" }],
       dsl: { logic },
     } }), { headers: { "content-type": "application/json" } });
   };
@@ -57,19 +57,22 @@ test("MCP 查询未返回真实逻辑投影时，修改结果标记为未知", a
   }
 });
 
-test("MCP 创建和仅逻辑修改可读回确认无条件 show，不能要求残留 DSL 文本", async () => {
+for (const operation of ["show", "hide"]) test(`MCP 创建和仅逻辑修改通过完整逻辑投影确认 ${operation}，查询不返回 relation`, async () => {
   const originalFetch = globalThis.fetch;
   const calls = [];
-  const dsl = { logic: 'logic { show "3"; };' };
-  let relation = "";
+  const dsl = { logic: `logic { ${operation} "3"; };` };
+  const savedLogic = operation === "show" ? "logic {\n};" : dsl.logic;
+  let logic = savedLogic;
   setCredentialProvider(() => ({ apiKey: "fixture-key", baseUrl: "https://fixture.test" }));
   globalThis.fetch = async (_url, init) => {
     const body = JSON.parse(init.body); calls.push(body);
-    if (body.action === "1000109") relation = "";
+    if (body.action === "1000109") logic = savedLogic;
     return new Response(JSON.stringify({ result: true, data: ["1000106", "1000109"].includes(body.action) ? { vid: 42 } : {
       vid: 42, title: "无条件显示", atype: 1, status: 0,
-      questions: [{ q_index: 3, q_type: 3, q_subtype: 3, q_title: "选择", is_requir: true, relation,
+      questions: [{ q_index: 3, q_type: 3, q_subtype: 3, q_title: "选择", is_requir: true,
+        is_hide: logic.includes('hide "3"'),
         items: [{ item_title: "A" }, { item_title: "B" }] }],
+      dsl: { logic },
     } }), { headers: { "content-type": "application/json" } });
   };
   const server = createServer(); const client = new Client({ name: "unconditional-show", version: "1" });
@@ -83,7 +86,7 @@ test("MCP 创建和仅逻辑修改可读回确认无条件 show，不能要求�
     const created = await client.callTool({ name: "create_survey_by_json", arguments: { jsonl, dsl, atype: 1, publish: false } });
     assert.notEqual(created.isError, true, JSON.stringify(created));
     assert.deepEqual(calls.map(call => call.action), ["1000106", "1000001"]);
-    calls.length = 0; relation = "2,1";
+    calls.length = 0; logic = 'logic { if "2::1" then show "3"; };';
     const updated = await client.callTool({ name: "update_survey_by_json", arguments: { vid: 42, dsl } });
     assert.notEqual(updated.isError, true, JSON.stringify(updated));
     assert.deepEqual(calls.map(call => call.action), ["1000001", "1000109", "1000001"]);

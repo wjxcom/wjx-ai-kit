@@ -6,17 +6,33 @@ import { extractJsonlQuestionTypeExpectations } from "wjx-api-sdk";
 const ok = (data) => ({ result: true, data });
 
 describe("verifySurveyPostWrite", () => {
-  it("verifies unconditional show from native question evidence after the last logic rule disappears", async () => {
+  it("verifies unconditional show from the complete empty logic projection without a relation field", async () => {
     const saved = { vid: 42, title: "清除关联", status: 0, questions: [
-      { q_index: 3, q_type: 3, q_subtype: 3, relation: "" },
-    ] };
+      { q_index: 3, q_type: 3, q_subtype: 3, is_hide: false },
+    ], dsl: { logic: "logic {\n};" } };
     const result = await verifySurveyPostWrite({ vid: 42, expectedLogic: 'logic { show "3"; };',
       getSurveyFn: async () => ok(saved) });
     assert.equal(result.verification.structure, true);
-    saved.questions[0].relation = "2,1";
+    saved.dsl.logic = 'logic { if "2::1" then show "3"; };';
     const stale = await verifySurveyPostWrite({ vid: 42, expectedLogic: 'logic { show "3"; };',
       getSurveyFn: async () => ok(saved) });
     assert.equal(stale.verification.structure, false);
+    delete saved.dsl;
+    const missing = await verifySurveyPostWrite({ vid: 42, expectedLogic: 'logic { show "3"; };',
+      getSurveyFn: async () => ok(saved) });
+    assert.equal(missing.verification.structure, false);
+  });
+
+  it("verifies hide from the complete logic projection without a relation field", async () => {
+    const saved = { vid: 42, status: 0, questions: [
+      { q_index: 3, q_type: 3, q_subtype: 3, is_hide: true },
+    ], dsl: { logic: 'logic { hide "3"; };' } };
+    const hidden = await verifySurveyPostWrite({ vid: 42, expectedLogic: 'logic { hide "3"; };',
+      getSurveyFn: async () => ok(saved) });
+    assert.equal(hidden.verification.structure, true);
+    const visible = await verifySurveyPostWrite({ vid: 42, expectedLogic: 'logic { show "3"; };',
+      getSurveyFn: async () => ok(saved) });
+    assert.equal(visible.verification.structure, false);
   });
 
   it("fails closed when the read-back survey identity differs from the requested vid", async () => {

@@ -48,6 +48,9 @@ internal static class CreateLogicIntegration
             XmlDocument doc = Build(null, false);
             for (int i = 2; i <= 7; i++) Equal("", Q(doc, i).GetAttribute("Relation"));
             Equal(null, SurveyLogicConverter.Extract(doc.OuterXml));
+            JObject query = ApiQuery(doc);
+            Equal("logic {\n};", query["dsl"]["logic"].Value<string>());
+            SaveQuery("ordinary-query-without-logic.json", query);
             Save("without-logic.xml", doc);
         });
         Check("explicit-surveyinfo-introduction-remains-supported", delegate
@@ -132,22 +135,49 @@ internal static class CreateLogicIntegration
         Check("ordinary-query-projects-native-display-condition", delegate
         {
             XmlDocument doc = Build(UserLogic(), false);
-            JObject json = JObject.FromObject(new QueryProjection(doc));
+            JObject json = ApiQuery(doc);
             Equal("本地无持久化测试", json["description"].Value<string>());
-            Equal("2,1", QueryQuestion(json, 3)["relation"].Value<string>());
-            Equal("2,3$3,3$4,3", QueryQuestion(json, 5)["relation"].Value<string>());
-            File.WriteAllText(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "ordinary-query.json"), json.ToString(), new UTF8Encoding(true));
+            string logic = json["dsl"]["logic"].Value<string>();
+            Assert(logic.Contains("if \"2::1\" then show \"3\";"), "missing native display condition");
+            Assert(logic.Contains("if \"2::3\" or \"3::3\" or \"4::3\" then show \"5\";"), "missing native OR condition");
+            SaveQuery("ordinary-query.json", json);
         });
         Check("ordinary-query-proves-unconditional-show-cleared-condition", delegate
         {
             XmlDocument doc = Build(UserLogic(), false);
             doc.LoadXml(SurveyLogicConverter.Apply(doc.OuterXml, "logic { show \"3\"; };"));
-            JObject json = JObject.FromObject(new QueryProjection(doc));
+            JObject json = ApiQuery(doc);
             Equal("本地无持久化测试", json["description"].Value<string>());
-            Equal("", QueryQuestion(json, 3)["relation"].Value<string>());
             Equal(false, QueryQuestion(json, 3)["is_hide"].Value<bool>());
-            Equal("2,2", QueryQuestion(json, 4)["relation"].Value<string>());
-            File.WriteAllText(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "ordinary-query-after-clear.json"), json.ToString(), new UTF8Encoding(true));
+            string logic = json["dsl"]["logic"].Value<string>();
+            Assert(!logic.Contains("then show \"3\";"), "cleared condition remained in projection");
+            Assert(logic.Contains("if \"2::2\" then show \"4\";"), "other question condition was lost");
+            SaveQuery("ordinary-query-after-clear.json", json);
+        });
+        Check("ordinary-query-clearing-last-rule-has-explicit-empty-module", delegate
+        {
+            XmlDocument doc = Build("logic { if \"2::1\" then show \"3\"; };", false);
+            doc.LoadXml(SurveyLogicConverter.Apply(doc.OuterXml, "logic { show \"3\"; };"));
+            Equal("", Q(doc, 3).GetAttribute("Relation"));
+            JObject json = ApiQuery(doc);
+            Equal("logic {\n};", json["dsl"]["logic"].Value<string>());
+            SaveQuery("ordinary-query-cleared-last-rule.json", json);
+        });
+        Check("ordinary-query-hidden-native-rule-remains-visible-in-dsl", delegate
+        {
+            XmlDocument doc = Build("logic { hide \"3\"; };", false);
+            JObject json = ApiQuery(doc);
+            Equal(true, QueryQuestion(json, 3)["is_hide"].Value<bool>());
+            Assert(json["dsl"]["logic"].Value<string>().Contains("raw attr \"Relation\" question \"3\" = \"-1\";"), "hidden rule was not projected");
+            SaveQuery("ordinary-query-hidden.json", json);
+        });
+        Check("ordinary-query-zero-hidden-protocol-is-not-empty-logic", delegate
+        {
+            XmlDocument doc = Build("logic { raw attr \"Relation\" question \"3\" = \"0\"; };", false);
+            JObject json = ApiQuery(doc);
+            Equal("0", Q(doc, 3).GetAttribute("Relation"));
+            Assert(json["dsl"]["logic"].Value<string>().Contains("raw attr \"Relation\" question \"3\" = \"0\";"), "zero hidden protocol was omitted");
+            SaveQuery("ordinary-query-zero-hidden.json", json);
         });
         Check("conditional-hide-does-not-silently-become-unconditional", delegate
         {
@@ -200,6 +230,18 @@ internal static class CreateLogicIntegration
         return text.Append("};").ToString();
     }
     private static XmlElement Q(XmlDocument doc, int topic) { return (XmlElement)doc.SelectSingleNode("/Questionnaire/Question[@Topic='" + topic + "']"); }
+    private static JObject ApiQuery(XmlDocument doc)
+    {
+        JObject json = JObject.FromObject(new QueryProjection(doc));
+        foreach (JObject question in (JArray)json["questions"])
+            Assert(question.Property("relation") == null, "shared model still exposes the removed relation field");
+        json["dsl"] = JObject.FromObject(new { logic = SurveyLogicConverter.Extract(doc.OuterXml) ?? "logic {\n};" });
+        return json;
+    }
+    private static void SaveQuery(string name, JObject json)
+    {
+        File.WriteAllText(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, name), json.ToString(), new UTF8Encoding(true));
+    }
     private static JObject QueryQuestion(JObject json, int topic)
     {
         foreach (JObject question in (JArray)json["questions"])

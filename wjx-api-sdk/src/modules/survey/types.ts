@@ -223,7 +223,7 @@ export interface SurveyQuestion {
 
 /** The `data` payload returned by get_survey (action=1000001). */
 export interface SurveyDetail {
-  /** 从实际存储 XML 反向转换的逻辑，未配置逻辑时省略。 */
+  /** 查询传统问卷题目时从实际 XML 提取；没有规则时返回空 logic 模块。 */
   dsl?: SurveyDslJson;
   vid: number;
   begin_time: string;

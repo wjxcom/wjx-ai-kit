@@ -16,6 +16,8 @@
 
 SDK 使用 `createSurveyByJson` / `updateSurveyByJson`；CLI 使用 `survey create` / `survey update`；MCP 使用 `create_survey_by_json` / `update_survey_by_json`。普通查询 `getSurvey` / `survey get` / `get_survey` 从实际 XML 返回可编辑的 `dsl.logic`。
 
+查询传统问卷且包含题目时，服务端始终返回完整的 `dsl.logic`；没有规则时明确返回 `logic {\n};`。清除显示条件后，目标规则会从投影中消失。SDK 使用完整投影和实际存在的题目核验结果，不要求题目额外返回 `relation` 字段。缺失投影时保持未验证状态，原生 `Relation="0"` 等隐藏规则也不能误判为显示成功。
+
 仅修改逻辑时提交 `vid + dsl`；修改题目时提交 `vid + jsonl`，可同时提交 `dsl`。修改不会隐式重新发布或迁移创建者。修改请求执行一次，之后从普通查询验证实际保存结果。
 
 服务端将 DSL 解析并转换为 XML 的 Relation、ItemRelation、AnytimeJumpto、ReferTopic 等原生逻辑属性。XML 中不保存 DSL 原文或新增的 DSL 节点。仅修改逻辑时在原 XML 上更新对应属性，保留题目、选项、分页、设置和扩展数据。

@@ -55,6 +55,8 @@ try {
     if ($LASTEXITCODE -ne 0) { throw 'Update integration fixture compilation failed' }
     & $testUpdateExe
     if ($LASTEXITCODE -ne 0) { throw "Update integration failed; see $testUpdateOutput\results.txt" }
+    & node (Join-Path $PSScriptRoot 'VerifyQueryProjection.mjs') $testCreateOutput
+    if ($LASTEXITCODE -ne 0) { throw 'SDK verification of the real XML query projection failed' }
     Write-Output "Integration fixtures passed. XML and results: $OutputRoot"
 }
 finally {
