@@ -1,0 +1,90 @@
+{
+  "origin": "http://tanhao.sojump.cn",
+  "entry": "PATH:wjx",
+  "cases": [
+    {
+      "name": "installed-cli-old-dsl-command-removed",
+      "status": "passed"
+    },
+    {
+      "name": "installed-cli-update-dry-run-action-1000109",
+      "status": "passed"
+    },
+    {
+      "name": "create-without-dsl-complete-empty-projection-no-relation",
+      "status": "passed"
+    },
+    {
+      "name": "create-user-or-example-dsl-precedence-and-complete-query",
+      "status": "passed"
+    },
+    {
+      "name": "logic-only-update-preserves-content-and-other-rules",
+      "status": "passed"
+    },
+    {
+      "name": "logic-only-add-single-condition",
+      "status": "passed"
+    },
+    {
+      "name": "show-clears-last-rule-without-relation-field",
+      "status": "passed"
+    },
+    {
+      "name": "hide-verifies-complete-logic-projection",
+      "status": "passed"
+    },
+    {
+      "name": "show-restores-hidden-question-and-empty-projection",
+      "status": "passed"
+    },
+    {
+      "name": "full-json-metadata-and-logic-update-without-structural-change",
+      "status": "passed"
+    },
+    {
+      "name": "ambiguous-content-rebuild-requires-explicit-opt-in",
+      "status": "passed"
+    },
+    {
+      "name": "full-json-plus-logic-update-with-explicit-opt-in",
+      "status": "passed"
+    },
+    {
+      "name": "invalid-reference-rejected-without-mutation",
+      "status": "passed"
+    },
+    {
+      "name": "jump-compiles-and-cli-verifies-native-state",
+      "status": "passed"
+    },
+    {
+      "name": "new-and-retained-jump-cycle-rejected-without-mutation",
+      "status": "passed"
+    }
+  ],
+  "drafts": [
+    {
+      "vid": 220068,
+      "label": "无逻辑"
+    },
+    {
+      "vid": 220071,
+      "label": "完整OR"
+    }
+  ],
+  "cleanup": [
+    {
+      "vid": 220068,
+      "status": "recycle-bin-verified",
+      "completely_deleted": false
+    },
+    {
+      "vid": 220071,
+      "status": "recycle-bin-verified",
+      "completely_deleted": false
+    }
+  ],
+  "passed": 15,
+  "failed": 0
+}

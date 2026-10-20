@@ -101,7 +101,7 @@ AI 主页是独立的纯展示内容，与表单/问卷创建互斥：
 
 CLI 是你（AI）在后台执行的工具，**不要**在回复中展示命令或命令行用法。唯一例外：用户明确要求看命令时。
 
-- 正确：「问卷已创建，这是填写链接：https://...」
+- 正确：「问卷已创建（草稿）。[预览《问卷标题》](服务端返回并校验的地址)」
 - 错误：「你可以运行 `wjx survey list` 查看问卷列表」
 
 ### 规则 5：未配置或返回 API Key 错误时先提醒配置
@@ -157,8 +157,10 @@ https://www.wjx.cn/weixinlogin.aspx?redirecturl=%2Fnewwjx%2Fmanage%2Fuserinfo.as
   - 矩阵多选 3 行：`7$1!1|2,2!3,3!1|4`
   - 矩阵量表 3 行：`8$1!5,2!4,3!3`
 
-### 规则 8：填写链接必须来自 API 返回的短路径（强制）
+### 规则 8：创建后默认返回预览链接，地址来自 API 短路径（强制）
 
+- 创建问卷成功后，默认返回可点击的**预览链接**，推荐文案为「[预览《问卷标题》](实际地址)」，并说明草稿或已发布状态。草稿和含 DSL 逻辑的问卷同样遵循此规则；回复不能只有问卷编号或编辑链接。
+- 用户明确要求编辑入口时，额外提供编辑链接。返回预览链接不改变问卷的发布状态。
 - `vid` 是后台问卷编号，**禁止**自行拼成 `https://<域名>/m/<vid>.aspx`、`/vm/<vid>.aspx` 或 `/jq/<vid>.aspx` 后提供给用户。数字 `vid` 不能被当作公开填写地址的标识。
 - 填写地址只允许使用 API 返回并通过校验的域名和路径：优先使用响应中已经提供且可验证的 `fill_url`；当前 CLI 不会自动从原始字段派生 `fill_url`，通常只返回 `sid`、`activity_domain`、`pc_path`、`mobile_path`，此时用 `new URL(pc_path || mobile_path, activity_domain)`（或等价的结构化 URL API）组合，原样保留服务端路径，并核对路径中的标识是短 `sid`。
 - 组合前必须确认域名、路径都来自同一条 API 记录，路径以允许的填写路由（例如 `/m/`、`/vm/` 或 `/jq/`）开头，且不是由 `vid` 推导出的猜测路径。字段缺失、域名/路径校验失败时，明确报告“服务端未提供可验证的填写路径”，不要静默猜测或替换成默认域名。
@@ -196,7 +198,7 @@ https://www.wjx.cn/weixinlogin.aspx?redirecturl=%2Fnewwjx%2Fmanage%2Fuserinfo.as
 | 导出答卷数据 | `wjx response download --vid <vid>` |
 | 分析 NPS | `wjx analytics nps --scores "[9,10,7,3]"` |
 | 导入联系人 | `wjx contacts add --users '[...]'`（需 `WJX_CORP_ID`） |
-| 查看填写链接 | 优先使用创建响应中规范化的 `fill_url` 或经校验的 `activity_domain` + `pc_path`/`mobile_path`；路径缺失时按 `vid` 分页解析 `wjx survey list` |
+| 创建后返回预览链接／查看填写链接 | 优先使用创建响应中规范化的 `fill_url` 或经校验的 `activity_domain` + `pc_path`/`mobile_path`；路径缺失时按 `vid` 分页解析 `wjx survey list` |
 | 查看编辑链接 | `wjx survey url --mode edit --activity <vid>` |
 
 ## 安装与配置
@@ -316,7 +318,7 @@ JSONL 每个非空行放一个 JSON 对象，且首行必须是问卷基础信�
 
 问卷类型：`--type 1` 调查（默认），`2` 测评，`3` 投票，`4` 360度评估，`5` 360评估无测评关系，`6` 考试，`7` 表单，`9` 教学评估，`10` 量表，`11` 民主评议。`8` 用户体系仅作历史维护，不能新建。
 
-创建成功后，先保存并结构化解析完整 JSON 响应。若响应带有可验证的 `fill_url`，直接将它作为填写地址；否则从同一响应记录的 `activity_domain` 与 `pc_path`（桌面端优先）或 `mobile_path` 组合地址，并确认使用的是短 `sid`。只有创建响应缺少这些路径时，才用响应中的 `vid` 到列表接口逐页查找对应记录。不要为此调用 `survey get`，也不要把 `survey url` 的编辑/创建地址当作填写地址。
+创建成功后，按规则 8 默认向用户返回可点击的预览链接。先保存并结构化解析完整 JSON 响应：若响应带有可验证的 `fill_url`，直接使用；否则从同一响应记录的 `activity_domain` 与 `pc_path`（桌面端优先）或 `mobile_path` 组合地址，并确认使用的是短 `sid`。只有创建响应缺少这些路径时，才用响应中的 `vid` 到列表接口逐页查找对应记录。不要为此调用 `survey get`，也不要把 `survey url` 的编辑/创建地址当作预览地址。
 
 **考试问卷注意**：先运行 `wjx survey jsonl-template --type 6 --raw`，按模板使用 `考试单选`、`考试多选`、`考试判断` 等 `qtype`；用 `correctselect` 和 `quizscore` 设置客观题答案与分值。普通主观题使用 `简答题`，考试主观题使用 `考试简答`，有标准答案的单项填空使用 `考试单项填空` + `correctselect`。`考试代码` 必须提供 `codetype`（编程语言），不能设置 `correctselect`/`answer`；`code`/`initialcode` 当前不会被 JSONL 服务端保存，初始代码、判题和人工阅卷设置需在网页端补充。创建后的 `考试简答`/`考试单项填空` 目前共享服务端 `q_type=5`，CLI 会将其标记为未完成题型校验，不会伪称已确认语义。
 

@@ -1,0 +1,32 @@
+[
+    {
+        "vid":  220127,
+        "status":  "recycle-bin-verified",
+        "completely_deleted":  false
+    },
+    {
+        "vid":  220121,
+        "status":  "recycle-bin-verified",
+        "completely_deleted":  false
+    },
+    {
+        "vid":  220123,
+        "status":  "recycle-bin-verified",
+        "completely_deleted":  false
+    },
+    {
+        "vid":  220069,
+        "status":  "recycle-bin-verified",
+        "completely_deleted":  false
+    },
+    {
+        "vid":  220068,
+        "status":  "recycle-bin-verified",
+        "completely_deleted":  false
+    },
+    {
+        "vid":  220071,
+        "status":  "recycle-bin-verified",
+        "completely_deleted":  false
+    }
+]
