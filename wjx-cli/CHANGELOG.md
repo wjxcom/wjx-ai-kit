@@ -3,7 +3,7 @@
 ## 未发布
 
 - 创建和修改统一使用 Survey JSON，按需附加 dsl.logic；DSL 转换为原生 XML 逻辑，冲突时优先。
-- 新增 updateSurveyByJson、survey update、update_survey_by_json；原完整 DSL 独立创建、查询、修改和校验入口已移除。
+- 新增 survey update；问卷逻辑通过 Survey JSON 的可选 dsl.logic 提交并转换为 XML 原生逻辑。
 
 > 说明：以下 0.x 条目保留为历史记录。条目中出现的旧创建能力仅用于历史追溯，不属于当前 CLI，也不得据此恢复入口。当前问卷创建唯一使用 `survey create`。
 
@@ -34,7 +34,7 @@
 
 ### Breaking
 
-- 删除旧的 `createSurvey`、`createSurveyByText`、`textToSurvey`、`create-by-text` 和旧 JSON 创建入口；问卷创建唯一使用 `survey create` / `createSurveyByJson`。
+- 问卷创建入口统一使用 `survey create` 和 `createSurveyByJson`。
 - `create-by-json` 已改名为 `survey create`，不保留兼容别名；使用旧命令的客户端必须升级到 `0.4.1` 或更高版本。
 - 升级错误只根据结构化服务端信号识别；未提供最低版本或升级命令时，CLI 不再生成默认值。
 
@@ -113,7 +113,6 @@
 
 ### Fixed
 
-- `create-by-text` 使用 SDK 重写的 `createSurveyByText()`（客户端解析 DSL，不再发送原始文本到 API）
 - `survey url` 新增 mode 验证，仅接受 `create` 或 `edit`
 - `reference` 命令改为从 SDK 的 `LABEL_TO_TYPE` 动态生成 DSL 标签参考（单一数据源）
 - `response count` 重写，仅返回 `{ vid, total_count, join_times }`
@@ -127,22 +126,13 @@
 
 ### Fixed
 
-- 修复 `create-by-text` DSL 解析：矩阵题 body 跨空行、Format 1 scaleRange 解析、段落说明过滤
 
 ## [0.1.8] - 2026-04-02
 
 ### Added
 
-- **`wjx survey create-by-text` 命令**: 用 DSL 文本创建问卷，无需手写 JSON
-  - `--text <s>` 直接传入 DSL 文本
-  - `--file <path>` 从文件读取 DSL 文本
-  - `--type <n>` 问卷类型（1=调查, 6=考试）
-  - `--publish` 创建后发布
-  - `--dry-run` 预览解析结果（不调用 API）
-  - 调用 SDK 的 `createSurveyByText()` 函数
 - **`wjx reference` 命令**: 输出命令参考文档
   - `wjx reference` 列出可用主题
-  - `wjx reference dsl` DSL 文本语法参考
   - `wjx reference question-types` 题型/问卷类型映射表
   - `wjx reference survey` survey 模块命令参考
   - `wjx reference response` response 模块命令参考
@@ -151,7 +141,6 @@
 
 ### Changed
 
-- SDK 新增 `createSurveyByText()`、`parsedQuestionsToWire()` 导出
 - MCP Server 去除重复的 `parsedQuestionsToWire`，改为从 SDK 导入
 - 测试数从 96 增加到 108
 

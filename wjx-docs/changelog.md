@@ -3,7 +3,7 @@
 ## Survey JSON 逻辑改造（未发布）
 
 - 创建和修改统一使用 Survey JSON，可选 `dsl.logic` 由服务端转换为 XML 原生逻辑属性。
-- 删除完整问卷 DSL 的独立接口、命令、工具、资源及专用底层实现。
+- 问卷逻辑统一通过 Survey JSON 的可选 dsl.logic 提交，并由服务端转换为 XML 原生逻辑。
 
 ## 0.4.4 (2026-09-07)
 
@@ -34,7 +34,7 @@
 
 - `wjx-api-sdk`、`wjx-mcp-server`、`wjx-cli` 曾统一发布 `0.4.0`，现已废弃，不能作为当前安装目标。
 - 问卷创建统一使用 `createSurveyByJson` / `create_survey_by_json` / `survey create` 的 action `1000106` JSONL 链路。
-- 当时移除了旧 JSON 数组和 DSL 创建入口；完整问卷 DSL 的读取和迁移能力已在本次 Survey JSON 改造中移除。
+- 问卷逻辑统一通过 Survey JSON 的可选 `dsl.logic` 处理，并从实际保存的 XML 反向读取。
 
 ## 文档更新
 

@@ -3,11 +3,11 @@
 ## 未发布
 
 - 创建和修改统一使用 Survey JSON，按需附加 dsl.logic；DSL 转换为原生 XML 逻辑，冲突时优先。
-- 新增 updateSurveyByJson、survey update、update_survey_by_json；原完整 DSL 独立创建、查询、修改和校验入口已移除。
+- 新增 updateSurveyByJson；问卷逻辑通过 Survey JSON 的可选 dsl.logic 提交并转换为 XML 原生逻辑。
 
 本文件记录项目的所有重要变更。
 
-> 说明：以下 0.x 条目保留为历史记录。条目中出现的 `createSurvey`、`createSurveyByText`、`textToSurvey` 创建相关能力已移除，不属于当前 SDK，也不得据此恢复或新增兼容入口。当前问卷创建唯一使用 `createSurveyByJson`。
+> 说明：以下 0.x 条目为历史版本记录；当前问卷创建统一使用 `createSurveyByJson`。
 
 ## [0.4.4] - 2026-09-07
 
@@ -35,9 +35,9 @@
 
 ### Breaking
 
-- 移除旧的 `createSurvey`、`createSurveyByText` 和 `textToSurvey` 创建相关导出；问卷创建唯一使用 action `1000106` 的 `createSurveyByJson` JSONL 接口。
+- 问卷创建入口统一为 action `1000106` 的 `createSurveyByJson` JSONL 接口。
 - `WjxCredentials`/请求选项支持按请求指定 `baseUrl`、`corpId` 和 `retryBudget`，并保留现有调用签名的默认行为。
-- JSONL 题型清单、语法预检和必答/考试元数据校验统一由 JSONL 管道负责；旧的 JSON 数组/DSL 创建转换器不再作为 SDK 能力提供。
+- JSONL 题型清单、语法预检和必答/考试元数据校验统一由 JSONL 管道负责。
 
 ## [0.2.6] - 2026-04-24
 
@@ -56,13 +56,12 @@
 
 ### Added
 
-- 导出 `createSurveyByText()`、`parsedQuestionsToWire()`、`LABEL_TO_TYPE`、`TYPE_MAP`
+- 导出 JSONL 题型映射和转换辅助函数。
 - 导出类型 `WireQuestion`、`WireConversionResult`
 
 ### Changed
 
-- `createSurveyByText` 重写：客户端解析 DSL 后调用 `createSurvey`（action 1000101），不再发送原始文本到 API
-- `parsedQuestionsToWire()` 返回 `WireConversionResult { questions, skippedParagraphs }`，自动过滤段落说明
+- JSONL 转换结果保留 `questions` 和被跳过的段落说明信息。
 - 矩阵题 body 解析支持跨空行收集行/列选项
 - Format 1（`行：`/`Rows:`）解析支持 scaleRange 和列选项
 - **移除 `username` 参数**: user-system 模块的 6 个接口不再接受 `username`，与 C# 服务端对齐
@@ -84,8 +83,7 @@
 
 ### Added
 
-- 导出 `textToSurvey`、`parsedQuestionsToWire` 供 CLI 和 MCP Server 使用
-- DSL 解析器扩展：支持 `行：`/`Rows:` 兼容写法
+- JSONL 转换器扩展：支持 `行：`/`Rows:` 兼容写法
 
 ## [0.1.2] - 2026-03-31
 
@@ -99,7 +97,7 @@
 
 ### Fixed
 
-- DSL 解析器 `textToSurvey` 扩展支持 12 种题型标签（下拉框、评分单选、评分多选、排序题、判断题、比重题）
+- JSONL 题型映射扩展支持下拉框、评分单选、评分多选、排序题、判断题和比重题。
 - 移除 `querySubAccounts`、`querySurveyBinding`、`queryUserSurveys` 中不存在的分页参数（`page_index`/`page_size`）
 - `modifyParticipants` 新增 `auto_create_udept` 参数支持
 
@@ -115,8 +113,7 @@
   - Multi-User: 子账号增删改恢复、列表查询
   - SSO: 子账号/用户体系/合作伙伴/问卷创建编辑的免登录链接生成
   - Analytics: 答卷解码、NPS、CSAT、异常检测、指标对比、推送解密
-- **DSL 文本转换器**: `surveyToText` / `textToSurvey` 双向转换
-- **`ParsedSurvey` / `ParsedQuestion` 类型** 用于 DSL 解析结果
+- **Survey JSON 转换器**：提供结构化问卷和题型映射类型
 - **`buildPreviewUrl`** 生成问卷预览 URL
 - **`setCredentialProvider`** 支持自定义凭据获取逻辑
 - **完整类型定义**: 所有输入/输出均有 TypeScript 类型

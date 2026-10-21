@@ -3,7 +3,7 @@
 ## 未发布
 
 - 创建和修改统一使用 Survey JSON，按需附加 dsl.logic；DSL 转换为原生 XML 逻辑，冲突时优先。
-- 新增 updateSurveyByJson、survey update、update_survey_by_json；原完整 DSL 独立创建、查询、修改和校验入口已移除。
+- 新增 updateSurveyByJson、survey update、update_survey_by_json；问卷逻辑随 Survey JSON 的可选 dsl.logic 提交并转换为 XML 原生逻辑。
 
 本项目使用 [Conventional Commits](https://www.conventionalcommits.org/) 规范。
 
@@ -60,7 +60,7 @@
 ### 统一发布
 
 - `wjx-api-sdk@0.4.0`、`wjx-mcp-server@0.4.0`、`wjx-cli@0.4.0` 曾按 SDK → MCP Server → CLI 顺序发布；该版本现已废弃。
-- 问卷创建统一使用 action `1000106` 的 JSONL 链路；旧 JSON 数组和 DSL 创建入口已移除。
+- 问卷创建统一使用 action `1000106` 的 JSONL 链路，题目逻辑通过可选 dsl.logic 提交。
 - CLI、SDK、MCP Server 的题型、协议和下游 Skill/Agent 文档已同步。
 
 ---

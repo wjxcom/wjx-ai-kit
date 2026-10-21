@@ -26,9 +26,6 @@ const MANIFEST = [
     ["reference/question-types", "题型与 JSONL"],
     ["reference/wjx-xml-dsl-v1", "题目关联逻辑"],
   ]},
-  { group: "开发计划", collapsed: true, items: [
-    ["tasks/dsl-generation-api-integration-plan", "DSL 方案迁移"],
-  ]},
   { group: "概念与运维", items: [
     ["concepts/architecture", "架构与边界"],
     ["concepts/authentication", "认证与安全"],
