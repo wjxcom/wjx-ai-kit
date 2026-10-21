@@ -4,5 +4,5 @@ const packageJson = require("../../package.json");
 export const CLI_CLIENT_NAME = "wjx-cli";
 export const CLI_CLIENT_VERSION = typeof packageJson.version === "string" && packageJson.version.trim()
     ? packageJson.version.trim()
-    : "0.4.4";
+    : "0.4.5";
 //# sourceMappingURL=client-info.js.map

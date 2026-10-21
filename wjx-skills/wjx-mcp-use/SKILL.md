@@ -82,7 +82,7 @@ AI 主页是独立的纯展示内容，与表单/问卷创建互斥：
 - **已返回 API Key 相关错误**：如果工具返回 `API Key is required`、`Invalid API Key`、`appkey error` 或类似鉴权错误，必须立刻向用户说明需要处理 API Key，并给出获取/更新 `WJX_API_KEY` 的下一步；不要只复述错误信息，也不要继续调用其他业务工具反复尝试
 - **base_url 与用户域名不符**：引导添加 `WJX_BASE_URL` 环境变量（如 `https://xxx.sojump.cn`）
 - **获取 API Key**：让用户访问 `https://<域名>/weixinlogin.aspx?redirecturl=%2Fnewwjx%2Fmanage%2Fuserinfo.aspx%3FshowApiKey%3D1`，微信扫码登录后复制 Key
-- **cli_version 未安装**：可选；CLI 当前源码版本为 `0.4.4`，发布后先执行 `npm install -g wjx-cli@latest`，成功后再执行 `wjx skill install --force`，然后用 `wjx init --api-key <key>` 统一配置
+- **cli_version 未安装**：可选；CLI 当前源码版本为 `0.4.5`，发布后先执行 `npm install -g wjx-cli@latest`，成功后再执行 `wjx skill install --force`，然后用 `wjx init --api-key <key>` 统一配置
 
 收到 API Key 相关错误后的用户提醒应使用自然语言，不暴露 MCP 工具调用细节，例如：
 
@@ -153,7 +153,7 @@ Survey JSON 使用中文 qtype。仅涉及题目逻辑时附加 dsl.logic，服�
 ```
 
 
-普通题型未传 `publish` 时默认立即发布；若 JSONL 包含纯框架题型 `折叠栏目`、`轮播图`、`AI追问`、`AI处理`、`AI访谈`、`图片OCR` 或 `分页计时器`，则默认创建为草稿。`VlookUp问卷关联` 当前由创建接口拒绝，只能读取既有问卷或转 Web 编辑器。先调用 `get_survey` 并提供编辑入口，待用户明确授权后再传 `publish: true`。
+普通题型未传 `publish` 时默认立即发布；若 JSONL 包含纯框架题型 `折叠栏目`、`轮播图`、`AI追问`、`AI处理`、`AI访谈`、`图片OCR`、`分页计时器`、`循环评价` 或 `考试代码`，则默认创建为草稿。先调用 `get_survey` 并提供编辑入口，待用户明确授权后再传 `publish: true`。`VlookUp问卷关联`、`矩阵数值题`、`多项文件题`、`多项简答题` 和 `当前语音` 属于读取/Web 编辑器边界，当前 JSONL 创建接口直接拒绝，不能按草稿路径重试。
 
 **考试问卷（atype=6）注意**：JSONL 路径支持 `correctselect`、`quizscore` 和 `answeranalysis`。创建后仍可提供编辑链接补充未覆盖的高级设置。
 

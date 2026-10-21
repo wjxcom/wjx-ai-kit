@@ -219,7 +219,7 @@ export function registerResponseCommands(program) {
         .option("--vid <n>", "问卷ID", strictInt)
         .action(async (_opts, cmd) => {
         await executeRuntimeAction(program, cmd, queryResponses, (m) => {
-            requireField(m, "vid");
+            requirePositiveInt(m, "vid");
             return { vid: m.vid, page_size: 1 };
         }, {
             transformResult: (result) => {
@@ -253,7 +253,7 @@ export function registerResponseCommands(program) {
         .option("--conds <json>", "查询条件JSON，格式：[{\"q_index\":10000,\"opt\":\"in\",\"val\":\"1,2\"}]，q_index=题序×10000，最多2个条件")
         .action(async (_opts, cmd) => {
         await executeRuntimeAction(program, cmd, queryResponses, (m) => {
-            requireField(m, "vid");
+            requirePositiveInt(m, "vid");
             if (m.page_index !== undefined)
                 requirePositiveInt(m, "page_index");
             if (m.page_size !== undefined)
@@ -290,7 +290,7 @@ export function registerResponseCommands(program) {
         .option("--count <n>", "数量", strictInt)
         .action(async (_opts, cmd) => {
         await executeRuntimeAction(program, cmd, queryResponsesRealtime, (m) => {
-            requireField(m, "vid");
+            requirePositiveInt(m, "vid");
             if (m.count !== undefined)
                 requirePositiveInt(m, "count");
             return { vid: m.vid, count: m.count };
@@ -313,7 +313,7 @@ export function registerResponseCommands(program) {
         .option("--query_record", "查询记录")
         .action(async (_opts, cmd) => {
         await executeRuntimeAction(program, cmd, downloadResponses, (m) => {
-            requireField(m, "vid");
+            requirePositiveInt(m, "vid");
             if (m.query_count !== undefined)
                 requirePositiveInt(m, "query_count");
             if (m.sort !== undefined)
@@ -353,7 +353,7 @@ export function registerResponseCommands(program) {
         .action(async (_opts, cmd) => {
         await executeRuntimeCommand(program, cmd, {
             normalize: ({ values }) => {
-                requireField(values, "vid");
+                requirePositiveInt(values, "vid");
                 requireField(values, "inputcosttime");
                 if (typeof values.inputcosttime !== "number" ||
                     !Number.isInteger(values.inputcosttime) || values.inputcosttime < 2) {
@@ -462,8 +462,8 @@ export function registerResponseCommands(program) {
         .option("--answers <s>", "答案数据")
         .action(async (_opts, cmd) => {
         await executeRuntimeAction(program, cmd, modifyResponse, (m) => {
-            requireField(m, "vid");
-            requireField(m, "jid");
+            requirePositiveInt(m, "vid");
+            requirePositiveInt(m, "jid");
             requireField(m, "answers");
             // Parse before the confirmation/transport boundary so malformed score
             // patches cannot trigger an unsafe write.
@@ -560,7 +560,7 @@ export function registerResponseCommands(program) {
         .action(async (_opts, cmd) => {
         await executeRuntimeAction(program, cmd, clearResponses, (m) => {
             requireField(m, "username");
-            requireField(m, "vid");
+            requirePositiveInt(m, "vid");
             return {
                 username: m.username,
                 vid: m.vid,
@@ -621,7 +621,7 @@ export function registerResponseCommands(program) {
         .option("--conds <json>", "查询条件JSON，格式：[{\"q_index\":10000,\"opt\":\"in\",\"val\":\"1,2\"}]，q_index=题序×10000")
         .action(async (_opts, cmd) => {
         await executeRuntimeAction(program, cmd, getReport, (m) => {
-            requireField(m, "vid");
+            requirePositiveInt(m, "vid");
             return {
                 vid: m.vid,
                 valid: m.valid ?? true,
@@ -648,7 +648,7 @@ export function registerResponseCommands(program) {
         .option("--page_size <n>", "每页数量", strictInt)
         .action(async (_opts, cmd) => {
         await executeRuntimeAction(program, cmd, getWinners, (m) => {
-            requireField(m, "vid");
+            requirePositiveInt(m, "vid");
             if (m.page_index !== undefined)
                 requirePositiveInt(m, "page_index");
             if (m.page_size !== undefined)
@@ -675,7 +675,7 @@ export function registerResponseCommands(program) {
         .action(async (_opts, cmd) => {
         try {
             const merged = getMerged(cmd);
-            requireField(merged, "vid");
+            requirePositiveInt(merged, "vid");
             const globalOpts = program.opts();
             if (globalOpts.dryRun) {
                 const { fetchImpl, getCapturedRequest } = createCapturingFetch();
@@ -716,7 +716,7 @@ export function registerResponseCommands(program) {
         .option("--taskid <s>", "任务ID")
         .action(async (_opts, cmd) => {
         await executeRuntimeAction(program, cmd, get360Report, (m) => {
-            requireField(m, "vid");
+            requirePositiveInt(m, "vid");
             return { vid: m.vid, taskid: m.taskid };
         });
     });

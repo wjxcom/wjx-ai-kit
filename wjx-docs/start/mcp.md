@@ -9,8 +9,8 @@ MCP 适用于原生支持 Model Context Protocol 的客户端。若客户端只�
 - Claude Desktop、Claude Code、Cursor 等 MCP 客户端
 - 已部署 HTTP 服务分配的访问令牌（HTTP 模式）
 
-当前源码版本为 `0.4.4`。发布到 npm 后，registry 的 `latest` 将指向
-`wjx-mcp-server@0.4.4`。直接安装：
+当前源码版本为 `0.4.5`。发布到 npm 后，registry 的 `latest` 将指向
+`wjx-mcp-server@0.4.5`。直接安装：
 
 ```bash
 npm install -g wjx-mcp-server

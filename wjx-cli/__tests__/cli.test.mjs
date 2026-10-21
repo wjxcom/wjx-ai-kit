@@ -1742,20 +1742,53 @@ describe("init", () => {
     // 隔离 cwd 防止把 skills/wjx-survey-ppt/ 写到仓库根
     const tmpDir = resolve(__dirname, "..", "__tmp_init_ppt_test__");
     const configPath = resolve(tmpDir, ".wjxrc");
+    const pythonFixture = resolve(tmpDir, "fake-python.cjs");
+    const pythonCalls = resolve(tmpDir, "python-calls.jsonl");
     rmSync(tmpDir, { recursive: true, force: true });
     mkdirSync(tmpDir, { recursive: true });
     try {
+      // Intercept the installer probes before its ESM imports load. Unexpected
+      // Python commands fail the test without invoking Python or pip.
+      writeFileSync(pythonFixture, `
+const childProcess = require("node:child_process");
+const { appendFileSync } = require("node:fs");
+const { syncBuiltinESMExports } = require("node:module");
+const originalSpawnSync = childProcess.spawnSync;
+const expected = new Set([
+  JSON.stringify(["--version"]),
+  JSON.stringify(["-c", "import ppt_master_survey"]),
+  JSON.stringify(["-m", "ppt_master_survey", "--help"]),
+  JSON.stringify(["-c", "import jieba"]),
+]);
+childProcess.spawnSync = function (command, args, ...rest) {
+  if (command !== "python3" && command !== "python") {
+    return originalSpawnSync.call(this, command, args, ...rest);
+  }
+  appendFileSync(${JSON.stringify(pythonCalls)}, JSON.stringify({ command, args }) + "\\n");
+  if (!expected.has(JSON.stringify(args))) throw new Error("Unexpected Python command: " + JSON.stringify(args));
+  return { status: 0, signal: null, stdout: args[0] === "--version" ? "Python 3.12.0\\n" : "", stderr: "" };
+};
+syncBuiltinESMExports();
+`, "utf8");
       const { exitCode, stderr } = await fixture.run(
         ["--api-key", "test_key_xyz", "init", "--no-install-skill", "--install-ppt-skill"],
         {
-          env: { WJX_CONFIG_PATH: configPath },
+          env: {
+            WJX_CONFIG_PATH: configPath,
+            NODE_OPTIONS: [process.env.NODE_OPTIONS, "--require", JSON.stringify(pythonFixture.replaceAll("\\", "/"))].filter(Boolean).join(" "),
+          },
           cwd: tmpDir,
-          timeout: 30_000, // pip 探测可能慢
         },
       );
-      assert.strictEqual(exitCode, 0);
+      assert.strictEqual(exitCode, 0, stderr);
       // 走到 ppt 分支的标记：stderr 出现 wjx-survey-ppt 相关字样
       assert.match(stderr, /wjx-survey-ppt/);
+      assert.deepEqual(readFileSync(pythonCalls, "utf8").trim().split("\n").map((line) => JSON.parse(line)), [
+        { command: "python3", args: ["--version"] },
+        { command: "python3", args: ["-c", "import ppt_master_survey"] },
+        { command: "python3", args: ["-m", "ppt_master_survey", "--help"] },
+        { command: "python3", args: ["-c", "import jieba"] },
+      ]);
     } finally {
       rmSync(tmpDir, { recursive: true, force: true });
       await fixture.close();

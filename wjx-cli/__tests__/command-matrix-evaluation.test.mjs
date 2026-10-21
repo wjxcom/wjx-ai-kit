@@ -391,6 +391,8 @@ function optionWireKeys(command, flag) {
     return ["file", "surveydatajson", "jsonl", "html_content"];
   }
   const aliases = {
+    "--compress-img": ["compress_img", "compressImg"],
+    "--allow-breaking-changes": ["allow_breaking_changes", "allowBreakingChanges"],
     "--page": ["page", "page_index"],
     "--type": ["type", "atype"],
     "--description": ["description", "desc"],
@@ -828,6 +830,62 @@ describe("complete CLI command contract matrix", () => {
     }
   });
 
+  test("update installs the exact version returned by npm latest dist-tag", async () => {
+    const bin = await mkdtemp(resolve(process.env.TEMP ?? ".", "wjx-update-latest-query-bin-"));
+    const calls = resolve(bin, "npm-calls.log");
+    const currentParts = CLI_VERSION.split(".").map(Number);
+    const latestVersion = `${currentParts[0]}.${currentParts[1]}.${currentParts[2] + 1}`;
+    try {
+      // Keep the fixture sensitive to both the registry query and the exact
+      // version passed to install. A mutable @latest install can race with a
+      // dist-tag change and must fail this test.
+      await writeFile(resolve(bin, "npm.cmd"), `@echo off\r\n>>"${calls}" echo %*\r\nif "%~1"=="view" (echo "${latestVersion}" & exit /b 0)\r\nif "%~1"=="install" (if "%~2"=="wjx-cli@${latestVersion}" exit /b 0\r\n  exit /b 1\r\n)\r\nif "%~1"=="list" (echo {"dependencies":{"wjx-cli":{"version":"${latestVersion}"}}} & exit /b 0)\r\nexit /b 1\r\n`, "utf8");
+      const result = await runCli(["update", "--silent"], { env: { PATH: `${bin};${process.env.PATH ?? ""}` } });
+      assert.equal(result.exitCode, 0, result.stderr);
+      const envelope = JSON.parse(result.stdout);
+      assert.equal(envelope.ok, true);
+      assert.equal(envelope.data.status, "updated");
+      assert.equal(envelope.data.newVersion, latestVersion);
+
+      const callsText = await readFile(calls, "utf8");
+      assert.match(callsText, new RegExp(`view wjx-cli dist-tags.latest --json`));
+      assert.match(callsText, new RegExp(`install wjx-cli@${latestVersion} --global`));
+      assert.match(callsText, new RegExp(`list wjx-cli --global --depth=0 --json`));
+    } finally {
+      await rm(bin, { recursive: true, force: true });
+    }
+  });
+
+  test("update does not report success from a local fallback after global install fails", async () => {
+    const bin = await mkdtemp(resolve(process.env.TEMP ?? ".", "wjx-update-global-fallback-bin-"));
+    const calls = resolve(bin, "npm-calls.log");
+    const firstInstall = resolve(bin, "first-install");
+    const currentParts = CLI_VERSION.split(".").map(Number);
+    const latestVersion = `${currentParts[0]}.${currentParts[1]}.${currentParts[2] + 1}`;
+    try {
+      await writeFile(resolve(bin, "npm.cmd"), `@echo off\r\n>>"${calls}" echo %*\r\nif "%~1"=="view" (echo "${latestVersion}" & exit /b 0)\r\nif "%~1"=="install" (\r\n  if exist "${firstInstall}" exit /b 0\r\n  echo first > "${firstInstall}"\r\n  exit /b 1\r\n)\r\nif "%~1"=="list" (echo {"version":"${latestVersion}"} & exit /b 0)\r\nexit /b 1\r\n`, "utf8");
+      const result = await runCli(["update", "--silent"], { env: { PATH: `${bin};${process.env.PATH ?? ""}` } });
+      assert.equal(result.exitCode, 1, result.stdout);
+      assert.equal(result.stdout.trim(), "");
+      const error = parseProblem(result);
+      assert.equal(error.error.code, "API_ERROR");
+      assert.match(error.error.message, /全局|更新失败|install/);
+      const callsText = await readFile(calls, "utf8");
+      assert.equal((callsText.match(/^install /gm) ?? []).length, 1, callsText);
+    } finally {
+      await rm(bin, { recursive: true, force: true });
+    }
+  });
+
+  test("strict integer options reject non-decimal and unsafe values", async () => {
+    for (const value of ["1e3", "0x10", "9007199254740993", " 42 "]) {
+      const result = await runCli(["survey", "get", "--vid", value, "--dry-run"]);
+      assert.equal(result.exitCode, 2, `${value}: ${result.stdout}`);
+      assert.equal(result.stdout.trim(), "");
+      assert.equal(parseProblem(result).error.code, "INPUT_ERROR");
+    }
+  });
+
   test("update fails closed when npm reports an older installed version after a successful install", async () => {
     const bin = await mkdtemp(resolve(process.env.TEMP ?? ".", "wjx-update-verify-bin-"));
     const currentParts = CLI_VERSION.split(".").map(Number);
@@ -928,6 +986,8 @@ describe("complete CLI command contract matrix", () => {
   test("all remote commands execute the expected action and preserve success envelope", async () => {
     let survey = {
       title: "矩阵问卷",
+      atype: 1,
+      description: "",
       status: 1,
       questionCount: 1,
       sid: "matrixReadbackSid",
@@ -944,6 +1004,31 @@ describe("complete CLI command contract matrix", () => {
       sojumpparm_setting: {},
       time_setting: {},
     };
+    function saveSurveyJson(body) {
+      const rows = body.surveydatajson.split(/\r?\n/).filter(Boolean).map((line) => JSON.parse(line));
+      const metadata = rows.find((row) => row.qtype === "问卷基础信息") ?? {};
+      const questions = rows.filter((row) => row.qtype !== "问卷基础信息");
+      survey = {
+        ...survey,
+        title: body.title ?? metadata.title,
+        atype: body.atype ?? metadata.atype ?? survey.atype,
+        description: metadata.introduction ?? "",
+        questionCount: questions.length,
+        // The matrix's single-choice JSONL must read back its saved content,
+        // including option order, for the real update verifier to accept it.
+        questions: questions.map((row, index) => ({
+          q_index: index + 2,
+          q_type: 3,
+          q_subtype: 3,
+          q_title: row.title,
+          is_requir: row.requir ?? true,
+          items: (row.select ?? []).map((title, itemIndex) => ({
+            item_value: String(itemIndex + 1),
+            item_title: title,
+          })),
+        })),
+      };
+    }
     const fixture = await startFixture({
       response: ({ request }) => {
         let body = {};
@@ -951,11 +1036,7 @@ describe("complete CLI command contract matrix", () => {
         const action = String(body.action ?? "");
         if (action === "1000109") {
           dslSurvey = body.dsl;
-          if (body.surveydatajson) {
-            const lines = body.surveydatajson.split(/\r?\n/).filter(Boolean);
-            const metadata = JSON.parse(lines[0]);
-            survey = { ...survey, title: body.title ?? metadata.title, questionCount: lines.length - 1 };
-          }
+          if (body.surveydatajson) saveSurveyJson(body);
           if (body.publish !== undefined) survey.status = body.publish ? 1 : 2;
           return { result: true, data: { vid: 42, status: 0, sid: "matrixReadbackSid" } };
         }
@@ -972,11 +1053,12 @@ describe("complete CLI command contract matrix", () => {
               page_type: 0,
               html_content: aiPageHtml,
               title: survey.title,
+              atype: survey.atype,
               ...(dslSurvey && typeof dslSurvey === "object" ? { dsl: dslSurvey } : {}),
-              description: "",
+              description: survey.description,
               status: survey.status,
               sid: survey.sid,
-              questions: Array.from({ length: survey.questionCount }, (_, index) => ({
+              questions: survey.questions ?? Array.from({ length: survey.questionCount }, (_, index) => ({
                 q_type: 3,
                 q_subtype: 3,
                 q_title: `题目 ${index + 1}`,
@@ -1001,15 +1083,10 @@ describe("complete CLI command contract matrix", () => {
         }
         if (action === "1000003") return { result: true, data: structuredClone(settings) };
         if (action === "1000106") {
-          const lines = typeof body.surveydatajson === "string"
-            ? body.surveydatajson.split(/\r?\n/).filter(Boolean)
-            : [];
-          let metadata = {};
-          try { metadata = JSON.parse(lines[0] ?? "{}"); } catch { /* local CLI validation owns malformed JSONL */ }
+          saveSurveyJson(body);
           survey = {
-            title: typeof body.title === "string" ? body.title : metadata.title,
+            ...survey,
             status: body.publish === true ? 1 : 0,
-            questionCount: Math.max(1, lines.length - 1),
             sid: "matrixReadbackSid",
           };
           return { result: true, data: { vid: 42 } };
@@ -1265,6 +1342,22 @@ describe("complete CLI command contract matrix", () => {
     const envelope = parseSuccess(result);
     assert.equal(envelope.data.kind, "dry-run");
     assert.deepEqual(envelope.data.plans, []);
+  });
+
+  test("completion install keeps success diagnostics in the JSON result", async () => {
+    const home = await mkdtemp(resolve(process.env.TEMP ?? ".", "wjx-completion-home-"));
+    try {
+      const result = await runCli(["completion", "install"], {
+        env: { SHELL: "/bin/bash", HOME: home, USERPROFILE: home },
+      });
+      assert.equal(result.exitCode, 0, result.stderr);
+      assert.equal(result.stderr.trim(), "");
+      const envelope = parseSuccess(result);
+      assert.equal(envelope.data.status, "installed");
+      assert.equal(envelope.data.profilePath, resolve(home, ".bashrc"));
+    } finally {
+      await rm(home, { recursive: true, force: true });
+    }
   });
 
   test("update dry-run does not invoke npm", async () => {

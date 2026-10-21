@@ -121,7 +121,10 @@ flowchart TD
 - `get_tag_details`
 - `upload_file`
 - `clear_recycle_bin`
-- `create_survey_by_json`（唯一当前创建入口）
+- `create_survey_by_json`（JSONL 创建，可选 `dsl.logic`）
+- `update_survey_by_json`（修改题目内容或题目逻辑）
+- `create_ai_page`
+- `update_ai_page`
 
 
 特点：

@@ -422,7 +422,7 @@ export function registerSurveyCommands(program: Command): void {
     .option("--showtitle", "显示标题")
     .action(async (_opts, cmd) => {
       await executeRuntimeAction(program, cmd, getSurvey, (m) => {
-        requireField(m, "vid");
+        requirePositiveInt(m, "vid");
         return {
           vid: m.vid,
           get_questions: m.get_questions,
@@ -635,7 +635,7 @@ export function registerSurveyCommands(program: Command): void {
     .action(async (_opts, cmd) => {
       await executeRuntimeCommand(program, cmd, {
         normalize: ({ values }) => {
-          requireField(values, "vid");
+          requirePositiveInt(values, "vid");
           const html = resolveAiPageHtml(values);
           return { vid: values.vid, html_content: html, title: values.title };
         },
@@ -742,7 +742,7 @@ export function registerSurveyCommands(program: Command): void {
     .option("--completely", "彻底删除")
     .action(async (_opts, cmd) => {
       await executeRuntimeAction(program, cmd, deleteSurvey, (m) => {
-        requireField(m, "vid");
+        requirePositiveInt(m, "vid");
         return {
           vid: m.vid,
           ...(typeof m.username === "string" && m.username.trim() ? { username: m.username.trim() } : {}),
@@ -840,7 +840,7 @@ export function registerSurveyCommands(program: Command): void {
     .option("--status <n>", "目标状态（--state 的别名，兼容直觉命名）", strictInt)
     .action(async (_opts, cmd) => {
       await executeRuntimeAction(program, cmd, updateSurveyStatus, (m) => {
-        requireField(m, "vid");
+        requirePositiveInt(m, "vid");
         // 接受 --state 或 --status，任一即可
         const state = m.state ?? m.status;
         if (state === undefined || state === null) {
@@ -881,7 +881,7 @@ export function registerSurveyCommands(program: Command): void {
     .option("--vid <n>", "问卷ID", strictInt)
     .action(async (_opts, cmd) => {
       await executeRuntimeAction(program, cmd, getSurveySettings, (m) => {
-        requireField(m, "vid");
+        requirePositiveInt(m, "vid");
         return { vid: m.vid };
       });
     });
@@ -898,7 +898,7 @@ export function registerSurveyCommands(program: Command): void {
     .option("--time_setting <json>", "时间设置JSON")
     .action(async (_opts, cmd) => {
       await executeRuntimeAction(program, cmd, updateSurveySettings, (m) => {
-        requireField(m, "vid");
+        requirePositiveInt(m, "vid");
         const input = {
           vid: m.vid,
           api_setting: ensureJsonObject(m.api_setting, "api_setting"),

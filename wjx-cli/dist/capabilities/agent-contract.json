@@ -16,7 +16,7 @@
     "wjx-mcp-server/src/modules/survey/tools.ts",
     "wjx-mcp-server/src/modules/user-system/tools.ts"
   ],
-  "sourceRevision": "83efb395ee30195b3500d7eb637739ffc690dd995205d5604bcdf668b8ed440f",
+  "sourceRevision": "63c099ecf765299327aad599ca9229ebbae27d514b4c11966fbcbe37e7fc9537",
   "mergeRules": {
     "scope": "Agent contract safety policy only; does not change CLI metadata or exit codes",
     "risk": "max(cli-metadata-risk, high-risk-write when any mapped MCP destructiveHint is true)",

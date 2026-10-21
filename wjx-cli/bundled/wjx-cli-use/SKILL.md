@@ -7,7 +7,7 @@ name_en: wjx-cli-use
 description: "Guide for using wjx-cli (Wenjuanxing CLI) to create AI homepages, posters, PPTs, and surveys, query responses, and analyze data. Use when the user mentions: AI主页, AI海报, AI PPT, 问卷, 调查, 收集, 表单, 投票, 考试, 测评, 满意度, NPS, 问卷星, wjx, survey, questionnaire, or wants to create or update those resources."
 description_zh: "使用 wjx-cli 创建或修改 AI主页、AI海报、AI PPT、问卷，查询回复及分析数据的指南。当用户提到 AI主页、AI海报、AI PPT、问卷、调查、收集、表单、投票、考试、测评、满意度、NPS、问卷星时使用。"
 description_en: "Guide for using wjx-cli (Wenjuanxing CLI) to create AI homepages, posters, PPTs, and surveys, query responses, and analyze data. Use when the user mentions AI homepages, AI posters, AI PPTs, surveys, forms, exams, NPS, Wenjuanxing, wjx, or related creation and update tasks."
-version: 0.4.4
+version: 0.4.5
 author: 问卷星
 ---
 
@@ -79,11 +79,11 @@ AI 主页是独立的纯展示内容，与表单/问卷创建互斥：
 
 ### 规则 3：不支持的题型要明确告知
 
-只使用 [references/question-types.md](references/question-types.md) 列出的 JSONL `qtype`，不要自行发明题型名。地区题使用 `qtype:"多级下拉"` 并提供 `leveldata`。若当前 JSONL 格式确实无法表达用户要求，明确说明限制和替代方案，继续创建其余题目，**不要**反复尝试或拆分多个问卷。
+只使用 [references/question-types.md](references/question-types.md) 列出的 JSONL `qtype`，不要自行发明题型名。地区题使用 `qtype:"多级下拉"` 并提供 `leveldata`。若当前 JSONL 格式确实无法表达用户要求，先明确说明限制和替代方案；经用户确认后重新生成完整 JSONL，再进行一次创建。不得部分创建、反复尝试或拆分多个问卷。
 
 ### 规则 3.2：纯框架题型默认保持草稿
 
-普通题型未指定发布选项时默认发布；但 `折叠栏目`、`轮播图`、`AI追问`、`AI处理`、`AI访谈`、`图片OCR`、`分页计时器`、`循环评价`、`考试代码` 仅凭 JSONL 骨架无法完善。问卷包含任一上述题型时，创建接口默认保持草稿。`VlookUp问卷关联` 当前由创建接口拒绝，只能读取既有问卷或转 Web 编辑器。先获取详情和编辑入口，指导用户补充素材/配置；只有用户明确要求发布时才显式传 `--publish` 或执行发布状态操作。
+普通题型未指定发布选项时默认发布；但 `折叠栏目`、`轮播图`、`AI追问`、`AI处理`、`AI访谈`、`图片OCR`、`分页计时器`、`循环评价`、`考试代码` 仅凭 JSONL 骨架无法完善。问卷包含任一上述题型时，创建接口默认保持草稿。`VlookUp问卷关联`、`矩阵数值题`、`多项文件题`、`多项简答题` 和 `当前语音` 属于读取/Web 编辑器边界，当前 JSONL 创建接口直接拒绝，不能按草稿路径重试。先获取详情和编辑入口，指导用户补充素材/配置；只有用户明确要求发布时才显式传 `--publish` 或执行发布状态操作。
 
 ### 规则 3.1：用户体系只允许兼容维护
 
@@ -213,7 +213,7 @@ node --version
 
 如果 Node.js 未安装或版本 < 20，需要先安装。参见 [references/install-nodejs.md](references/install-nodejs.md)，根据操作系统选择安装方式。
 
-Node.js 就绪后，当前源码版本为 `0.4.4`。如果本机版本低于兼容最低版本 `0.4.1`，直接安装或升级：
+Node.js 就绪后，当前源码版本为 `0.4.5`。如果本机版本低于兼容最低版本 `0.4.1`，直接安装或升级：
 
 ```bash
 npm install -g wjx-cli@latest

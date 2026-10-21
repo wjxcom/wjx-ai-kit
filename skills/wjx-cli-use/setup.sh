@@ -137,7 +137,17 @@ resolve_wjx_bin() {
 
 run_wjx() {
     [ -n "$WJX_BIN" ] || return 127
-    local cli_entry="$(dirname "$WJX_BIN")/node_modules/wjx-cli/dist/index.js"
+    local npm_root=""
+    if [ -n "$NPM_BIN" ]; then
+        npm_root="$("$NPM_BIN" root -g 2>/dev/null || true)"
+        npm_root="$(to_shell_path "$(trim_whitespace "$npm_root")")"
+    fi
+    local cli_entry="${npm_root:+$npm_root/wjx-cli/dist/index.js}"
+    if [ -z "$cli_entry" ] || [ ! -f "$cli_entry" ]; then
+        # Keep a prefix-relative fallback for npm layouts that do not expose
+        # `npm root -g` (and for test shims), but never assume bin/../node_modules.
+        cli_entry="$(dirname "$WJX_BIN")/../lib/node_modules/wjx-cli/dist/index.js"
+    fi
     # npm's Windows shim may fall back to the literal `node` command. When
     # PATH is stale, invoke the installed entry point with the Node binary we
     # already verified instead of letting the shim report a false failure.
@@ -308,7 +318,7 @@ print_node_install_guide() {
     echo "  macOS:    brew install node"
     echo "  Ubuntu:   curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash - && sudo apt-get install -y nodejs"
     echo "  CentOS:   curl -fsSL https://rpm.nodesource.com/setup_20.x | sudo bash - && sudo yum install -y nodejs"
-    echo "  Windows:  winget install OpenJS.NodeJS"
+    echo "  Windows:  从 https://nodejs.org/ 下载并安装 Node.js LTS"
     echo "  通用:     https://nodejs.org 下载安装"
     echo ""
 }

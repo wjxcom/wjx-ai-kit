@@ -4,8 +4,8 @@
 
 ## 安装与发布
 
-当前源码版本为 `0.4.4`。发布到 npm 后，registry 的 `latest` 将指向
-`wjx-mcp-server@0.4.4`。直接安装并运行：
+当前源码版本为 `0.4.5`。发布到 npm 后，registry 的 `latest` 将指向
+`wjx-mcp-server@0.4.5`。直接安装并运行：
 
 ```bash
 npm install -g wjx-mcp-server
