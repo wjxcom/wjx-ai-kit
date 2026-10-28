@@ -1,7 +1,7 @@
 import { getSurvey } from "./client.js";
 import { jsonToSurvey, NON_QUESTION_QTYPE_SET, parseJsonl } from "./json-to-survey.js";
 import { compareJsonlQuestionTypes, extractJsonlQuestionTypeExpectations, filterJsonlVerificationQuestions, getJsonlQuestionTypeCode } from "./qtype-mapping.js";
-import { surveyLogicMatches } from "./logic.js";
+import { surveyLogicMatches, surveyLogicPreservesQuestionContent } from "./logic.js";
 import type { UpdateSurveyByJsonInput } from "./types.js";
 import type { FetchLike, WjxCredentials } from "../../core/types.js";
 
@@ -70,12 +70,9 @@ export async function verifySurveyJsonUpdate(input: UpdateSurveyByJsonInput, bef
         warnings.push(...content.warnings);
       }
     } else {
-      const content = (value: unknown): string => JSON.stringify(value, (key, item) =>
-        ["relation", "item_relation", "has_jump", "is_hide", "refer_topic", "title_topic", "random_mode", "randomchoice",
-          "anytime_jumpto", "anytime_jump", "item_jump", "item_jump_rule", "choice_random", "choice_randomtype", "is_random_row"].includes(key) ? undefined : item);
       structure = typeof before.title === "string" && data.title === before.title
         && Array.isArray(before.questions) && Array.isArray(data.questions)
-        && content(data.questions) === content(before.questions);
+        && surveyLogicPreservesQuestionContent(input.dsl?.logic, before.questions, data.questions);
     }
   }
   if (input.dsl && !surveyLogicMatches(input.dsl.logic, (data?.dsl as { logic?: unknown } | undefined)?.logic,

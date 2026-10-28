@@ -58,6 +58,8 @@ wjx-cli 是问卷星 OpenAPI 的命令行工具。命令格式：`wjx <模块> <
 
 不要把旧接口的 `_meta`、`q_type`、`q_subtype`、`q_title`、`items` 结构传给 `create`；CLI 会将其判为输入错误。
 
+有关联逻辑时，先阅读 [题目逻辑与引用方向](references/logic.md)。显示条件只能依赖前题，跳题只能跳向后题或结束；引用固定写为 `from "前面的来源题" to "后面的接收题"`，选项引用用 `options`，矩阵行标题引用用 `rows`。题干引用必须有对应的 `[qN]` 占位符。逻辑数字使用实际题号与选项顺序，不能把 `S1/T1` 标签、显示题序或选项分值当作编号。
+
 ### AI 主页
 
 AI 主页是独立的纯展示内容，与表单/问卷创建互斥：
@@ -349,6 +351,7 @@ JSONL 每个非空行放一个 JSON 对象，且首行必须是问卷基础信�
 - [通讯录命令](references/contacts-commands.md) — 联系人、部门、管理员、标签、子账号、SSO
 - [分析命令](references/analytics-commands.md) — NPS/CSAT/CES 公式、异常检测、数据解码
 - [JSONL 题型](references/question-types.md) — `create` 的字段格式、中文 `qtype` 与示例
+- [题目逻辑与引用方向](references/logic.md) — 条件显隐、选项/行标题/题干引用、跳题方向、随机范围与保存核对
 - [计算公式](references/formula-helper.md) — 问卷星计算公式与Excel函数功能指南，帮助AI在问卷中正确编写计算公式。涵盖题目引用、数组写法、赋值判断逻辑、各题型的推送数据格式、函数参考（日期时间/数学计算/文本合并/条件判断/逻辑/查找统计）及实战案例。
 - [安装 Node.js](references/install-nodejs.md) — 各平台 Node.js 安装方式
 
