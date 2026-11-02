@@ -292,13 +292,13 @@ wjx survey shortlink --url "https://www.wjx.cn/vm/w4GZh.aspx?source=短信&campa
 
 ## Survey JSON 与逻辑
 
-问卷创建统一使用 Survey JSON（JSONL），修改使用同一内容格式。涉及题目关联时增加可选节点：
+问卷内容的创建和修改统一使用 Survey JSON（JSONL）；涉及关联、显示隐藏、跳题、引用或随机时，必须通过独立的 `dsl.logic` 提交逻辑：
 
 ```json
 {"dsl":{"logic":"logic { if \"2::1\" then show \"3\"; };"}}
 ```
 
-完整请求的 `jsonl` 是 JSONL 字符串；`dsl` 是对象，只包含 `logic`。无逻辑时省略 `dsl`。已有 `relation/referselect` 字段继续保留，冲突时 DSL 优先。
+完整请求的 `jsonl` 是只定义问卷内容的 JSONL 字符串；`dsl` 是对象，只包含 DSL 文本字符串 `logic`。无逻辑时省略 `dsl`。不要将 `relation`、`referselect` 等 JSON 逻辑字段作为创建或修改逻辑的方式；具体规则见 [题目逻辑与引用方向](logic.md)。服务端将 DSL 转换为原生逻辑属性。
 
 SDK 使用 `createSurveyByJson` / `updateSurveyByJson`；CLI 使用 `survey create` / `survey update`；MCP 使用 `create_survey_by_json` / `update_survey_by_json`。普通查询 `getSurvey` / `survey get` / `get_survey` 从实际 XML 返回可编辑的 `dsl.logic`。
 

@@ -50,15 +50,17 @@ wjx-cli 是问卷星 OpenAPI 的命令行工具。命令格式：`wjx <模块> <
 
 ## AI Agent 行为准则（必读）
 
-### 规则 0：使用 Survey JSON 与可选题目逻辑
+### 规则 0：题目内容用 JSONL，问卷逻辑必须用 DSL
 
-先运行 `wjx survey jsonl-template --type <问卷类型> --raw` 获取骨架，再执行 `wjx survey create`。题目逻辑使用可选 `--dsl '{"logic":"logic { ... };"}'` 或 stdin 的 `dsl` 对象。服务端将 DSL 转换为 XML 原生逻辑属性，冲突时优先于 JSON 中的 relation/referselect。
+先运行 `wjx survey jsonl-template --type <问卷类型> --raw` 获取骨架，再执行 `wjx survey create`。JSONL 只定义问卷基础信息、题目内容与题型配置。
 
-修改前先执行 `wjx survey get --vid <vid>`，使用返回的 `dsl.logic` 修改逻辑，通过 `wjx survey update --vid <vid>` 提交。仅修改逻辑时不用提供 JSONL；修改题目时提供完整 JSONL。AI 主页使用 `survey update-ai-page`。
+**创建和修改问卷时，题目/选项关联、显示隐藏、跳题、引用和随机等逻辑必须统一写入 `dsl.logic`**，通过 `--dsl '{"logic":"logic { ... };"}'` 或 stdin 的 `dsl` 对象提交；只有无逻辑需求时才省略 `dsl`。不要在 JSONL 中新增、复制或修改 `relation`、`referselect` 等逻辑字段，也不要对同一逻辑同时提交 JSON 字段和 DSL 两套配置。若当前 DSL 不支持所需逻辑或校验失败，明确说明限制，不得回退到 JSON 逻辑字段或擅自省略逻辑。
+
+修改前先执行 `wjx survey get --vid <vid>`，使用返回的 `dsl.logic` 修改逻辑，通过 `wjx survey update --vid <vid>` 提交。查询中的历史逻辑字段仅用于理解现状，不要直接复制回写。仅修改逻辑时不用提供 JSONL；修改题目时提供完整 JSONL，逻辑变更仍通过 `dsl.logic` 提交。AI 主页使用 `survey update-ai-page`。
 
 不要把旧接口的 `_meta`、`q_type`、`q_subtype`、`q_title`、`items` 结构传给 `create`；CLI 会将其判为输入错误。
 
-有关联逻辑时，先阅读 [题目逻辑与引用方向](references/logic.md)。显示条件只能依赖前题，跳题只能跳向后题或结束；引用固定写为 `from "前面的来源题" to "后面的接收题"`，选项引用用 `options`，矩阵行标题引用用 `rows`。题干引用必须有对应的 `[qN]` 占位符。逻辑数字使用实际题号与选项顺序，不能把 `S1/T1` 标签、显示题序或选项分值当作编号。
+涉及逻辑（含引用和随机）时，先阅读 [题目逻辑与引用方向](references/logic.md)。显示条件只能依赖前题，跳题只能跳向后题或结束；引用固定写为 `from "前面的来源题" to "后面的接收题"`，选项引用用 `options`，矩阵行标题引用用 `rows`。题干引用必须有对应的 `[qN]` 占位符；自动填入答题框不能用题干引用代替。逻辑数字使用实际题号与选项顺序，不能把 `S1/T1` 标签、显示题序或选项分值当作编号。
 
 ### AI 主页
 
@@ -298,7 +300,7 @@ wjx doctor
 
 ## 核心工作流
 
-### 创建问卷（Survey JSON 与可选逻辑）
+### 创建问卷（JSONL 内容与 DSL 逻辑）
 
 > **重要**：创建任何新问卷都必须执行 `wjx survey create` 命令。只生成 JSONL/DSL 文本而不执行命令，问卷不会被创建到问卷星平台上。
 
@@ -358,13 +360,13 @@ JSONL 每个非空行放一个 JSON 对象，且首行必须是问卷基础信�
 
 ## Survey JSON 与逻辑
 
-问卷创建统一使用 Survey JSON（JSONL），修改使用同一内容格式。涉及题目关联时增加可选节点：
+问卷内容的创建和修改统一使用 Survey JSON（JSONL）；涉及关联、显示隐藏、跳题、引用或随机时，必须通过独立的 `dsl.logic` 提交逻辑：
 
 ```json
 {"dsl":{"logic":"logic { if \"2::1\" then show \"3\"; };"}}
 ```
 
-完整请求的 `jsonl` 是 JSONL 字符串；`dsl` 是对象，只包含 `logic`。无逻辑时省略 `dsl`。已有 `relation/referselect` 字段继续保留，冲突时 DSL 优先。
+完整请求的 `jsonl` 是只定义问卷内容的 JSONL 字符串；`dsl` 是对象，只包含 DSL 文本字符串 `logic`。无逻辑时省略 `dsl`。不要将 `relation`、`referselect` 等 JSON 逻辑字段作为创建或修改逻辑的方式；具体规则见 [题目逻辑与引用方向](references/logic.md)。服务端将 DSL 转换为原生逻辑属性。
 
 SDK 使用 `createSurveyByJson` / `updateSurveyByJson`；CLI 使用 `survey create` / `survey update`；MCP 使用 `create_survey_by_json` / `update_survey_by_json`。普通查询 `getSurvey` / `survey get` / `get_survey` 从实际 XML 返回可编辑的 `dsl.logic`。
 
