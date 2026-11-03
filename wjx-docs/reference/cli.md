@@ -1,12 +1,13 @@
 # CLI 命令参考
 
-运行 `wjx <command> --help` 可查看当前命令和参数；本版本包含 77 个叶子命令。
+运行 `wjx <command> --help` 可查看当前命令和参数；本版本包含 81 个叶子命令。
 
 ## 顶层命令
 
 | 命令 | 用途 |
 | --- | --- |
 | `survey` | 问卷生命周期、题型、设置和上传 |
+| `dsl` | XML DSL 查询、校验、创建和修改 |
 | `response` | 答卷查询、下载、提交、报告 |
 | `analytics` | 本地解码、NPS/CSAT、异常检测、对比 |
 | `contacts` / `department` / `admin` / `tag` | 通讯录域 |
@@ -24,6 +25,9 @@
 | 导出格式 | `wjx response download --suffix 0\|1\|2` |
 | 查询单份答卷 | `wjx response query --jid <id>` |
 | 创建 JSONL 问卷 | `wjx survey create --file <path>` |
+| 校验 XML DSL | `wjx dsl generate --file <path>` |
+| 创建/修改 XML DSL 问卷 | `wjx dsl create --file <path>` / `wjx dsl update --vid <vid> --file <path>` |
+| 查询 XML DSL | `wjx dsl query --vid <vid>` |
 | 生成填写/预览链接 | `wjx survey preview-url --sid <sid>` |
 
 旧参数 `--permanent`、`--base64`、`--filename`、`--response_id` 不属于当前 CLI 参考路径。需要确认本机版本时运行 `wjx --version` 和 `wjx <command> --help`。

@@ -46,6 +46,7 @@ const builtinEntry = (id: string, risk: ActionCatalogEntry["risk"] = "read"): Ca
 export const CATALOG: readonly CatalogEntry[] = Object.freeze([
   apiEntry("survey.get", Action.GET_SURVEY),
   apiEntry("survey.list", Action.LIST_SURVEYS),
+  apiEntry("survey.update", Action.UPDATE_SURVEY_BY_JSON, "high-risk-write"),
   apiEntry("survey.create", Action.CREATE_SURVEY_BY_JSON, "write"),
   apiEntry("survey.create-ai-page", Action.CREATE_AI_PAGE, "write"),
   apiEntry("survey.update-ai-page", Action.UPDATE_AI_PAGE, "high-risk-write"),

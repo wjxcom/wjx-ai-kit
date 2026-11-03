@@ -16,7 +16,7 @@
     "wjx-mcp-server/src/modules/survey/tools.ts",
     "wjx-mcp-server/src/modules/user-system/tools.ts"
   ],
-  "sourceRevision": "356510d4f2583c3fcd033efc0fe6a855b7752b10634412257b1db34e137ab7f2",
+  "sourceRevision": "63c099ecf765299327aad599ca9229ebbae27d514b4c11966fbcbe37e7fc9537",
   "mergeRules": {
     "scope": "Agent contract safety policy only; does not change CLI metadata or exit codes",
     "risk": "max(cli-metadata-risk, high-risk-write when any mapped MCP destructiveHint is true)",
@@ -30,6 +30,10 @@
     ],
     "create": [
       "survey.create"
+    ],
+    "edit": [
+      "survey.get",
+      "survey.update"
     ],
     "publish": [
       "survey.status",
@@ -419,6 +423,11 @@
       "idempotentHint": false,
       "openWorldHint": true
     },
+    "update_survey_by_json": {
+      "destructiveHint": true,
+      "idempotentHint": false,
+      "openWorldHint": true
+    },
     "update_survey_settings": {
       "title": "修改问卷设置",
       "destructiveHint": true,
@@ -563,7 +572,8 @@
     },
     "modify": {
       "capabilityIds": [
-        "response.modify"
+        "response.modify",
+        "survey.update"
       ],
       "risk": "high-risk-write",
       "confirmation": "required",
@@ -579,7 +589,8 @@
       "maxBatch": null,
       "mcp": {
         "tools": [
-          "modify_response"
+          "modify_response",
+          "update_survey_by_json"
         ],
         "destructiveHint": true,
         "idempotentHint": false
@@ -818,8 +829,16 @@
       "id": "write-unknown-outcome",
       "capabilityIds": [
         "survey.create",
+        "survey.update",
         "response.submit",
         "survey.update-settings"
+      ]
+    },
+    {
+      "id": "update-survey-read-after-write",
+      "capabilityIds": [
+        "survey.update",
+        "survey.get"
       ]
     },
     {

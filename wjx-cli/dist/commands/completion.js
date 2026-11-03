@@ -66,8 +66,12 @@ export function registerCompletionCommands(program) {
                 if (existsSync(profilePath)) {
                     const content = readFileSync(profilePath, "utf8");
                     if (content.includes(evalLine) || content.includes("wjx completion")) {
-                        process.stderr.write(`补全脚本已安装在 ${profilePath}\n`);
-                        return { status: "skipped", reason: "already-installed", profilePath };
+                        return {
+                            status: "skipped",
+                            reason: "already-installed",
+                            profilePath,
+                            message: `补全脚本已安装在 ${profilePath}`,
+                        };
                     }
                 }
             }
@@ -77,12 +81,12 @@ export function registerCompletionCommands(program) {
             const isNew = !existsSync(profilePath);
             const snippet = `\n${marker}\n${evalLine}\n`;
             writeFileSync(profilePath, snippet, { flag: "a" });
-            if (isNew) {
-                process.stderr.write(`已创建新文件 ${profilePath}\n`);
-            }
-            process.stderr.write(`已添加到 ${profilePath}\n`);
-            process.stderr.write(`运行以下命令立即生效:\n  source ${profilePath}\n`);
-            return { status: "installed", profilePath, shell };
+            return {
+                status: "installed",
+                profilePath,
+                shell,
+                message: `${isNew ? `已创建新文件 ${profilePath}；` : ""}已添加补全脚本。运行以下命令立即生效: source ${profilePath}`,
+            };
         }, { dryRun: () => ({ command: "completion.install" }) });
     });
 }

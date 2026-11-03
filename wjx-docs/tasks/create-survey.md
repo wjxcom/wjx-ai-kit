@@ -17,7 +17,7 @@ JSONL 每行一个对象，首行是问卷元数据，后续各行是一道题�
 wjx survey create --file survey.jsonl --publish
 ```
 
-普通题型未传 `--publish` 时默认立即发布。若 JSONL 包含纯框架题型（`折叠栏目`、`轮播图`、`AI追问`、`AI处理`、`AI访谈`、`图片OCR`、`VlookUp问卷关联`、`分页计时器`），则默认创建为草稿，因为这些题型还需要在编辑页补充素材或配置。完成二次编辑并获得用户明确授权后，再显式发布。
+普通题型未传 `--publish` 时默认立即发布。若 JSONL 包含纯框架题型（`折叠栏目`、`轮播图`、`AI追问`、`AI处理`、`AI访谈`、`图片OCR`、`分页计时器`），则默认创建为草稿，因为这些题型还需要在编辑页补充素材或配置。完成二次编辑并获得用户明确授权后，再显式发布。`VlookUp问卷关联`、`矩阵数值题`、`多项文件题`、`多项简答题` 和 `当前语音` 只能读取既有问卷或由 Web 编辑器配置，当前 JSONL 创建接口会直接拒绝，不能按草稿路径重试。
 
 创建成功后，如果需要让答卷人预览或填写，使用返回的 `sid` 生成链接：
 
@@ -40,8 +40,8 @@ wjx survey jsonl-template --type 1 --raw > survey.jsonl
 ## 创建前检查
 
 - 题目标题不要包含题号或题型标签。
-- 多项填空在标题中使用 `{_}` 占位符。
+- JSONL 多项填空在标题中使用 `{_}` 占位符；XML DSL `gapfill` 使用后端格式 `___`（SDK 会兼容归一化 `{_}`）。
 - 只有明确指定选填时才在 `optional_titles` 中列出。
 - 普通题型当前没有 CLI 创建草稿选项；若必须先不发布，请在 SDK/MCP 中传 `publish:false`，或创建后立即使用状态操作暂停。框架题型省略 `--publish` 会按上述规则默认创建为草稿。创建后可用 `wjx survey get --vid <id> --get_questions` 检查结构。
 
-题型字段见 [题型与 JSONL](../reference/question-types.md)。
+题型字段见 [题型与 JSONL](../reference/question-types.md)。XML DSL 创建与修改见 [WJX XML DSL v1](../reference/wjx-xml-dsl-v1.md)。

@@ -8,7 +8,7 @@ import {
   querySurveyBinding,
   queryUserSurveys,
 } from "wjx-api-sdk";
-import { strictInt, requireField, ensureNonEmptyJsonArray } from "../lib/command-helpers.js";
+import { strictInt, requireField, requirePositiveInt, ensureNonEmptyJsonArray } from "../lib/command-helpers.js";
 
 export function registerUserSystemCommands(program: Command): void {
   const userSystem = program.command("user-system").description("用户系统管理（已过时，仅维护已有系统）");
@@ -23,7 +23,7 @@ export function registerUserSystemCommands(program: Command): void {
     .action(async (_opts, cmd) => {
       await executeRuntimeAction(program, cmd, addParticipants, (m) => {
         requireField(m, "users");
-        requireField(m, "sysid");
+        requirePositiveInt(m, "sysid");
         return {
           users: ensureNonEmptyJsonArray(m.users, "users"),
           sysid: m.sysid,
@@ -42,7 +42,7 @@ export function registerUserSystemCommands(program: Command): void {
     .action(async (_opts, cmd) => {
       await executeRuntimeAction(program, cmd, modifyParticipants, (m) => {
         requireField(m, "users");
-        requireField(m, "sysid");
+        requirePositiveInt(m, "sysid");
         return {
           users: ensureNonEmptyJsonArray(m.users, "users"),
           sysid: m.sysid,
@@ -60,7 +60,7 @@ export function registerUserSystemCommands(program: Command): void {
     .action(async (_opts, cmd) => {
       await executeRuntimeAction(program, cmd, deleteParticipants, (m) => {
         requireField(m, "uids");
-        requireField(m, "sysid");
+        requirePositiveInt(m, "sysid");
         return {
           uids: ensureNonEmptyJsonArray(m.uids, "uids"),
           sysid: m.sysid,
@@ -81,8 +81,8 @@ export function registerUserSystemCommands(program: Command): void {
     .option("--can_hide_qlist <n>", "隐藏问卷列表", strictInt)
     .action(async (_opts, cmd) => {
       await executeRuntimeAction(program, cmd, bindActivity, (m) => {
-        requireField(m, "vid");
-        requireField(m, "sysid");
+        requirePositiveInt(m, "vid");
+        requirePositiveInt(m, "sysid");
         requireField(m, "uids");
         return {
           vid: m.vid,
@@ -109,8 +109,8 @@ export function registerUserSystemCommands(program: Command): void {
     .option("--force_join_times", "强制参与次数")
     .action(async (_opts, cmd) => {
       await executeRuntimeAction(program, cmd, querySurveyBinding, (m) => {
-        requireField(m, "vid");
-        requireField(m, "sysid");
+        requirePositiveInt(m, "vid");
+        requirePositiveInt(m, "sysid");
         return {
           vid: m.vid,
           sysid: m.sysid,
@@ -132,7 +132,7 @@ export function registerUserSystemCommands(program: Command): void {
     .action(async (_opts, cmd) => {
       await executeRuntimeAction(program, cmd, queryUserSurveys, (m) => {
         requireField(m, "uid");
-        requireField(m, "sysid");
+        requirePositiveInt(m, "sysid");
         return {
           uid: m.uid,
           sysid: m.sysid,

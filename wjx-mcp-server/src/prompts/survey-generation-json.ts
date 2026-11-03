@@ -32,6 +32,7 @@ const JSONL_FORMAT_INSTRUCTIONS = `
    - 360评估无测评关系 → **必须显式传 atype=5**
    - 民主测评 / 民主评议 → **必须显式传 atype=11**
    - 普通调查 → atype=1（默认值，可省略）
+【题目关联逻辑】先生成题目 JSONL，再生成可选 dsl 对象，其 logic 字符串使用现有语法：logic { if "2::1" then show "3"; };。logic 内只描述题目关联，不包含题目定义或问卷设置。无关联逻辑时省略 dsl；与 relation/referselect 冲突时 DSL 优先。服务端会解析转换为 XML 原生逻辑属性。修改时先 get_survey 读取实际 XML 投影的 dsl.logic，再调用 update_survey_by_json；仅修改逻辑时不必重新生成题目 JSONL。
 9. 【多项填空特别说明】多项填空必须在 title 中用 {_} 占位符表示每个子填空位，每个 {_} 对应一个输入框。例：{"qtype":"多项填空","title":"姓名{_}，年龄{_}，电话{_}"} 会生成 3 个空位。**禁止用 rowtitle 数组定义多项填空的子项**（rowtitle 仅用于矩阵题/比重题/Kano/PSM/表格题 等）— 否则服务端只会生成 1 个空位。
 10. 【矩阵题 & 表格题 用法指南】qtype 必须使用下列精确名称之一，不要凭想象造新名字（如"矩阵""矩阵题""通用矩阵""表格题"等模糊值会创建失败）：
 
@@ -96,11 +97,12 @@ const JSONL_FORMAT_INSTRUCTIONS = `
 
 /** qtype 约束指令。列表来自生成的 profile，避免 prompt 与 SDK 漂移。 */
 function qtypeConstraint(): string {
-  return `qtype 的值只能是生成 profile 中列出的值：${JSONL_QTYPES_RESOURCE.qtypes.join("、")}。完整分层、草稿限制和字段约束请以资源 wjx://reference/jsonl-qtypes 为准；本 prompt 的示例不是额外白名单。`;
+  const creatable = JSONL_QTYPES_RESOURCE.creatableQtypes ?? JSONL_QTYPES_RESOURCE.qtypes;
+  return `qtype 的值只能从当前可创建列表中选择：${creatable.join("、")}。完整 qtype 列表还包含只能读取或转 Web 编辑器的题型；请以资源 wjx://reference/jsonl-qtypes 的分层、草稿限制和字段约束为准，本 prompt 的示例不是额外白名单。`;
 }
 
 /** 通用 JSONL 格式约束 */
-const JSONL_CONSTRAINTS = "不要生成重复的题目以及无关的问题，同一题目不要生成相同的选项；referselect 字段的值必须是其他相关题型的 title 字段的值；题目顺序需要遵循逻辑顺序，由简单到复杂，由客观到主观，开放题要放在末尾。";
+const JSONL_CONSTRAINTS = "不要生成重复的题目以及无关的问题，同一题目不要生成相同的选项；relation/referselect 仅在用户提供并确认合法格式时原样保留，当前客户端不验证这些字段的语义；需要题目分支逻辑时生成可选 dsl.logic，服务端转换为 XML 原生逻辑并通过 get_survey 的实际逻辑投影验证；题目顺序需要遵循逻辑顺序，由简单到复杂，由客观到主观，开放题要放在末尾。";
 
 // ─── Registration ───────────────────────────────────────────────────
 
@@ -123,7 +125,7 @@ export function registerSurveyGenerationJsonPrompts(server: McpServer): void {
 
 问卷设计思路：如果用户没有给出调研目的，请根据主题推测调研目的，结合主题推测场景和对象。从基本信息开始，逐步到意向、决策因素，然后是服务评估，最后是主观反馈。遵循逻辑顺序：由简单到复杂，从不敏感到敏感。充分利用丰富的题型（矩阵题、评分题、排序题、量表题、专业模型题等）。
 
-题目数量硬性要求：必须生成 **${question_count ?? "15"} 道真实题目**（不计 _meta/分页/段落）。合理使用关联逻辑（relation 字段），让作答更加顺畅。推荐题型比例：单选（30%）、多选（25%）、量表/矩阵量表（15%）、矩阵单选（10%）、排序（5%）、填空（5%）、其它专业模型（10%，按主题取舍）。
+题目数量硬性要求：必须生成 **${question_count ?? "15"} 道真实题目**（不计 _meta/分页/段落）。不要主动添加未经确认的 relation/referselect 逻辑字段；需要分支逻辑时生成可选 dsl.logic，与题目 JSONL 一起提交。推荐题型比例：单选（30%）、多选（25%）、量表/矩阵量表（15%）、矩阵单选（10%）、排序（5%）、填空（5%）、其它专业模型（10%，按主题取舍）。
 
 【atype 选择硬性规则】判断主题后在调用 create_survey_by_json 时决定 atype：
 - 主题含"投票/评选/最佳...评比" → **显式传 atype=3**，并使用投票单选/投票多选 qtype
@@ -171,7 +173,7 @@ ${JSONL_CONSTRAINTS}${JSONL_FORMAT_INSTRUCTIONS}`,
 1. 覆盖知识范围的核心概念，确保题目多样（测试记忆、理解、应用能力）
 2. 题目表述清晰、无歧义，避免文化或性别偏见
 3. 普通题目（收集考生基础信息）放在最前面，正式考试题目在后
-4. 正式考试题目必须包含分值（quizscore）、正确答案（correctselect）和答案解析（answeranalysis）
+4. 正式考试客观题必须包含分值（quizscore）、正确答案（correctselect）和答案解析（answeranalysis）。考试简答和考试代码不设置 correctselect：前者交由人工阅卷，后者需要编程语言和判题配置。
 
 题目数量硬性要求（总和 ≥ 1，通常 15+ 道）：考试单选 ${single_count ?? "10"} 题，考试多选 ${multi_count ?? "5"} 题，考试判断 ${judge_count ?? "5"} 题，考试填空 ${fill_count ?? "5"} 题。必须严格按照各题型数量生成，不得漏生成或只生成基础信息行。
 
@@ -181,6 +183,10 @@ ${JSONL_CONSTRAINTS}${JSONL_FORMAT_INSTRUCTIONS}`,
 考试多选：{"qtype":"考试多选","title":"题目?","select":["A","B","C","D"],"correctselect":["A","C"],"quizscore":"5","answeranalysis":"解析..."}
 考试单项填空：{"qtype":"考试单项填空","title":"填空题","correctselect":["正确答案1","正确答案2"],"quizscore":"5","answeranalysis":"解析..."}
 考试多项填空：{"qtype":"考试多项填空","title":"The boy {_} a student, he {_} very smart","answerlists":[{"correctselect":["is"],"quizscore":"2","include":true},{"correctselect":["is"],"quizscore":"2","include":true}],"answeranalysis":"解析..."}（每个 {_} 对应一个填空，不要用下划线/rowtitle）
+考试简答：{"qtype":"考试简答","title":"请说明你的解题思路","quizscore":"10","answeranalysis":"人工阅卷"}
+考试代码：{"qtype":"考试代码","title":"实现一个求和函数","codetype":"python","quizscore":"10"}（必须有 codetype；禁止 correctselect/answer，初始代码与判题/运行配置在 Web 编辑器补充）
+
+普通调查中的主观题使用“简答题”；只有考试问卷的开放回答才使用“考试简答”。不要把主观题写成“考试单项填空”，后者仅用于有标准答案的填空题。
 
 ${qtypeConstraint()}
 ${JSONL_CONSTRAINTS}
@@ -210,7 +216,7 @@ ${JSONL_CONSTRAINTS}
 表单设计思路：
 1. 充分利用现有丰富的预设题型（如手机、邮箱、省市区、高校等），减少使用普通单项填空
 2. 合理安排题目顺序，收集基本信息的题目放在前面
-3. 根据主题合理使用关联逻辑（relation 字段）
+3. 不要主动生成未经确认的 relation/referselect；题目分支逻辑使用可选 dsl.logic，并读取 get_survey 的实际逻辑投影验证保存结果
 4. 多字段录入场景可按需求选择普通题型，或表格数值/表格填空/表格下拉框/表格组合/自增表格；多项文件题和多项简答题需转 Web 编辑器
 
 表单题目数量硬性要求：必须生成至少 ${question_count ?? "10"} 道**真实题目**（不计 _meta/分页/段落），不允许只生成基础信息行就交差。

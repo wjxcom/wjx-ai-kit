@@ -160,6 +160,37 @@ test("numeric backend codes are not classified from upgrade wording alone", asyn
   }
 });
 
+test("DSL validation failures preserve backend diagnostics in the CLI error envelope", async () => {
+  const fixture = await startFixture({
+    response: {
+      result: false,
+      errorcode: 46007,
+      errormsg: "DSL 未通过严格校验。",
+      data: {
+        status: "ValidationFailed",
+        correlationId: "dsl-trace",
+        validationSuccess: false,
+        canCommit: false,
+        diagnosticCount: 1,
+        diagnostics: [{ code: "DSL_MATRIX_RANGE", path: "/Questionnaire/Question[1]", message: "表格数值范围无效" }],
+      },
+    },
+    env: { WJX_API_KEY: "test-key" },
+  });
+  try {
+    const dsl = 'wjx-dsl 1; questionnaire { attr "Title" = "诊断测试"; };';
+    const result = await fixture.run(["dsl", "create", "--dsl", dsl]);
+    assert.equal(result.exitCode, 1);
+    const problem = JSON.parse(result.stderr);
+    assert.equal(problem.error.errorcode, 46007);
+    assert.equal(problem.error.status, "ValidationFailed");
+    assert.equal(problem.error.canCommit, false);
+    assert.equal(problem.error.diagnostics[0].code, "DSL_MATRIX_RANGE");
+  } finally {
+    await fixture.close();
+  }
+});
+
 test("business upgrade wording is not classified as a client-version upgrade", async () => {
   const fixture = await startFixture({
     response: {

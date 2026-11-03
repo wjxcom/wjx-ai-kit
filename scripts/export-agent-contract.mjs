@@ -174,7 +174,7 @@ export async function createContract() {
     read: ["survey.list", "survey.get", "survey.settings", "response.count", "response.query"],
     create: ["survey.create"],
     submit: ["response.submit"],
-    modify: ["response.modify"],
+    modify: ["response.modify", "survey.update"],
     "update-settings": ["survey.update-settings"],
     "publish/status": ["survey.status"],
     delete: ["survey.delete"],
@@ -241,6 +241,7 @@ export async function createContract() {
   const intentPrefixes = {
     design: ["survey.get", "survey.settings", "survey.jsonl-template"],
     create: ["survey.create"],
+    edit: ["survey.get", "survey.update"],
     publish: ["survey.status", "survey.url", "survey.preview-url", "survey.shortlink"],
     collect: ["response.query", "response.realtime", "response.submit", "response.download"],
     analyze: ["response.report", "response.winners", "analytics.nps", "analytics.csat", "analytics.anomalies", "analytics.compare"],
@@ -261,7 +262,8 @@ export async function createContract() {
   };
   const verificationRules = [
     { id: "create-read-after-write", capabilityIds: ["survey.create", "survey.get", "survey.status", "survey.preview-url"].filter((id) => supported.has(id)) },
-    { id: "write-unknown-outcome", capabilityIds: ["survey.create", "response.submit", "survey.update-settings"].filter((id) => supported.has(id)) },
+    { id: "write-unknown-outcome", capabilityIds: ["survey.create", "survey.update", "response.submit", "survey.update-settings"].filter((id) => supported.has(id)) },
+    { id: "update-survey-read-after-write", capabilityIds: ["survey.update", "survey.get"].filter((id) => supported.has(id)) },
     { id: "modify-response-read-after-write", capabilityIds: ["response.modify", "response.query"].filter((id) => supported.has(id)) },
     { id: "queue-counts", capabilityIds: ["response.realtime"].filter((id) => supported.has(id)) },
   ];

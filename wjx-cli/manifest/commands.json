@@ -1322,8 +1322,8 @@
           "bot"
         ],
         "targetFields": [
-          "sysid",
-          "username"
+          "system_id",
+          "u"
         ]
       }
     },
@@ -1698,6 +1698,35 @@
         ],
         "httpRetryable": true,
         "idempotent": true
+      }
+    },
+    {
+      "id": "survey.update",
+      "command": "survey.update",
+      "service": "default",
+      "action": "1000109",
+      "input": {
+        "type": "object",
+        "properties": {}
+      },
+      "risk": "high-risk-write",
+      "identities": [
+        "user",
+        "bot"
+      ],
+      "source": "api",
+      "metadata": {
+        "path": "survey.update",
+        "risk": "high-risk-write",
+        "identities": [
+          "user",
+          "bot"
+        ],
+        "targetFields": [
+          "vid"
+        ],
+        "preRead": true,
+        "postVerify": true
       }
     },
     {

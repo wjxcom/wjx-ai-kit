@@ -1,5 +1,6 @@
 export {
   createSurveyByJson,
+  updateSurveyByJson,
   createAiPage,
   updateAiPage,
   AI_PAGE_MAX_HTML_LENGTH,

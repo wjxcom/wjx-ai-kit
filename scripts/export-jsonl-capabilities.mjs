@@ -23,10 +23,12 @@ export async function createProfile() {
   const stableNames = new Set(["单选", "多选", "单项填空", "多项填空", "简答题", "量表题", "NPS量表", "矩阵单选", "矩阵多选", "矩阵量表", "判断题", "下拉框", "排序"]);
   const stable = qtypes.filter((name) => stableNames.has(name));
   const advanced = qtypes.filter((name) => !frameworkSet.has(name) && !stableNames.has(name) && !readOnlySet.has(name));
+  const creatableQtypes = qtypes.filter((name) => !readOnlySet.has(name));
   return {
     schemaVersion: 1,
     sourceRevision: revision(),
     qtypes,
+    creatableQtypes,
     creatableAtypes: [...sdk.CREATABLE_SURVEY_ATYPES].sort((a, b) => a - b),
     tiers: {
       "stable-basic": { qtypes: stable, mode: "create-and-publish", description: "常用 JSONL 题型，当前 SDK 可直接创建。" },

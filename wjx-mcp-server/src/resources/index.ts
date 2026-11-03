@@ -177,4 +177,5 @@ export function registerResources(server: McpServer): void {
     }),
   );
 
+
 }

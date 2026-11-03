@@ -69,9 +69,6 @@ try {
     .split(/\r?\n/)
     .filter(Boolean);
   if (!sdkListing.includes("package/dist/index.js")) throw new Error("SDK release tarball missing dist/index.js");
-  if (sdkListing.some((item) => item.startsWith("package/dist/modules/dsl/"))) {
-    throw new Error("SDK release tarball contains removed dist/modules/dsl artifacts");
-  }
   const tarballName = basename(tarballPath);
   const listing = execFileSync("tar", ["-tf", tarballName], { cwd: outputStage, encoding: "utf8" }).split(/\r?\n/).filter(Boolean);
   if (!listing.includes("package/dist/index.js")) throw new Error("release tarball missing dist/index.js");
@@ -79,8 +76,6 @@ try {
     "package/manifest/",
     "package/perf/",
     "package/src/",
-    "package/dist/commands/dsl.",
-    "package/dist/modules/dsl/",
   ]) if (listing.some((item) => item.startsWith(forbidden))) throw new Error(`release tarball contains ${forbidden}`);
   const packedPackage = JSON.parse(execFileSync("tar", ["-xOf", tarballName, "package/package.json"], { cwd: outputStage, encoding: "utf8" }));
   if (packedPackage.version !== packageJson.version) throw new Error(`release tarball version mismatch: ${packedPackage.version}`);

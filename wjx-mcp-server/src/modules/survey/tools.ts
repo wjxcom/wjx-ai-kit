@@ -2,6 +2,7 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import {
   createSurveyByJson,
+  updateSurveyByJson,
   createAiPage,
   updateAiPage,
   AI_PAGE_MAX_HTML_LENGTH,
@@ -23,7 +24,7 @@ import {
   compareJsonlQuestionTypes,
   filterJsonlVerificationQuestions,
 } from "./client.js";
-import { buildPreviewUrl, getWjxBaseUrl, getWjxCredentials } from "wjx-api-sdk";
+import { prepareSurveyDslJson, verifySurveyJsonUpdate, surveyLogicMatches, buildPreviewUrl, getWjxBaseUrl, getWjxCredentials } from "wjx-api-sdk";
 import type { SurveyDetail } from "./client.js";
 import { assertApiResponse, toolApiResult, toolResult, toolError } from "../../helpers.js";
 import { QUESTION_TYPES } from "../../resources/survey-reference.js";
@@ -130,6 +131,11 @@ function field(record: AnyRecord, ...names: string[]): unknown {
     if (record[name] !== undefined && record[name] !== null) return record[name];
   }
   return undefined;
+}
+
+function surveyCreator(data: AnyRecord | undefined): string | undefined {
+  const value = field(data ?? {}, "creater", "creator", "username", "user_name", "owner");
+  return typeof value === "string" && value.trim() ? value.trim() : undefined;
 }
 
 function respondentUrl(
@@ -879,7 +885,7 @@ export function registerSurveyTools(server: McpServer): void {
         "删除问卷。普通删除进入回收站（status=3，可恢复）；设置 completely_delete=true 才会彻底删除（status=4，不可恢复）。请谨慎使用。",
       inputSchema: {
         vid: z.number().int().positive().describe("问卷编号"),
-        username: z.string().min(1).describe("用户名（主账户/系统管理员/问卷创建者子账号）"),
+        username: z.string().min(1).optional().describe("用户名（可省略；将从问卷读回的 creater 补齐）"),
         completely_delete: z.boolean().optional().describe("是否彻底删除（status=4，不可恢复；不传则进入回收站 status=3，可恢复）"),
       },
       annotations: {
@@ -894,11 +900,15 @@ export function registerSurveyTools(server: McpServer): void {
         return runVerifiedWrite({
           operation: "delete_survey",
           preRead: () => surveyReadOrThrow(args.vid),
-          write: () => deleteSurvey({
-            vid: args.vid,
-            username: args.username,
-            completely_delete: args.completely_delete,
-          }),
+          write: (preRead) => {
+            const username = args.username?.trim() || surveyCreator(responseData(preRead));
+            if (!username) throw new Error(`问卷 ${args.vid} 读回结果缺少 creater，无法安全删除；请显式提供 username`);
+            return deleteSurvey({
+              vid: args.vid,
+              username,
+              completely_delete: args.completely_delete,
+            });
+          },
           verify: ({ phase }) => verifyDeletedSurvey(args.vid, args.completely_delete === true, phase),
         });
       } catch (error) {
@@ -1090,13 +1100,13 @@ export function registerSurveyTools(server: McpServer): void {
         "【核心字段】qtype（题型名称）、title（标题，只写题目正文，不写题目类型）、select（选项数组）、rowtitle（行标题或表格字段名）、requir（是否必填；缺省时 SDK 注入 true）。" +
         "【必答规则】默认所有题型都是必答题，包括单项填空、简答题、意见建议题、开放题；只有用户明确指定某个题号/题目/字段为选填时，才给该题传 requir=false。" +
         "【专业模型】支持 BWS/MaxDiff(mdattr+pertaskcount+tasklength)、联合分析(columntitle)、品牌漏斗(brands)、Kano模型、SUS模型、PSM模型等。" +
-        "【考试题型】支持 correctselect（正确答案）、quizscore（分值）、answeranalysis（答案解析）。" +
-        "【关联逻辑】支持 relation（显示条件）、referselect（引用前题选项）。" +
+        "【考试题型】客观题支持 correctselect（正确答案）、quizscore（分值）、answeranalysis（答案解析）；考试简答不要设置 correctselect，考试代码必须提供 codetype（编程语言），不要生成标准答案。普通主观题使用简答题，考试填空仅用于有标准答案的填空。" +
+        "【关联逻辑】relation/referselect 仅在用户提供并确认合法格式时原样保留，客户端不验证这些字段的语义。题目分支逻辑使用可选 dsl.logic，由服务端转换为 XML 原生属性，冲突时 DSL 优先；创建后读取 get_survey 返回的 dsl.logic 验证保存结果。" +
         "【硬性校验 — 不满足会被 SDK 拒绝】1) 标题不得为空、占位符（??? / 无标题 / TODO / xxx 等）或少于 2 字；2) JSONL 必须包含至少 1 道真实题目（_meta/分页栏/段落说明/知情同意书不计入）。" +
         "【多项填空必看】多项填空 qtype='多项填空'，子填空位数量由 title 中的 {_} 占位符数量决定，例如 title='电话 {_}，邮箱 {_}，微信 {_}' 会生成 3 个空位；**禁止用 rowtitle 数组**（多项填空不支持该字段，服务端会忽略并只生成 1 个空位）。考试多项填空同理；考试完形填空不在当前 JSONL 创建支持集合中。" +
         "【表格类题型 706-710】生成 JSONL 时必须优先使用标准格式：" +
         "表格数值/表格填空使用 rowtitle；表格下拉框使用 rowtitle+selects；表格组合使用 rowtitle+types+selects；自增表格使用 rowtitle+columntitle+selects（一行模板），可选 min_rows/max_rows 设置行数边界，不要用 minvalue/maxvalue 代替。" +
-        "多项文件题(711)和多项简答题(712)只能读取或在 Web 编辑器配置，当前创建接口会拒绝；需要多字段采集时请使用普通文件上传/简答题或表格题。" +
+        "矩阵数值题(706)、VlookUp问卷关联、多项文件题(711)、多项简答题(712)和当前语音只能读取或在 Web 编辑器配置，当前创建接口会拒绝；需要多字段采集时请使用普通文件上传/简答题或表格题。" +
         "【投票题】投票单选/投票多选使用 qtype='投票单选'/'投票多选' + select，并在调用工具时显式传 atype=3。" +
         "输入示例（JSONL）：\n" +
         '{"qtype":"问卷基础信息","title":"客户满意度调查","introduction":"请认真填写"}\n' +
@@ -1111,6 +1121,7 @@ export function registerSurveyTools(server: McpServer): void {
         '{"qtype":"投票多选","title":"哪些网站是你经常使用的","select":["淘宝网","开心网","百度","腾讯","人人网"]}\n' +
         '{"qtype":"量表题","title":"满意度评分","select":["1","2","3","4","5"],"minvaluetext":"非常不满意","maxvaluetext":"非常满意"}',
       inputSchema: {
+        dsl: z.object({ logic: z.string().min(1) }).strict().optional().describe("仅包含 logic 模块，服务端转换为 XML 原生逻辑；冲突时 DSL 优先"),
         jsonl: z.string().min(1).refine(
           (value) => Buffer.byteLength(value, "utf8") <= MAX_JSONL_SIZE,
           `JSONL UTF-8 字节数不能超过 ${MAX_JSONL_SIZE}`,
@@ -1139,7 +1150,7 @@ export function registerSurveyTools(server: McpServer): void {
               "显式传值始终优先于兜底推断。",
           ),
         publish: z.boolean().optional().describe(
-          "是否立即发布；未指定时普通题型默认发布，包含纯框架题型（需二次编辑完善）时默认保持草稿",
+          "是否立即发布；未指定时普通题型默认发布，包含纯框架题型（含循环评价、考试代码，需二次编辑完善）时默认保持草稿",
         ),
         creater: z.string().optional().describe("创建者子账号用户名"),
       },
@@ -1162,6 +1173,7 @@ export function registerSurveyTools(server: McpServer): void {
           operation: "create_survey_by_json",
           write: () => createSurveyByJson({
             jsonl: args.jsonl,
+            dsl: args.dsl,
             title: args.title,
             atype: args.atype,
             optionalTitles: args.optional_titles,
@@ -1210,16 +1222,20 @@ export function registerSurveyTools(server: McpServer): void {
               ? compareJsonlQuestionTypes(expectedQuestionTypes, questions)
               : { matches: false, warnings: ["创建后的问卷未返回题目列表，无法校验 q_type/q_subtype"] };
             const identityMatches = surveyIdentityMatches(data, vid);
-            const structure = identityMatches && titleMatches && countMatches && typeCheck.matches;
+            const logicMatches = args.dsl === undefined || surveyLogicMatches(args.dsl.logic, (data?.dsl as { logic?: unknown } | undefined)?.logic,
+              Array.isArray(questions) ? questions as Record<string, unknown>[] : undefined);
+            const structure = identityMatches && titleMatches && countMatches && typeCheck.matches && logicMatches;
             const status = statusLabel(data?.status) !== undefined;
             const warnings: string[] = [...typeCheck.warnings];
+            if (!logicMatches) warnings.push("保存后的 XML 逻辑投影与请求不一致或未返回");
             if (!identityMatches) warnings.push("创建后的问卷读回身份与请求不一致或缺少可验证编号");
             if (!titleMatches) warnings.push("创建后的问卷标题与请求不一致");
             if (!countMatches) warnings.push("创建后的题目数量与请求不一致或未返回");
             if (!status) warnings.push("创建后的问卷状态无法从读回响应确认");
+            const draft = statusLabel(data?.status) === "draft";
             const baseUrl = currentBaseUrl();
             let linkEvidence = resolveRespondentLink(data, vid, baseUrl);
-            if (!linkEvidence.fillUrl) {
+            if (!draft && !linkEvidence.fillUrl) {
               try {
                 const listed = await findListRecord(vid);
                 const fallback = resolveRespondentLink(listed, vid, baseUrl);
@@ -1228,8 +1244,8 @@ export function registerSurveyTools(server: McpServer): void {
                 warnings.push(`创建后的问卷列表回退读取失败：${error instanceof Error ? error.message : String(error)}`);
               }
             }
-            const link = Boolean(linkEvidence.fillUrl);
-            if (!link) warnings.push("创建后的问卷没有可验证的答题链接；未根据 vid 猜测公开链接");
+            const link = Boolean(linkEvidence.fillUrl) || draft;
+            if (!link && !draft) warnings.push("创建后的问卷没有可验证的答题链接；未根据 vid 猜测公开链接");
             const verified = structure && status && link;
             return {
               vid,
@@ -1248,4 +1264,35 @@ export function registerSurveyTools(server: McpServer): void {
       }
     },
   );
+  server.registerTool("update_survey_by_json", {
+    title: "用 JSON 修改问卷",
+    description: "读取 get_survey 后修改既有传统问卷。传完整 jsonl 修改题目，或只传 dsl.logic 修改逻辑；服务端将逻辑转换成 XML 原生属性，保留其他问卷内容。JSON 逻辑与 DSL 同时存在时 DSL 优先。",
+    inputSchema: {
+      vid: z.union([z.number().int().positive(), z.string().regex(/^[1-9]\d*$/)]),
+      jsonl: z.string().min(1).optional(),
+      dsl: z.object({ logic: z.string().min(1) }).strict().optional(),
+      title: z.string().optional(), atype: z.number().int().positive().optional(),
+      optional_titles: z.array(z.string()).optional(), publish: z.boolean().optional(),
+      allow_breaking_changes: z.boolean().optional(),
+    },
+    annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: false, openWorldHint: true },
+  }, async (args) => {
+    try {
+      if (args.jsonl === undefined && args.dsl === undefined) throw new Error("jsonl 或 dsl.logic 至少提供一项");
+      prepareSurveyDslJson(args.dsl);
+      const before = await getSurvey<Record<string, unknown>>({ vid: Number(args.vid) });
+      assertApiResponse(before);
+      if (before.result !== true) return toolApiResult(before);
+      if (!surveyIdentityMatches(before.data, Number(args.vid))) throw new Error("问卷读取身份不匹配");
+      if (Number(before.data.atype) === 12) throw new Error("AI 主页请使用 update_ai_page");
+      const input = { vid: args.vid, jsonl: args.jsonl, dsl: args.dsl, title: args.title,
+        atype: args.atype, optionalTitles: args.optional_titles, publish: args.publish,
+        allowBreakingChanges: args.allow_breaking_changes };
+      return runVerifiedWrite({ operation: "update_survey_by_json",
+        write: () => updateSurveyByJson(input),
+        verify: () => verifySurveyJsonUpdate(input, before.data),
+      });
+    } catch (error) { return toolError(error); }
+  });
+
 }

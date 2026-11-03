@@ -121,6 +121,17 @@ export function ensureApiSuccess(response) {
         details.errorcode = failure.errorcode;
     if (failure.traceid !== undefined)
         details.traceid = failure.traceid;
+    // Survey JSON failures carry structured validation data inside `data`.
+    // Preserve bounded diagnostics without echoing questionnaire content.
+    if (failure.data && typeof failure.data === "object" && !Array.isArray(failure.data)) {
+        const data = failure.data;
+        for (const key of ["status", "correlationId", "hasChanges", "hasBreakingChanges", "diagnosticCount"]) {
+            if (data[key] !== undefined)
+                details[key] = data[key];
+        }
+        if (Array.isArray(data.diagnostics))
+            details.diagnostics = data.diagnostics.slice(0, 50);
+    }
     const upgrade = getUpgradeDetails(failure);
     if (upgrade) {
         const upgradeDetails = {

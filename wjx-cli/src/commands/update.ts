@@ -45,7 +45,7 @@ function runNpm(args: string[], options: Parameters<typeof execFileSync>[2] = {}
 function readLatestVersion(): string {
   let raw: string;
   try {
-    raw = String(runNpm(["view", "wjx-cli@latest", "version", "--json"], {
+    raw = String(runNpm(["view", "wjx-cli", "dist-tags.latest", "--json"], {
       encoding: "utf8",
       stdio: ["ignore", "pipe", "pipe"],
     })).trim();
@@ -115,10 +115,10 @@ function readInstalledVersion(global: boolean): string {
   return candidate.trim();
 }
 
-function installLatest(global: boolean): void {
+function installLatest(version: string, global: boolean): void {
   runNpm(global
-    ? ["install", "wjx-cli@latest", "--global"]
-    : ["install", "wjx-cli@latest"], { stdio: "pipe" });
+    ? ["install", `wjx-cli@${version}`, "--global"]
+    : ["install", `wjx-cli@${version}`], { stdio: "pipe" });
 }
 
 export function registerUpdateCommands(program: Command): void {
@@ -144,20 +144,13 @@ export function registerUpdateCommands(program: Command): void {
           };
         }
 
-        let globalError: string | undefined;
         let installedVersion: string;
         try {
-          installLatest(true);
+          installLatest(latestVersion, true);
           installedVersion = readInstalledVersion(true);
         } catch (e) {
-          globalError = e instanceof Error ? e.message : String(e);
-          try {
-            installLatest(false);
-            installedVersion = readInstalledVersion(false);
-          } catch (err) {
-            const msg = `更新失败: ${err instanceof Error ? err.message : String(err)}`;
-            throw new CliError("API_ERROR", msg, globalError ? { globalError } : undefined);
-          }
+          const msg = `全局更新失败: ${e instanceof Error ? e.message : String(e)}`;
+          throw new CliError("API_ERROR", msg);
         }
 
         if (compareVersions(installedVersion, latestVersion) < 0) {

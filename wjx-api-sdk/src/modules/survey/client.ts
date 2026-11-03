@@ -1,3 +1,4 @@
+import { prepareSurveyDslJson } from "./logic.js";
 import type { WjxApiResponse, WjxCredentials, FetchLike, RequestOverrides } from "../../core/types.js";
 import { Action, LONG_TIMEOUT_MS } from "../../core/constants.js";
 import { callWjxApi, getWjxCredentials, assignDefined } from "../../core/api-client.js";
@@ -21,6 +22,7 @@ import {
 } from "./json-to-survey.js";
 import type {
   CreateSurveyByJsonInput,
+  UpdateSurveyByJsonInput,
   GetSurveyInput,
   ListSurveysInput,
   UpdateSurveyStatusInput,
@@ -230,12 +232,7 @@ export async function clearRecycleBin<T = unknown>(
  * 通过 JSONL 格式创建问卷（纯透传到服务端 action 1000106）。
  * 客户端负责输入边界和 JSONL 语法校验，服务端负责最终题型落库。
  */
-export async function createSurveyByJson<T = unknown>(
-  input: CreateSurveyByJsonInput,
-  credentials?: WjxCredentials,
-  fetchImpl: FetchLike = fetch,
-  requestOptions?: RequestOverrides,
-): Promise<WjxApiResponse<T>> {
+function prepareSurveyJson(input: CreateSurveyByJsonInput): Record<string, unknown> {
   if (!input || typeof input.jsonl !== "string") {
     throw new TypeError("jsonl must be a string");
   }
@@ -308,31 +305,47 @@ export async function createSurveyByJson<T = unknown>(
   if (processedByteLength > MAX_JSONL_SIZE) {
     throw new Error(`jsonl exceeds maximum size of ${MAX_JSONL_SIZE} bytes after preprocessing (${processedByteLength})`);
   }
-  // Resolve credentials only after all local validation so malformed input is
-  // reported consistently even when the caller has not configured an API key.
-  const resolvedCredentials = credentials ?? getWjxCredentials();
 
-  return callWjxApi<T>(
-    {
-      action: Action.CREATE_SURVEY_BY_JSON,
-      title,
-      atype,
-      desc: description,
-      surveydatajson: processedJsonl,
-      publish: resolveJsonlPublish(processedJsonl, input.publish),
-      ...(input.creater !== undefined ? { creater: input.creater.trim() } : {}),
-    },
-    {
-      ...requestOptions,
-      credentials: resolvedCredentials,
-      fetchImpl,
-      retryBudget: 0,
-      maxRetries: 0,
-      idempotency: "unsafe",
-      httpRetryable: false,
-      timeoutMs: requestOptions?.timeoutMs ?? LONG_TIMEOUT_MS,
-    },
-  );
+  return { title, atype, desc: description, surveydatajson: processedJsonl,
+    ...(input.creater !== undefined ? { creater: input.creater.trim() } : {}) };
+}
+
+export async function createSurveyByJson<T = unknown>(
+  input: CreateSurveyByJsonInput, credentials?: WjxCredentials,
+  fetchImpl: FetchLike = fetch, requestOptions?: RequestOverrides,
+): Promise<WjxApiResponse<T>> {
+  const body = prepareSurveyJson(input);
+  const dsl = prepareSurveyDslJson(input.dsl);
+  return callWjxApi<T>({ action: Action.CREATE_SURVEY_BY_JSON, ...body,
+    publish: resolveJsonlPublish(String(body.surveydatajson), input.publish),
+    ...(dsl ? { dsl } : {}),
+  }, { ...requestOptions, credentials: credentials ?? getWjxCredentials(), fetchImpl,
+    retryBudget: 0, maxRetries: 0, idempotency: "unsafe", httpRetryable: false,
+    timeoutMs: requestOptions?.timeoutMs ?? LONG_TIMEOUT_MS });
+}
+
+export async function updateSurveyByJson<T = unknown>(
+  input: UpdateSurveyByJsonInput, credentials?: WjxCredentials,
+  fetchImpl: FetchLike = fetch, requestOptions?: RequestOverrides,
+): Promise<WjxApiResponse<T>> {
+  if (!input || !/^[1-9]\d*$/.test(String(input.vid)) || !Number.isSafeInteger(Number(input.vid)))
+    throw new TypeError("vid 必须是传统问卷正整数编号");
+  if (input.allowBreakingChanges !== undefined && typeof input.allowBreakingChanges !== "boolean")
+    throw new TypeError("allowBreakingChanges must be a boolean");
+  if (input.publish !== undefined && typeof input.publish !== "boolean")
+    throw new TypeError("publish must be a boolean");
+  const dsl = prepareSurveyDslJson(input.dsl);
+  const body = input.jsonl === undefined ? {} : prepareSurveyJson({ ...input, jsonl: input.jsonl });
+  // 未指定类型时沿用既有问卷类型，避免标题推断改变原问卷类型。
+  if (input.atype === undefined) delete body.atype;
+  if (input.jsonl === undefined && !dsl) throw new TypeError("jsonl 或 dsl.logic 至少提供一项");
+  return callWjxApi<T>({ action: Action.UPDATE_SURVEY_BY_JSON, vid: input.vid, ...body,
+    ...(dsl ? { dsl } : {}),
+    ...(input.publish === undefined ? {} : { publish: input.publish }),
+    ...(input.allowBreakingChanges === undefined ? {} : { allowBreakingChanges: input.allowBreakingChanges }),
+  }, { ...requestOptions, credentials: credentials ?? getWjxCredentials(), fetchImpl,
+    retryBudget: 0, maxRetries: 0, idempotency: "unsafe", httpRetryable: false,
+    timeoutMs: requestOptions?.timeoutMs ?? LONG_TIMEOUT_MS });
 }
 
 export async function uploadFile<T = unknown>(

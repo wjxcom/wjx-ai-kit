@@ -7,11 +7,11 @@ import { redactJson } from "./mask.js";
  * Strict integer parser. Rejects garbage like "123abc".
  */
 export function strictInt(v) {
-    if (v === "") {
-        throw new CliError("INPUT_ERROR", `Invalid integer: ""`);
+    if (!/^[+-]?\d+$/.test(v)) {
+        throw new CliError("INPUT_ERROR", `Invalid integer: "${v}"`);
     }
     const n = Number(v);
-    if (!Number.isInteger(n)) {
+    if (!Number.isSafeInteger(n)) {
         throw new CliError("INPUT_ERROR", `Invalid integer: "${v}"`);
     }
     return n;

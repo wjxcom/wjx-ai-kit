@@ -7,7 +7,7 @@ name_en: wjx-cli-use
 description: "Guide for using wjx-cli (Wenjuanxing CLI) to create AI homepages, posters, PPTs, and surveys, query responses, and analyze data. Use when the user mentions: AI主页, AI海报, AI PPT, 问卷, 调查, 收集, 表单, 投票, 考试, 测评, 满意度, NPS, 问卷星, wjx, survey, questionnaire, or wants to create or update those resources."
 description_zh: "使用 wjx-cli 创建或修改 AI主页、AI海报、AI PPT、问卷，查询回复及分析数据的指南。当用户提到 AI主页、AI海报、AI PPT、问卷、调查、收集、表单、投票、考试、测评、满意度、NPS、问卷星时使用。"
 description_en: "Guide for using wjx-cli (Wenjuanxing CLI) to create AI homepages, posters, PPTs, and surveys, query responses, and analyze data. Use when the user mentions AI homepages, AI posters, AI PPTs, surveys, forms, exams, NPS, Wenjuanxing, wjx, or related creation and update tasks."
-version: 0.4.4
+version: 0.4.6
 author: 问卷星
 ---
 
@@ -50,12 +50,17 @@ wjx-cli 是问卷星 OpenAPI 的命令行工具。命令格式：`wjx <模块> <
 
 ## AI Agent 行为准则（必读）
 
-### 规则 0：创建问卷只用 `survey create`（强制）
+### 规则 0：题目内容用 JSONL，问卷逻辑必须用 DSL
 
+先运行 `wjx survey jsonl-template --type <问卷类型> --raw` 获取骨架，再执行 `wjx survey create`。JSONL 只定义问卷基础信息、题目内容与题型配置。
 
-先运行 `wjx survey jsonl-template --type <问卷类型> --raw` 获取当前 CLI 可接受的骨架，再编辑 JSONL。每个非空行必须是一个完整 JSON 对象；首行必须是 `{"qtype":"问卷基础信息","title":"...","atype":1}`，后续题目使用中文字符串字段 `qtype` 以及 `title`、`select`、`rowtitle` 等字段。
+**创建和修改问卷时，题目/选项关联、显示隐藏、跳题、引用和随机等逻辑必须统一写入 `dsl.logic`**，通过 `--dsl '{"logic":"logic { ... };"}'` 或 stdin 的 `dsl` 对象提交；只有无逻辑需求时才省略 `dsl`。不要在 JSONL 中新增、复制或修改 `relation`、`referselect` 等逻辑字段，也不要对同一逻辑同时提交 JSON 字段和 DSL 两套配置。若当前 DSL 不支持所需逻辑或校验失败，明确说明限制，不得回退到 JSON 逻辑字段或擅自省略逻辑。
+
+修改前先执行 `wjx survey get --vid <vid>`，使用返回的 `dsl.logic` 修改逻辑，通过 `wjx survey update --vid <vid>` 提交。查询中的历史逻辑字段仅用于理解现状，不要直接复制回写。仅修改逻辑时不用提供 JSONL；修改题目时提供完整 JSONL，逻辑变更仍通过 `dsl.logic` 提交。AI 主页使用 `survey update-ai-page`。
 
 不要把旧接口的 `_meta`、`q_type`、`q_subtype`、`q_title`、`items` 结构传给 `create`；CLI 会将其判为输入错误。
+
+涉及逻辑（含引用和随机）时，先阅读 [题目逻辑与引用方向](references/logic.md)。显示条件只能依赖前题，跳题只能跳向后题或结束；引用固定写为 `from "前面的来源题" to "后面的接收题"`，选项引用用 `options`，矩阵行标题引用用 `rows`。题干引用必须有对应的 `[qN]` 占位符；自动填入答题框不能用题干引用代替。逻辑数字使用实际题号与选项顺序，不能把 `S1/T1` 标签、显示题序或选项分值当作编号。
 
 ### AI 主页
 
@@ -78,11 +83,11 @@ AI 主页是独立的纯展示内容，与表单/问卷创建互斥：
 
 ### 规则 3：不支持的题型要明确告知
 
-只使用 [references/question-types.md](references/question-types.md) 列出的 JSONL `qtype`，不要自行发明题型名。地区题使用 `qtype:"多级下拉"` 并提供 `leveldata`。若当前 JSONL 格式确实无法表达用户要求，明确说明限制和替代方案，继续创建其余题目，**不要**反复尝试或拆分多个问卷。
+只使用 [references/question-types.md](references/question-types.md) 列出的 JSONL `qtype`，不要自行发明题型名。地区题使用 `qtype:"多级下拉"` 并提供 `leveldata`。若当前 JSONL 格式确实无法表达用户要求，先明确说明限制和替代方案；经用户确认后重新生成完整 JSONL，再进行一次创建。不得部分创建、反复尝试或拆分多个问卷。
 
 ### 规则 3.2：纯框架题型默认保持草稿
 
-普通题型未指定发布选项时默认发布；但 `折叠栏目`、`轮播图`、`AI追问`、`AI处理`、`AI访谈`、`图片OCR`、`VlookUp问卷关联`、`分页计时器` 仅凭 JSONL 骨架无法完善。问卷包含任一上述题型时，创建接口默认保持草稿。先获取详情和编辑入口，指导用户补充素材/配置；只有用户明确要求发布时才显式传 `--publish` 或执行发布状态操作。
+普通题型未指定发布选项时默认发布；但 `折叠栏目`、`轮播图`、`AI追问`、`AI处理`、`AI访谈`、`图片OCR`、`分页计时器`、`循环评价`、`考试代码` 仅凭 JSONL 骨架无法完善。问卷包含任一上述题型时，创建接口默认保持草稿。`VlookUp问卷关联`、`矩阵数值题`、`多项文件题`、`多项简答题` 和 `当前语音` 属于读取/Web 编辑器边界，当前 JSONL 创建接口直接拒绝，不能按草稿路径重试。先获取详情和编辑入口，指导用户补充素材/配置；只有用户明确要求发布时才显式传 `--publish` 或执行发布状态操作。
 
 ### 规则 3.1：用户体系只允许兼容维护
 
@@ -100,7 +105,7 @@ AI 主页是独立的纯展示内容，与表单/问卷创建互斥：
 
 CLI 是你（AI）在后台执行的工具，**不要**在回复中展示命令或命令行用法。唯一例外：用户明确要求看命令时。
 
-- 正确：「问卷已创建，这是填写链接：https://...」
+- 正确：「问卷已创建（草稿）。[预览《问卷标题》](服务端返回并校验的地址)」
 - 错误：「你可以运行 `wjx survey list` 查看问卷列表」
 
 ### 规则 5：未配置或返回 API Key 错误时先提醒配置
@@ -156,8 +161,10 @@ https://www.wjx.cn/weixinlogin.aspx?redirecturl=%2Fnewwjx%2Fmanage%2Fuserinfo.as
   - 矩阵多选 3 行：`7$1!1|2,2!3,3!1|4`
   - 矩阵量表 3 行：`8$1!5,2!4,3!3`
 
-### 规则 8：填写链接必须来自 API 返回的短路径（强制）
+### 规则 8：创建后默认返回预览链接，地址来自 API 短路径（强制）
 
+- 创建问卷成功后，默认返回可点击的**预览链接**，推荐文案为「[预览《问卷标题》](实际地址)」，并说明草稿或已发布状态。草稿和含 DSL 逻辑的问卷同样遵循此规则；回复不能只有问卷编号或编辑链接。
+- 用户明确要求编辑入口时，额外提供编辑链接。返回预览链接不改变问卷的发布状态。
 - `vid` 是后台问卷编号，**禁止**自行拼成 `https://<域名>/m/<vid>.aspx`、`/vm/<vid>.aspx` 或 `/jq/<vid>.aspx` 后提供给用户。数字 `vid` 不能被当作公开填写地址的标识。
 - 填写地址只允许使用 API 返回并通过校验的域名和路径：优先使用响应中已经提供且可验证的 `fill_url`；当前 CLI 不会自动从原始字段派生 `fill_url`，通常只返回 `sid`、`activity_domain`、`pc_path`、`mobile_path`，此时用 `new URL(pc_path || mobile_path, activity_domain)`（或等价的结构化 URL API）组合，原样保留服务端路径，并核对路径中的标识是短 `sid`。
 - 组合前必须确认域名、路径都来自同一条 API 记录，路径以允许的填写路由（例如 `/m/`、`/vm/` 或 `/jq/`）开头，且不是由 `vid` 推导出的猜测路径。字段缺失、域名/路径校验失败时，明确报告“服务端未提供可验证的填写路径”，不要静默猜测或替换成默认域名。
@@ -195,7 +202,7 @@ https://www.wjx.cn/weixinlogin.aspx?redirecturl=%2Fnewwjx%2Fmanage%2Fuserinfo.as
 | 导出答卷数据 | `wjx response download --vid <vid>` |
 | 分析 NPS | `wjx analytics nps --scores "[9,10,7,3]"` |
 | 导入联系人 | `wjx contacts add --users '[...]'`（需 `WJX_CORP_ID`） |
-| 查看填写链接 | 优先使用创建响应中规范化的 `fill_url` 或经校验的 `activity_domain` + `pc_path`/`mobile_path`；路径缺失时按 `vid` 分页解析 `wjx survey list` |
+| 创建后返回预览链接／查看填写链接 | 优先使用创建响应中规范化的 `fill_url` 或经校验的 `activity_domain` + `pc_path`/`mobile_path`；路径缺失时按 `vid` 分页解析 `wjx survey list` |
 | 查看编辑链接 | `wjx survey url --mode edit --activity <vid>` |
 
 ## 安装与配置
@@ -210,7 +217,7 @@ node --version
 
 如果 Node.js 未安装或版本 < 20，需要先安装。参见 [references/install-nodejs.md](references/install-nodejs.md)，根据操作系统选择安装方式。
 
-Node.js 就绪后，当前源码版本为 `0.4.4`。如果本机版本低于兼容最低版本 `0.4.1`，直接安装或升级：
+Node.js 就绪后，当前源码版本为 `0.4.6`。如果本机版本低于兼容最低版本 `0.4.1`，直接安装或升级：
 
 ```bash
 npm install -g wjx-cli@latest
@@ -279,7 +286,7 @@ wjx doctor
 
 | 模块 | 命令 | 说明 |
 |------|------|------|
-| `survey` | list, get, create, create-ai-page, update-ai-page, jsonl-template, delete, status, settings, update-settings, tags, tag-details, clear-bin, upload, url, preview-url, shortlink | 问卷增删改查、AI 主页、配置、预览链接与短信短链接 |
+| `survey` | list, get, create, update, create-ai-page, update-ai-page, jsonl-template, delete, status, settings, update-settings, tags, tag-details, clear-bin, upload, url, preview-url, shortlink | 问卷增删改查、AI 主页、配置、预览链接与短信短链接 |
 | `response` | query, realtime, download, submit-template, submit, modify, clear, report, count, winners, 360-report | 答卷数据操作 |
 | `contacts` | query, add, delete | 联系人管理（需 WJX_CORP_ID） |
 | `department` | list, add, modify, delete | 部门管理 |
@@ -293,9 +300,9 @@ wjx doctor
 
 ## 核心工作流
 
-### 创建问卷（统一使用 JSONL 格式）
+### 创建问卷（JSONL 内容与 DSL 逻辑）
 
-> **重要**：必须执行 `wjx survey create` 命令来创建问卷。只生成 JSONL 文本而不执行命令，问卷不会被创建到问卷星平台上。
+> **重要**：创建任何新问卷都必须执行 `wjx survey create` 命令。只生成 JSONL/DSL 文本而不执行命令，问卷不会被创建到问卷星平台上。
 
 ```bash
 wjx survey jsonl-template --type 1 --raw > survey.jsonl
@@ -315,9 +322,9 @@ JSONL 每个非空行放一个 JSON 对象，且首行必须是问卷基础信�
 
 问卷类型：`--type 1` 调查（默认），`2` 测评，`3` 投票，`4` 360度评估，`5` 360评估无测评关系，`6` 考试，`7` 表单，`9` 教学评估，`10` 量表，`11` 民主评议。`8` 用户体系仅作历史维护，不能新建。
 
-创建成功后，先保存并结构化解析完整 JSON 响应。若响应带有可验证的 `fill_url`，直接将它作为填写地址；否则从同一响应记录的 `activity_domain` 与 `pc_path`（桌面端优先）或 `mobile_path` 组合地址，并确认使用的是短 `sid`。只有创建响应缺少这些路径时，才用响应中的 `vid` 到列表接口逐页查找对应记录。不要为此调用 `survey get`，也不要把 `survey url` 的编辑/创建地址当作填写地址。
+创建成功后，按规则 8 默认向用户返回可点击的预览链接。先保存并结构化解析完整 JSON 响应：若响应带有可验证的 `fill_url`，直接使用；否则从同一响应记录的 `activity_domain` 与 `pc_path`（桌面端优先）或 `mobile_path` 组合地址，并确认使用的是短 `sid`。只有创建响应缺少这些路径时，才用响应中的 `vid` 到列表接口逐页查找对应记录。不要为此调用 `survey get`，也不要把 `survey url` 的编辑/创建地址当作预览地址。
 
-**考试问卷注意**：先运行 `wjx survey jsonl-template --type 6 --raw`，按模板使用 `考试单选`、`考试多选`、`考试判断` 等 `qtype`；用 `correctselect` 和 `quizscore` 设置正确答案与分值。需要模板未覆盖的高级考试设置时，再提供编辑链接并指引用户在网页端补充。
+**考试问卷注意**：先运行 `wjx survey jsonl-template --type 6 --raw`，按模板使用 `考试单选`、`考试多选`、`考试判断` 等 `qtype`；用 `correctselect` 和 `quizscore` 设置客观题答案与分值。普通主观题使用 `简答题`，考试主观题使用 `考试简答`，有标准答案的单项填空使用 `考试单项填空` + `correctselect`。`考试代码` 必须提供 `codetype`（编程语言），不能设置 `correctselect`/`answer`；`code`/`initialcode` 当前不会被 JSONL 服务端保存，初始代码、判题和人工阅卷设置需在网页端补充。创建后的 `考试简答`/`考试单项填空` 目前共享服务端 `q_type=5`，CLI 会将其标记为未完成题型校验，不会伪称已确认语义。
 
 ### 答卷与分析
 
@@ -346,5 +353,39 @@ JSONL 每个非空行放一个 JSON 对象，且首行必须是问卷基础信�
 - [通讯录命令](references/contacts-commands.md) — 联系人、部门、管理员、标签、子账号、SSO
 - [分析命令](references/analytics-commands.md) — NPS/CSAT/CES 公式、异常检测、数据解码
 - [JSONL 题型](references/question-types.md) — `create` 的字段格式、中文 `qtype` 与示例
+- [题目逻辑与引用方向](references/logic.md) — 条件显隐、选项/行标题/题干引用、跳题方向、随机范围与保存核对
 - [计算公式](references/formula-helper.md) — 问卷星计算公式与Excel函数功能指南，帮助AI在问卷中正确编写计算公式。涵盖题目引用、数组写法、赋值判断逻辑、各题型的推送数据格式、函数参考（日期时间/数学计算/文本合并/条件判断/逻辑/查找统计）及实战案例。
 - [安装 Node.js](references/install-nodejs.md) — 各平台 Node.js 安装方式
+
+
+## Survey JSON 与逻辑
+
+问卷内容的创建和修改统一使用 Survey JSON（JSONL）；涉及关联、显示隐藏、跳题、引用或随机时，必须通过独立的 `dsl.logic` 提交逻辑：
+
+```json
+{"dsl":{"logic":"logic { if \"2::1\" then show \"3\"; };"}}
+```
+
+完整请求的 `jsonl` 是只定义问卷内容的 JSONL 字符串；`dsl` 是对象，只包含 DSL 文本字符串 `logic`。无逻辑时省略 `dsl`。不要将 `relation`、`referselect` 等 JSON 逻辑字段作为创建或修改逻辑的方式；具体规则见 [题目逻辑与引用方向](references/logic.md)。服务端将 DSL 转换为原生逻辑属性。
+
+SDK 使用 `createSurveyByJson` / `updateSurveyByJson`；CLI 使用 `survey create` / `survey update`；MCP 使用 `create_survey_by_json` / `update_survey_by_json`。普通查询 `getSurvey` / `survey get` / `get_survey` 从实际 XML 返回可编辑的 `dsl.logic`。
+
+仅修改逻辑时提交 `vid + dsl`；修改题目时提交 `vid + jsonl`，可同时提交 `dsl`。修改不会隐式重新发布或迁移创建者。修改请求执行一次，之后从普通查询验证实际保存结果。
+
+服务端将 DSL 解析并转换为 XML 的 Relation、ItemRelation、AnytimeJumpto、ReferTopic 等原生逻辑属性。XML 中不保存 DSL 原文或新增的 DSL 节点。仅修改逻辑时在原 XML 上更新对应属性，保留题目、选项、分页、设置和扩展数据。
+
+```text
+创建：Survey JSON -> 题目 XML；dsl.logic -> 原生 XML 逻辑；校验后保存 XML
+修改逻辑：实际 XML -> dsl.logic -> AI 修改 -> 原生 XML 逻辑 -> 更新原 XML
+```
+
+CLI 示例：
+
+```powershell
+wjx survey create --file survey.jsonl --dsl '{"logic":"logic { if \"2::1\" then show \"3\"; };"}'
+wjx survey get --vid 12345
+wjx --yes survey update --vid 12345 --dsl '{"logic":"logic { if \"2::2\" then show \"3\"; };"}'
+wjx --yes survey update --vid 12345 --file survey.jsonl
+```
+
+修改问卷结构时，已有的答卷索引保护继续生效；无答卷问卷确需结构变更时显式使用 `--allow-breaking-changes`（SDK 为 `allowBreakingChanges`，MCP 为 `allow_breaking_changes`）。

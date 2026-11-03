@@ -9,8 +9,8 @@ MCP 适用于原生支持 Model Context Protocol 的客户端。若客户端只�
 - Claude Desktop、Claude Code、Cursor 等 MCP 客户端
 - 已部署 HTTP 服务分配的访问令牌（HTTP 模式）
 
-当前源码版本为 `0.4.4`。发布到 npm 后，registry 的 `latest` 将指向
-`wjx-mcp-server@0.4.4`。直接安装：
+当前源码版本为 `0.4.5`。发布到 npm 后，registry 的 `latest` 将指向
+`wjx-mcp-server@0.4.5`。直接安装：
 
 ```bash
 npm install -g wjx-mcp-server
@@ -49,7 +49,7 @@ WJX_API_KEY="你的 API Key" npx wjx-mcp-server
 
 ## 能力发现
 
-当前版本提供 61 个 Tool、8 个 Resource、15 个 Prompt。MCP 是 CLI 的核心业务子集入口；初始化、补全、Skill 安装等工作站能力保持 CLI-only。完整名称和差异见 [MCP 工具参考](../reference/mcp-tools.md) 与仓库 capability matrix。
+当前版本提供 66 个 Tool、13 个 Resource、15 个 Prompt。MCP 是 CLI 的核心业务子集入口；初始化、补全、Skill 安装等工作站能力保持 CLI-only。完整名称和差异见 [MCP 工具参考](../reference/mcp-tools.md) 与仓库 capability matrix。
 
 ## 凭据安全
 

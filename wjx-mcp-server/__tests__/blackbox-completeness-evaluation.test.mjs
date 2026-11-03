@@ -11,6 +11,7 @@ const LOCAL_TOOLS = new Set([
   "calculate_nps", "calculate_csat", "decode_responses", "detect_anomalies",
   "compare_metrics", "sso_subaccount_url", "sso_user_system_url", "sso_partner_url",
   "build_survey_url", "build_preview_url", "get_short_link", "decode_push_payload", "build_submit_template", "get_config",
+  "generate_wjx_dsl",
 ]);
 
 const EXPECTED_ACTIONS = {
@@ -25,6 +26,9 @@ const EXPECTED_ACTIONS = {
   clear_responses: Action.CLEAR_RESPONSES,
   create_ai_page: Action.CREATE_AI_PAGE,
   create_survey_by_json: Action.CREATE_SURVEY_BY_JSON,
+  query_wjx_dsl: Action.QUERY_WJX_DSL,
+  create_survey_from_definition: Action.CREATE_SURVEY_BY_WJX_DSL,
+  update_survey_from_definition: Action.UPDATE_WJX_DSL,
   count_responses: Action.QUERY_RESPONSES,
   delete_admin: Action.DELETE_ADMIN,
   delete_contacts: Action.MANAGE_CONTACTS,
@@ -84,6 +88,10 @@ const TOOL_ARGS = {
     jsonl: `${JSON.stringify({ qtype: "问卷基础信息", title: "黑盒问卷", atype: 1 })}\n${JSON.stringify({ qtype: "单选", title: "满意度", select: ["是", "否"] })}`,
     atype: 1,
   },
+  query_wjx_dsl: { vid: 42 },
+  generate_wjx_dsl: { dsl: 'wjx-dsl 1; questionnaire { attr "Title" = "黑盒问卷"; };' },
+  create_survey_from_definition: { dsl: 'wjx-dsl 1; questionnaire { attr "Title" = "黑盒问卷"; };' },
+  update_survey_from_definition: { vid: 42, dsl: 'wjx-dsl 1; questionnaire { attr "Title" = "黑盒问卷"; };' },
   create_ai_page: { html_content: "<h1>AI homepage</h1>", title: "Test homepage", page_type: 0 },
   count_responses: { vid: 42 },
   decode_push_payload: { encrypted_data: "BwcHBwcHBwcHBwcHBwcHB4KSQXEH8Oas/HhG7FXfJDo=", app_key: "blackbox-key" },
@@ -252,7 +260,7 @@ test("every registered MCP tool has an executable success-path contract", async 
     const names = listed.tools.map((tool) => tool.name);
     const missing = names.filter((name) => !Object.hasOwn(TOOL_ARGS, name));
     assert.deepEqual(missing, [], "every tool must have a curated valid invocation");
-    assert.equal(names.length, 62, "update the tool denominator only when the MCP surface intentionally changes");
+    assert.equal(names.length, 66, "update the tool denominator only when the MCP surface intentionally changes");
 
     for (const name of names) {
       const before = requests.length;

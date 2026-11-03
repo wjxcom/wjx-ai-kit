@@ -19,6 +19,7 @@ fn(input, credentials?, fetchImpl?, requestOptions?)
 | contacts | `queryContacts`, `addContacts` |
 | user system（兼容/已过时） | `addParticipants`, `modifyParticipants`, `deleteParticipants`, `bindActivity`, `querySurveyBinding`, `queryUserSurveys`；仅用于已有系统 |
 | SSO | `buildSsoSubaccountUrl`, `buildSsoUserSystemUrl`, `buildSurveyUrl`, `buildPreviewUrl` |
+| XML DSL | `queryWjxDsl`, `createSurveyByWjxDsl`, `updateWjxDsl`, `validateWjxDsl` |
 
 ## 凭据优先级
 
@@ -43,11 +44,13 @@ await listSurveys(
 ```ts
 await createSurveyByJson(input, credentials, fetch, {
   clientName: "wjx-cli",
-  clientVersion: "0.4.4",
+  clientVersion: "0.4.5",
 });
 ```
 
-问卷创建的唯一入口是 `createSurveyByJson`，参数为 JSONL 字符串。创建 `atype` 支持 `1/2/3/4/5/6/7/9/10/11`；`8` 用户体系不能新建。
+问卷创建支持 `createSurveyByJson`（JSONL）和 `createSurveyByWjxDsl`（完整 XML DSL）。修改使用 `updateWjxDsl`，查询使用 `queryWjxDsl`；SDK 只做 DSL 协议校验、规范化和传输。
+
+创建 `atype` 支持 `1/2/3/4/5/6/7/9/10/11`；`8` 用户体系不能新建。
 
 
 
@@ -81,4 +84,4 @@ SDK 直接返回问卷星 OpenAPI 原始响应，业务失败通常返回 `resul
 
 CLI 会将该响应转换为 `UPGRADE_REQUIRED` 错误，并保留服务端实际提供的最低版本、升级命令和 trace id；未提供的可选升级字段不会由客户端臆造。旧于 `0.4.1` 的 CLI 不会发送版本请求头；服务端应同时将旧创建 action 或缺少客户端版本头的创建请求判定为升级场景。
 
-`wjx-cli` 当前源码版本为 `0.4.4`；发布后 CLI 用户可先执行 `npm install -g wjx-cli@latest`，成功后再执行 `wjx skill install --force` 获取 CLI 并启用 `wjx-cli-use`。npm 包名是 `wjx-cli`，安装后的命令名是 `wjx`，验证时运行 `wjx --version`。发布前按 [CLI 快速开始](../start/cli.md) 从源码构建。
+`wjx-cli` 当前源码版本为 `0.4.5`；发布后 CLI 用户可先执行 `npm install -g wjx-cli@latest`，成功后再执行 `wjx skill install --force` 获取 CLI 并启用 `wjx-cli-use`。npm 包名是 `wjx-cli`，安装后的命令名是 `wjx`，验证时运行 `wjx --version`。发布前按 [CLI 快速开始](../start/cli.md) 从源码构建。

@@ -7,7 +7,7 @@
 
 ## wjx survey create
 
-用 JSONL 格式创建问卷（**唯一使用的创建方式**，覆盖 70+ 题型）。每个非空行是一个完整 JSON 对象，首行必须是 `qtype` 为 `问卷基础信息` 的元数据。
+用 JSONL 格式创建问卷（**唯一的 JSONL 创建方式**，登记 70+ 个 qtype；其中少数题型仅支持读取或 Web 编辑器配置）。每个非空行是一个完整 JSON 对象，首行必须是 `qtype` 为 `问卷基础信息` 的元数据。
 
 ```bash
 wjx survey jsonl-template --type 1 --raw > survey.jsonl
@@ -47,7 +47,7 @@ wjx survey create --file survey.jsonl --dry-run    # 预览解析结果
 
 ### 发布策略
 
-普通题型在未指定 `--publish` 时默认立即发布。下列纯框架题型只有骨架，必须在问卷星编辑页补充素材或配置，未指定 `--publish` 时 SDK 会以草稿创建：`折叠栏目`、`轮播图`、`AI追问`、`AI处理`、`AI访谈`、`图片OCR`、`VlookUp问卷关联`、`分页计时器`。其中 `VlookUp问卷关联` 目前还会被 JSONL 创建接口拒绝，遇到它应转 Web 编辑器，不要重试。
+普通题型在未指定 `--publish` 时默认立即发布。下列纯框架题型只有骨架，必须在问卷星编辑页补充素材或配置，未指定 `--publish` 时 SDK 会以草稿创建：`折叠栏目`、`轮播图`、`AI追问`、`AI处理`、`AI访谈`、`图片OCR`、`分页计时器`、`循环评价`、`考试代码`。`VlookUp问卷关联`、`矩阵数值题`、`多项文件题`、`多项简答题` 和 `当前语音` 只能读取既有问卷或由 Web 编辑器配置，当前 JSONL 创建接口直接拒绝，遇到它们应转 Web 编辑器，不要按草稿路径重试。
 
 创建后请先获取问卷详情和编辑入口，完成二次编辑并由用户明确要求发布时，再使用发布操作；AI 不得为这些题型自行追加 `--publish`。
 
@@ -63,6 +63,8 @@ printf '%s\n' '{"jsonl":"{\"qtype\":\"问卷基础信息\",\"title\":\"客户需
 ```
 
 ### 创建响应中的填写地址字段
+
+创建问卷后的回复默认提供可点击的预览链接，例如「[预览《问卷标题》](实际地址)」，并标明草稿或已发布状态；草稿及含 DSL 逻辑的问卷也适用。用户明确要求编辑入口时再补充编辑链接。地址获取与校验遵循以下流程，无法取得可靠路径时明确说明。
 
 `create` 成功后先保留并结构化解析完整 JSON 响应。当前 CLI 只格式化服务端原始字段，不会自动从这些字段派生 `fill_url`；不要把字段不存在误判成没有填写地址，也不要因此用 `vid` 猜路径。常见字段含义如下（字段可能位于响应的 `data` 或问卷记录对象中）：
 
@@ -223,7 +225,7 @@ wjx survey update-settings --vid 12345 --msg_setting '{"post_url":"https://examp
 
 ```bash
 wjx survey delete --vid 12345 --username admin
-wjx survey delete --vid 12345 --username admin --completely   # 彻底删除，不进回收站
+wjx survey delete --vid 12345 --completely   # 未传用户名时从问卷 creater 读回
 ```
 
 删除请求只发送一次。CLI 会在写后以有界只读轮询等待服务端状态收敛：普通删除必须读回 `status=3`，`--completely` 必须读回 `status=4`。仅返回“问卷不存在”不能证明任一删除状态，结果会报告为 `unknown`。
@@ -231,7 +233,7 @@ wjx survey delete --vid 12345 --username admin --completely   # 彻底删除，�
 | Flag | 必填 | 说明 |
 |------|------|------|
 | `--vid <n>` | 是 | 问卷编号 |
-| `--username <s>` | 是 | 用户名 |
+| `--username <s>` | 否 | 用户名；省略时 CLI 先读取问卷并使用读回的 `creater`，读回缺少创建者会停止删除 |
 | `--completely` | 否 | 彻底删除（不进回收站） |
 
 ## wjx survey url
@@ -286,3 +288,36 @@ wjx survey shortlink --url "https://www.wjx.cn/vm/w4GZh.aspx?source=短信&campa
 | `wjx survey tag-details --tag_id 123` | 获取标签下的题目详情 |
 | `wjx survey clear-bin --username user` | 清空回收站；不传 `--vid` 执行批量清理，传 `--vid N` 使用彻底删除动作并验证该问卷进入 `status=4` |
 | `wjx survey upload --file_name img.png --file <base64>` | 上传文件（png/jpg/gif/bmp/webp，~4MB） |
+
+
+## Survey JSON 与逻辑
+
+问卷内容的创建和修改统一使用 Survey JSON（JSONL）；涉及关联、显示隐藏、跳题、引用或随机时，必须通过独立的 `dsl.logic` 提交逻辑：
+
+```json
+{"dsl":{"logic":"logic { if \"2::1\" then show \"3\"; };"}}
+```
+
+完整请求的 `jsonl` 是只定义问卷内容的 JSONL 字符串；`dsl` 是对象，只包含 DSL 文本字符串 `logic`。无逻辑时省略 `dsl`。不要将 `relation`、`referselect` 等 JSON 逻辑字段作为创建或修改逻辑的方式；具体规则见 [题目逻辑与引用方向](logic.md)。服务端将 DSL 转换为原生逻辑属性。
+
+SDK 使用 `createSurveyByJson` / `updateSurveyByJson`；CLI 使用 `survey create` / `survey update`；MCP 使用 `create_survey_by_json` / `update_survey_by_json`。普通查询 `getSurvey` / `survey get` / `get_survey` 从实际 XML 返回可编辑的 `dsl.logic`。
+
+仅修改逻辑时提交 `vid + dsl`；修改题目时提交 `vid + jsonl`，可同时提交 `dsl`。修改不会隐式重新发布或迁移创建者。修改请求执行一次，之后从普通查询验证实际保存结果。
+
+服务端将 DSL 解析并转换为 XML 的 Relation、ItemRelation、AnytimeJumpto、ReferTopic 等原生逻辑属性。XML 中不保存 DSL 原文或新增的 DSL 节点。仅修改逻辑时在原 XML 上更新对应属性，保留题目、选项、分页、设置和扩展数据。
+
+```text
+创建：Survey JSON -> 题目 XML；dsl.logic -> 原生 XML 逻辑；校验后保存 XML
+修改逻辑：实际 XML -> dsl.logic -> AI 修改 -> 原生 XML 逻辑 -> 更新原 XML
+```
+
+CLI 示例：
+
+```powershell
+wjx survey create --file survey.jsonl --dsl '{"logic":"logic { if \"2::1\" then show \"3\"; };"}'
+wjx survey get --vid 12345
+wjx --yes survey update --vid 12345 --dsl '{"logic":"logic { if \"2::2\" then show \"3\"; };"}'
+wjx --yes survey update --vid 12345 --file survey.jsonl
+```
+
+修改问卷结构时，已有的答卷索引保护继续生效；无答卷问卷确需结构变更时显式使用 `--allow-breaking-changes`（SDK 为 `allowBreakingChanges`，MCP 为 `allow_breaking_changes`）。

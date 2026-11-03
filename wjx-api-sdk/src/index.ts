@@ -40,8 +40,11 @@ export {
 } from "./core/api-client.js";
 
 // Survey module
+export { prepareSurveyDslJson, surveyLogicMatches } from "./modules/survey/logic.js";
+export { verifySurveyJsonUpdate } from "./modules/survey/verify.js";
 export {
   createSurveyByJson,
+  updateSurveyByJson,
   CREATABLE_SURVEY_ATYPES,
   getSurvey,
   listSurveys,
@@ -94,6 +97,8 @@ export type {
 } from "./modules/survey/qtype-mapping.js";
 export type {
   CreateSurveyByJsonInput,
+  UpdateSurveyByJsonInput,
+  SurveyDslJson,
   GetSurveyInput,
   ListSurveysInput,
   UpdateSurveyStatusInput,

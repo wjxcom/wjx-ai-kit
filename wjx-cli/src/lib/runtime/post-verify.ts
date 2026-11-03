@@ -1,4 +1,4 @@
-import { buildPreviewUrl, getSurvey, listSurveys, getWjxBaseUrl } from "wjx-api-sdk";
+import { buildPreviewUrl, getSurvey, listSurveys, getWjxBaseUrl, surveyLogicMatches } from "wjx-api-sdk";
 import type { WjxApiResponse, WjxCredentials, FetchLike } from "wjx-api-sdk";
 import { compareJsonlQuestionTypes, filterJsonlVerificationQuestions } from "wjx-api-sdk";
 import type { JsonlQuestionTypeExpectation } from "wjx-api-sdk";
@@ -19,6 +19,7 @@ export interface PostVerificationResult {
 }
 
 interface VerifyInput {
+  expectedLogic?: string;
   vid: number;
   sid?: string;
   expectedTitle?: string;
@@ -188,6 +189,39 @@ function recordMatchesVid(record: Record<string, unknown>, vid: number): boolean
   return candidate !== undefined && String(candidate).trim() === String(vid);
 }
 
+/**
+ * A malformed question index can make an otherwise successful JSONL create
+ * fail when the respondent page tries to render or submit it. Only enforce
+ * this check when the service actually returns q_index values; older API
+ * responses omitted them, and absence is handled by the existing type/count
+ * checks.
+ */
+function validateQuestionIndexes(
+  questions: readonly Record<string, unknown>[],
+  warnings: string[],
+): boolean {
+  const indexed = filterJsonlVerificationQuestions(questions)
+    .map((question: Record<string, unknown>) => field(question, "q_index", "qIndex"))
+    .filter((value: unknown) => value !== undefined && value !== null);
+  if (indexed.length === 0) return true;
+  const normalized: number[] = [];
+  for (const value of indexed) {
+    const numeric = typeof value === "number"
+      ? value
+      : typeof value === "string" && /^\d+$/.test(value.trim()) ? Number(value) : NaN;
+    if (!Number.isSafeInteger(numeric) || numeric <= 0) {
+      warnings.push("读回题目包含无效 q_index（必须是正整数），答卷页可能无法渲染");
+      return false;
+    }
+    normalized.push(numeric);
+  }
+  if (new Set(normalized).size !== normalized.length) {
+    warnings.push("读回题目包含重复 q_index，答卷页可能无法渲染或提交");
+    return false;
+  }
+  return true;
+}
+
 async function findListRecord(input: VerifyInput, warnings: string[]): Promise<Record<string, unknown> | undefined> {
   const fetchList = input.listSurveysFn ?? ((args, credentials, fetchImpl) => listSurveys(args, credentials, fetchImpl));
   const pageSize = 50;
@@ -281,6 +315,7 @@ export async function verifySurveyPostWrite(input: VerifyInput): Promise<PostVer
   const identityMatches = surveyIdentityMatches(data, input.vid);
   let structure = identityMatches;
   if (!identityMatches) warnings.push("read-after-write response identity differs from the requested survey id or is missing");
+  if (!validateQuestionIndexes(questions, warnings)) structure = false;
   const actualTitle = field(data, "title", "name", "survey_title");
   if (input.expectedTitle !== undefined && actualTitle !== input.expectedTitle) structure = false;
   if (input.expectedQuestionCount !== undefined) {
@@ -303,6 +338,11 @@ export async function verifySurveyPostWrite(input: VerifyInput): Promise<PostVer
       return undefined;
     });
     if (actual.length !== input.expectedQtypes.length || actual.some((q, i) => q !== input.expectedQtypes![i])) structure = false;
+  }
+  if (input.expectedLogic !== undefined && !surveyLogicMatches(input.expectedLogic, (data.dsl as { logic?: unknown } | undefined)?.logic,
+    Array.isArray(data.questions) ? data.questions as Record<string, unknown>[] : undefined)) {
+    structure = false;
+    warnings.push("保存后的 XML 逻辑投影与请求不一致或未返回");
   }
   if (!structure) warnings.push("verified survey structure differs from the requested input");
 
