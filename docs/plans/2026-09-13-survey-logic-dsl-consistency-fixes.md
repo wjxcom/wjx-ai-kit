@@ -1,5 +1,7 @@
 # Survey Logic DSL Consistency Fixes Implementation Plan
 
+> 历史计划（2026-09-13）：下文针对当时独立的 XML DSL 接口及校验器。当前问卷创建和修改已统一为 Survey JSON（JSONL）与可选 `dsl.logic`，普通查询返回保存后的逻辑；旧独立 DSL 接口及校验器已移除。本文件仅供历史追溯，不作为当前实现指引。
+
 > **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
 
 **Goal:** Align DSL/JSONL capability contracts and documentation, strengthen DSL preflight validation, and remove known contradictory examples.

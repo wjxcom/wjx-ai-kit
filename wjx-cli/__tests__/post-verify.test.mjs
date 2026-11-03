@@ -6,6 +6,35 @@ import { extractJsonlQuestionTypeExpectations } from "wjx-api-sdk";
 const ok = (data) => ({ result: true, data });
 
 describe("verifySurveyPostWrite", () => {
+  it("verifies unconditional show from the complete empty logic projection without a relation field", async () => {
+    const saved = { vid: 42, title: "清除关联", status: 0, questions: [
+      { q_index: 3, q_type: 3, q_subtype: 3, is_hide: false },
+    ], dsl: { logic: "logic {\n};" } };
+    const result = await verifySurveyPostWrite({ vid: 42, expectedLogic: 'logic { show "3"; };',
+      getSurveyFn: async () => ok(saved) });
+    assert.equal(result.verification.structure, true);
+    saved.dsl.logic = 'logic { if "2::1" then show "3"; };';
+    const stale = await verifySurveyPostWrite({ vid: 42, expectedLogic: 'logic { show "3"; };',
+      getSurveyFn: async () => ok(saved) });
+    assert.equal(stale.verification.structure, false);
+    delete saved.dsl;
+    const missing = await verifySurveyPostWrite({ vid: 42, expectedLogic: 'logic { show "3"; };',
+      getSurveyFn: async () => ok(saved) });
+    assert.equal(missing.verification.structure, false);
+  });
+
+  it("verifies hide from the complete logic projection without a relation field", async () => {
+    const saved = { vid: 42, status: 0, questions: [
+      { q_index: 3, q_type: 3, q_subtype: 3, is_hide: true },
+    ], dsl: { logic: 'logic { hide "3"; };' } };
+    const hidden = await verifySurveyPostWrite({ vid: 42, expectedLogic: 'logic { hide "3"; };',
+      getSurveyFn: async () => ok(saved) });
+    assert.equal(hidden.verification.structure, true);
+    const visible = await verifySurveyPostWrite({ vid: 42, expectedLogic: 'logic { show "3"; };',
+      getSurveyFn: async () => ok(saved) });
+    assert.equal(visible.verification.structure, false);
+  });
+
   it("fails closed when the read-back survey identity differs from the requested vid", async () => {
     const result = await verifySurveyPostWrite({
       vid: 42,
@@ -58,6 +87,54 @@ describe("verifySurveyPostWrite", () => {
     assert.equal(result.verification.link, false);
     assert.equal(result.fillUrl, undefined);
     assert.match(result.warnings.join(" "), /sid|link/i);
+  });
+
+  it("treats a draft without a respondent link as verified structure/status", async () => {
+    const result = await verifySurveyPostWrite({
+      vid: 42,
+      expectedQuestionCount: 1,
+      expectedStatus: "draft",
+      baseUrl: "https://www.wjx.cn",
+      getSurveyFn: async () => ok({
+        vid: 42,
+        status: 0,
+        title: "草稿",
+        questions: [{ q_type: 3, q_subtype: 3 }],
+      }),
+    });
+    assert.deepEqual(result.verification, { structure: true, status: true, link: false });
+    assert.equal(result.fillUrl, undefined);
+  });
+
+  it("rejects duplicate or invalid q_index values that can break respondent rendering", async () => {
+    const duplicate = await verifySurveyPostWrite({
+      vid: 42,
+      baseUrl: "https://www.wjx.cn",
+      getSurveyFn: async () => ok({
+        vid: 42,
+        sid: "indexSid",
+        status: 1,
+        questions: [
+          { q_index: 1, q_type: 3 },
+          { q_index: 1, q_type: 4 },
+        ],
+      }),
+    });
+    assert.equal(duplicate.verification.structure, false);
+    assert.match(duplicate.warnings.join(" "), /重复 q_index/);
+
+    const invalid = await verifySurveyPostWrite({
+      vid: 42,
+      baseUrl: "https://www.wjx.cn",
+      getSurveyFn: async () => ok({
+        vid: 42,
+        sid: "indexSid",
+        status: 1,
+        questions: [{ q_index: 0, q_type: 3 }],
+      }),
+    });
+    assert.equal(invalid.verification.structure, false);
+    assert.match(invalid.warnings.join(" "), /无效 q_index/);
   });
 
   it("accepts a server short id and verifies structure and status", async () => {

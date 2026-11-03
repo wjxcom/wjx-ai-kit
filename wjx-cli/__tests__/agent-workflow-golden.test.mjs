@@ -558,6 +558,66 @@ test("deleting a survey polls until the service reports deleted", async () => {
   }
 });
 
+test("survey delete fills an omitted username from the read-back creater", async () => {
+  let phase = "pre";
+  const fixture = await startRoutedFixture(({ action }) => {
+    if (action === "1000001") {
+      return {
+        result: true,
+        data: { vid: 700001, status: phase === "pre" ? 1 : 3, creater: "owner-from-survey" },
+      };
+    }
+    if (action === "1000301") {
+      phase = "post";
+      return { result: true, data: { deleted: true } };
+    }
+    return { result: true, data: {} };
+  });
+  try {
+    const result = success(await fixture.run([
+      "--yes", "survey", "delete", "--vid", "700001",
+    ]), "delete with creator fallback");
+    assert.equal(result.status, "deleted");
+    const deleteRequest = fixture.requests().find((request) => actionOf(request) === "1000301");
+    assert.equal(bodyOf(deleteRequest).username, "owner-from-survey");
+  } finally {
+    await fixture.close();
+  }
+});
+
+test("AI homepage update preserves page type and verifies the complete HTML read-back", async () => {
+  let phase = "pre";
+  const fixture = await startRoutedFixture(({ action }) => {
+    if (action === "1000001") {
+      return {
+        result: true,
+        data: {
+          vid: 700001,
+          status: 0,
+          page_type: 2,
+          html_content: phase === "pre" ? "<main>before</main>" : "<main>after</main>",
+        },
+      };
+    }
+    if (action === "1000108") {
+      phase = "post";
+      return { result: true, data: { vid: 700001, status: 0, page_type: 2 } };
+    }
+    return { result: true, data: {} };
+  });
+  try {
+    const result = success(await fixture.run([
+      "--yes", "survey", "update-ai-page", "--vid", "700001", "--html_content", "<main>after</main>",
+    ]), "verified AI homepage update");
+    assert.equal(result.verification.structure, true);
+    assert.equal(result.verification.status, true);
+    assert.equal(result.outcome, "verified");
+    assert.equal(fixture.requests().filter((request) => actionOf(request) === "1000108").length, 1);
+  } finally {
+    await fixture.close();
+  }
+});
+
 test("normal survey deletion does not accept hard-deleted status as recycle-bin proof", async () => {
   let phase = "pre";
   let postReads = 0;

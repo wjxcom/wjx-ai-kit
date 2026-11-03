@@ -72,6 +72,7 @@ function survey(status = 1) {
       vid: 810001,
       sid: "verificationSid",
       title: "Verification Survey",
+      creater: "owner-from-survey",
       status,
       version: 3,
       questions: [{ q_index: 1, q_type: 3, q_subtype: 3, q_title: "满意度" }],
@@ -79,6 +80,30 @@ function survey(status = 1) {
     },
   };
 }
+
+test("delete_survey resolves an omitted username from the pre-read creater", async () => {
+  const { client, close } = await connectClient();
+  let status = 1;
+  try {
+    await withMockFetch((call) => {
+      if (call.action === "1000001") return survey(status);
+      if (call.action === "1000301") {
+        assert.equal(call.body.username, "owner-from-survey");
+        status = 3;
+        return { result: true, data: { deleted: true } };
+      }
+      return { result: true, data: {} };
+    }, async () => {
+      const result = await client.callTool({ name: "delete_survey", arguments: { vid: 810001 } });
+      assert.equal(result.isError, false);
+      const payload = parse(result);
+      assert.equal(payload.outcome, "verified");
+      assert.equal(payload.data.verification.status, true);
+    });
+  } finally {
+    await close();
+  }
+});
 
 test("runVerifiedWrite downgrades verified reports with missing structural evidence", async () => {
   const result = await runVerifiedWrite({
@@ -746,6 +771,48 @@ test("create survey does not treat a null status as a verified draft", async () 
       assert.equal(payload.data.verification.status, false);
       assert.ok(payload.data.warnings.some((warning) => /状态/.test(warning)));
       assert.deepEqual(calls.map((entry) => entry.action), ["1000106", "1000001", "1000002"]);
+    });
+  } finally {
+    await close();
+  }
+});
+
+test("create survey accepts a verified draft without a respondent link", async () => {
+  const { client, close } = await connectClient("create-draft-no-link");
+  try {
+    await withMockFetch((call) => {
+      if (call.action === "1000106") return { result: true, data: { vid: 810006 } };
+      if (call.action === "1000001") {
+        return {
+          result: true,
+          data: {
+            vid: 810006,
+            title: "草稿无链接",
+            status: 0,
+            questions: [{ q_index: 1, q_type: 3, q_subtype: 3, q_title: "Q" }],
+          },
+        };
+      }
+      return { result: true, data: {} };
+    }, async (calls) => {
+      const result = await client.callTool({
+        name: "create_survey_by_json",
+        arguments: {
+          jsonl: [
+            '{"qtype":"问卷基础信息","title":"草稿无链接"}',
+            '{"qtype":"单选","title":"Q","select":["A","B"]}',
+          ].join("\n"),
+          atype: 1,
+          publish: false,
+        },
+      });
+      assert.equal(result.isError, false, JSON.stringify(result));
+      const payload = parse(result);
+      assert.equal(payload.outcome, "verified");
+      assert.equal(payload.data.verification.structure, true);
+      assert.equal(payload.data.verification.status, true);
+      assert.equal(payload.data.verification.link, true);
+      assert.deepEqual(calls.map((entry) => entry.action), ["1000106", "1000001"]);
     });
   } finally {
     await close();

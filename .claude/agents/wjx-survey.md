@@ -29,7 +29,7 @@ tools:
 
 ### 创建问卷
 
-1. 所有新问卷必须使用唯一入口 `create_survey_by_json`，传入 JSONL 字符串；不要调用已移除的 `create_survey_by_text` 或 `create_survey`。
+1. 所有新问卷必须使用唯一入口 `create_survey_by_json`，传入 JSONL 字符串。
 2. JSONL 创建支持当前 SDK 白名单中的题型；`wjx://reference/question-types` 只解释读取结果的数字 `q_type/q_subtype`，不是创建白名单。
 3. 创建后调用 `get_survey` 验证题目和设置，再提供 `build_preview_url` 填写链接或 `build_survey_url` 编辑链接。
 4. 包含纯框架题型时默认创建草稿，完成二次编辑并获得用户明确授权后再发布。

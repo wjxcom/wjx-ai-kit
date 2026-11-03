@@ -2,10 +2,10 @@
 
 - Node.js：要求 20+。
 - CLI：以 `wjx --version` 和 `--help` 为准；文档不承诺未在源码出现的旧参数。
-- MCP Server：当前源码版本为 `0.4.5`；发布前从 GitHub 构建和运行。
-- JSONL 问卷创建入口为 CLI `survey create`、SDK `createSurveyByJson`、MCP `create_survey_by_json`（action `1000106`）；XML DSL v1 另有独立的 query/generate/create/update 链路。
+- MCP Server：当前源码版本为 `0.4.6`；发布前从 GitHub 构建和运行。
+- 问卷创建入口统一为 CLI `survey create`、SDK `createSurveyByJson`、MCP `create_survey_by_json`（action `1000106`）；修改使用 `survey update`、`updateSurveyByJson`、`update_survey_by_json`（action `1000109`）。创建和修改均使用 JSONL，可选 `dsl.logic` 用于题目关联逻辑。
 
-旧文本 DSL 的兼容能力仅限读取和离线审阅；JSONL 与 XML DSL 不互相转换。SDK 返回问卷星 OpenAPI 原始响应（业务失败通常是 `result: false`），CLI 则将结果投影为 `ok/data/meta` envelope；二者不是同一输出协议。重大变化记录在 [变更记录](../changelog.md)，迁移动作见 [迁移指南](../migration.md)。
+旧文本 DSL 仅用于历史读取和离线审阅；迁移时将题目整理为 JSONL，并按需附加 `dsl.logic`，再通过普通问卷查询核对实际保存结果。SDK 返回问卷星 OpenAPI 原始响应（业务失败通常是 `result: false`），CLI 则将结果投影为 `ok/data/meta` envelope；二者不是同一输出协议。重大变化记录在 [变更记录](../changelog.md)，迁移动作见 [迁移指南](../migration.md)。
 
 ## 创建接口的版本门禁
 

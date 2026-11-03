@@ -36,7 +36,8 @@ function questionFor(qtype) {
   }
   if (qtype.startsWith("考试")) {
     question.select ??= ["选项 A", "选项 B"];
-    question.correctselect = ["选项 A"];
+    if (qtype === "考试代码") question.codetype = "python";
+    else if (qtype !== "考试简答") question.correctselect = ["选项 A"];
     question.quizscore = "5";
   }
   if (["矩阵填空", "矩阵单选", "矩阵多选", "矩阵量表", "矩阵滑动条", "矩阵数值题", "表格数值", "表格填空", "表格下拉框", "表格组合", "自增表格", "邮寄地址", "企业信息", "基本信息", "AI访谈", "循环评价", "PSM模型", "层次分析", "文字点睛"].includes(qtype)) {

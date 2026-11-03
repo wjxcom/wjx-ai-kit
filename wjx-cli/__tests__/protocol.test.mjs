@@ -160,7 +160,7 @@ test("numeric backend codes are not classified from upgrade wording alone", asyn
   }
 });
 
-test("DSL validation failures preserve backend diagnostics in the CLI error envelope", async () => {
+test("logic validation failures preserve backend diagnostics in the CLI error envelope", async () => {
   const fixture = await startFixture({
     response: {
       result: false,
@@ -169,23 +169,21 @@ test("DSL validation failures preserve backend diagnostics in the CLI error enve
       data: {
         status: "ValidationFailed",
         correlationId: "dsl-trace",
-        validationSuccess: false,
-        canCommit: false,
         diagnosticCount: 1,
-        diagnostics: [{ code: "DSL_MATRIX_RANGE", path: "/Questionnaire/Question[1]", message: "表格数值范围无效" }],
+        diagnostics: [{ code: "DSL_LOGIC_REFERENCE", path: "/Questionnaire/Question[1]", message: "逻辑引用不存在" }],
       },
     },
     env: { WJX_API_KEY: "test-key" },
   });
   try {
-    const dsl = 'wjx-dsl 1; questionnaire { attr "Title" = "诊断测试"; };';
-    const result = await fixture.run(["dsl", "create", "--dsl", dsl]);
+    const jsonl = '{"qtype":"问卷基础信息","title":"诊断测试"}\n{"qtype":"单选","title":"选择","select":["是","否"]}';
+    const dsl = { logic: 'logic { if "2::1" then show "99"; };' };
+    const result = await fixture.run(["survey", "create", "--jsonl", jsonl, "--dsl", JSON.stringify(dsl)]);
     assert.equal(result.exitCode, 1);
     const problem = JSON.parse(result.stderr);
     assert.equal(problem.error.errorcode, 46007);
     assert.equal(problem.error.status, "ValidationFailed");
-    assert.equal(problem.error.canCommit, false);
-    assert.equal(problem.error.diagnostics[0].code, "DSL_MATRIX_RANGE");
+    assert.equal(problem.error.diagnostics[0].code, "DSL_LOGIC_REFERENCE");
   } finally {
     await fixture.close();
   }

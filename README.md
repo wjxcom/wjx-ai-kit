@@ -16,7 +16,7 @@ CLI 是默认入口：它不要求客户端支持 MCP，适合 AI Agent、自动
 
 ## 安装
 
-当前源码版本为 `0.4.5`。发布到 npm 后，registry 的 `latest` 将指向 `0.4.5`。直接安装 CLI：
+当前源码版本为 `0.4.6`。发布到 npm 后，registry 的 `latest` 将指向 `0.4.6`。直接安装 CLI：
 
 > 通过 AI 安装并启用 wjx-cli：先执行 `npm install -g wjx-cli@latest`，成功后再执行 `wjx skill install --force`；安装后命令名是 `wjx`，请用 `wjx --version` 验证，不要运行 `wjx-cli --version`。
 
@@ -73,7 +73,7 @@ wjx response report --vid 12345
 wjx response query --vid 12345 --page_size 50
 ```
 
-新项目支持 JSONL 和完整 XML DSL 两条独立的问卷创建路径。
+问卷创建和修改统一使用 Survey JSON（JSONL）；涉及题目关联时附加 dsl.logic，由服务端转换为 XML 原生逻辑。
 
 
 ## 开发

@@ -160,7 +160,8 @@ function sampleQuestion(qtype) {
       { correctselect: "三年二班", quizscore: "3" },
     ];
   }
-  if (qtype.startsWith("考试") && !["考试单项填空", "考试多项填空"].includes(qtype)) {
+  if (qtype === "考试代码") question.codetype = "python";
+  if (qtype.startsWith("考试") && !["考试单项填空", "考试多项填空", "考试简答", "考试代码"].includes(qtype)) {
     question.correctselect = ["选项一"];
     question.quizscore = "1";
   }
@@ -501,7 +502,7 @@ test("Skill documents all ten Agent rules and executable guidance anchors", asyn
     assert.match(skill, new RegExp(`规则\\s*${index}(?:[：:]|\\b)`), `missing rule ${index}`);
   }
   for (const phrase of [
-    "按场景选择 JSONL 或 XML DSL",
+    "创建任何新问卷",
     "禁止**自行拼成",
     "不要使用 `--format table`",
     "不要只复述错误信息",
