@@ -207,9 +207,10 @@ function effects(rule: Rule, input: boolean): Effect[] {
     return [make(`jump:${source.key}`, destination === "END" && raw === "-1" ? "END:-1" : destination, [source, ...(target ? [target] : [])])];
   }
   if (verb === "reference") {
-    if (rule.condition || !["options", "rows", "title"].includes(action[1]) || action.length !== 6 || action[2] !== "from" || action[4] !== "to") invalid("引用需要 reference options/rows/title from 来源题 to 后题");
+    if (rule.condition || !["options", "rows", "title", "answer"].includes(action[1]) || action.length !== 6 || action[2] !== "from" || action[4] !== "to") invalid("引用需要 reference options/rows/title/answer from 来源题 to 后题");
     const source = whole(quoted(action[3])), target = whole(quoted(action[5]));
     if (source.topic >= target.topic) invalid("引用方向必须是前题 from 到后题 to，不能引用自身或后题");
+    if (action[1] === "answer" && raw !== undefined) invalid("答案自动填入不支持 raw；请使用 reference answer from 来源整题 to 后面的填空整题");
     if (raw !== undefined && raw !== source.key) invalid("raw 引用属性与来源题目不一致");
     return [{ ...make(`reference:${action[1] === "rows" ? "options" : action[1]}:${target.key}`, source.key, [source, target]), referenceKind: action[1] }];
   }
@@ -287,7 +288,7 @@ function groupEffects(parsed: Rule[], input: boolean): Map<string, Effect> {
     } else if (effect.display && previous.display && !effect.exclusive && !previous.exclusive) {
       const display = combine("and", [previous.display, effect.display]);
       grouped.set(effect.key, { ...effect, display, value: exprKey(display), selectors: [...previous.selectors, ...effect.selectors] });
-    } else if (effect.value !== previous.value || (input && effect.key.startsWith("display:"))) invalid("同一目标包含冲突或歧义规则");
+    } else if (effect.value !== previous.value || (input && (effect.key.startsWith("display:") || effect.key.startsWith("reference:answer:")))) invalid("同一目标包含冲突或歧义规则");
   }
   if (input) for (const key of grouped.keys()) {
     if (key.startsWith("reference:options:") && grouped.has(`random:options:${key.slice("reference:options:".length)}`)) {
@@ -321,6 +322,16 @@ export function prepareSurveyDslJson(value: unknown): SurveyDslJson | undefined 
   return { logic };
 }
 
+/** Request native page nodes only when the logic addresses page identifiers. */
+export function surveyLogicReadOptions(logic?: string): { get_page_cut?: true } {
+  try {
+    if (logic === undefined) return {};
+    const parsed = rules(logic);
+    groupEffects(parsed, true);
+    return parsed.some(rule => rule.action[0] === "random" && rule.action[1] === "pages") ? { get_page_cut: true } : {};
+  } catch { return {}; }
+}
+
 function questionFor(target: Selector, questions: readonly Record<string, unknown>[]): Record<string, unknown> | undefined {
   const matches = questions.filter(question => String(question.q_index) === String(target.topic)
     && Number(question.q_type ?? question.qType) > 2);
@@ -332,6 +343,20 @@ function questionFor(target: Selector, questions: readonly Record<string, unknow
   if (!Array.isArray(items)) return undefined;
   const found = items.filter((item, index) => String(item.item_index ?? index + 1) === target.child);
   return found.length === 1 ? found[0] as Record<string, unknown> : undefined;
+}
+
+function answerReferenceText(question: Record<string, unknown>): boolean {
+  return Number(question.q_type) === 5 && Number(question.q_subtype ?? 5) === 5
+    && Number(question.mode ?? 0) === 0 && Number(question.verify ?? 0) === 0
+    && ![question.q_ceshi, question.is_ceshi].some(value => value === true || value === "true" || value === 1 || value === "1");
+}
+
+function answerReferenceChoice(question: Record<string, unknown>): boolean {
+  return [3, 301].includes(Number(question.q_type)) && [3, 301].includes(Number(question.q_subtype ?? question.q_type))
+    && Number(question.style ?? question.mode ?? 0) === 0 && Number(question.refer_topic ?? 0) === 0
+    && Array.isArray(question.items) && question.items.length >= 2
+    && !["is_panduan", "is_shelf", "is_shop", "is_qingjing", "is_random_label", "is_random_label_choice"]
+      .some(key => question[key] === true || question[key] === "true" || question[key] === 1 || question[key] === "1");
 }
 
 /** Only reference consumers may replace the choices/rows copied by the service. */
@@ -379,6 +404,10 @@ export function surveyLogicMatches(expected: string, actual: unknown, questions?
       if (questions && effect.key.startsWith("reference:")) {
         const source = questionFor(effect.selectors[0], questions)!;
         const target = questionFor(effect.selectors.at(-1)!, questions)!;
+        // The server projects answer only from a native, editable gsData assignment;
+        // it is distinct from TitleTopic and does not copy the source's options.
+        if (effect.referenceKind === "answer") return answerReferenceText(target)
+          && (answerReferenceText(source) || answerReferenceChoice(source));
         if (!effect.key.startsWith("reference:title:") && (Number(source.q_type) !== 4 || ![3, 4, 7].includes(Number(target.q_type))
           || (effect.referenceKind === "rows" && Number(target.q_type) !== 7))) return false;
         const native = effect.key.startsWith("reference:title:") ? target.title_topic : target.refer_topic;

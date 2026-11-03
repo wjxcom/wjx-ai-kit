@@ -24,7 +24,7 @@ import {
   compareJsonlQuestionTypes,
   filterJsonlVerificationQuestions,
 } from "./client.js";
-import { prepareSurveyDslJson, verifySurveyJsonUpdate, surveyLogicMatches, buildPreviewUrl, getWjxBaseUrl, getWjxCredentials } from "wjx-api-sdk";
+import { prepareSurveyDslJson, verifySurveyJsonUpdate, surveyLogicMatches, surveyLogicReadOptions, buildPreviewUrl, getWjxBaseUrl, getWjxCredentials } from "wjx-api-sdk";
 import type { SurveyDetail } from "./client.js";
 import { assertApiResponse, toolApiResult, toolResult, toolError } from "../../helpers.js";
 import { QUESTION_TYPES } from "../../resources/survey-reference.js";
@@ -1101,7 +1101,7 @@ export function registerSurveyTools(server: McpServer): void {
         "【必答规则】默认所有题型都是必答题，包括单项填空、简答题、意见建议题、开放题；只有用户明确指定某个题号/题目/字段为选填时，才给该题传 requir=false。" +
         "【专业模型】支持 BWS/MaxDiff(mdattr+pertaskcount+tasklength)、联合分析(columntitle)、品牌漏斗(brands)、Kano模型、SUS模型、PSM模型等。" +
         "【考试题型】客观题支持 correctselect（正确答案）、quizscore（分值）、answeranalysis（答案解析）；考试简答不要设置 correctselect，考试代码必须提供 codetype（编程语言），不要生成标准答案。普通主观题使用简答题，考试填空仅用于有标准答案的填空。" +
-        "【关联逻辑】relation/referselect 仅在用户提供并确认合法格式时原样保留，客户端不验证这些字段的语义。题目分支逻辑使用可选 dsl.logic，由服务端转换为 XML 原生属性，冲突时 DSL 优先；创建后读取 get_survey 返回的 dsl.logic 验证保存结果。" +
+        "【关联逻辑】题目/选项关联、跳题、引用和随机统一通过 dsl.logic 提交，不在 JSONL 中填写 relation/referselect 等逻辑字段。reference answer from \"5\" to \"6\"; 将前题答案填入后面的普通填空题答题框，保持题干不变；题干引用使用 title 和 [qN]。创建后读取 get_survey 返回的真实 dsl.logic 验证保存结果。" +
         "【硬性校验 — 不满足会被 SDK 拒绝】1) 标题不得为空、占位符（??? / 无标题 / TODO / xxx 等）或少于 2 字；2) JSONL 必须包含至少 1 道真实题目（_meta/分页栏/段落说明/知情同意书不计入）。" +
         "【多项填空必看】多项填空 qtype='多项填空'，子填空位数量由 title 中的 {_} 占位符数量决定，例如 title='电话 {_}，邮箱 {_}，微信 {_}' 会生成 3 个空位；**禁止用 rowtitle 数组**（多项填空不支持该字段，服务端会忽略并只生成 1 个空位）。考试多项填空同理；考试完形填空不在当前 JSONL 创建支持集合中。" +
         "【表格类题型 706-710】生成 JSONL 时必须优先使用标准格式：" +
@@ -1121,7 +1121,7 @@ export function registerSurveyTools(server: McpServer): void {
         '{"qtype":"投票多选","title":"哪些网站是你经常使用的","select":["淘宝网","开心网","百度","腾讯","人人网"]}\n' +
         '{"qtype":"量表题","title":"满意度评分","select":["1","2","3","4","5"],"minvaluetext":"非常不满意","maxvaluetext":"非常满意"}',
       inputSchema: {
-        dsl: z.object({ logic: z.string().min(1) }).strict().optional().describe("仅包含 logic 模块，服务端转换为 XML 原生逻辑；冲突时 DSL 优先"),
+        dsl: z.object({ logic: z.string().min(1) }).strict().optional().describe("仅包含 logic 模块；关联、跳题、引用和随机统一写在这里，answer 引用将前题答案填入后题答题框"),
         jsonl: z.string().min(1).refine(
           (value) => Buffer.byteLength(value, "utf8") <= MAX_JSONL_SIZE,
           `JSONL UTF-8 字节数不能超过 ${MAX_JSONL_SIZE}`,
@@ -1194,7 +1194,7 @@ export function registerSurveyTools(server: McpServer): void {
 
             let readBack;
             try {
-              readBack = await getSurvey({ vid });
+              readBack = await getSurvey({ vid, ...surveyLogicReadOptions(args.dsl?.logic) });
             } catch (error) {
               return verificationFailure(
                 `创建后的问卷读取失败：${error instanceof Error ? error.message : String(error)}`,
@@ -1266,7 +1266,7 @@ export function registerSurveyTools(server: McpServer): void {
   );
   server.registerTool("update_survey_by_json", {
     title: "用 JSON 修改问卷",
-    description: "读取 get_survey 后修改既有传统问卷。传完整 jsonl 修改题目，或只传 dsl.logic 修改逻辑；服务端将逻辑转换成 XML 原生属性，保留其他问卷内容。JSON 逻辑与 DSL 同时存在时 DSL 优先。",
+    description: "读取 get_survey 后修改既有传统问卷。传完整 jsonl 修改题目，或只传 dsl.logic 修改逻辑；关联、跳题、引用和随机统一用 DSL。reference answer from \"5\" to \"6\"; 将前题答案填入后面的普通填空题答题框。服务端转换为 XML 原生属性，保存后读回核验。",
     inputSchema: {
       vid: z.union([z.number().int().positive(), z.string().regex(/^[1-9]\d*$/)]),
       jsonl: z.string().min(1).optional(),
@@ -1280,7 +1280,8 @@ export function registerSurveyTools(server: McpServer): void {
     try {
       if (args.jsonl === undefined && args.dsl === undefined) throw new Error("jsonl 或 dsl.logic 至少提供一项");
       prepareSurveyDslJson(args.dsl);
-      const before = await getSurvey<Record<string, unknown>>({ vid: Number(args.vid) });
+      const before = await getSurvey<Record<string, unknown>>({ vid: Number(args.vid),
+        ...surveyLogicReadOptions(args.dsl?.logic) });
       assertApiResponse(before);
       if (before.result !== true) return toolApiResult(before);
       if (!surveyIdentityMatches(before.data, Number(args.vid))) throw new Error("问卷读取身份不匹配");

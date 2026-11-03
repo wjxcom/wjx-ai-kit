@@ -1,4 +1,4 @@
-import { buildPreviewUrl, getSurvey, listSurveys, getWjxBaseUrl, surveyLogicMatches } from "wjx-api-sdk";
+import { buildPreviewUrl, getSurvey, listSurveys, getWjxBaseUrl, surveyLogicMatches, surveyLogicReadOptions } from "wjx-api-sdk";
 import type { WjxApiResponse, WjxCredentials, FetchLike } from "wjx-api-sdk";
 import { compareJsonlQuestionTypes, filterJsonlVerificationQuestions } from "wjx-api-sdk";
 import type { JsonlQuestionTypeExpectation } from "wjx-api-sdk";
@@ -34,7 +34,7 @@ interface VerifyInput {
   respondentOrigins?: string[];
   credentials?: WjxCredentials;
   fetchImpl?: FetchLike;
-  getSurveyFn?: (input: { vid: number; get_questions: boolean; get_items: boolean }, credentials?: WjxCredentials, fetchImpl?: FetchLike) => Promise<WjxApiResponse<any>>;
+  getSurveyFn?: (input: { vid: number; get_questions: boolean; get_items: boolean; get_page_cut?: boolean }, credentials?: WjxCredentials, fetchImpl?: FetchLike) => Promise<WjxApiResponse<any>>;
   listSurveysFn?: (input: { page_index: number; page_size: number }, credentials?: WjxCredentials, fetchImpl?: FetchLike) => Promise<WjxApiResponse<any>>;
 }
 
@@ -291,7 +291,8 @@ export async function verifySurveyPostWrite(input: VerifyInput): Promise<PostVer
   const fetchSurvey = input.getSurveyFn ?? ((args, credentials, fetchImpl) => getSurvey(args, credentials, fetchImpl));
   let response: WjxApiResponse<any> | undefined;
   try {
-    response = await fetchSurvey({ vid: input.vid, get_questions: true, get_items: true }, input.credentials, input.fetchImpl);
+    response = await fetchSurvey({ vid: input.vid, get_questions: true, get_items: true,
+      ...surveyLogicReadOptions(input.expectedLogic) }, input.credentials, input.fetchImpl);
   } catch {
     warnings.push("read-after-write verification could not read survey state");
   }

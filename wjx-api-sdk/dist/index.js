@@ -2,7 +2,7 @@
 export { getWjxBaseUrl, getWjxApiUrl, getWjxUserSystemApiUrl, getWjxSubuserApiUrl, getWjxContactsApiUrl, getWjxShortLinkUrl, getWjxSsoSubaccountUrl, getWjxSsoUserSystemUrl, getWjxSsoPartnerUrl, getWjxSurveyCreateUrl, getWjxSurveyEditUrl, Action, DEFAULT_TIMEOUT_MS, LONG_TIMEOUT_MS, DEFAULT_MAX_RETRIES, RETRY_DELAY_MS, } from "./core/constants.js";
 export { setCredentialProvider, getWjxCredentials, callWjxApi, callWjxUserSystemApi, callWjxSubuserApi, callWjxContactsApi, getCorpId, assignDefined, WjxAmbiguousOutcomeError, } from "./core/api-client.js";
 // Survey module
-export { prepareSurveyDslJson, surveyLogicMatches } from "./modules/survey/logic.js";
+export { prepareSurveyDslJson, surveyLogicMatches, surveyLogicReadOptions } from "./modules/survey/logic.js";
 export { verifySurveyJsonUpdate } from "./modules/survey/verify.js";
 export { createSurveyByJson, updateSurveyByJson, CREATABLE_SURVEY_ATYPES, getSurvey, listSurveys, updateSurveyStatus, getSurveySettings, updateSurveySettings, deleteSurvey, getQuestionTags, getTagDetails, clearRecycleBin, uploadFile, } from "./modules/survey/client.js";
 export { extractJsonlMetadata, normalizeJsonl, MAX_JSONL_SIZE, canonicalizeJsonlQtypes, parseJsonl, jsonToSurvey, EXAM_QTYPES, preprocessExamJsonl, hasVoteJsonlQtype, injectDefaultRequir, injectAtypeIntoJsonl, inferAtypeFromTitle, validateSurveyTitle, validateSurveyHasQuestions, NON_QUESTION_QTYPE_SET, JSONL_SUPPORTED_QTYPES, JSONL_READ_ONLY_OR_WEB_EDITOR_QTYPES, FRAMEWORK_ONLY_JSONL_QTYPES, hasFrameworkOnlyJsonlQtype, resolveJsonlPublish, preflightJsonl, } from "./modules/survey/json-to-survey.js";

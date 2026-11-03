@@ -1,7 +1,11 @@
 import { getSurvey } from "./client.js";
 import { jsonToSurvey, NON_QUESTION_QTYPE_SET, parseJsonl } from "./json-to-survey.js";
 import { compareJsonlQuestionTypes, extractJsonlQuestionTypeExpectations, filterJsonlVerificationQuestions, getJsonlQuestionTypeCode } from "./qtype-mapping.js";
-import { surveyLogicMatches } from "./logic.js";
+import { surveyLogicMatches, surveyLogicPreservesQuestionContent, surveyLogicReadOptions } from "./logic.js";
+function matchesItemTitles(expected, actual) {
+    return Array.isArray(expected) && expected.length > 0 && Array.isArray(actual) && actual.length === expected.length
+        && expected.every((title, index) => typeof title === "string" && actual[index]?.item_title === title);
+}
 /** Compare only documented read-back fields; unsupported shapes remain unverified. */
 function compareJsonContent(input, data) {
     const warnings = [];
@@ -19,20 +23,24 @@ function compareJsonContent(input, data) {
         if (!saved || saved.is_requir !== (row.requir ?? true))
             warnings.push(`${label}必答设置与 JSONL 请求不一致或未返回`);
         const type = getJsonlQuestionTypeCode(row.qtype);
-        if (!type || ![3, 4, 5, 8, 10].includes(type.q_type)) {
+        const matrix = type?.q_type === 7 && [701, 702, 703, 704].includes(type.q_subtype);
+        if (!matrix && (!type || ![3, 4, 5, 8, 10].includes(type.q_type))) {
             warnings.push(`${label}题型「${row.qtype}」的完整内容暂不能通过查询结果确认`);
         }
+        // ExtQMatrix exposes the left-hand labels separately from selectable items.
+        // Table columns have a different JSONL contract and remain unverified here.
+        if (matrix && !matchesItemTitles(row.rowtitle, saved?.item_rows)) {
+            warnings.push(`${label}矩阵行标题内容或顺序与 JSONL 请求不一致或未返回`);
+        }
         if (row.select !== undefined) {
-            const items = Array.isArray(saved?.items) ? saved.items : undefined;
-            if (!Array.isArray(row.select) || !items || items.length !== row.select.length
-                || row.select.some((title, itemIndex) => typeof title !== "string" || items[itemIndex]?.item_title !== title)) {
+            if (!matchesItemTitles(row.select, saved?.items)) {
                 warnings.push(`${label}选项内容或顺序与 JSONL 请求不一致或未返回`);
             }
         }
-        else if (type && [3, 4].includes(type.q_type)) {
+        else if ((type && [3, 4].includes(type.q_type)) || (matrix && type.q_subtype !== 704)) {
             warnings.push(`${label}未提供可核对的完整选项内容`);
         }
-        const unsupported = Object.keys(row).filter(key => !allowed.has(key));
+        const unsupported = Object.keys(row).filter(key => !allowed.has(key) && !(matrix && key === "rowtitle"));
         if (unsupported.length)
             warnings.push(`${label}字段尚不能完整读回校验：${unsupported.join("、")}`);
     }
@@ -57,7 +65,8 @@ function compareJsonContent(input, data) {
 }
 /** 通过普通查询读取真实 XML 投影，验证 JSON 更新；不依赖提交时的 DSL 影子副本。 */
 export async function verifySurveyJsonUpdate(input, before, credentials, fetchImpl) {
-    const response = await getSurvey({ vid: Number(input.vid), get_questions: true, get_items: true }, credentials, fetchImpl);
+    const response = await getSurvey({ vid: Number(input.vid), get_questions: true, get_items: true,
+        ...surveyLogicReadOptions(input.dsl?.logic) }, credentials, fetchImpl);
     const warnings = [];
     const data = response.result === true ? response.data : undefined;
     let structure = !!data && String(data.vid) === String(input.vid);
@@ -74,11 +83,9 @@ export async function verifySurveyJsonUpdate(input, before, credentials, fetchIm
             }
         }
         else {
-            const content = (value) => JSON.stringify(value, (key, item) => ["relation", "item_relation", "has_jump", "is_hide", "refer_topic", "title_topic", "random_mode", "randomchoice",
-                "anytime_jumpto", "anytime_jump", "item_jump", "item_jump_rule", "choice_random", "choice_randomtype", "is_random_row"].includes(key) ? undefined : item);
             structure = typeof before.title === "string" && data.title === before.title
                 && Array.isArray(before.questions) && Array.isArray(data.questions)
-                && content(data.questions) === content(before.questions);
+                && surveyLogicPreservesQuestionContent(input.dsl?.logic, before.questions, data.questions);
         }
     }
     if (input.dsl && !surveyLogicMatches(input.dsl.logic, data?.dsl?.logic, Array.isArray(data?.questions) ? data.questions : undefined)) {

@@ -4,6 +4,7 @@ import {
   createSurveyByJson,
   updateSurveyByJson,
   prepareSurveyDslJson,
+  surveyLogicReadOptions,
   verifySurveyJsonUpdate,
   createAiPage,
   updateAiPage,
@@ -582,7 +583,8 @@ export function registerSurveyCommands(program: Command): void {
           allowBreakingChanges: values.allowBreakingChanges ?? values.allow_breaking_changes };
       }, {
         preRead: async (input, credentials) => {
-          const current = await getSurvey<Record<string, unknown>>({ vid: Number(input.vid) }, credentials);
+          const current = await getSurvey<Record<string, unknown>>({ vid: Number(input.vid),
+            ...surveyLogicReadOptions((input.dsl as { logic?: string } | undefined)?.logic) }, credentials);
           ensureApiSuccess(current);
           if (current.result !== true || !surveyIdentityMatches(current.data, Number(input.vid)))
             throw new CliError("API_ERROR", "问卷读取身份不匹配，已停止更新");

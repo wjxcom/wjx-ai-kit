@@ -40,7 +40,7 @@ export {
 } from "./core/api-client.js";
 
 // Survey module
-export { prepareSurveyDslJson, surveyLogicMatches } from "./modules/survey/logic.js";
+export { prepareSurveyDslJson, surveyLogicMatches, surveyLogicReadOptions } from "./modules/survey/logic.js";
 export { verifySurveyJsonUpdate } from "./modules/survey/verify.js";
 export {
   createSurveyByJson,

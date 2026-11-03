@@ -36,6 +36,7 @@ interface VerifyInput {
         vid: number;
         get_questions: boolean;
         get_items: boolean;
+        get_page_cut?: boolean;
     }, credentials?: WjxCredentials, fetchImpl?: FetchLike) => Promise<WjxApiResponse<any>>;
     listSurveysFn?: (input: {
         page_index: number;

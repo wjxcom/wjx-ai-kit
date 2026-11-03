@@ -1,4 +1,4 @@
-import { buildPreviewUrl, getSurvey, listSurveys, getWjxBaseUrl, surveyLogicMatches } from "wjx-api-sdk";
+import { buildPreviewUrl, getSurvey, listSurveys, getWjxBaseUrl, surveyLogicMatches, surveyLogicReadOptions } from "wjx-api-sdk";
 import { compareJsonlQuestionTypes, filterJsonlVerificationQuestions } from "wjx-api-sdk";
 import { surveyIdentityMatches } from "./identity.js";
 const STATUS = {
@@ -252,7 +252,8 @@ export async function verifySurveyPostWrite(input) {
     const fetchSurvey = input.getSurveyFn ?? ((args, credentials, fetchImpl) => getSurvey(args, credentials, fetchImpl));
     let response;
     try {
-        response = await fetchSurvey({ vid: input.vid, get_questions: true, get_items: true }, input.credentials, input.fetchImpl);
+        response = await fetchSurvey({ vid: input.vid, get_questions: true, get_items: true,
+            ...surveyLogicReadOptions(input.expectedLogic) }, input.credentials, input.fetchImpl);
     }
     catch {
         warnings.push("read-after-write verification could not read survey state");

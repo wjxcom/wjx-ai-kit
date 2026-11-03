@@ -1,5 +1,11 @@
 import type { SurveyDslJson } from "./types.js";
-/** 仅校验模块边界；规则语义由服务端现有 DSL 解析器校验。 */
+/** Validate the shared, native-backed logic grammar before any transport. */
 export declare function prepareSurveyDslJson(value: unknown): SurveyDslJson | undefined;
-/** 检查请求的规则是否出现在真实 XML 的完整投影中；其他已有规则允许保留。 */
+/** Request native page nodes only when the logic addresses page identifiers. */
+export declare function surveyLogicReadOptions(logic?: string): {
+    get_page_cut?: true;
+};
+/** Only reference consumers may replace the choices/rows copied by the service. */
+export declare function surveyLogicPreservesQuestionContent(logic: string | undefined, before: readonly Record<string, unknown>[], after: readonly Record<string, unknown>[]): boolean;
+/** Compare the requested native effects with the complete XML projection. */
 export declare function surveyLogicMatches(expected: string, actual: unknown, questions?: readonly Record<string, unknown>[]): boolean;

@@ -45,7 +45,7 @@ MCP 任务遵循“发现意图 -> 预检 -> 计划 -> 确认 -> 执行 -> 读�
 ### 规则 0：使用 Survey JSON 与可选题目逻辑
 
 
-问卷创建使用 create_survey_by_json，修改使用 update_survey_by_json；按需提供 dsl.logic，普通查询 get_survey 从 XML 返回逻辑投影。
+问卷创建使用 create_survey_by_json，修改使用 update_survey_by_json；涉及关联、跳题、引用或随机时必须使用 dsl.logic，普通查询 get_survey 从 XML 返回逻辑投影。JSONL 只定义题目内容，不回退到 JSON 逻辑字段。
 ### AI 主页
 
 AI 主页是独立的纯展示内容，与表单/问卷创建互斥：
@@ -143,7 +143,7 @@ https://www.wjx.cn/weixinlogin.aspx?redirecturl=%2Fnewwjx%2Fmanage%2Fuserinfo.as
 
 ### 创建与修改问卷（Survey JSON）
 
-Survey JSON 使用中文 qtype。仅涉及题目逻辑时附加 dsl.logic，服务端转换为原生 XML 逻辑。
+Survey JSON 使用中文 qtype。问卷逻辑统一附加 dsl.logic，服务端转换为原生 XML 逻辑；不要在 JSONL 中设置 relation、referselect 等逻辑字段。引用方向、答案自动填入和题型限制见 [题目逻辑与 JSONL 题型](references/dsl-and-types.md)。
 
 ```
 1. 使用 prompt 模板生成题目 JSON（如 generate-survey-json、generate-exam-json 等）
@@ -248,13 +248,13 @@ submitdata 题号必须与 `get_survey` 返回的原始 `q_index` 对齐——**
 
 ## Survey JSON 与逻辑
 
-问卷创建统一使用 Survey JSON（JSONL），修改使用同一内容格式。涉及题目关联时增加可选节点：
+问卷内容创建和修改统一使用 Survey JSON（JSONL）；涉及关联、跳题、引用或随机时必须提供 dsl.logic：
 
 ```json
 {"dsl":{"logic":"logic { if \"2::1\" then show \"3\"; };"}}
 ```
 
-完整请求的 `jsonl` 是 JSONL 字符串；`dsl` 是对象，只包含 `logic`。无逻辑时省略 `dsl`。已有 `relation/referselect` 字段继续保留，冲突时 DSL 优先。
+完整请求的 `jsonl` 是 JSONL 字符串；`dsl` 是对象，只包含 `logic`。无逻辑时省略 `dsl`。不要新增、复制或修改 `relation`、`referselect` 等 JSON 逻辑字段，也不要用 JSON 和 DSL 重复表达同一逻辑。DSL 不支持或校验失败时明确说明限制，不得回退 JSON 或省略逻辑后宣称完成。
 
 SDK 使用 `createSurveyByJson` / `updateSurveyByJson`；CLI 使用 `survey create` / `survey update`；MCP 使用 `create_survey_by_json` / `update_survey_by_json`。普通查询 `getSurvey` / `survey get` / `get_survey` 从实际 XML 返回可编辑的 `dsl.logic`。
 

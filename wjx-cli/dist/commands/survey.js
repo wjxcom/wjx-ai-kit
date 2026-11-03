@@ -1,5 +1,5 @@
 import { readFileSync } from "node:fs";
-import { createSurveyByJson, updateSurveyByJson, prepareSurveyDslJson, verifySurveyJsonUpdate, createAiPage, updateAiPage, AI_PAGE_MAX_HTML_LENGTH, AI_PAGE_PAGE_TYPES, CREATABLE_SURVEY_ATYPES, getSurvey, listSurveys, updateSurveyStatus, getSurveySettings, updateSurveySettings, deleteSurvey, getQuestionTags, getTagDetails, clearRecycleBin, uploadFile, buildSurveyUrl, buildPreviewUrl, getShortLink, getWjxShortLinkUrl, MAX_JSONL_SIZE, preflightJsonl, parseJsonl, jsonToSurvey, extractJsonlQuestionTypeExpectations, getJsonlQuestionTypeCode, Action, } from "wjx-api-sdk";
+import { createSurveyByJson, updateSurveyByJson, prepareSurveyDslJson, surveyLogicReadOptions, verifySurveyJsonUpdate, createAiPage, updateAiPage, AI_PAGE_MAX_HTML_LENGTH, AI_PAGE_PAGE_TYPES, CREATABLE_SURVEY_ATYPES, getSurvey, listSurveys, updateSurveyStatus, getSurveySettings, updateSurveySettings, deleteSurvey, getQuestionTags, getTagDetails, clearRecycleBin, uploadFile, buildSurveyUrl, buildPreviewUrl, getShortLink, getWjxShortLinkUrl, MAX_JSONL_SIZE, preflightJsonl, parseJsonl, jsonToSurvey, extractJsonlQuestionTypeExpectations, getJsonlQuestionTypeCode, Action, } from "wjx-api-sdk";
 import { enrichSurveyListOutput, formatOutput } from "../lib/output.js";
 import { CliError, ensureApiSuccess, handleError } from "../lib/errors.js";
 import { getProfileBaseUrl } from "../lib/auth.js";
@@ -529,7 +529,8 @@ export function registerSurveyCommands(program) {
                 allowBreakingChanges: values.allowBreakingChanges ?? values.allow_breaking_changes };
         }, {
             preRead: async (input, credentials) => {
-                const current = await getSurvey({ vid: Number(input.vid) }, credentials);
+                const current = await getSurvey({ vid: Number(input.vid),
+                    ...surveyLogicReadOptions(input.dsl?.logic) }, credentials);
                 ensureApiSuccess(current);
                 if (current.result !== true || !surveyIdentityMatches(current.data, Number(input.vid)))
                     throw new CliError("API_ERROR", "问卷读取身份不匹配，已停止更新");

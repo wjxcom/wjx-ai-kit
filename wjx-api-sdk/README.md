@@ -88,7 +88,9 @@ npm test --workspace=wjx-api-sdk
 {"dsl":{"logic":"logic { if \"2::1\" then show \"3\"; };"}}
 ```
 
-完整请求的 `jsonl` 是 JSONL 字符串；`dsl` 是对象，只包含 `logic`。无逻辑时省略 `dsl`。已有 `relation/referselect` 字段继续保留，冲突时 DSL 优先。
+完整请求的 `jsonl` 是 JSONL 字符串，只定义问卷内容；`dsl` 是对象，只包含 `logic`。无逻辑时省略 `dsl`。关联、跳题、引用和随机规则统一写入 `dsl.logic`，不要使用 `relation/referselect` 等 JSON 逻辑字段绕过 DSL 校验。
+
+答案自动填入使用 `reference answer from "5" to "6";`，置于 `logic { ... };` 中。来源为前面的普通单选、下拉或普通填空题，接收题为后面的普通填空题；仅支持整题、每个接收题一个来源，不支持特殊校验或 `raw`。它保持题干不变，与需要 `[qN]` 题干占位符的 `reference title` 不同。完整说明见 [题目逻辑参考](../wjx-docs/reference/wjx-xml-dsl-v1.md)。
 
 SDK 使用 `createSurveyByJson` / `updateSurveyByJson`；CLI 使用 `survey create` / `survey update`；MCP 使用 `create_survey_by_json` / `update_survey_by_json`。普通查询 `getSurvey` / `survey get` / `get_survey` 从实际 XML 返回可编辑的 `dsl.logic`。
 

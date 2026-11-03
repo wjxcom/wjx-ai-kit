@@ -12,7 +12,7 @@
 {"dsl":{"logic":"logic { if \"2::1\" then show \"3\"; };"}}
 ```
 
-完整请求的 `jsonl` 是 JSONL 字符串；`dsl` 是对象，只包含 `logic`。无逻辑时省略 `dsl`。已有 `relation/referselect` 字段继续保留，冲突时 DSL 优先。
+完整请求的 `jsonl` 是 JSONL 字符串，只定义问卷内容；`dsl` 是对象，只包含 `logic`。无逻辑时省略 `dsl`。关联、跳题、引用和随机规则统一写入 `dsl.logic`，不要使用 `relation/referselect` 等 JSON 逻辑字段绕过 DSL 校验。
 
 SDK 使用 `createSurveyByJson` / `updateSurveyByJson`；CLI 使用 `survey create` / `survey update`；MCP 使用 `create_survey_by_json` / `update_survey_by_json`。普通查询 `getSurvey` / `survey get` / `get_survey` 从实际 XML 返回可编辑的 `dsl.logic`。
 
@@ -37,3 +37,17 @@ wjx --yes survey update --vid 12345 --file survey.jsonl
 ```
 
 修改问卷结构时，已有的答卷索引保护继续生效；无答卷问卷确需结构变更时显式使用 `--allow-breaking-changes`（SDK 为 `allowBreakingChanges`，MCP 为 `allow_breaking_changes`）。
+
+## 答案自动填入与题干引用
+
+```text
+logic {
+  reference answer from "5" to "6";
+};
+```
+
+`from` 是前面的来源整题，`to` 是后面的接收整题。来源支持普通单选、下拉或普通填空，接收题支持普通填空（单项填空或简答题）；不支持多选、矩阵、子项、特殊校验、考试填空或 `raw`。同一接收题只能指定一个答案来源。
+
+`answer` 将来源选项文字或填空答案填入接收题答题框，保留题干原文，允许手工修改并在来源变化时重新同步。需要把答案显示在题干中时，使用 `reference title` 并在题干中先放入 `[qN]`；二者不能相互替代。
+
+保存后应读回相同的 `reference answer` 规则；仅有成功响应或题干出现来源答案不足以证明答案填入成功。后端未部署此能力或无法读回时报告未验证，不回退到 JSON 逻辑字段。
