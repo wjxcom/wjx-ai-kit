@@ -1,10 +1,13 @@
 # Changelog
 
-## [0.4.6] - 未发布
+## [0.4.6] - 2026-11-11
 
 - SDK、CLI、MCP Server 版本统一为 `0.4.6`。
 - 创建和修改统一使用 Survey JSON，按需附加 dsl.logic；DSL 转换为原生 XML 逻辑，冲突时优先。
 - 新增 updateSurveyByJson、survey update、update_survey_by_json；问卷逻辑随 Survey JSON 的可选 dsl.logic 提交并转换为 XML 原生逻辑。
+- 修复 DSL 分页随机、矩阵更新读回核验和答案引用，补齐相关回归覆盖。
+- 升级 MCP SDK、Zod 及其 HTTP 传递依赖，修复发布前依赖审计发现的已知漏洞。
+- 修复 Node 20/22 CI 的 YAML 配置，并将 Agent contract、JSONL 能力元数据的源码一致性检查纳入发布门禁。
 
 本项目使用 [Conventional Commits](https://www.conventionalcommits.org/) 规范。
 

@@ -1,10 +1,11 @@
 # 更新日志
 
-## [0.4.6] - 未发布
+## [0.4.6] - 2026-11-11
 
 - SDK、CLI、MCP Server 版本统一为 `0.4.6`。
 - 创建和修改统一使用 Survey JSON，按需附加 dsl.logic；DSL 转换为原生 XML 逻辑，冲突时优先。
 - 新增 updateSurveyByJson；问卷逻辑通过 Survey JSON 的可选 dsl.logic 提交并转换为 XML 原生逻辑。
+- 修复 DSL 分页随机、矩阵更新读回核验和答案引用，并补充回归测试。
 
 本文件记录项目的所有重要变更。
 

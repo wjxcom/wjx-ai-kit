@@ -4,7 +4,7 @@
 
 ## 安装
 
-当前源码版本为 `0.4.6`。发布到 npm 后，registry 的 `latest` 将指向 `0.4.6`：
+当前版本为 `0.4.6`。安装 SDK：
 
 ```bash
 npm install wjx-api-sdk

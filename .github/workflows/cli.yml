@@ -11,13 +11,17 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
-        with: { node-version: ${{ matrix.node-version }}, cache: npm }
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: npm
       - run: npm ci
       - run: npm audit --audit-level=low
       - run: npm --workspace=wjx-api-sdk run build
       - run: npm --workspace=wjx-mcp-server run build
       - run: npm --workspace=wjx-cli run build
       - run: npm run capability:check
+      - run: node scripts/check-agent-contract.mjs
+      - run: node scripts/export-jsonl-capabilities.mjs --check
       - run: npm --workspace=wjx-cli run sync-bundled:check
       - run: npm --workspace=wjx-cli run architecture:check
       - run: npm --workspace=wjx-cli run manifest:check

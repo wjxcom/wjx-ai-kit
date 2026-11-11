@@ -1,6 +1,6 @@
 export const JSONL_QTYPES_RESOURCE = {
   "schemaVersion": 1,
-  "sourceRevision": "e526db901cfbda51c3d915f725a6e2daffe16b6f4bcaf87c485dda48dfd7736a",
+  "sourceRevision": "bc2398837d5411c464be1b3f1a50126a80c4680baddfe8ba259071a94af3d343",
   "qtypes": [
     "AI处理",
     "AI访谈",

@@ -1,10 +1,11 @@
 # 更新日志
 
-## [0.4.6] - 未发布
+## [0.4.6] - 2026-11-11
 
 - SDK、CLI、MCP Server 版本统一为 `0.4.6`。
 - 创建和修改统一使用 Survey JSON，按需附加 dsl.logic；DSL 转换为原生 XML 逻辑，冲突时优先。
 - 新增 update_survey_by_json；问卷逻辑通过 Survey JSON 的可选 dsl.logic 提交并转换为 XML 原生逻辑。
+- 提高 MCP SDK 和 Zod 的最低依赖版本至 `1.32.2`、`4.6.7`，更新 HTTP 传递依赖，修复已知安全漏洞。
 
 本文件记录项目的所有重要变更。
 

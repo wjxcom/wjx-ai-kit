@@ -37,9 +37,9 @@
     "directory": "wjx-mcp-server"
   },
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.27.1",
+    "@modelcontextprotocol/sdk": "^1.32.2",
     "wjx-api-sdk": "^0.4.6",
-    "zod": "^4.3.6"
+    "zod": "^4.6.7"
   },
   "devDependencies": {
     "@types/node": "^25.5.0",
