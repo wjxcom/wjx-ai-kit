@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720" width="1280" height="720">
+  <defs>
+    
+  </defs>
+
+  <rect width="1280" height="720" fill="#F7F9FC"/>
+
+  <rect x="0" y="0" width="1280" height="80" fill="#0F2847"/>
+  <rect x="80" y="34" width="48" height="3" fill="#F5A623"/>
+  <text x="80" y="62" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="18" font-weight="500" fill="#8FB4E0" letter-spacing="3">
+    MULTI CHOICE ANALYSIS
+  </text>
+  <text x="1200" y="62" text-anchor="end" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="14" fill="#8FB4E0">
+    05 / 10
+  </text>
+
+  <text x="80" y="170" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="34" font-weight="700" fill="#0F2847">
+    {{TITLE}}
+  </text>
+  <text x="80" y="210" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="18" fill="#5A7090">
+    多选题选项分布 · 共 {{TOTAL}} 次勾选
+  </text>
+
+  <line x1="80" y1="250" x2="1200" y2="250" stroke="#0F2847" stroke-opacity="0.12" stroke-width="1"/>
+
+  <g transform="translate(80, 270)">
+    {{#ROWS}}
+    <g transform="translate(0, {{Y_OFFSET}})">
+      <text x="0" y="22" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="16" font-weight="500" fill="#0F2847">{{LABEL}}</text>
+      <text x="1120" y="22" text-anchor="end" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="16" font-weight="700" fill="#0F2847">{{PERCENT}}%</text>
+      <rect x="0" y="32" width="1120" height="14" rx="7" fill="#DDE4EF"/>
+      <rect x="0" y="32" width="{{BAR_WIDTH}}" height="14" rx="7" fill="{{BAR_COLOR}}"/>
+      <text x="0" y="64" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="13" fill="#8A9BB5">{{COUNT}} 人选择</text>
+    </g>
+    {{/ROWS}}
+  </g>
+
+  <text x="80" y="690" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="13" fill="#8A9BB5" letter-spacing="1">
+    问卷星 · AI 智能分析报告
+  </text>
+
+{{?AI_SUMMARY}}
+  <g transform="translate(80, 615)">
+    <line x1="0" y1="0" x2="1120" y2="0" stroke="#999999" stroke-opacity="0.20"/>
+    <text x="0" y="22" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="11" font-weight="600" letter-spacing="3" fill="#999999">小计</text>
+    <text x="60" y="22" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="13" fill="#444444">{{AI_SUMMARY}}</text>
+  </g>
+{{/AI_SUMMARY}}
+
+</svg>

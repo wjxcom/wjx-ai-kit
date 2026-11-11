@@ -5,6 +5,7 @@ export {
   getWjxUserSystemApiUrl,
   getWjxSubuserApiUrl,
   getWjxContactsApiUrl,
+  getWjxShortLinkUrl,
   getWjxSsoSubaccountUrl,
   getWjxSsoUserSystemUrl,
   getWjxSsoPartnerUrl,
@@ -23,6 +24,7 @@ export type {
   WjxApiResponse,
   FetchLike,
   RequestOptions,
+  RequestOverrides,
   Logger,
 } from "./core/types.js";
 export {
@@ -34,14 +36,16 @@ export {
   callWjxContactsApi,
   getCorpId,
   assignDefined,
+  WjxAmbiguousOutcomeError,
 } from "./core/api-client.js";
 
 // Survey module
+export { prepareSurveyDslJson, surveyLogicMatches, surveyLogicReadOptions } from "./modules/survey/logic.js";
+export { verifySurveyJsonUpdate } from "./modules/survey/verify.js";
 export {
-  createSurvey,
-  createSurveyByText,
   createSurveyByJson,
-  validateQuestionsJson,
+  updateSurveyByJson,
+  CREATABLE_SURVEY_ATYPES,
   getSurvey,
   listSurveys,
   updateSurveyStatus,
@@ -53,36 +57,48 @@ export {
   clearRecycleBin,
   uploadFile,
 } from "./modules/survey/client.js";
-export { surveyToText, typeToLabel, stripHtml } from "./modules/survey/survey-to-text.js";
-export { textToSurvey, parsedQuestionsToWire, LABEL_TO_TYPE, TYPE_MAP } from "./modules/survey/text-to-survey.js";
-export type { WireQuestion, WireConversionResult } from "./modules/survey/text-to-survey.js";
 export {
   extractJsonlMetadata,
   normalizeJsonl,
   MAX_JSONL_SIZE,
+  canonicalizeJsonlQtypes,
   parseJsonl,
   jsonToSurvey,
-  jsonQuestionsToWire,
-  QTYPE_MAP,
   EXAM_QTYPES,
   preprocessExamJsonl,
+  hasVoteJsonlQtype,
   injectDefaultRequir,
   injectAtypeIntoJsonl,
   inferAtypeFromTitle,
   validateSurveyTitle,
   validateSurveyHasQuestions,
   NON_QUESTION_QTYPE_SET,
+  JSONL_SUPPORTED_QTYPES,
+  JSONL_READ_ONLY_OR_WEB_EDITOR_QTYPES,
+  FRAMEWORK_ONLY_JSONL_QTYPES,
+  hasFrameworkOnlyJsonlQtype,
+  resolveJsonlPublish,
+  preflightJsonl,
 } from "./modules/survey/json-to-survey.js";
+export {
+  getJsonlQuestionTypeCode,
+  extractJsonlQuestionTypeExpectations,
+  compareJsonlQuestionTypes,
+  filterJsonlVerificationQuestions,
+} from "./modules/survey/qtype-mapping.js";
 export type {
   JsonSurveyMetadata,
   JsonSurveyQuestion,
   JsonParsedSurvey,
-  JsonWireConversionResult,
 } from "./modules/survey/json-to-survey.js";
 export type {
-  CreateSurveyInput,
-  CreateSurveyByTextInput,
+  JsonlQuestionTypeExpectation,
+  JsonlQuestionTypeCheck,
+} from "./modules/survey/qtype-mapping.js";
+export type {
   CreateSurveyByJsonInput,
+  UpdateSurveyByJsonInput,
+  SurveyDslJson,
   GetSurveyInput,
   ListSurveysInput,
   UpdateSurveyStatusInput,
@@ -96,9 +112,17 @@ export type {
   SurveyQuestionItem,
   SurveyQuestion,
   SurveyDetail,
-  ParsedQuestion,
-  ParsedSurvey,
 } from "./modules/survey/types.js";
+
+// AI homepage module
+export { createAiPage, updateAiPage } from "./modules/ai-page/client.js";
+export {
+  AI_PAGE_MAX_HTML_LENGTH,
+  AI_PAGE_MAX_TITLE_LENGTH,
+  AI_PAGE_PAGE_TYPES,
+} from "./modules/ai-page/constants.js";
+export type { AiPageType } from "./modules/ai-page/constants.js";
+export type { AiPageResult, CreateAiPageInput, UpdateAiPageInput } from "./modules/ai-page/types.js";
 
 // Response module
 export {
@@ -114,6 +138,12 @@ export {
   clearResponses,
 } from "./modules/response/client.js";
 export { normalizeSubmitdata } from "./modules/response/submitdata.js";
+export { buildSubmitTemplate } from "./modules/response/submit-template.js";
+export type {
+  SubmitTemplateQuestion,
+  SubmitTemplateOutputQuestion,
+  SubmitTemplateResult,
+} from "./modules/response/submit-template.js";
 export type {
   QueryResponsesInput,
   QueryResponsesRealtimeInput,
@@ -211,6 +241,15 @@ export type {
   BuildSurveyUrlInput,
   BuildPreviewUrlInput,
 } from "./modules/sso/types.js";
+
+// Short-link module
+export { getShortLink } from "./modules/shortlink/client.js";
+export type {
+  GetShortLinkInput,
+  ShortLinkSuccess,
+  ShortLinkFailure,
+  ShortLinkResponse,
+} from "./modules/shortlink/types.js";
 
 // Analytics module
 export {

@@ -1,32 +1,85 @@
-export function getWjxBaseUrl() {
-    return (process.env.WJX_BASE_URL ?? "https://www.wjx.cn").replace(/\/+$/, "");
+function normalizeBaseUrl(baseUrl) {
+    const trimmed = baseUrl.trim().replace(/\/+$/, "");
+    try {
+        const parsed = new URL(trimmed);
+        if (/^\/openapi\/[^/]+\.aspx$/i.test(parsed.pathname))
+            return parsed.origin;
+    }
+    catch {
+        // Preserve malformed values so fetch reports the caller's configuration error.
+    }
+    return trimmed;
 }
-export function getWjxApiUrl() {
-    return process.env.WJX_API_URL ?? `${getWjxBaseUrl()}/openapi/default.aspx`;
+function nonBlank(value) {
+    const trimmed = value?.trim();
+    return trimmed || undefined;
 }
-export function getWjxUserSystemApiUrl() {
-    return process.env.WJX_USER_SYSTEM_API_URL ?? `${getWjxBaseUrl()}/openapi/usersystem.aspx`;
+function envValue(name) {
+    const value = process.env[name];
+    return typeof value === "string" && value.trim() ? value.trim() : undefined;
 }
-export function getWjxSubuserApiUrl() {
-    return process.env.WJX_SUBUSER_API_URL ?? `${getWjxBaseUrl()}/openapi/subuser.aspx`;
+export function getWjxBaseUrl(baseUrl) {
+    return normalizeBaseUrl(nonBlank(baseUrl) ?? envValue("WJX_BASE_URL") ?? "https://www.wjx.cn");
 }
-export function getWjxContactsApiUrl() {
-    return process.env.WJX_CONTACTS_API_URL ?? `${getWjxBaseUrl()}/openapi/contacts.aspx`;
+export function getWjxApiUrl(baseUrl) {
+    const explicitBaseUrl = nonBlank(baseUrl);
+    return explicitBaseUrl
+        ? `${getWjxBaseUrl(explicitBaseUrl)}/openapi/default.aspx`
+        : envValue("WJX_API_URL") ?? `${getWjxBaseUrl()}/openapi/default.aspx`;
 }
-export function getWjxSsoSubaccountUrl() {
-    return process.env.WJX_SSO_SUBACCOUNT_URL ?? `${getWjxBaseUrl()}/zunxiang/login.aspx`;
+export function getWjxUserSystemApiUrl(baseUrl) {
+    const explicitBaseUrl = nonBlank(baseUrl);
+    return explicitBaseUrl
+        ? `${getWjxBaseUrl(explicitBaseUrl)}/openapi/usersystem.aspx`
+        : envValue("WJX_USER_SYSTEM_API_URL") ?? `${getWjxBaseUrl()}/openapi/usersystem.aspx`;
 }
-export function getWjxSsoUserSystemUrl() {
-    return process.env.WJX_SSO_USER_SYSTEM_URL ?? `${getWjxBaseUrl()}/user/loginform.aspx`;
+export function getWjxSubuserApiUrl(baseUrl) {
+    const explicitBaseUrl = nonBlank(baseUrl);
+    return explicitBaseUrl
+        ? `${getWjxBaseUrl(explicitBaseUrl)}/openapi/subuser.aspx`
+        : envValue("WJX_SUBUSER_API_URL") ?? `${getWjxBaseUrl()}/openapi/subuser.aspx`;
 }
-export function getWjxSsoPartnerUrl() {
-    return process.env.WJX_SSO_PARTNER_URL ?? `${getWjxBaseUrl()}/partner/login.aspx`;
+export function getWjxContactsApiUrl(baseUrl) {
+    const explicitBaseUrl = nonBlank(baseUrl);
+    return explicitBaseUrl
+        ? `${getWjxBaseUrl(explicitBaseUrl)}/openapi/contacts.aspx`
+        : envValue("WJX_CONTACTS_API_URL") ?? `${getWjxBaseUrl()}/openapi/contacts.aspx`;
 }
-export function getWjxSurveyCreateUrl() {
-    return process.env.WJX_SURVEY_CREATE_URL ?? `${getWjxBaseUrl()}/newwjx/mysojump/createblankNew.aspx`;
+export function getWjxShortLinkUrl(baseUrl) {
+    const explicitBaseUrl = nonBlank(baseUrl);
+    return explicitBaseUrl
+        ? `${getWjxBaseUrl(explicitBaseUrl)}/openapi/shortlink.aspx`
+        : envValue("WJX_SHORTLINK_URL") ?? `${getWjxBaseUrl()}/openapi/shortlink.aspx`;
 }
-export function getWjxSurveyEditUrl() {
-    return process.env.WJX_SURVEY_EDIT_URL ?? `${getWjxBaseUrl()}/newwjx/design/editquestionnaire.aspx`;
+export function getWjxSsoSubaccountUrl(baseUrl) {
+    const explicitBaseUrl = nonBlank(baseUrl);
+    return explicitBaseUrl
+        ? `${getWjxBaseUrl(explicitBaseUrl)}/zunxiang/login.aspx`
+        : envValue("WJX_SSO_SUBACCOUNT_URL") ?? `${getWjxBaseUrl()}/zunxiang/login.aspx`;
+}
+export function getWjxSsoUserSystemUrl(baseUrl) {
+    const explicitBaseUrl = nonBlank(baseUrl);
+    return explicitBaseUrl
+        ? `${getWjxBaseUrl(explicitBaseUrl)}/user/loginform.aspx`
+        : envValue("WJX_SSO_USER_SYSTEM_URL") ?? `${getWjxBaseUrl()}/user/loginform.aspx`;
+}
+export function getWjxSsoPartnerUrl(baseUrl) {
+    const explicitBaseUrl = nonBlank(baseUrl);
+    return explicitBaseUrl
+        ? `${getWjxBaseUrl(explicitBaseUrl)}/partner/login.aspx`
+        : envValue("WJX_SSO_PARTNER_URL") ?? `${getWjxBaseUrl()}/partner/login.aspx`;
+}
+export function getWjxSurveyCreateUrl(baseUrl) {
+    const explicitBaseUrl = nonBlank(baseUrl);
+    return explicitBaseUrl
+        ? `${getWjxBaseUrl(explicitBaseUrl)}/newwjx/mysojump/createblankNew.aspx`
+        : envValue("WJX_SURVEY_CREATE_URL") ?? `${getWjxBaseUrl()}/newwjx/mysojump/createblankNew.aspx`;
+}
+export function getWjxSurveyEditUrl(baseUrl) {
+    const explicitBaseUrl = nonBlank(baseUrl);
+    return explicitBaseUrl
+        ? `${getWjxBaseUrl(explicitBaseUrl)}/newwjx/design/editquestionnaire.aspx`
+        : envValue("WJX_SURVEY_EDIT_URL") ?? `${getWjxBaseUrl()}/newwjx/design/editquestionnaire.aspx`;
 }
 export const Action = {
     GET_SURVEY: "1000001",
@@ -34,11 +87,13 @@ export const Action = {
     GET_SETTINGS: "1000003",
     GET_TAGS: "1000004",
     GET_TAG_DETAILS: "1000005",
-    CREATE_SURVEY: "1000101",
     UPDATE_STATUS: "1000102",
     UPDATE_SETTINGS: "1000103",
     UPLOAD_FILE: "1000104",
     CREATE_SURVEY_BY_JSON: "1000106",
+    UPDATE_SURVEY_BY_JSON: "1000109",
+    CREATE_AI_PAGE: "1000107",
+    UPDATE_AI_PAGE: "1000108",
     DELETE_SURVEY: "1000301",
     CLEAR_RECYCLE_BIN: "1000302",
     SUBMIT_RESPONSE: "1001001",

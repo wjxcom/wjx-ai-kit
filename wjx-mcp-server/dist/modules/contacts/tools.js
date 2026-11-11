@@ -35,7 +35,9 @@ export function registerContactsTools(server) {
         },
         annotations: {
             destructiveHint: false,
-            idempotentHint: true,
+            // The SDK uses an unsafe write for add-or-update batches; repeating
+            // it can overwrite mutable contact fields or trigger side effects.
+            idempotentHint: false,
             openWorldHint: true,
             title: "添加或更新通讯录成员",
         },
@@ -118,7 +120,8 @@ export function registerContactsTools(server) {
         },
         annotations: {
             destructiveHint: false,
-            idempotentHint: true,
+            // Restore is an unsafe SDK operation and has no replay guarantee.
+            idempotentHint: false,
             openWorldHint: true,
             title: "恢复管理员",
         },
@@ -179,7 +182,9 @@ export function registerContactsTools(server) {
         },
         annotations: {
             destructiveHint: true,
-            idempotentHint: true,
+            // Department updates are full mutable writes; the SDK marks them
+            // unsafe and disables automatic retries.
+            idempotentHint: false,
             openWorldHint: true,
             title: "修改部门",
         },
@@ -278,7 +283,8 @@ export function registerContactsTools(server) {
         },
         annotations: {
             destructiveHint: true,
-            idempotentHint: true,
+            // Tag updates are unsafe in the SDK; do not let a host replay them.
+            idempotentHint: false,
             openWorldHint: true,
             title: "修改标签",
         },

@@ -85,14 +85,16 @@ function parseMatrixValue(rawValue) {
 // NPS = %Promoters - %Detractors (scale 0-10)
 // Promoters: 9-10, Passives: 7-8, Detractors: 0-6
 export function calculateNps(scores) {
+    validateScores(scores, 0, 10, "NPS");
     if (scores.length === 0) {
         return {
-            score: 0,
+            dataStatus: "no-data",
+            score: null,
             promoters: { count: 0, ratio: 0 },
             passives: { count: 0, ratio: 0 },
             detractors: { count: 0, ratio: 0 },
             total: 0,
-            rating: "一般",
+            rating: null,
         };
     }
     const total = scores.length;
@@ -118,6 +120,7 @@ export function calculateNps(scores) {
     else
         rating = "较差";
     return {
+        dataStatus: "ok",
         score,
         promoters: { count: promoters, ratio: round4(promoters / total) },
         passives: { count: passives, ratio: round4(passives / total) },
@@ -129,8 +132,13 @@ export function calculateNps(scores) {
 // ─── calculateCsat ───────────────────────────────────────────────────────────
 // 5-point: satisfied = 4-5; 7-point: satisfied = 5-7
 export function calculateCsat(scores, scaleType = "5-point") {
+    if (scaleType !== "5-point" && scaleType !== "7-point") {
+        throw new TypeError("scaleType must be 5-point or 7-point");
+    }
+    const max = scaleType === "5-point" ? 5 : 7;
+    validateScores(scores, 1, max, `${scaleType} CSAT`);
     if (scores.length === 0) {
-        return { csat: 0, satisfiedCount: 0, total: 0, distribution: {} };
+        return { dataStatus: "no-data", csat: null, satisfiedCount: 0, total: 0, distribution: {} };
     }
     const total = scores.length;
     const distribution = {};
@@ -143,6 +151,7 @@ export function calculateCsat(scores, scaleType = "5-point") {
             satisfiedCount++;
     }
     return {
+        dataStatus: "ok",
         csat: round4(satisfiedCount / total),
         satisfiedCount,
         total,
@@ -151,47 +160,86 @@ export function calculateCsat(scores, scaleType = "5-point") {
 }
 export function detectAnomalies(responses) {
     const flagged = [];
+    // API responses use submitdata/inputcosttime, while callers may already have
+    // decoded answers/duration_seconds. Normalize both representations first so
+    // the three detectors operate on the same data.
+    const normalized = responses.map((response, index) => ({
+        response,
+        responseId: response.id ?? response.jid ?? index + 1,
+        answers: normalizeAnswers(response),
+        durationSeconds: normalizeDuration(response),
+    }));
     // Compute median duration for speed anomaly detection
-    const durations = responses
-        .map((r) => r.duration_seconds)
-        .filter((d) => typeof d === "number" && d > 0);
+    const durations = normalized
+        .map((r) => r.durationSeconds)
+        .filter((d) => d !== undefined);
     const medianDuration = durations.length > 0 ? median(durations) : 0;
+    const canAssessSpeed = durations.length >= 3 && medianDuration > 0;
     const speedThreshold = medianDuration * 0.3; // < 30% of median is suspicious
     // Build IP+content map for duplicate detection
     const ipContentMap = new Map();
-    for (const r of responses) {
+    for (const { response: r, responseId, answers, durationSeconds } of normalized) {
         const reasons = [];
         // 1. Straight-lining: all answers identical
-        if (r.answers && r.answers.length > 2) {
-            const unique = new Set(r.answers.map(String));
+        if (answers && answers.length > 2) {
+            const unique = new Set(answers);
             if (unique.size === 1) {
                 reasons.push("straight-lining");
             }
         }
         // 2. Speed anomaly: completed too fast
-        if (typeof r.duration_seconds === "number" &&
-            medianDuration > 0 &&
-            r.duration_seconds > 0 &&
-            r.duration_seconds < speedThreshold) {
+        if (durationSeconds !== undefined &&
+            canAssessSpeed &&
+            durationSeconds < speedThreshold) {
             reasons.push("speed-anomaly");
         }
         // 3. IP + content duplicate
-        if (r.ip && r.answers) {
-            const contentKey = `${r.ip}:${r.answers.map(String).join(",")}`;
+        if (r.ip && answers) {
+            const contentKey = `${r.ip}:${answers.join(",")}`;
             const existing = ipContentMap.get(contentKey);
             if (existing) {
-                existing.push(r.id);
+                existing.push(responseId);
                 reasons.push("ip-content-duplicate");
             }
             else {
-                ipContentMap.set(contentKey, [r.id]);
+                ipContentMap.set(contentKey, [responseId]);
             }
         }
         if (reasons.length > 0) {
-            flagged.push({ responseId: r.id, reasons });
+            flagged.push({ responseId, reasons });
         }
     }
-    return { flagged, totalChecked: responses.length };
+    return canAssessSpeed
+        ? { flagged, totalChecked: responses.length }
+        : {
+            flagged,
+            totalChecked: responses.length,
+            warnings: ["speed-anomaly skipped: at least 3 positive duration samples are required"],
+        };
+}
+function normalizeAnswers(response) {
+    if (Array.isArray(response.answers)) {
+        return response.answers.map(stringifyAnswer);
+    }
+    if (typeof response.submitdata === "string") {
+        const decoded = decodeResponses(response.submitdata);
+        if (decoded.answers.length === 0)
+            return undefined;
+        return decoded.answers.map((answer) => stringifyAnswer(answer.value));
+    }
+    return undefined;
+}
+function normalizeDuration(response) {
+    const raw = response.duration_seconds ?? response.inputcosttime;
+    const value = typeof raw === "number" ? raw : typeof raw === "string" ? Number(raw) : NaN;
+    return Number.isFinite(value) && value > 0 ? value : undefined;
+}
+function stringifyAnswer(value) {
+    if (typeof value === "string")
+        return value;
+    if (typeof value === "number" || typeof value === "boolean" || value === null)
+        return String(value);
+    return JSON.stringify(value) ?? String(value);
 }
 // ─── compareMetrics ──────────────────────────────────────────────────────────
 export function compareMetrics(setA, setB) {
@@ -203,13 +251,22 @@ export function compareMetrics(setA, setB) {
         const delta = valueB - valueA;
         const changeRate = valueA === 0 ? (valueB === 0 ? 0 : 1) : round4(delta / Math.abs(valueA));
         const significant = Math.abs(changeRate) > 0.1;
-        comparisons.push({ metric, valueA, valueB, delta, changeRate, significant });
+        comparisons.push({ metric, valueA, valueB, delta, changeRate, significant, significanceBasis: "heuristic-threshold" });
     }
     return { comparisons };
 }
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 function round4(n) {
     return Math.round(n * 10000) / 10000;
+}
+function validateScores(scores, min, max, label) {
+    if (!Array.isArray(scores))
+        throw new TypeError(`${label} scores must be an array`);
+    for (const score of scores) {
+        if (!Number.isFinite(score) || !Number.isInteger(score) || score < min || score > max) {
+            throw new RangeError(`${label} scores must be integers in ${min}-${max}`);
+        }
+    }
 }
 function median(arr) {
     const sorted = [...arr].sort((a, b) => a - b);

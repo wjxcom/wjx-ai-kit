@@ -43,6 +43,29 @@ describe("HTTP transport", () => {
     assert.equal(body.error, "Not found");
   });
 
+  it("rejects oversized JSON-RPC bodies with a JSON-RPC error envelope", async () => {
+    const server = createServer();
+    const result = await startHttpTransport(server, { port: 0, stateful: true, maxBodyBytes: 8 });
+    const oversizedServer = result.httpServer;
+    try {
+      const addr = oversizedServer.address();
+      const response = await fetch(`http://127.0.0.1:${addr.port}/mcp`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "tools/list", params: {} }),
+      });
+      assert.equal(response.status, 413);
+      const body = await response.json();
+      assert.deepEqual(body, {
+        jsonrpc: "2.0",
+        error: { code: -32600, message: "Request body exceeds maximum size of 8 bytes" },
+        id: null,
+      });
+    } finally {
+      await new Promise((resolve) => oversizedServer.close(resolve));
+    }
+  });
+
   it("MCP client can connect via HTTP and list tools", async () => {
     const client = new Client({ name: "test-client", version: "1.0.0" });
     const clientTransport = new StreamableHTTPClientTransport(

@@ -132,4 +132,23 @@ describe("load-env resolution", () => {
     }
     assert.equal(process.env.EXISTING_VAR, "original");
   });
+
+  it("treats blank WJX env vars as unset and falls back to .wjxrc", async () => {
+    const configPath = join(tempDir, ".wjxrc");
+    writeFileSync(configPath, JSON.stringify({
+      apiKey: "config-key",
+      baseUrl: "https://tenant.example",
+      corpId: "config-corp",
+    }), "utf8");
+    setEnv("WJX_CONFIG_PATH", configPath);
+    setEnv("WJX_API_KEY", "");
+    setEnv("WJX_BASE_URL", "");
+    setEnv("WJX_CORP_ID", "");
+
+    await import(`../dist/core/load-env.js?blank-wjx-env-${randomUUID()}`);
+
+    assert.equal(process.env.WJX_API_KEY, "config-key");
+    assert.equal(process.env.WJX_BASE_URL, "https://tenant.example");
+    assert.equal(process.env.WJX_CORP_ID, "config-corp");
+  });
 });

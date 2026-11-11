@@ -14,17 +14,19 @@ export interface DecodeResponsesResult {
 
 /** NPS categories */
 export interface NpsResult {
-  score: number;
+  dataStatus: "ok" | "no-data";
+  score: number | null;
   promoters: { count: number; ratio: number };
   passives: { count: number; ratio: number };
   detractors: { count: number; ratio: number };
   total: number;
-  rating: string;
+  rating: string | null;
 }
 
 /** CSAT result */
 export interface CsatResult {
-  csat: number;
+  dataStatus: "ok" | "no-data";
+  csat: number | null;
   satisfiedCount: number;
   total: number;
   distribution: Record<string, number>;
@@ -39,6 +41,7 @@ export interface AnomalyFlag {
 export interface AnomalyResult {
   flagged: AnomalyFlag[];
   totalChecked: number;
+  warnings?: string[];
 }
 
 /** Metric comparison */
@@ -49,6 +52,8 @@ export interface MetricComparison {
   delta: number;
   changeRate: number;
   significant: boolean;
+  /** A threshold marker, not a statistical significance test. */
+  significanceBasis: "heuristic-threshold";
 }
 
 export interface CompareResult {

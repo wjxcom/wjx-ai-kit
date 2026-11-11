@@ -1,25 +1,73 @@
 ---
 name: wjx-mcp-use
-description: "Guide for using wjx-mcp-server MCP tools to interact with the Wenjuanxing (问卷星) platform. Use when the user mentions: 问卷, 调查, 收集, 表单, 投票, 考试, 测评, 满意度, NPS, 问卷星, wjx, survey, questionnaire — or wants to create surveys, query responses, analyze data, manage contacts, or generate SSO links via MCP protocol. Covers 58 tools, 8 resources, and 22 prompts."
+description: "Guide for using wjx-mcp-server tools to create or update AI homepages, posters, PPTs, and surveys, query responses, and analyze data. Use when the user mentions: AI主页, AI海报, AI PPT, 问卷, 调查, 收集, 表单, 投票, 考试, 测评, 满意度, NPS, 问卷星, wjx, survey, or questionnaire. Tool, resource, and prompt counts are discovered from source at build time."
 ---
 
 # wjx-mcp-server Usage Guide
 
-wjx-mcp-server 提供 58 个 MCP 工具、8 个参考资源和 23 个 prompt 模板，覆盖问卷星 OpenAPI 的全部能力。
+wjx-mcp-server 提供 MCP 工具、参考资源和 prompt 模板，覆盖问卷星核心业务子集；CLI 是主入口，工作站能力（初始化、配置、补全、Skill 安装）保持 CLI-only。完整差异以仓库 `capabilities/capability-matrix.json` 为准。
+
+### HTTP 凭据边界
+
+本地优先使用 stdio，并通过 `WJX_API_KEY` 提供上游凭据。HTTP 模式中，`MCP_AUTH_TOKEN` 只保护 `/mcp` 的 `Authorization: Bearer` 访问 gate；单租户上游仍使用 `WJX_API_KEY`。启用 `MCP_TENANT_MODE=1` 时，每个请求必须提供 `X-WJX-API-Key`，服务端按 session 隔离且不回退进程级 key。只有显式设置 `MCP_LEGACY_BEARER_API_KEY=1` 才允许 Bearer 兼作上游 API Key；`/health` 不要求 Bearer。不要在消息、日志或 URL 中输出完整凭据。
+
+### HTTP 服务配置
+
+如果使用已部署的 MCP HTTP 服务，无需在本机安装 `wjx-mcp-server` 或配置本地
+`WJX_API_KEY`。在支持 MCP HTTP 的客户端配置中添加：
+
+```json
+{
+  "mcpServers": {
+    "wjx": {
+      "type": "http",
+      "url": "https://alifc.wjx.cn/mcp/latest",
+      "headers": {
+        "Authorization": "Bearer sk-wjx-xxx"
+      }
+    }
+  }
+}
+```
+
+将 `sk-wjx-xxx` 替换为服务端分配的 HTTP 访问令牌。保存配置后完全重启客户端；启用多租户模式时，还需按服务端要求提供 `X-WJX-API-Key`。
+
+## Agent 前门
+
+MCP 任务遵循“发现意图 -> 预检 -> 计划 -> 确认 -> 执行 -> 读回验证 -> 报告”。Prompt 只提供指导，不执行工具也不保证验证；Agent 必须根据工具返回的 `isError` 和 `result` 字段判断成功。WorkBuddy、Cowork、Codex Work、Qianwen Work 都先按 [宿主中立握手与路由](references/host-routing.md) 检查真实能力，不根据宿主名称猜测配置或 API。创建、发布、提交、设置替换、清理和凭据相关操作先说明副作用，高风险和队列消费操作需要确认；网络超时后的结果按 `unknown` 处理并优先读回。风险、重试、验证和 JSONL 题型以生成的 `agent-contract`/`jsonl-qtypes` 资料及对应只读资源为准。 其中包括 `wjx://reference/jsonl-qtypes`。
+
+`query_responses_realtime` 会消费服务端实时答卷队列，因此 Agent contract 将它标记为高风险且不可重放；调用前先向用户说明会移除/消费队列中的记录并取得确认。该标记是 MCP/Agent 层的安全策略，不改变 CLI 的 `response realtime` metadata 或退出码。
+
+外部问卷产品的常见入口可这样映射：question builder 对应 `create_survey_by_json` 的 JSONL；preview 对应 `build_preview_url`；publish 对应 `update_survey_status`；collect 对应 `query_responses`/`download_responses`；analyze 对应分析工具。分支、随机、配额和 piping 只有在生成 profile 明确列出并通过 SDK 校验时才可使用，否则视为未验证能力。
 
 ## AI Agent 行为准则（必读）
 
+### 规则 0：使用 Survey JSON 与可选题目逻辑
+
+
+问卷创建使用 create_survey_by_json，修改使用 update_survey_by_json；涉及关联、跳题、引用或随机时必须使用 dsl.logic，普通查询 get_survey 从 XML 返回逻辑投影。JSONL 只定义题目内容，不回退到 JSON 逻辑字段。
+### AI 主页
+
+AI 主页是独立的纯展示内容，与表单/问卷创建互斥：
+
+- 用户只要求创建 AI 主页、AI 海报或 AI PPT 时，只调用一次 `create_ai_page`；不得调用 `create_survey_by_json`，不得额外创建、复制或关联任何表单/问卷。
+- `page_type=2` 时，HTML 必须是逐页幻灯片：每页使用独立、固定比例的画布并提供逐页切换，首屏只展示一页，禁止单个纵向长页面。
+- 修改前先用 `get_survey` 读取草稿或已发布主页的 `html_content` 与 `page_type`，基于完整原 HTML 局部修改后再调用 `update_ai_page`；不得抓取公开页，也不得无原稿重做整页。
+- 页面类型不可修改。网页、海报、PPT之间的转换请求应直接说明不支持，不得新建替代主页或删除原主页。
+- 创建必须提供 `html_content` 或 `html`；更新必须提供传统数字 `vid`，不接受 `sid`；HTML 最长 200000 字符。详细参数见 [references/tools-survey.md](references/tools-survey.md)。
+
 ### 规则 1：一个需求 = 一个问卷
 
-无论用户要求多少种题型，**必须在一次 `create_survey_by_json` 调用中包含所有题目**。一个问卷可包含任意数量、任意类型的题目。`create_survey_by_text` 已弃用，新项目一律使用 `create_survey_by_json`。
+无论用户要求多少种题型，**必须在一次 `create_survey_by_json` 调用中包含所有题目**。一个问卷可包含任意数量、任意类型的题目。
 
 ### 规则 2：问卷类型 ≠ 题目类型
 
-"投票/考试/调查"是**问卷类型**（`atype` 参数），不是题型标签。`atype: 3` + `[单选题]` = 投票单选，不存在 `[投票单选题]` 标签。
 
-### 规则 3：不支持的题型要明确告知
 
-签名题（用 `[绘图题]` 替代）、地区题（用 `[多级下拉题]` 或网页端添加）、NPS 专用题（用 `[量表题]` + `0~10`）不在 DSL 支持范围内。告知用户替代方案，继续创建其他题目，**不要**反复尝试或拆分多个问卷。
+
+### 规则 3.1：用户体系只允许兼容维护
+
+用户体系工具（`add_participants`、`modify_participants`、`delete_participants`、`bind_activity`、`query_survey_binding`、`query_user_surveys`）已在源码中标记为 Deprecated。`atype=8` 用户体系问卷不能通过当前创建入口 `create_survey_by_json` 新建；不要主动设计或创建这类工作流。只有用户明确提供已有的 `sysid`/`usid` 并要求维护历史系统时，才使用这些工具，并先说明兼容风险。
 
 ### 规则 4：面向用户说自然语言，不说工具名
 
@@ -27,80 +75,132 @@ wjx-mcp-server 提供 58 个 MCP 工具、8 个参考资源和 23 个 prompt 模
 
 ### 规则 5：首次使用时检查配置
 
-首次使用问卷星功能，先调用 `get_config` 确认 API Key 和 Base URL 是否已配置。
+在首次配置/初始化、用户明确要求检查配置，或工具实际返回 API Key 相关错误时，引导用户处理 API Key。
 
-- **api_key 未设置**：引导用户在 AI 工具的 MCP 配置中添加 `WJX_API_KEY` 环境变量
+- **api_key 未设置**：如果工具返回未配置错误，停止当前业务操作，不要继续调用创建、查询、导出等需要鉴权的工具；引导用户在 AI 工具的 MCP 配置中添加 `WJX_API_KEY` 环境变量
+- **api_key 错误或过期**：提醒用户重新获取 API Key，更新 MCP 配置后再继续原任务
+- **已返回 API Key 相关错误**：如果工具返回 `API Key is required`、`Invalid API Key`、`appkey error` 或类似鉴权错误，必须立刻向用户说明需要处理 API Key，并给出获取/更新 `WJX_API_KEY` 的下一步；不要只复述错误信息，也不要继续调用其他业务工具反复尝试
 - **base_url 与用户域名不符**：引导添加 `WJX_BASE_URL` 环境变量（如 `https://xxx.sojump.cn`）
 - **获取 API Key**：让用户访问 `https://<域名>/weixinlogin.aspx?redirecturl=%2Fnewwjx%2Fmanage%2Fuserinfo.aspx%3FshowApiKey%3D1`，微信扫码登录后复制 Key
-- **cli_version 未安装**：可选，安装 `npm install -g wjx-cli` 后用 `wjx init --api-key <key>` 统一配置
+- **cli_version 未安装**：可选；CLI 当前源码版本为 `0.4.6`，发布后先执行 `npm install -g wjx-cli@latest`，成功后再执行 `wjx skill install --force`，然后用 `wjx init --api-key <key>` 统一配置
+
+收到 API Key 相关错误后的用户提醒应使用自然语言，不暴露 MCP 工具调用细节，例如：
+
+```
+刚才的操作返回了 API Key 相关错误，所以我暂时不能继续创建或查询问卷。请先打开下面的链接获取/重新获取 API Key，然后在 MCP 配置中添加或更新 WJX_API_KEY 环境变量：
+https://www.wjx.cn/weixinlogin.aspx?redirecturl=%2Fnewwjx%2Fmanage%2Fuserinfo.aspx%3FshowApiKey%3D1
+```
+
+### 规则 6：提交答卷的几个易错点
+
+- **jpmversion 默认自动管理**：`submit_response` 每次提交前会尽量 `get_survey` 获取题目结构，规范化矩阵/排序等答卷格式；未显式传入时还必须成功取得最新 `version` 并注入。显式传入 `jpmversion` 时，元数据获取失败不会阻塞提交，但元数据可用仍会执行规范化。问卷被发布/编辑后服务端 `version` 自增，不带最新版本号会被拒绝并报"问卷已被修改请刷新"。
+- **submitdata 题号用 `get_survey` 返回的原始 `q_index`**：服务端严格按此校验——"问卷基础信息"元数据占 `q_index=1`，真实题目从 2 开始。AI 自己按"第 N 题"顺序数（`1$..., 2$...`）极易与服务端 q_index 错位，被拒"5〒答案不符合要求"。**正确流程**：先 `get_survey({ vid, get_questions: true })` 拿 `questions[].q_index`，再按每题 q_index 拼 submitdata。选项序号仍是 1-based（从 1 数到 N）。
+- **矩阵题用行号!列号，行用 `,` 分隔**（每题 3 条可复制示例）：
+  - 矩阵单选（q_subtype=702）3 行：`3$1!1,2!3,3!2` — 第 3 题第 1 行选第 1 列、第 2 行选第 3 列、第 3 行选第 2 列
+  - 矩阵多选（q_subtype=703）3 行：`4$1!1|2,2!3,3!1|4` — 同一行多个列用 `|` 拼
+  - 矩阵量表（q_subtype=701）3 行：`5$1!5,2!4,3!3` — 行号!分值
+  - 矩阵题的"行数"来自 `get_survey` 返回的 `item_rows.length`；`items` 数组是**列头**（列选项），不是行。
+
+### 规则 7：填写链接优先使用短编号
+
+- `vid` 是后台问卷编号，不得自行拼接 URL。需要链接时统一调用 `build_preview_url`，优先传服务端返回的短 `sid`。
+- 查询问卷列表时，优先使用与 `vid` 不同的 `sid` 生成短链；也可使用服务端返回且不含数字 `vid` 的 `activity_domain + mobile_path`。若二者冲突，选择 `sid`，不得输出暴露 `vid` 的路径。
+- 创建问卷后需要填写链接时，使用创建结果返回的 `sid` 调用 `build_preview_url({ sid })`。同时有 `sid` 和 `vid` 时必须优先 `sid`。
+- `build_survey_url({ mode: "edit", activity: vid })` 生成的是**后台编辑链接**，不是用户填写链接，二者不得混用。
+- 如果确实没有 `sid`，可以显式调用 `build_preview_url({ vid })` 生成兼容预览链接；该后备链接包含数字 vid，可能暴露内部编号，必须向用户说明它不是首选。不得绕过工具自行拼接链接。
 
 ## 快速路由
 
 | 用户意图 | 工具 |
 |---------|------|
-| 做调查/问卷 | `create_survey_by_json`（支持 70+ 题型） |
+| 做调查/问卷 | `create_survey_by_json`（支持 70+ 题型；atype 可创建 1/2/3/4/5/6/7/9/10/11，8 用户体系不能新建） |
 | 做考试/测验 | `create_survey_by_json` + prompt `generate-exam-json`，`atype: 6` |
 | 做投票 | `create_survey_by_json` + `atype: 3` |
 | 做表单/报名表 | `create_survey_by_json` + prompt `generate-form-json`，`atype: 7` |
 | 看问卷结果 | `get_report({ vid })` 统计概览，`query_responses({ vid })` 明细 |
 | 导出答卷数据 | `download_responses({ vid })` |
-| 查看问卷链接 | `build_survey_url({ mode: "edit", activity: vid })` |
+| 查看填写链接 | 列表中的 `sid` / `mobile_path`；创建后优先用 `build_preview_url({ sid })`，无 sid 时才用 `build_preview_url({ vid })` 并说明暴露风险 |
+| 查看编辑链接 | `build_survey_url({ mode: "edit", activity: vid })` |
 | 分析 NPS | `calculate_nps({ scores: [...] })` |
 | 查当前配置 | `get_config({})` |
 
-## 工具总览（58 tools）
+## 工具总览
 
 | 模块 | 工具数 | 说明 |
 |------|--------|------|
-| 问卷管理 | 13 | create_survey_by_json（推荐）, create_survey, create_survey_by_text（已弃用）, get_survey, list_surveys, update_survey_status, get/update_survey_settings, delete_survey, get_question_tags, get_tag_details, upload_file, clear_recycle_bin |
-| 答卷数据 | 9 | query_responses, query_responses_realtime, download_responses, get_report, submit_response, get_winners, modify_response, get_360_report, clear_responses |
+| 问卷管理 | 14 | create_survey_by_json, update_survey_by_json, get_survey, list_surveys, update_survey_status, get/update_survey_settings, delete_survey, get_question_tags, get_tag_details, upload_file, clear_recycle_bin, create_ai_page, update_ai_page |
+| 答卷数据 | 11 | query_responses, count_responses, query_responses_realtime, download_responses, get_report, submit_response, build_submit_template, get_winners, modify_response, get_360_report, clear_responses |
 | 通讯录 | 14 | query/add/delete_contacts, add/delete/restore_admin, list/add/modify/delete_departments, list/add/modify/delete_tags |
 | 子账号 | 5 | add/modify/delete/restore/query_sub_accounts |
-| SSO | 5 | sso_subaccount_url, sso_user_system_url, sso_partner_url, build_survey_url, build_preview_url |
-| 分析计算 | 5 | decode_responses, calculate_nps, calculate_csat, detect_anomalies, compare_metrics |
-| 用户体系 | 6 | add/modify/delete_participants, bind_activity, query_survey_binding, query_user_surveys |
+| SSO | 6 | sso_subaccount_url, sso_user_system_url, sso_partner_url, build_survey_url, build_preview_url, get_short_link |
+| 分析计算 | 6 | decode_responses, decode_push_payload, calculate_nps, calculate_csat, detect_anomalies, compare_metrics |
+| 用户体系（兼容/已过时） | 6 | add/modify/delete_participants, bind_activity, query_survey_binding, query_user_surveys；仅维护已有系统 |
 | 诊断 | 1 | get_config — API Key（脱敏）、Base URL、CLI 版本、配置来源 |
 
 详细参数见 [references/tools-survey.md](references/tools-survey.md)、[references/tools-response.md](references/tools-response.md)、[references/tools-other.md](references/tools-other.md)。
 
 ## 核心工作流
 
-### 创建问卷（统一使用 JSON 方式）
+### 创建与修改问卷（Survey JSON）
 
-**唯一推荐**：所有问卷创建一律使用 `create_survey_by_json`（支持 70+ 题型，覆盖全部 q_type/q_subtype 编码）。
+Survey JSON 使用中文 qtype。问卷逻辑统一附加 dsl.logic，服务端转换为原生 XML 逻辑；不要在 JSONL 中设置 relation、referselect 等逻辑字段。引用方向、答案自动填入和题型限制见 [题目逻辑与 JSONL 题型](references/dsl-and-types.md)。
 
 ```
 1. 使用 prompt 模板生成题目 JSON（如 generate-survey-json、generate-exam-json 等）
-2. create_survey_by_json({ questions: [...], title: "问卷标题", atype: 1 })
+2. create_survey_by_json({ jsonl: "{\"qtype\":\"问卷基础信息\",...}\\n{\"qtype\":\"单选\",...}", atype: 1 })
 3. get_survey({ vid: N }) — 验证内容
 4. build_survey_url({ mode: "edit", activity: N }) — 提供编辑链接
 ```
 
-> `create_survey_by_text`（DSL 文本方式）已弃用，仅为兼容保留，新代码不要使用。
 
-**考试问卷（atype=6）注意**：正确答案和每题分值**无法**通过 API 设置。创建后应提供编辑链接，指引用户在网页端配置答案与评分。
+普通题型未传 `publish` 时默认立即发布；若 JSONL 包含纯框架题型 `折叠栏目`、`轮播图`、`AI追问`、`AI处理`、`AI访谈`、`图片OCR`、`分页计时器`、`循环评价` 或 `考试代码`，则默认创建为草稿。先调用 `get_survey` 并提供编辑入口，待用户明确授权后再传 `publish: true`。`VlookUp问卷关联`、`矩阵数值题`、`多项文件题`、`多项简答题` 和 `当前语音` 属于读取/Web 编辑器边界，当前 JSONL 创建接口直接拒绝，不能按草稿路径重试。
 
-题型字段映射详见 `wjx://reference/question-types` 资源，或 [references/dsl-and-types.md](references/dsl-and-types.md)。
+**考试问卷（atype=6）注意**：JSONL 路径支持 `correctselect`、`quizscore` 和 `answeranalysis`。创建后仍可提供编辑链接补充未覆盖的高级设置。
+
 
 ### 查询和分析数据
 
 ```
-1. get_report({ vid: N }) — 统计概览（首选）
-2. query_responses({ vid: N, page_size: 50 }) — 明细数据
-3. decode_responses({ submitdata: "..." }) — 解码答卷格式
-4. calculate_nps / calculate_csat — 分析指标
-5. detect_anomalies({ responses: [...] }) — 数据质量检查
+1. get_survey({ vid: N }) — 确认问卷结构
+2. count_responses({ vid: N }) — 先获取规模，决定是否拉取明细
+3. get_report({ vid: N }) — 统计概览
+4. query_responses({ vid: N, page_size: 50 }) — 按需分页读取明细
+5. decode_responses({ submitdata: "..." }) — 解码答卷格式
+6. calculate_nps / calculate_csat — 分析指标
+7. detect_anomalies({ responses: [...] }) — 数据质量检查
 ```
+
+### 提交答卷（代填/导入）
+
+submitdata 题号必须与 `get_survey` 返回的原始 `q_index` 对齐——**先拉结构再拼数据**，不要凭"第几题"硬数：
+
+```
+1. get_survey({ vid, get_questions: true, get_items: true })
+   → 拿到 questions[]，每题含 q_index / q_type / q_subtype / items / item_rows
+2. 按每题 q_type 拼 placeholder（举例）：
+   - q_type=3（单选/量表/下拉）   →  `${q.q_index}$1`
+   - q_type=4（多选）              →  `${q.q_index}$1|2`
+   - q_type=4 + q_subtype=402（排序）→ `${q.q_index}$2|3|1`（按名次列出选项序号）
+   - q_type=5（填空）              →  `${q.q_index}$答案文本`
+   - q_type=6（多项填空）          →  `${q.q_index}$空1|空2|空3`
+   - q_type=7（矩阵）：行用 item_rows.length 决定，逐行 `行号!列号`，行间用 `,` 拼
+   - q_type=10（滑动条）           →  `${q.q_index}$5`
+3. 用 `}` 拼接所有题，得到完整 submitdata
+4. submit_response({ vid, inputcosttime: 30, submitdata, ... })
+   — 内部会自动注入最新 jpmversion
+```
+
+> 跳过 `q_type === 1`（分页栏）和 `q_type === 2`（段落说明），它们不接受答案。
 
 ## 常见错误与处理
 
 | 错误现象 | 原因 | 解决方案 |
 |---------|------|---------|
-| "appkey error" | API Key 错误或过期 | `get_config` 查看 key，引导重新获取 |
+| `api_key` 未设置 / `API Key is required` | 未配置 API Key | 停止当前业务操作，明确提醒用户去获取 API Key，并在 MCP 配置中添加 `WJX_API_KEY` |
+| "appkey error" / `Invalid API Key` | API Key 错误或过期 | 明确提醒用户重新获取 API Key，更新 MCP 配置后继续原任务 |
 | "activity not found" | 问卷 vid 不存在 | `list_surveys` 确认正确 vid |
 | "corp_id required" | 通讯录操作缺企业 ID | 配置 `WJX_CORP_ID` 环境变量 |
 | 网络超时 | base_url 错误或网络不通 | `get_config` 检查 base_url |
-| 创建问卷题目丢失 | DSL 格式错误 | 检查题号 + [题型标签]，选项各占一行 |
 
 更多排查详见 [references/troubleshooting.md](references/troubleshooting.md)。
 
@@ -108,38 +208,72 @@ wjx-mcp-server 提供 58 个 MCP 工具、8 个参考资源和 23 个 prompt 模
 
 | 资源 URI | 内容 |
 |----------|------|
-| `wjx://reference/dsl-syntax` | DSL 文本语法（旧 `create_survey_by_text` 用，已弃用） |
-| `wjx://reference/question-types` | 题型和子类型完整映射表 |
-| `wjx://reference/survey-types` | 问卷类型编码（1=调查, 6=考试 等） |
+| `wjx://reference/jsonl-qtypes` | JSONL 创建题型白名单与分层 |
+| `wjx://reference/question-types` | `get_survey` 读取结果的 q_type/q_subtype 映射（不是 JSONL 创建白名单） |
+| `wjx://reference/survey-types` | 问卷类型编码及创建限制（1/2/3/4/5/6/7/9/10/11 可创建，8 用户体系不能新建） |
 | `wjx://reference/survey-statuses` | 问卷状态码 |
 | `wjx://reference/response-format` | submitdata 编码格式 |
 | `wjx://reference/analysis-methods` | NPS/CSAT/CES 公式和行业基准 |
 | `wjx://reference/user-roles` | 子账号角色编码 |
 | `wjx://reference/push-format` | 数据推送格式和加密说明 |
+| `wjx://reference/text-validation-types` | 文本题校验类型 |
+| `wjx://reference/matrix-display-types` | 矩阵题展示类型 |
+| `wjx://reference/table-display-types` | 表格题展示类型 |
+| `wjx://reference/survey-setting-types` | 问卷设置类型 |
 
-## Prompt 模板（19 个）
+## Prompt 模板
 
-**通用/运维（6）：** design-survey, analyze-results, create-nps-survey, configure-webhook, anomaly-detection, user-system-workflow
+**通用/运维（6）：** design-survey, analyze-results, create-nps-survey, configure-webhook, anomaly-detection, user-system-workflow（兼容/已过时）
 
 **分析（6）：** nps-analysis, csat-analysis, cross-tabulation, sentiment-analysis, survey-health-check, comparative-analysis
 
-**问卷生成 — DSL 文本（7，已弃用，保留兼容）：** generate-survey, generate-nps-survey, generate-360-evaluation, generate-satisfaction-survey, generate-engagement-survey, generate-exam-from-document, generate-exam-from-knowledge
-
-**问卷生成 — JSON（3，唯一推荐）：** generate-survey-json, generate-exam-json, generate-form-json
+**问卷生成 — JSONL（3，唯一入口）：** generate-survey-json, generate-exam-json, generate-form-json
 
 ## 常用枚举值
 
 | 参数 | 值 |
 |------|-----|
-| 问卷类型 (atype) | 1=调查, 2=测评, 3=投票, 6=考试, 7=表单 |
+| 问卷类型 (atype) | 1=调查, 2=测评, 3=投票, 4=360度评估, 5=360评估无测评关系, 6=考试, 7=表单, 9=教学评估, 10=量表, 11=民主评议；8 用户体系不能新建 |
 | 问卷状态 (state) | 1=发布, 2=暂停, 3=删除 |
 | 下载格式 (suffix) | 0=CSV, 1=SAV, 2=Word |
 | 角色 (roleid) | 1=系统管理员, 2=问卷管理员, 3=统计查看, 4=全部查看 |
 
 ## Reference 文件（按需查阅）
 
-- [DSL 语法与题型](references/dsl-and-types.md) — DSL 格式、25+ 题型标签、q_type/q_subtype 映射表
-- [问卷工具详解](references/tools-survey.md) — 12 个问卷管理工具的完整参数
-- [答卷工具详解](references/tools-response.md) — 9 个答卷数据工具的完整参数
+- [问卷工具详解](references/tools-survey.md) — 11 个问卷管理工具的完整参数
+- [答卷工具详解](references/tools-response.md) — 11 个答卷数据工具的完整参数
 - [其他工具详解](references/tools-other.md) — 通讯录、子账号、SSO、分析、推送工具参数
 - [错误排查](references/troubleshooting.md) — API 错误码、配置问题、自定义域名、考试限制
+
+
+## Survey JSON 与逻辑
+
+问卷内容创建和修改统一使用 Survey JSON（JSONL）；涉及关联、跳题、引用或随机时必须提供 dsl.logic：
+
+```json
+{"dsl":{"logic":"logic { if \"2::1\" then show \"3\"; };"}}
+```
+
+完整请求的 `jsonl` 是 JSONL 字符串；`dsl` 是对象，只包含 `logic`。无逻辑时省略 `dsl`。不要新增、复制或修改 `relation`、`referselect` 等 JSON 逻辑字段，也不要用 JSON 和 DSL 重复表达同一逻辑。DSL 不支持或校验失败时明确说明限制，不得回退 JSON 或省略逻辑后宣称完成。
+
+SDK 使用 `createSurveyByJson` / `updateSurveyByJson`；CLI 使用 `survey create` / `survey update`；MCP 使用 `create_survey_by_json` / `update_survey_by_json`。普通查询 `getSurvey` / `survey get` / `get_survey` 从实际 XML 返回可编辑的 `dsl.logic`。
+
+仅修改逻辑时提交 `vid + dsl`；修改题目时提交 `vid + jsonl`，可同时提交 `dsl`。修改不会隐式重新发布或迁移创建者。修改请求执行一次，之后从普通查询验证实际保存结果。
+
+服务端将 DSL 解析并转换为 XML 的 Relation、ItemRelation、AnytimeJumpto、ReferTopic 等原生逻辑属性。XML 中不保存 DSL 原文或新增的 DSL 节点。仅修改逻辑时在原 XML 上更新对应属性，保留题目、选项、分页、设置和扩展数据。
+
+```text
+创建：Survey JSON -> 题目 XML；dsl.logic -> 原生 XML 逻辑；校验后保存 XML
+修改逻辑：实际 XML -> dsl.logic -> AI 修改 -> 原生 XML 逻辑 -> 更新原 XML
+```
+
+CLI 示例：
+
+```powershell
+wjx survey create --file survey.jsonl --dsl '{"logic":"logic { if \"2::1\" then show \"3\"; };"}'
+wjx survey get --vid 12345
+wjx --yes survey update --vid 12345 --dsl '{"logic":"logic { if \"2::2\" then show \"3\"; };"}'
+wjx --yes survey update --vid 12345 --file survey.jsonl
+```
+
+修改问卷结构时，已有的答卷索引保护继续生效；无答卷问卷确需结构变更时显式使用 `--allow-breaking-changes`（SDK 为 `allowBreakingChanges`，MCP 为 `allow_breaking_changes`）。

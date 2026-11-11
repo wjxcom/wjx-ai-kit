@@ -11,14 +11,10 @@
             "id": "f00e0cf6ef310286",
             "type": "leaf",
             "state": {
-              "type": "markdown",
-              "state": {
-                "file": "wjx-ai-kit/wjx-cli/docs/install-nodejs.md",
-                "mode": "source",
-                "source": false
-              },
+              "type": "empty",
+              "state": {},
               "icon": "lucide-file",
-              "title": "install-nodejs"
+              "title": "新标签页"
             }
           }
         ]
@@ -94,7 +90,7 @@
             "state": {
               "type": "backlink",
               "state": {
-                "file": "wjx-ai-kit/wjx-cli/docs/install-nodejs.md",
+                "file": "wjx-docs/integrations/workbench.md",
                 "collapseAll": false,
                 "extraContext": false,
                 "sortOrder": "alphabetical",
@@ -104,7 +100,7 @@
                 "unlinkedCollapsed": true
               },
               "icon": "links-coming-in",
-              "title": "install-nodejs 的反向链接列表"
+              "title": "工作台与 Claw 的反向链接列表"
             }
           },
           {
@@ -113,12 +109,12 @@
             "state": {
               "type": "outgoing-link",
               "state": {
-                "file": "wjx-ai-kit/wjx-cli/docs/install-nodejs.md",
+                "file": "wjx-docs/integrations/workbench.md",
                 "linksCollapsed": false,
                 "unlinkedCollapsed": true
               },
               "icon": "links-going-out",
-              "title": "install-nodejs 的出链列表"
+              "title": "工作台与 Claw 的出链列表"
             }
           },
           {
@@ -156,13 +152,13 @@
             "state": {
               "type": "outline",
               "state": {
-                "file": "wjx-ai-kit/wjx-cli/docs/install-nodejs.md",
+                "file": "wjx-docs/integrations/workbench.md",
                 "followCursor": false,
                 "showSearch": false,
                 "searchQuery": ""
               },
               "icon": "lucide-list",
-              "title": "install-nodejs 的大纲"
+              "title": "工作台与 Claw 的大纲"
             }
           }
         ]
@@ -183,43 +179,53 @@
       "bases:新建数据库": false
     }
   },
-  "active": "f00e0cf6ef310286",
+  "active": "bc3eead34dd3ebca",
   "lastOpenFiles": [
-    "wjx-ai-kit/wjx-mcp-server/docs/survey-mcp-deep-research.md",
-    "wjx-ai-kit/wjx-mcp-server/docs/phase1-implementation-plan.md",
-    "wjx-ai-kit/wjx-mcp-server/docs/eng-review-findings.md",
-    "wjx-ai-kit/wjx-mcp-server/docs/competitive-analysis-tencent-survey.md",
-    "wjx-ai-kit/wjx-cli/TODOS.md",
-    "wjx-ai-kit/wjx-cli/SESSION_PROMPT.md",
-    "wjx-ai-kit/wjx-cli/PLAN.md",
-    "wjx-ai-kit/wjx-agents/wjx-mcp-expert/wjx-survey.md",
-    "wjx-ai-kit/wjx-agents/wjx-cli-expert/wjx-cli.md",
-    "wjx-ai-kit/README.md.tmp.17836.1775200912288",
-    "wjx-ai-kit/wjx-mcp-server/src/modules/response/tools.ts.tmp.17836.1775200177636",
-    "wjx-ai-kit/wjx-api-sdk/src/modules/survey/client.ts.tmp.17836.1775200151333",
-    "wjx-ai-kit/wjx-cli/README.md.tmp.17836.1775199098222",
-    "wjx-ai-kit/wjx-cli/src/commands/reference.ts.tmp.17836.1775198698298",
-    "wjx-ai-kit/wjx-agents/wjx-cli-expert/wjx-cli-expert.md.tmp.17836.1775198680422",
-    "wjx-ai-kit/wjx-agents/wjx-cli-expert/wjx-cli-expert.md.tmp.17836.1775198675634",
-    "wjx-ai-kit/SECURITY.md",
-    "wjx-ai-kit/CONTRIBUTING.md",
-    "wjx-ai-kit/wjx-skills/wjx-cli-use/references/response-commands.md.tmp.17836.1775194126341",
-    "wjx-ai-kit/wjx-skills/wjx-mcp-use/references/tools-other.md.tmp.17836.1775194105394",
-    "wjx-ai-kit/wjx-agents/wjx-mcp-expert/README.md.tmp.17836.1775193873375",
-    "wjx-ai-kit/wjx-agents/wjx-cli-expert/wjx-cli-expert.md",
-    "wjx-ai-kit/wjx-agents/wjx-mcp-expert/wjx-mcp-expert.md",
-    "wjx-ai-kit/wjx-agents/wjx-mcp-expert/wjx-mcp.md",
-    "wjx-ai-kit/wjx-mcp-server/agents/wjx-survey.md",
-    "wjx-ai-kit/wjx-skills/wjx-mcp-use/references/tools-other.md",
-    "wjx-ai-kit/wjx-skills/wjx-mcp-use/references/tools-response.md",
-    "wjx-ai-kit/wjx-skills/wjx-mcp-use/references/tools-survey.md",
-    "wjx-ai-kit/wjx-skills/wjx-mcp-use/references/dsl-and-types.md",
-    "wjx-ai-kit/wjx-skills/wjx-mcp-use/SKILL.md",
-    "wjx-ai-kit/wjx-agents/wjx-cli-expert/README.md",
-    "wjx-ai-kit/wjx-skills/wjx-mcp-use/references/survey-commands.md",
-    "wjx-ai-kit/wjx-skills/wjx-mcp-use/references/response-commands.md",
-    "wjx-ai-kit/wjx-skills/wjx-mcp-use/references/question-types.md",
-    "wjx-ai-kit/wjx-skills/wjx-mcp-use/references/dsl-syntax.md",
-    "wjx-ai-kit/wjx-skills/wjx-mcp-use/references/contacts-commands.md"
+    "wjx-skills/wjx-survey-ppt/_pdf_preview/co_93913_04_P06_Scale.png",
+    "wjx-skills/wjx-survey-ppt/_pdf_preview/co_93913_01_P01_Cover.png",
+    "wjx-skills/wjx-survey-ppt/ws-93913/preview/04_P06_Scale.svg",
+    "wjx-skills/wjx-survey-ppt/ws-93913/preview/01_P01_Cover.svg",
+    "wjx-skills/wjx-survey-ppt/ws-93913/preview",
+    "wjx-skills/wjx-survey-ppt/ws-93913/project/svg_final/07_P10_Appendix.svg",
+    "wjx-skills/wjx-survey-ppt/ws-93913/project/svg_final/06_P09_Insights.svg",
+    "wjx-skills/wjx-survey-ppt/ws-93913/project/svg_final/05_P08_Open_Questions.svg",
+    "wjx-skills/wjx-survey-ppt/ws-93913/project/svg_final/04_P06_Scale.svg",
+    "wjx-skills/wjx-survey-ppt/ws-93913/project/svg_final/03_P03_Sample_Overview.svg",
+    "wjx-skills/wjx-survey-ppt/ws-93913/project/svg_final/02_P02_Executive_Summary.svg",
+    "wjx-skills/wjx-survey-ppt/ws-93913/project/svg_final/01_P01_Cover.svg",
+    "wjx-skills/wjx-survey-ppt/ws-93913/project/svg_final",
+    "wjx-skills/wjx-survey-ppt/ws-93913/project",
+    "wjx-skills/wjx-survey-ppt/ws-93913/outline.json",
+    "wjx-skills/wjx-survey-ppt/ws-93913/data.json",
+    "wjx-skills/wjx-survey-ppt/ws-93913",
+    "wjx-skills/wjx-survey-ppt/out-fix-gov-red/output.pptx",
+    "wjx-skills/wjx-survey-ppt/out-fix-gov-red/output_svg.pptx",
+    "wjx-skills/wjx-survey-ppt/out-fix-gov-red/project/svg_final",
+    "wjx-skills/wjx-survey-ppt/out-fix-gov-red/project",
+    "wjx-cli/bundled/wjx-survey-ppt/SKILL.md",
+    "wjx-cli/bundled/wjx-survey-ppt/references/troubleshooting.md",
+    "wjx-cli/bundled/wjx-survey-ppt/references/slot-filling.md",
+    "wjx-cli/bundled/wjx-survey-ppt/references/install-python.md",
+    "wjx-cli/bundled/wjx-survey-ppt/references/data-schema.md",
+    "wjx-skills/wjx-survey-ppt/references/troubleshooting.md",
+    "wjx-skills/wjx-survey-ppt/references/slot-filling.md",
+    "wjx-skills/wjx-survey-ppt/references/install-python.md",
+    "wjx-skills/wjx-survey-ppt/references/data-schema.md",
+    "wjx-skills/wjx-survey-ppt/SKILL.md",
+    "wjx-cli/bundled/survey-report-to-ppt/references/troubleshooting.md",
+    "wjx-cli/bundled/survey-report-to-ppt/references/slot-filling.md",
+    "wjx-cli/bundled/survey-report-to-ppt/references/install-python.md",
+    "wjx-cli/bundled/survey-report-to-ppt/references/data-schema.md",
+    "wjx-skills/survey-report-to-ppt/references/troubleshooting.md",
+    "wjx-skills/survey-report-to-ppt/references/install-python.md",
+    "wjx-skills/survey-report-to-ppt/references/slot-filling.md",
+    "wjx-skills/survey-report-to-ppt/references/data-schema.md",
+    "wjx-skills/survey-report-to-ppt/SKILL.md",
+    "node_modules/marked/README.md",
+    "node_modules/marked/man/marked.1.md",
+    "node_modules/marked/LICENSE.md",
+    "node_modules/@modelcontextprotocol/sdk/README.md",
+    "node_modules/zod-to-json-schema/README.md",
+    "node_modules/@hono/node-server/README.md"
   ]
 }

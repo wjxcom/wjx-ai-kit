@@ -289,9 +289,9 @@ wjx sso subaccount-url --subuser admin1 --role_id 2 --url "https://example.com/d
 | `--url <s>` | 否 | 登录后跳转地址 |
 | `--admin <n>` | 否 | 设为 1 以主账号身份登录 |
 
-### wjx sso user-system-url
+### wjx sso user-system-url（已过时）
 
-生成用户系统参与者登录链接。
+为已有用户系统的参与者生成登录链接。该能力仅作兼容保留，不能用于创建新的 `atype=8` 用户体系。
 
 ```bash
 wjx sso user-system-url --u admin --system_id 100 --uid user001

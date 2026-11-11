@@ -33,9 +33,9 @@ npm run build --workspace=wjx-cli
 ### 运行测试
 
 ```bash
-npm test --workspace=wjx-api-sdk        # ~623 tests
-npm test --workspace=wjx-mcp-server     # ~280 tests
-npm test --workspace=wjx-cli            # ~133 tests
+npm test --workspace=wjx-api-sdk
+npm test --workspace=wjx-mcp-server
+npm test --workspace=wjx-cli
 ```
 
 ---
@@ -93,8 +93,8 @@ wjx-ai-kit/
 ### 1. 创建分支
 
 ```bash
-git checkout develop
-git pull origin develop
+git checkout master
+git pull origin master
 git checkout -b feat/your-feature-name
 ```
 
@@ -113,7 +113,7 @@ npm test --workspace=<package-name>
 git push origin feat/your-feature-name
 ```
 
-在 GitHub 上创建 Pull Request，目标分支为 `develop`。
+在 GitHub 上创建 Pull Request，目标分支为 `master`。
 
 ---
 

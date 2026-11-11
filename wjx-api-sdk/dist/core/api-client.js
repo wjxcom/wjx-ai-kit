@@ -1,5 +1,12 @@
 import { randomUUID } from "node:crypto";
+import { createRequire } from "node:module";
 import { getWjxApiUrl, getWjxUserSystemApiUrl, getWjxSubuserApiUrl, getWjxContactsApiUrl, DEFAULT_TIMEOUT_MS, DEFAULT_MAX_RETRIES, RETRY_DELAY_MS, } from "./constants.js";
+const require = createRequire(import.meta.url);
+const packageJson = require("../../package.json");
+const SDK_CLIENT_NAME = "wjx-api-sdk";
+const SDK_CLIENT_VERSION = typeof packageJson.version === "string" && packageJson.version.trim()
+    ? packageJson.version.trim()
+    : "0.4.6";
 /** Pluggable credential provider for per-request credentials (e.g. multi-tenant). */
 let _credentialProvider;
 /**
@@ -16,9 +23,9 @@ export function getWjxCredentials(env = process.env) {
     // 1. Per-request credentials from registered provider (e.g. AsyncLocalStorage)
     const providerCreds = _credentialProvider?.();
     if (providerCreds)
-        return providerCreds;
+        return normalizeCredentials(providerCreds);
     // 2. Fallback: environment variables (single-tenant / stdio / CLI mode)
-    const apiKey = env.WJX_API_KEY;
+    const apiKey = typeof env.WJX_API_KEY === "string" ? env.WJX_API_KEY.trim() : "";
     if (!apiKey) {
         throw new Error("WJX_API_KEY must be set (via env var or credential provider).");
     }
@@ -27,76 +34,213 @@ export function getWjxCredentials(env = process.env) {
 function isRetryable(status) {
     return status === 429 || status >= 500;
 }
+const MAX_RETRY_BUDGET = 10_000;
+const MAX_TIMEOUT_MS = 2_147_483_647;
+const MAX_RETRY_DELAY_MS = 30_000;
+export class WjxAmbiguousOutcomeError extends Error {
+    outcome = "unknown";
+    action;
+    traceId;
+    attempts;
+    constructor(action, traceId, attempts, cause) {
+        const causeText = cause instanceof Error && cause.message ? `: ${cause.message}` : "";
+        super(`WJX API outcome is unknown after ${attempts} attempt(s) (action=${action}, traceid=${traceId})${causeText}; verify by reading the resource before retrying`);
+        this.name = "WjxAmbiguousOutcomeError";
+        this.action = action;
+        this.traceId = traceId;
+        this.attempts = attempts;
+        if (cause !== undefined)
+            this.cause = cause;
+    }
+}
+function normalizeCredentials(credentials) {
+    const apiKey = typeof credentials?.apiKey === "string" ? credentials.apiKey.trim() : "";
+    if (!apiKey) {
+        throw new Error("WJX_API_KEY must be set (via env var, credential provider, or explicit credentials).");
+    }
+    const baseUrl = typeof credentials.baseUrl === "string" && credentials.baseUrl.trim()
+        ? credentials.baseUrl.trim()
+        : undefined;
+    const corpId = typeof credentials.corpId === "string" && credentials.corpId.trim()
+        ? credentials.corpId.trim()
+        : undefined;
+    const clientIp = typeof credentials.clientIp === "string" && credentials.clientIp.trim()
+        ? credentials.clientIp.trim()
+        : undefined;
+    return {
+        apiKey,
+        ...(baseUrl ? { baseUrl } : {}),
+        ...(corpId ? { corpId } : {}),
+        ...(clientIp ? { clientIp } : {}),
+    };
+}
+function resolveBaseUrl(explicit, credentialBaseUrl) {
+    const requested = typeof explicit === "string" && explicit.trim() ? explicit.trim() : undefined;
+    if (requested)
+        return requested;
+    return typeof credentialBaseUrl === "string" && credentialBaseUrl.trim()
+        ? credentialBaseUrl.trim()
+        : undefined;
+}
+function normalizeRetryBudget(opts) {
+    const value = opts.retryBudget ?? opts.maxRetries ?? DEFAULT_MAX_RETRIES;
+    if (!Number.isSafeInteger(value) || value < 0 || value > MAX_RETRY_BUDGET) {
+        const name = opts.retryBudget !== undefined ? "retryBudget" : "maxRetries";
+        throw new TypeError(`${name} must be a finite safe integer between 0 and ${MAX_RETRY_BUDGET}`);
+    }
+    return value;
+}
+function normalizeTimeoutMs(value) {
+    const timeoutMs = value ?? DEFAULT_TIMEOUT_MS;
+    if (!Number.isSafeInteger(timeoutMs) || timeoutMs < 1 || timeoutMs > MAX_TIMEOUT_MS) {
+        throw new TypeError(`timeoutMs must be a finite positive safe integer between 1 and ${MAX_TIMEOUT_MS}`);
+    }
+    return timeoutMs;
+}
+function isAbortError(error) {
+    return ((error instanceof DOMException && error.name === "AbortError") ||
+        (error instanceof Error && error.name === "AbortError"));
+}
 function sleep(ms) {
     return new Promise((resolve) => setTimeout(resolve, ms));
 }
 async function _callApi(baseUrl, params, opts = {}) {
-    const credentials = opts.credentials ?? getWjxCredentials();
+    const credentials = normalizeCredentials(opts.credentials ?? getWjxCredentials());
     const fetchImpl = opts.fetchImpl ?? fetch;
-    const timeoutMs = opts.timeoutMs ?? DEFAULT_TIMEOUT_MS;
-    const maxRetries = opts.maxRetries ?? DEFAULT_MAX_RETRIES;
+    const timeoutMs = normalizeTimeoutMs(opts.timeoutMs);
+    // Existing wrappers express write safety with an explicit zero retry budget.
+    // Preserve that convention while allowing new callers to declare it directly.
+    const idempotency = opts.idempotency
+        ?? (opts.retryBudget === 0 || opts.maxRetries === 0 ? "unsafe" : "safe");
+    if (!["safe", "unsafe", "unknown"].includes(idempotency)) {
+        throw new TypeError("idempotency must be safe, unsafe, or unknown");
+    }
+    if (opts.httpRetryable !== undefined && typeof opts.httpRetryable !== "boolean") {
+        throw new TypeError("httpRetryable must be a boolean");
+    }
+    const maxRetries = idempotency === "safe" ? normalizeRetryBudget(opts) : 0;
+    const httpRetryable = idempotency === "safe" && opts.httpRetryable === true;
     const logger = opts.logger;
-    const traceId = generateTraceId();
+    const traceId = opts.traceId ?? generateTraceId();
     const action = String(params.action ?? "unknown");
     const url = `${baseUrl}?traceid=${traceId}&action=${encodeURIComponent(action)}`;
     let lastError;
     for (let attempt = 0; attempt <= maxRetries; attempt++) {
         if (attempt > 0) {
-            const delay = RETRY_DELAY_MS * Math.pow(2, attempt - 1) * (0.5 + Math.random() * 0.5);
+            const delay = Math.min(MAX_RETRY_DELAY_MS, RETRY_DELAY_MS * Math.pow(2, attempt - 1) * (0.5 + Math.random() * 0.5));
             logger?.warn(`[wjx] retry ${attempt}/${maxRetries} for action=${action} traceid=${traceId} after ${delay}ms`);
             await sleep(delay);
         }
         try {
             const controller = new AbortController();
-            const timer = setTimeout(() => controller.abort(), timeoutMs);
-            let response;
+            let rejectTimeout;
+            const timeoutError = new DOMException("The operation timed out", "AbortError");
+            const timeoutPromise = new Promise((_, reject) => {
+                rejectTimeout = reject;
+            });
+            const timer = setTimeout(() => {
+                controller.abort();
+                rejectTimeout(timeoutError);
+            }, timeoutMs);
             try {
                 const headers = {
                     "Content-Type": "application/json",
                     "Authorization": `Bearer ${credentials.apiKey}`,
                 };
+                const clientName = opts.clientName === undefined
+                    ? SDK_CLIENT_NAME
+                    : typeof opts.clientName === "string" ? opts.clientName.trim() : "";
+                const clientVersion = opts.clientVersion === undefined
+                    ? SDK_CLIENT_VERSION
+                    : typeof opts.clientVersion === "string" ? opts.clientVersion.trim() : "";
+                if (clientName) {
+                    headers["X-WJX-Client"] = clientName;
+                }
+                if (clientVersion) {
+                    headers["X-WJX-Client-Version"] = clientVersion;
+                }
                 if (credentials.clientIp) {
                     headers["X-Forwarded-For"] = credentials.clientIp;
                 }
-                response = await fetchImpl(url, {
-                    method: "POST",
-                    headers,
-                    body: JSON.stringify(params),
-                    signal: controller.signal,
-                });
+                const response = await Promise.race([
+                    fetchImpl(url, {
+                        method: "POST",
+                        headers,
+                        body: JSON.stringify(params),
+                        signal: controller.signal,
+                    }),
+                    timeoutPromise,
+                ]);
+                if (!response.ok) {
+                    // Release a non-2xx body before retrying or throwing. Undici cannot
+                    // reuse the connection while the response stream remains open.
+                    try {
+                        await Promise.race([response.body?.cancel() ?? Promise.resolve(), timeoutPromise]);
+                    }
+                    catch (error) {
+                        if (error === timeoutError)
+                            throw error;
+                        // Preserve the original HTTP status error if body cleanup fails.
+                    }
+                    if (httpRetryable && isRetryable(response.status) && attempt < maxRetries) {
+                        lastError = new Error(`WJX API request failed with ${response.status} ${response.statusText}`);
+                        continue;
+                    }
+                    throw new Error(`WJX API request failed with ${response.status} ${response.statusText}`);
+                }
+                let result;
+                try {
+                    result = await Promise.race([response.json(), timeoutPromise]);
+                }
+                catch (parseError) {
+                    if (isAbortError(parseError))
+                        throw parseError;
+                    throw new Error(`WJX API returned unparseable response for action=${action} traceid=${traceId}: ${parseError instanceof Error ? parseError.message : String(parseError)}`);
+                }
+                if (!result || typeof result !== "object" || Array.isArray(result)) {
+                    throw new Error(`WJX API returned an invalid response for action=${action} traceid=${traceId}: expected an object`);
+                }
+                if (typeof result.result !== "boolean") {
+                    throw new Error(`WJX API returned an invalid response for action=${action} traceid=${traceId}: result must be a boolean`);
+                }
+                if (result.result === false) {
+                    logger?.error(`[wjx] api error action=${action} traceid=${traceId}: ${result.errormsg}`);
+                }
+                return result;
             }
             finally {
                 clearTimeout(timer);
             }
-            if (!response.ok) {
-                if (isRetryable(response.status) && attempt < maxRetries) {
-                    lastError = new Error(`WJX API request failed with ${response.status} ${response.statusText}`);
-                    continue;
-                }
-                throw new Error(`WJX API request failed with ${response.status} ${response.statusText}`);
-            }
-            let result;
-            try {
-                result = (await response.json());
-            }
-            catch (parseError) {
-                throw new Error(`WJX API returned unparseable response for action=${action} traceid=${traceId}: ${parseError instanceof Error ? parseError.message : String(parseError)}`);
-            }
-            if (result.result === false) {
-                logger?.error(`[wjx] api error action=${action} traceid=${traceId}: ${result.errormsg}`);
-            }
-            return result;
         }
         catch (error) {
-            if (error instanceof DOMException && error.name === "AbortError") {
+            if (isAbortError(error)) {
                 lastError = new Error(`WJX API request timed out after ${timeoutMs}ms (action=${action}, traceid=${traceId})`);
+                if (idempotency !== "safe") {
+                    throw new WjxAmbiguousOutcomeError(action, traceId, attempt + 1, lastError);
+                }
                 if (attempt < maxRetries)
                     continue;
                 throw lastError;
             }
-            const isNetworkError = error instanceof TypeError &&
-                typeof error.message === "string" &&
-                /fetch|network|connect|ECONNR|ETIMEDOUT|EAI_AGAIN/i.test(error.message);
+            const errorCode = error instanceof Error
+                ? error.code
+                : undefined;
+            const cause = error instanceof Error && error.cause instanceof Error
+                ? error.cause
+                : undefined;
+            const causeCode = cause
+                ? cause.code
+                : undefined;
+            const errorText = [
+                error instanceof Error ? error.message : String(error),
+                typeof errorCode === "string" ? errorCode : "",
+                cause?.message ?? "",
+                typeof causeCode === "string" ? causeCode : "",
+            ].join(" ");
+            const isNetworkError = /fetch|network|connect|ECONN|ETIMEDOUT|EAI_AGAIN|UND_ERR_SOCKET|UND_ERR_(?:CONNECT|HEADERS|BODY)_TIMEOUT|ERR_SOCKET_TIMEOUT|socket\s+hang\s+up/i.test(errorText);
+            if (isNetworkError && idempotency !== "safe") {
+                throw new WjxAmbiguousOutcomeError(action, traceId, attempt + 1, error);
+            }
             if (isNetworkError && attempt < maxRetries) {
                 lastError = error;
                 continue;
@@ -107,19 +251,24 @@ async function _callApi(baseUrl, params, opts = {}) {
     throw lastError ?? new Error("Exhausted retries");
 }
 export async function callWjxApi(params, opts = {}) {
-    return _callApi(getWjxApiUrl(), params, opts);
+    const credentials = normalizeCredentials(opts.credentials ?? getWjxCredentials());
+    return _callApi(getWjxApiUrl(resolveBaseUrl(opts.baseUrl, credentials.baseUrl)), params, { ...opts, credentials });
 }
 export async function callWjxUserSystemApi(params, opts = {}) {
-    return _callApi(getWjxUserSystemApiUrl(), params, opts);
+    const credentials = normalizeCredentials(opts.credentials ?? getWjxCredentials());
+    return _callApi(getWjxUserSystemApiUrl(resolveBaseUrl(opts.baseUrl, credentials.baseUrl)), params, { ...opts, credentials });
 }
 export async function callWjxSubuserApi(params, opts = {}) {
-    return _callApi(getWjxSubuserApiUrl(), params, opts);
+    const credentials = normalizeCredentials(opts.credentials ?? getWjxCredentials());
+    return _callApi(getWjxSubuserApiUrl(resolveBaseUrl(opts.baseUrl, credentials.baseUrl)), params, { ...opts, credentials });
 }
 export async function callWjxContactsApi(params, opts = {}) {
-    return _callApi(getWjxContactsApiUrl(), params, opts);
+    const credentials = normalizeCredentials(opts.credentials ?? getWjxCredentials());
+    return _callApi(getWjxContactsApiUrl(resolveBaseUrl(opts.baseUrl, credentials.baseUrl)), params, { ...opts, credentials });
 }
 export function getCorpId(env = process.env) {
-    return env.WJX_CORP_ID || undefined;
+    const corpId = env.WJX_CORP_ID?.trim();
+    return corpId || undefined;
 }
 /**
  * Copy defined (non-undefined) keys from source to target.

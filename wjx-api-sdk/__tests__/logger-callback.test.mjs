@@ -54,7 +54,7 @@ describe("logger callback", () => {
 
     await callWjxApi(
       { action: "1001002", vid: 1 },
-      { credentials, fetchImpl, logger, maxRetries: 2 },
+      { credentials, fetchImpl, logger, maxRetries: 2, idempotency: "safe", httpRetryable: true },
     );
 
     const warnLogs = logs.filter((l) => l.level === "warn");

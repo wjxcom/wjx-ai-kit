@@ -8,3 +8,7 @@ export declare function maskApiKey(value: string): string;
  * Preserves the "Bearer " prefix + first 4 key chars, masks middle, keeps last 4.
  */
 export declare function maskAuthHeader(value: string): string;
+/** Recursively redact credential-like fields before serializing dry-run output. */
+export declare function redactSensitive(value: unknown): unknown;
+/** Redact credential-like fields in an already serialized JSON payload. */
+export declare function redactJson(value: string): string;

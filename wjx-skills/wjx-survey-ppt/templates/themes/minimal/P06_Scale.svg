@@ -1,0 +1,99 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720" width="1280" height="720">
+  <defs>
+    
+  </defs>
+
+  <rect width="1280" height="720" fill="#FFFFFF"/>
+
+  <rect x="0" y="0" width="1280" height="80" fill="{{NPS_DETRACTOR_COLOR}}"/>
+  <rect x="80" y="34" width="48" height="3" fill="{{NPS_DETRACTOR_COLOR}}"/>
+  <text x="80" y="62" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="18" font-weight="500" fill="{{NPS_PASSIVE_COLOR}}" letter-spacing="3">
+    NPS / SCALE
+  </text>
+  <text x="1200" y="62" text-anchor="end" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="14" fill="{{NPS_PASSIVE_COLOR}}">
+    06 / 10
+  </text>
+
+  <text x="80" y="155" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="40" font-weight="700" fill="{{NPS_DETRACTOR_COLOR}}">
+    {{TITLE}}
+  </text>
+  <text x="80" y="190" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="18" fill="#5A5A5A">
+    净推荐值衡量用户的口碑传播意愿
+  </text>
+
+  <line x1="80" y1="220" x2="1200" y2="220" stroke="{{NPS_DETRACTOR_COLOR}}" stroke-opacity="0.12" stroke-width="1"/>
+
+  <!-- 半圆量表（中心 380, 410，半径 200）-->
+  <g>
+    <!-- 三段色弧（背景） -->
+    <path d="M 180 410 A 200 200 0 0 1 262.4 248.2" stroke="{{NPS_DETRACTOR_COLOR}}" stroke-width="22" fill="none" opacity="0.85"/>
+    <path d="M 262.4 248.2 A 200 200 0 0 1 470.8 231.8" stroke="{{NPS_DETRACTOR_COLOR}}" stroke-width="22" fill="none" opacity="0.85"/>
+    <path d="M 470.8 231.8 A 200 200 0 0 1 580 410" stroke="{{NPS_PROMOTER_COLOR}}" stroke-width="22" fill="none" opacity="0.85"/>
+
+    <!-- 刻度数字 -->
+    <text x="180" y="440" text-anchor="middle" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="12" fill="#8A8A8A">-100</text>
+    <text x="380" y="200" text-anchor="middle" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="12" fill="#8A8A8A">0</text>
+    <text x="580" y="440" text-anchor="middle" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="12" fill="#8A8A8A">100</text>
+
+    <!-- 行业参考刻度 + 标签（dashed line 从弧内到弧外） -->
+{{?HAS_NPS_BENCHMARK}}
+    <line x1="{{BENCHMARK_INNER_X}}" y1="{{BENCHMARK_INNER_Y}}" x2="{{BENCHMARK_OUTER_X}}" y2="{{BENCHMARK_OUTER_Y}}" stroke="{{NPS_DETRACTOR_COLOR}}" stroke-width="3" stroke-dasharray="4,2" opacity="0.7"/>
+    <text x="{{BENCHMARK_LABEL_X}}" y="{{BENCHMARK_LABEL_Y}}" text-anchor="middle" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="12" font-weight="600" fill="{{NPS_DETRACTOR_COLOR}}" opacity="0.85">≈ {{BENCHMARK_VALUE}}*</text>
+{{/HAS_NPS_BENCHMARK}}
+
+    <!-- 指针 -->
+    <line x1="380" y1="410" x2="{{NEEDLE_X}}" y2="{{NEEDLE_Y}}" stroke="{{NPS_DETRACTOR_COLOR}}" stroke-width="4" stroke-linecap="round"/>
+    <circle cx="380" cy="410" r="8" fill="{{NPS_DETRACTOR_COLOR}}"/>
+
+    <!-- 中心数字 + 副标 -->
+    <text x="380" y="500" text-anchor="middle" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="78" font-weight="800" fill="{{NPS_DETRACTOR_COLOR}}">{{NPS_VALUE}}</text>
+    <text x="380" y="530" text-anchor="middle" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="14" letter-spacing="2" fill="#5A5A5A">NET PROMOTER SCORE</text>
+  </g>
+
+  <!-- 三个 donut -->
+  <g transform="translate(700, 270)">
+    <g transform="translate(80, 80)">
+      <circle r="60" fill="none" stroke="#E0E0E0" stroke-width="14"/>
+      <circle r="60" fill="none" stroke="{{NPS_PROMOTER_COLOR}}" stroke-width="14"
+        stroke-dasharray="{{PROMOTERS_DASH}} {{PROMOTERS_GAP}}"
+        transform="rotate(-90)" stroke-linecap="butt"/>
+      <text text-anchor="middle" y="6" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="22" font-weight="800" fill="{{NPS_DETRACTOR_COLOR}}">{{PROMOTERS}}%</text>
+      <text text-anchor="middle" y="28" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="11" fill="#5A5A5A">推荐者 9-10</text>
+    </g>
+    <g transform="translate(260, 80)">
+      <circle r="60" fill="none" stroke="#E0E0E0" stroke-width="14"/>
+      <circle r="60" fill="none" stroke="{{NPS_DETRACTOR_COLOR}}" stroke-width="14"
+        stroke-dasharray="{{PASSIVES_DASH}} {{PASSIVES_GAP}}"
+        transform="rotate(-90)" stroke-linecap="butt"/>
+      <text text-anchor="middle" y="6" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="22" font-weight="800" fill="{{NPS_DETRACTOR_COLOR}}">{{PASSIVES}}%</text>
+      <text text-anchor="middle" y="28" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="11" fill="#5A5A5A">中立者 7-8</text>
+    </g>
+    <g transform="translate(440, 80)">
+      <circle r="60" fill="none" stroke="#E0E0E0" stroke-width="14"/>
+      <circle r="60" fill="none" stroke="{{NPS_DETRACTOR_COLOR}}" stroke-width="14"
+        stroke-dasharray="{{DETRACTORS_DASH}} {{DETRACTORS_GAP}}"
+        transform="rotate(-90)" stroke-linecap="butt"/>
+      <text text-anchor="middle" y="6" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="22" font-weight="800" fill="{{NPS_DETRACTOR_COLOR}}">{{DETRACTORS}}%</text>
+      <text text-anchor="middle" y="28" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="11" fill="#5A5A5A">贬损者 0-6</text>
+    </g>
+  </g>
+
+  <text x="80" y="678" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="13" fill="#8A8A8A" letter-spacing="1">
+    NPS = 推荐者比例 - 贬损者比例 · 范围 -100 到 100
+  </text>
+{{?HAS_NPS_BENCHMARK}}
+  <text x="80" y="702" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="11" fill="#8A8A8A">
+    * 中国市场参考值约 {{BENCHMARK_VALUE}}（基于 LLM 知识估算，受样本/口径影响波动较大，仅作方向性参考）
+  </text>
+{{/HAS_NPS_BENCHMARK}}
+
+{{?AI_SUMMARY}}
+  <g transform="translate(80, 615)">
+    <line x1="0" y1="0" x2="1120" y2="0" stroke="#999999" stroke-opacity="0.20"/>
+    <text x="0" y="22" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="11" font-weight="600" letter-spacing="3" fill="#999999">小计</text>
+    <text x="60" y="22" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="13" fill="#444444">{{AI_SUMMARY}}</text>
+  </g>
+{{/AI_SUMMARY}}
+
+</svg>

@@ -54,9 +54,17 @@ export interface SubmitResponseInput {
   vid: number;
   inputcosttime: number;
   submitdata: string;
+  /** 提交通道标记，由调用方按服务端白名单传入。 */
+  submit_channel?: string;
   udsid?: number;
   sojumpparm?: string;
   submittime?: string;
+  /**
+   * 问卷版本号。问卷星服务端校验：发布/编辑会让问卷 version 自增，
+   * 提交时若不传或传旧值会被服务端拒绝（"问卷已被修改请刷新"）。
+   * 推荐先 getSurvey 拿到 data.version 再传入；CLI 默认会自动注入。
+   */
+  jpmversion?: number;
 }
 
 export interface SubmitdataQuestionMeta {
@@ -81,7 +89,8 @@ export interface GetWinnersInput {
 
 export interface ModifyResponseInput {
   vid: number;
-  jid: number;
+  /** Response IDs are returned as large integers; serialize them as strings on the wire. */
+  jid: number | string;
   type: 1;
   answers: string;
 }

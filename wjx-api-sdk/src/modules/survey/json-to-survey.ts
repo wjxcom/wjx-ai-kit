@@ -1,5 +1,3 @@
-import type { WireQuestion } from "./text-to-survey.js";
-
 // ─── Types ──────────────────────────────────────────────────────────
 
 /** JSONL 首行 "问卷基础信息" 解析结果（轻量，只含元数据） */
@@ -8,7 +6,7 @@ export interface JsonSurveyMetadata {
   description: string;
   endpageinformation: string;
   language: string;
-  /** 用户在 JSONL 内部声明的 atype（1=调查 / 2=测评 / 3=投票 / 6=考试 / 7=表单）。未声明时为 undefined。 */
+  /** 用户在 JSONL 内部声明的 atype（可创建：1/2/3/4/5/6/7/9/10/11；8=用户体系不支持新建）。未声明时为 undefined。 */
   atype?: number;
 }
 
@@ -45,13 +43,13 @@ export interface JsonSurveyQuestion {
   uploadlimit?: string;
   uploadcutimgsize?: string;
   /** 考试字段 */
-  correctselect?: string[];
+  correctselect?: string | string[];
   quizscore?: string;
   answeranalysis?: string;
   isquiz?: string;
   include?: boolean;
   answerlists?: Array<{
-    correctselect?: string[];
+    correctselect?: string | string[];
     quizscore?: string;
     include?: boolean;
   }>;
@@ -68,22 +66,39 @@ export interface JsonSurveyQuestion {
   aigoal?: string;
   /** MaxDiff / BWS / 图片PK */
   mdattr?: string[];
-  /** 联合分析 */
+  /** BWS / MaxDiff / 图片PK / 联合分析 每个任务抽取的对象数。 */
+  pertaskcount?: number | string;
+  /** BWS / MaxDiff / 图片PK / 联合分析 任务数。 */
+  tasklength?: number | string;
+  /** 联合分析；表格/自增表格也可用作列标题 */
   columntitle?: string[];
   /** 表格题字段类型（与 rowtitle 一一对应） */
   columntype?: string[];
   /** 表格题字段补充数据（与 rowtitle / columntype 一一对应） */
   columndata?: string[];
+  /**
+   * 表格题列输入类型（表格组合专用，与 rowtitle 等长）。
+   * 支持值：单选 / 多选 / 下拉 / 数字 / 小数 / 日期 / 手机 / Email / 文本。
+   */
+  types?: string[];
+  /**
+   * 表格题选项数据：
+   * - 表格下拉框 / 表格组合：长度 = rowtitle，selects[i] 是第 i 列的选项数组（如 ["新手","初级","中级"]）；
+   *   表格组合中文本/数字等无选项类型可传 [] 占位。
+   * - 自增表格：单层数组 [rowTmpl]；rowTmpl[i] 是第 i 列的输入模板：
+   *     ""（空字符串）→ 文本；"a|b|c"（| 分隔）→ 下拉，选项 a/b/c。
+   */
+  selects?: string[][];
   /** 品牌漏斗 */
   brands?: string[];
   /** 企业信息模糊查询 */
   fuzzyquery?: string;
   /** 多级下拉 */
-  leveldata?: string;
+  leveldata?: string | string[];
   /** 分页栏 */
   mintime?: number;
   maxtime?: number;
-  /** 自增表格 */
+  /** 自增表格的最小/最大可添加行数；不要用 minvalue/maxvalue 表示行数 */
   min_rows?: number;
   max_rows?: number;
   /** 答卷摄像 */
@@ -91,6 +106,10 @@ export interface JsonSurveyQuestion {
   /** PSM 模型 */
   steps?: string;
   /** 矩阵滑动条 — 用 minvalue/maxvalue + rowtitle */
+  stores?: string[];
+  heatbg?: string;
+  hidetxt?: string | boolean;
+  answer?: string;
   [key: string]: unknown;
 }
 
@@ -101,12 +120,6 @@ export interface JsonParsedSurvey {
   endpageinformation: string;
   language: string;
   questions: JsonSurveyQuestion[];
-}
-
-export interface JsonWireConversionResult {
-  questions: WireQuestion[];
-  /** 无法映射的题型（跳过但不报错） */
-  skippedTypes: Array<{ qtype: string; title: string }>;
 }
 
 /** createSurveyByJson 的 JSONL 大小上限（1 MB） */
@@ -183,14 +196,14 @@ export const EXAM_QTYPES = new Set<string>([
 /**
  * 扫描 JSONL 文本，若发现考试题型：
  * - `hasExam=true`
- * - 为每道考试题自动注入 `isquiz="1"`（用户已显式设置则保留原值）
+ * - 为每道考试题自动注入 `isquiz="1"`（显式设置为其他值会被拒绝，避免考试题降级）
  *
  * 非考试题、_meta 行、空行、无法解析的行保持原样。
  */
 export function preprocessExamJsonl(jsonl: string): { jsonl: string; hasExam: boolean } {
   const lines = jsonl.split("\n");
   let hasExam = false;
-  const processed = lines.map((line) => {
+  const processed = lines.map((line, lineIndex) => {
     const trimmed = line.trim();
     if (!trimmed) return line;
     let obj: Record<string, unknown>;
@@ -205,10 +218,31 @@ export function preprocessExamJsonl(jsonl: string): { jsonl: string; hasExam: bo
         obj.isquiz = "1";
         return JSON.stringify(obj);
       }
+      if (obj.isquiz !== "1") {
+        throw new Error(
+          `JSONL 第 ${lineIndex + 1} 行考试题 ${obj.qtype} 的 isquiz 必须为 "1"，不能使用 ${JSON.stringify(obj.isquiz)}，否则服务端会按普通题型降级。`,
+        );
+      }
     }
     return line;
   });
   return { jsonl: processed.join("\n"), hasExam };
+}
+
+export function hasVoteJsonlQtype(jsonl: string): boolean {
+  for (const line of jsonl.split("\n")) {
+    const trimmed = line.trim();
+    if (!trimmed) continue;
+    try {
+      const obj = JSON.parse(trimmed) as Record<string, unknown>;
+      if (obj.qtype === "投票单选" || obj.qtype === "投票多选") {
+        return true;
+      }
+    } catch {
+      // 保持轻量扫描：无效行交给后续服务端/校验流程处理。
+    }
+  }
+  return false;
 }
 
 // ─── 默认必答预处理 ─────────────────────────────────────────────────
@@ -274,12 +308,20 @@ export function validateExplicitOptionalQuestionsInJsonl(
     const trimmed = line.trim();
     if (!trimmed) continue;
 
-    let obj: Record<string, unknown>;
+    let parsed: unknown;
     try {
-      obj = JSON.parse(trimmed) as Record<string, unknown>;
+      parsed = JSON.parse(trimmed);
     } catch {
+      // Keep malformed JSON handling in parseJsonl so it retains the
+      // existing line-numbered syntax diagnostic.
       continue;
     }
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+      throw new Error(
+        `JSONL 第 ${lineIndex + 1} 行必须是 JSON 对象，不能是 ${parsed === null ? "null" : Array.isArray(parsed) ? "数组" : typeof parsed}`,
+      );
+    }
+    const obj = parsed as Record<string, unknown>;
 
     if (typeof obj.qtype !== "string" || NON_QUESTION_QTYPES.has(obj.qtype)) {
       continue;
@@ -429,15 +471,21 @@ export const NON_QUESTION_QTYPE_SET: ReadonlySet<string> = NON_QUESTION_QTYPES;
  */
 export function validateSurveyHasQuestions(jsonl: string): void {
   let questionCount = 0;
-  for (const line of jsonl.split("\n")) {
+  for (const [lineIndex, line] of jsonl.split("\n").entries()) {
     const trimmed = line.trim();
     if (!trimmed) continue;
-    let obj: Record<string, unknown>;
+    let parsed: unknown;
     try {
-      obj = JSON.parse(trimmed) as Record<string, unknown>;
+      parsed = JSON.parse(trimmed);
     } catch {
       continue;
     }
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+      throw new Error(
+        `JSONL 第 ${lineIndex + 1} 行必须是 JSON 对象，不能是 ${parsed === null ? "null" : Array.isArray(parsed) ? "数组" : typeof parsed}`,
+      );
+    }
+    const obj = parsed as Record<string, unknown>;
     if (typeof obj.qtype !== "string") continue;
     if (NON_QUESTION_QTYPES.has(obj.qtype)) continue;
     questionCount++;
@@ -451,278 +499,230 @@ export function validateSurveyHasQuestions(jsonl: string): void {
   }
 }
 
-// ─── qtype → q_type/q_subtype mapping ──────────────────────────────
+// ─── JSONL qtype allowlist ───────────────────────────────────────────
+/**
+ * Canonical qtype names documented for action 1000106.
+ * The service owns the JSONL-to-survey conversion; the SDK only validates
+ * names and preserves their JSON fields for transport.
+ */
+const DOCUMENTED_JSONL_QTYPES = [
+  "问卷基础信息",
+  "单选",
+  "多选",
+  "下拉框",
+  "文件上传",
+  "排序",
+  "单项填空",
+  "简答题",
+  "多项填空",
+  "签名题",
+  "地图",
+  "日期",
+  "分页栏",
+  "段落说明",
+  "折叠栏目",
+  "轮播图",
+  "量表题",
+  "NPS量表",
+  "评分单选",
+  "评分多选",
+  "评价题",
+  "比重题",
+  "滑动条",
+  "矩阵填空",
+  "矩阵单选",
+  "矩阵多选",
+  "矩阵量表",
+  "矩阵滑动条",
+  "表格数值",
+  "表格组合",
+  "表格填空",
+  "表格下拉框",
+  "自增表格",
+  "多级下拉",
+  "门店选择",
+  "AI追问",
+  "AI处理",
+  "AI访谈",
+  "图片OCR",
+  "情景随机",
+  "商品题",
+  "预约题",
+  "VlookUp问卷关联",
+  "循环评价",
+  "热力图",
+  "BWS",
+  "MaxDiff",
+  "图片PK",
+  "联合分析",
+  "Kano模型",
+  "SUS模型",
+  "品牌漏斗",
+  "货架题",
+  "BPTO模型",
+  "PSM模型",
+  "价格断裂点",
+  "层次分析",
+  "选项分类",
+  "CATI调研",
+  "文字点睛",
+  "心理学实验",
+  "姓名",
+  "基本信息",
+  "身份证号",
+  "性别",
+  "年龄段",
+  "民族",
+  "学历",
+  "婚姻",
+  "国家及地区",
+  "省市",
+  "省市区",
+  "邮箱",
+  "手机",
+  "手机验证",
+  "时间",
+  "职业",
+  "行业",
+  "高校",
+  "邮寄地址",
+  "社会阶层",
+  "设备信息",
+  "城市级别",
+  "企业信息",
+  "当前语言",
+  "答题录音",
+  "答卷摄像",
+  "分页计时器",
+  "知情同意书",
+  "密码",
+  "考试单选",
+  "考试判断",
+  "考试多选",
+  "考试单项填空",
+  "考试多项填空",
+  "考试简答",
+  "考试文件",
+  "考试绘图",
+  "考试代码",
+] as const;
 
-/** qtype 中文名 → API wire format { q_type, q_subtype } 映射表 */
-export const QTYPE_MAP: Record<string, { q_type: number; q_subtype: number }> = {
-  // ── 基础选择题 ──
-  "单选": { q_type: 3, q_subtype: 3 },
-  "多选": { q_type: 4, q_subtype: 4 },
-  "下拉框": { q_type: 3, q_subtype: 301 },
-  "排序": { q_type: 4, q_subtype: 402 },
-
-  // ── 填空题 ──
-  "单项填空": { q_type: 5, q_subtype: 5 },
-  "简答题": { q_type: 5, q_subtype: 5 },
-  "多项填空": { q_type: 6, q_subtype: 6 },
-  "矩阵填空": { q_type: 7, q_subtype: 704 },
-
-  // ── 量表 / 评分题 ──
-  "量表题": { q_type: 3, q_subtype: 302 },
-  "NPS量表": { q_type: 3, q_subtype: 302 },
-  "评分单选": { q_type: 3, q_subtype: 303 },
-  "评分多选": { q_type: 4, q_subtype: 401 },
-  "评价题": { q_type: 3, q_subtype: 303 },
-
-  // ── 矩阵题 ──
-  "矩阵单选": { q_type: 7, q_subtype: 702 },
-  "矩阵多选": { q_type: 7, q_subtype: 703 },
-  "矩阵量表": { q_type: 7, q_subtype: 701 },
-  "矩阵滑动条": { q_type: 7, q_subtype: 705 },
-  // 注意：矩阵数值题 706 在服务端可能被降级为普通填空 5/5（依赖问卷类型与字段配置）
-  "矩阵数值题": { q_type: 7, q_subtype: 706 },
-  "表格数值题": { q_type: 7, q_subtype: 706 },
-  "表格数值": { q_type: 7, q_subtype: 706 },
-  "表格填空题": { q_type: 7, q_subtype: 707 },
-  "表格填空": { q_type: 7, q_subtype: 707 },
-  "表格下拉框": { q_type: 7, q_subtype: 708 },
-  "表格组合题": { q_type: 7, q_subtype: 709 },
-  "表格组合": { q_type: 7, q_subtype: 709 },
-  "表格自增题": { q_type: 7, q_subtype: 710 },
-  "自增表格": { q_type: 7, q_subtype: 710 },
-  "多项文件题": { q_type: 7, q_subtype: 711 },
-  "多项简答题": { q_type: 7, q_subtype: 712 },
-
-  // ── 数值 / 滑动条 / 比重 ──
-  "滑动条": { q_type: 10, q_subtype: 10 },
-  "比重题": { q_type: 9, q_subtype: 9 },
-
-  // ── 文件 / 上传 ──
-  "文件上传": { q_type: 8, q_subtype: 8 },
-
-  // ── 下拉 / 级联 ──
-  "多级下拉": { q_type: 5, q_subtype: 501 },
-  "门店选择": { q_type: 5, q_subtype: 501 },
-
-  // ── 日期 ──
-  "日期": { q_type: 5, q_subtype: 5 },
-
-  // ── 页面结构 ──
-  "分页栏": { q_type: 1, q_subtype: 1 },
-  "段落说明": { q_type: 2, q_subtype: 2 },
-
-  // ── AI 题型 ──
-  "AI追问": { q_type: 5, q_subtype: 5 },
-  "AI处理": { q_type: 5, q_subtype: 5 },
-  "AI访谈": { q_type: 5, q_subtype: 5 },
-
-  // ── 专业调查模型 ──
-  "情景随机": { q_type: 3, q_subtype: 304 },
-  "BWS": { q_type: 3, q_subtype: 3 },
-  "MaxDiff": { q_type: 3, q_subtype: 3 },
-  "Maxdiff": { q_type: 3, q_subtype: 3 },
-  "图片PK": { q_type: 3, q_subtype: 3 },
-  "联合分析": { q_type: 7, q_subtype: 702 },
-  "Kano模型": { q_type: 7, q_subtype: 701 },
-  "SUS模型": { q_type: 7, q_subtype: 701 },
-  "品牌漏斗": { q_type: 4, q_subtype: 4 },
-  "货架题": { q_type: 4, q_subtype: 403 },
-  "BPTO模型": { q_type: 7, q_subtype: 701 },
-  "PSM模型": { q_type: 10, q_subtype: 10 },
-  "价格断裂点": { q_type: 7, q_subtype: 701 },
-  "层次分析": { q_type: 7, q_subtype: 702 },
-  "选项分类": { q_type: 7, q_subtype: 703 },
-  "CATI调研": { q_type: 3, q_subtype: 3 },
-  "文字点睛": { q_type: 7, q_subtype: 702 },
-  "心理学实验": { q_type: 5, q_subtype: 5 },
-  "VlookUp问卷关联": { q_type: 5, q_subtype: 5 },
-  "循环评价": { q_type: 7, q_subtype: 702 },
-  "热力图": { q_type: 8, q_subtype: 8 },
-
-  // ── 预设题型 ──
-  "姓名": { q_type: 5, q_subtype: 5 },
-  "基本信息": { q_type: 7, q_subtype: 704 },
-  "身份证号": { q_type: 5, q_subtype: 5 },
-  // 注意：以下地区/高校预设在无额外字段（如 relation/leveldata）时，
-  // 服务端可能降级为普通填空 5/5。若需多级下拉效果，建议显式使用 qtype="多级下拉" + leveldata。
-  "国家及地区": { q_type: 5, q_subtype: 501 },
-  "省市": { q_type: 5, q_subtype: 501 },
-  "省市区": { q_type: 5, q_subtype: 501 },
-  "邮箱": { q_type: 5, q_subtype: 5 },
-  "手机": { q_type: 5, q_subtype: 5 },
-  "高校": { q_type: 5, q_subtype: 501 },
-  "邮寄地址": { q_type: 7, q_subtype: 704 },
-  "社会阶层": { q_type: 7, q_subtype: 701 },
-  "企业信息": { q_type: 7, q_subtype: 704 },
-  "知情同意书": { q_type: 2, q_subtype: 2 },
-
-  // ── 系统字段 ──
-  "设备信息": { q_type: 5, q_subtype: 5 },
-  "城市级别": { q_type: 5, q_subtype: 5 },
-  "当前语言": { q_type: 5, q_subtype: 5 },
-  "当前语音": { q_type: 5, q_subtype: 5 },
-  "答题录音": { q_type: 8, q_subtype: 8 },
-  "答卷摄像": { q_type: 8, q_subtype: 8 },
-  "分页计时器": { q_type: 5, q_subtype: 5 },
-
-  // ── 考试题型 ──
-  "考试单选": { q_type: 3, q_subtype: 3 },
-  "考试判断": { q_type: 3, q_subtype: 305 },
-  "考试多选": { q_type: 4, q_subtype: 4 },
-  "考试单项填空": { q_type: 5, q_subtype: 5 },
-  "考试多项填空": { q_type: 6, q_subtype: 6 },
-  "考试简答": { q_type: 5, q_subtype: 5 },
-  "考试文件": { q_type: 8, q_subtype: 8 },
-  "考试绘图": { q_type: 8, q_subtype: 801 },
-  "考试代码": { q_type: 5, q_subtype: 5 },
-};
-
-/** Subtypes that need auto-incrementing item_score (量表302, 评分单选303, 评分多选401) */
-const SCORING_SUBTYPES = new Set([302, 303, 401]);
+const ADDITIONAL_JSONL_QTYPES = [
+  "矩阵数值题",
+  "表格数值题",
+  "表格填空题",
+  "表格组合题",
+  "表格自增题",
+  "多项文件题",
+  "多项简答题",
+  "投票单选",
+  "投票多选",
+  "Maxdiff",
+  "当前语音",
+] as const;
 
 const QTYPE_ALIAS_MAP: Record<string, string> = {
   "表格数值题": "表格数值",
   "表格填空题": "表格填空",
   "表格组合题": "表格组合",
   "表格自增题": "自增表格",
+  // AI commonly calls an ordinary open-ended prompt "主观题". Keep it on
+  // the plain survey path instead of letting it fall through to an exam
+  // fill-in representation.
+  "主观题": "简答题",
+  "主观问答": "简答题",
 };
 
-const TEXT_VERIFY_MAP: Record<string, number> = {
-  "表格数值": 1,
-  "数字": 1,
-  "小数": 2,
-  "日期": 3,
-  "手机": 4,
-  "下拉框": 5,
-  "表格下拉框": 5,
-  "单选": 5,
-  "固话": 6,
-  "电话": 7,
-  "邮箱": 8,
-  "Email": 8,
-  "身份证号": 15,
-  "姓名": 19,
-  "单项填空": 0,
-  "表格填空": 0,
-};
+/**
+ * qtypes that remain readable in existing surveys but are rejected by the
+ * current JSONL create endpoint. Keep these explicit so Agents can route to
+ * the web editor instead of retrying a deterministic server rejection.
+ */
+export const JSONL_READ_ONLY_OR_WEB_EDITOR_QTYPES: ReadonlySet<string> = new Set([
+  "矩阵数值题",
+  "VlookUp问卷关联",
+  "多项文件题",
+  "多项简答题",
+  "当前语音",
+]);
 
-const TABLE_MATRIX_MODE_BY_QTYPE: Record<string, number> = {
-  "表格数值": 301,
-  "表格填空": 302,
-  "表格下拉框": 303,
-  "多项文件题": 203,
-  "多项简答题": 204,
-};
+const TASK_PARAMETER_QTYPES = new Set(["BWS", "MaxDiff", "Maxdiff", "图片PK"]);
 
-const TABLE_MODE_BY_QTYPE: Record<string, number> = {
-  "表格组合": 1,
-  "自增表格": 2,
-};
-
-function normalizeQtype(qtype: string): string {
-  return QTYPE_ALIAS_MAP[qtype] ?? qtype;
+function isPositiveInteger(value: unknown): boolean {
+  if (typeof value === "number") return Number.isSafeInteger(value) && value > 0;
+  return typeof value === "string" && /^[1-9]\d*$/.test(value.trim());
 }
 
-function isSchemaDrivenTableQuestion(q: JsonSurveyQuestion, qtype: string): boolean {
-  if (!Array.isArray(q.columntype) || q.columntype.length === 0) return false;
-  return ["表格数值", "表格填空", "表格下拉框", "表格组合", "自增表格"].includes(qtype);
+/**
+ * Normalize accepted JSONL qtype aliases before they reach the create API.
+ * The service accepts the canonical names only for table variants, while
+ * keeping aliases in the input contract is useful for novice callers.
+ * Malformed lines are left untouched so parseJsonl can retain its line error.
+ */
+export function canonicalizeJsonlQtypes(jsonlText: string): string {
+  return jsonlText.split("\n").map((line) => {
+    const trimmed = line.trim();
+    if (!trimmed) return line;
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(trimmed);
+    } catch {
+      return line;
+    }
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return line;
+    const row = parsed as Record<string, unknown>;
+    if (typeof row.qtype !== "string") return line;
+    const canonical = QTYPE_ALIAS_MAP[row.qtype];
+    if (!canonical) return line;
+    row.qtype = canonical;
+    return JSON.stringify(row);
+  }).join("\n");
 }
 
-function normalizeChoiceList(raw: string | undefined): string | undefined {
-  if (typeof raw !== "string") return undefined;
-  const trimmed = raw.trim();
-  if (!trimmed) return undefined;
-  return trimmed
-    .split("|")
-    .map((item) => item.trim())
-    .filter(Boolean)
-    .join(",");
+export const JSONL_SUPPORTED_QTYPES: ReadonlySet<string> = new Set([
+  ...DOCUMENTED_JSONL_QTYPES,
+  ...ADDITIONAL_JSONL_QTYPES,
+]);
+
+/**
+ * qtypes whose minimal JSONL representation is only a shell. They need
+ * assets, AI/relationship configuration, or page timing to become a usable
+ * survey in the editor, so an omitted `publish` must leave the survey as a
+ * draft. Explicit `publish: true` remains an intentional user override.
+ */
+export const FRAMEWORK_ONLY_JSONL_QTYPES: ReadonlySet<string> = new Set([
+  "折叠栏目",
+  "轮播图",
+  "AI追问",
+  "AI处理",
+  "AI访谈",
+  "图片OCR",
+  "分页计时器",
+  "循环评价",
+  "考试代码",
+]);
+
+/** Return whether a JSONL document contains a known shell-only qtype. */
+export function hasFrameworkOnlyJsonlQtype(jsonlText: string): boolean {
+  for (const line of jsonlText.split("\n")) {
+    const trimmed = line.trim();
+    if (!trimmed) continue;
+    try {
+      const parsed = JSON.parse(trimmed) as Record<string, unknown>;
+      if (typeof parsed.qtype !== "string") continue;
+      const canonical = QTYPE_ALIAS_MAP[parsed.qtype] ?? parsed.qtype;
+      if (FRAMEWORK_ONLY_JSONL_QTYPES.has(canonical)) return true;
+    } catch {
+      // Strict JSONL parsing happens before this helper is used by creation.
+    }
+  }
+  return false;
 }
 
-function buildTableSchemaColumns(
-  q: JsonSurveyQuestion,
-  qIdx: number,
-): WireQuestion["col_items"] | undefined {
-  const titles = Array.isArray(q.rowtitle) ? q.rowtitle : [];
-  const columnTypes = Array.isArray(q.columntype) ? q.columntype : [];
-  const columnData = Array.isArray(q.columndata) ? q.columndata : [];
-  if (titles.length === 0 || columnTypes.length === 0) return undefined;
-
-  return titles.map((title, i) => {
-    const columnType = columnTypes[i] ?? "单项填空";
-    const rawData = columnData[i];
-    const normalizedChoices = normalizeChoiceList(rawData);
-    const sharedSelectChoices =
-      normalizedChoices ?? (
-        (columnType === "下拉框" || columnType === "表格下拉框" || columnType === "单选") &&
-        Array.isArray(q.select) &&
-        q.select.length > 0
-          ? q.select.join(",")
-          : undefined
-      );
-
-    const item: NonNullable<WireQuestion["col_items"]>[number] = {
-      q_index: qIdx,
-      item_index: i + 1,
-      item_title: title,
-      is_requir: q.requir !== false,
-      column_type: columnType,
-    };
-
-    const verify = TEXT_VERIFY_MAP[columnType];
-    if (verify !== undefined) item.verify = verify;
-    if (sharedSelectChoices) item.item_choice = sharedSelectChoices;
-    if (columnType === "多选" && normalizedChoices) item.item_choice = normalizedChoices;
-    if (columnType === "referselect" && typeof rawData === "string" && rawData.trim()) {
-      item.referselect = rawData.trim();
-    }
-
-    // 保留原始列数据，便于上层调用方继续透传或做二次处理。
-    if (typeof rawData === "string" && rawData.trim()) {
-      item.column_data = rawData.trim();
-    }
-
-    return item;
-  });
-}
-
-function applyQuestionModes(wq: WireQuestion, qtype: string, subtype: number): void {
-  if (wq.q_type === 6) {
-    const matches = wq.q_title.match(/\{_\}/g);
-    wq.gap_count = matches ? matches.length : 2;
-    return;
-  }
-
-  if (wq.q_type === 7) {
-    wq.matrix_mode = TABLE_MATRIX_MODE_BY_QTYPE[qtype] ?? 0;
-    if (TABLE_MODE_BY_QTYPE[qtype] !== undefined) {
-      wq.table_mode = TABLE_MODE_BY_QTYPE[qtype];
-    }
-    if (!wq.matrix_mode) {
-      const fallbackMatrixMode: Record<number, number> = {
-        701: 101,
-        702: 103,
-        703: 102,
-        704: 201,
-        705: 202,
-        711: 203,
-        712: 204,
-      };
-      wq.matrix_mode = fallbackMatrixMode[subtype] ?? 0;
-    }
-    wq.style_mode = 0;
-    return;
-  }
-
-  if (wq.q_type === 9) {
-    wq.total = Number.parseInt(String(wq.total ?? 100), 10) || 100;
-    wq.row_width = 15;
-    return;
-  }
-
-  if (wq.q_type === 10) {
-    return;
-  }
+/** Resolve the wire publish flag while preserving an explicit caller choice. */
+export function resolveJsonlPublish(jsonlText: string, requested?: boolean): boolean {
+  if (requested !== undefined) return requested;
+  return !hasFrameworkOnlyJsonlQtype(jsonlText);
 }
 
 // ─── JSONL parsing ──────────────────────────────────────────────────
@@ -748,11 +748,285 @@ export function parseJsonl(jsonlText: string): JsonSurveyQuestion[] {
   return results;
 }
 
+// ─── JSONL preflight ─────────────────────────────────────────────────
+
+/** 已知 qtype 名（用于建议） */
+const ALL_KNOWN_QTYPES = JSONL_SUPPORTED_QTYPES;
+
+/** Levenshtein distance（小串足够用） */
+function strDist(a: string, b: string): number {
+  if (a === b) return 0;
+  if (!a) return b.length;
+  if (!b) return a.length;
+  const dp: number[] = Array.from({ length: b.length + 1 }, (_, i) => i);
+  for (let i = 1; i <= a.length; i++) {
+    let prev = dp[0];
+    dp[0] = i;
+    for (let j = 1; j <= b.length; j++) {
+      const tmp = dp[j];
+      dp[j] = a[i - 1] === b[j - 1] ? prev : Math.min(prev, dp[j], dp[j - 1]) + 1;
+      prev = tmp;
+    }
+  }
+  return dp[b.length];
+}
+
+function suggestQtype(input: string): string | null {
+  let best: { name: string; d: number } | null = null;
+  for (const name of ALL_KNOWN_QTYPES) {
+    const d = strDist(input, name);
+    if (d <= 3 && (best === null || d < best.d)) {
+      best = { name, d };
+    }
+  }
+  return best?.name ?? null;
+}
+
+/**
+ * 常见英文 qtype → 中文 qtype 的映射。命中时给出"请改中文"的明确提示，
+ * 避免依赖 Levenshtein 猜测（英文→中文距离永远很大，suggest 永远为 null）。
+ */
+const ENGLISH_QTYPE_HINTS: Record<string, string> = {
+  radio: "单选",
+  single: "单选",
+  single_choice: "单选",
+  singlechoice: "单选",
+  checkbox: "多选",
+  multiple: "多选",
+  multi: "多选",
+  multiple_choice: "多选",
+  multiplechoice: "多选",
+  text: "单项填空",
+  textarea: "简答题",
+  subjective: "简答题",
+  subjective_question: "简答题",
+  input: "单项填空",
+  fillblank: "单项填空",
+  fill_blank: "单项填空",
+  rating: "量表题",
+  scale: "量表题",
+  likert: "量表题",
+  nps: "NPS量表",
+  matrix: "矩阵单选",
+  matrix_single: "矩阵单选",
+  matrix_multiple: "矩阵多选",
+  matrix_scale: "矩阵量表",
+  rank: "排序",
+  ranking: "排序",
+  sort: "排序",
+  slider: "滑动条",
+  dropdown: "下拉框",
+  select: "下拉框",
+  upload: "文件上传",
+  file: "文件上传",
+  date: "日期",
+  vote: "投票单选",
+  voting: "投票单选",
+  survey_meta: "问卷基础信息",
+  meta: "问卷基础信息",
+  metadata: "问卷基础信息",
+  header: "问卷基础信息",
+};
+
+function matchEnglishQtype(input: string): string | null {
+  const key = input.trim().toLowerCase().replace(/[\s-]+/g, "_");
+  return ENGLISH_QTYPE_HINTS[key] ?? null;
+}
+
+/**
+ * JSONL 预检：在交给后续解析前，扫一遍每行结构，发现典型 AI 写错的形态时
+ * 抛出**带定位 + 修复建议**的错误，避免后续抛出晦涩的 "qtype 不识别"/"标题缺失"。
+ *
+ * 检测项（按优先级）：
+ * 1. 第一行非"问卷基础信息" → 提示加首行元数据
+ * 2. 行用了 `q_type`/`type` 字段但缺 `qtype` → 提示用中文 qtype（字符串）
+ * 3. `qtype` 是数字（误把 q_type 数字塞过来）→ 列出常见中文映射
+ * 4a. `qtype` 是英文（radio/checkbox/rating 等）→ 给出精确的中文替换
+ * 4b. `qtype` 字符串但不在 JSONL_SUPPORTED_QTYPES → 给出"你是不是想写 X"
+ */
+export function preflightJsonl(jsonlText: string): void {
+  const lines = jsonlText.split("\n");
+  let firstNonEmptyLineIndex = -1;
+  let firstNonEmptyObj: Record<string, unknown> | null = null;
+  let metadataLineIndex = -1;
+
+  for (let i = 0; i < lines.length; i++) {
+    const trimmed = lines[i].trim();
+    if (!trimmed) continue;
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(trimmed);
+    } catch {
+      continue;
+    }
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+      throw new Error(
+        `JSONL 第 ${i + 1} 行必须是 JSON 对象，不能是 ${parsed === null ? "null" : Array.isArray(parsed) ? "数组" : typeof parsed}`,
+      );
+    }
+    const obj = parsed as Record<string, unknown>;
+    if (firstNonEmptyLineIndex === -1) {
+      firstNonEmptyLineIndex = i;
+      firstNonEmptyObj = obj;
+    }
+
+    if (obj.qtype === "问卷基础信息") {
+      if (metadataLineIndex !== -1) {
+        throw new Error(
+          `JSONL 第 ${i + 1} 行重复声明"问卷基础信息"；元数据只能出现一次（第 ${metadataLineIndex + 1} 行）。`,
+        );
+      }
+      metadataLineIndex = i;
+    }
+
+    // 检测 2：用了 q_type/type 但没有 qtype
+    if (typeof obj.qtype === "undefined") {
+      if ("q_type" in obj || "type" in obj) {
+        throw new Error(
+          `JSONL 第 ${i + 1} 行字段名错误：找到 ${"q_type" in obj ? "`q_type`" : "`type`"} 但缺少 \`qtype\`。` +
+          `本工具用中文字符串 \`qtype\` 区分题型（不是数字 q_type）。` +
+          `修复：把 ${"q_type" in obj ? "q_type" : "type"} 字段改名为 qtype，并填中文题型名。` +
+          `常见值："单选"、"多选"、"填空"、"量表题"、"矩阵单选"、"矩阵量表"、"投票单选"、"问卷基础信息"。` +
+          `运行 \`wjx survey jsonl-template\` 获取完整骨架。`,
+        );
+      }
+      // qtype 缺失但也没有 q_type/type，可能是非题目数据，跳过
+      continue;
+    }
+
+    // 检测 3：qtype 是数字
+    if (typeof obj.qtype !== "string") {
+      throw new Error(
+        `JSONL 第 ${i + 1} 行 qtype 必须是中文字符串（如 "单选"），收到类型：${typeof obj.qtype}。` +
+        `修复：qtype 字段填中文题型名，例如 \`"qtype": "单选"\`。` +
+        `运行 \`wjx survey jsonl-template\` 获取完整骨架。`,
+      );
+    }
+
+    // 检测 4：qtype 字符串但不识别
+    const normalized = QTYPE_ALIAS_MAP[obj.qtype] ?? obj.qtype;
+    if (!JSONL_SUPPORTED_QTYPES.has(normalized)) {
+      // 4a：英文 qtype（radio/checkbox/rating/...）→ 明确告诉要用中文
+      const englishMatch = matchEnglishQtype(obj.qtype);
+      if (englishMatch) {
+        throw new Error(
+          `JSONL 第 ${i + 1} 行 qtype "${obj.qtype}" 是英文值，本工具只接受中文 qtype。` +
+          `修复：改成 \`"qtype": "${englishMatch}"\`。` +
+          `其他常见映射：radio→单选, checkbox→多选, rating/scale→量表题, matrix→矩阵单选, rank→排序, dropdown→下拉框, upload→文件上传。` +
+          `完整列表见 references/question-types.md，或运行 \`wjx survey jsonl-template\` 获取骨架。`,
+        );
+      }
+      // 4b：中文但拼错（Levenshtein 距离 ≤ 3）
+      const suggestion = suggestQtype(obj.qtype);
+      const hint = suggestion ? `你是不是想写 "${suggestion}"？` : "";
+      throw new Error(
+        `JSONL 第 ${i + 1} 行 qtype "${obj.qtype}" 不识别。${hint} ` +
+        `常见值："单选"、"多选"、"填空"、"量表题"、"矩阵单选"、"矩阵量表"、"投票单选"、"投票多选"、"表格数值"、"表格填空"、"问卷基础信息"。` +
+        `完整列表见 references/question-types.md，或运行 \`wjx survey jsonl-template\` 获取骨架。`,
+      );
+    }
+
+    if (JSONL_READ_ONLY_OR_WEB_EDITOR_QTYPES.has(normalized)) {
+      throw new Error(
+        `JSONL 第 ${i + 1} 行题型 "${obj.qtype}" 当前不支持通过问卷星 JSONL 创建接口创建。` +
+        `请改用 Web 编辑器创建，或读取已有问卷；不要重复重试该请求。`,
+      );
+    }
+
+    // These three families share q_type=5 in get_survey. Numeric read-back
+    // alone therefore cannot tell an exam blank from an exam short answer.
+    // Reject ambiguous payloads before transport so the caller cannot create
+    // a misleading question by accidentally mixing their contracts.
+    if (normalized === "考试代码") {
+      if (typeof obj.codetype !== "string" || !obj.codetype.trim()) {
+        throw new Error(
+          `JSONL 第 ${i + 1} 行考试代码必须提供非空字符串 codetype（编程语言）。` +
+          `代码题没有标准答案设置；初始代码与判题配置须在 Web 编辑器补充。`,
+        );
+      }
+      if (obj.correctselect !== undefined || obj.answer !== undefined || obj.answerlists !== undefined) {
+        throw new Error(
+          `JSONL 第 ${i + 1} 行考试代码不能设置 correctselect/answer/answerlists 标准答案；代码题应由运行/判题配置处理，不能降级为考试填空。`,
+        );
+      }
+      if (obj.code !== undefined || obj.initialcode !== undefined) {
+        throw new Error(`JSONL 第 ${i + 1} 行考试代码的 code/initialcode 当前不会被服务端保存；请在 Web 编辑器设置初始代码。`);
+      }
+    }
+    if (normalized === "考试简答" && (obj.correctselect !== undefined || obj.answer !== undefined)) {
+      throw new Error(
+        `JSONL 第 ${i + 1} 行考试简答不能设置 correctselect/answer 标准答案；主观题请使用 answeranalysis/quizscore，人工阅卷配置请在 Web 编辑器完成。`,
+      );
+    }
+    if (normalized === "简答题" && obj.isquiz === "1") {
+      throw new Error(
+        `JSONL 第 ${i + 1} 行普通简答题不能设置 isquiz="1"；考试主观题请改用 qtype="考试简答"，避免被服务端按考试填空路径处理。`,
+      );
+    }
+    if (normalized === "考试单项填空" && obj.codetype !== undefined) {
+      throw new Error(
+        `JSONL 第 ${i + 1} 行考试单项填空不支持 codetype；需要编程语言的题目请使用 qtype="考试代码" 并提供 codetype。`,
+      );
+    }
+    if (normalized === "考试单项填空") {
+      const answers = obj.correctselect;
+      if (!(typeof answers === "string" && answers.trim())
+        && !(Array.isArray(answers) && answers.length > 0
+          && answers.every((answer) => typeof answer === "string" && answer.trim()))) {
+        throw new Error(`JSONL 第 ${i + 1} 行考试单项填空必须提供非空 correctselect 标准答案（字符串或字符串数组）。`);
+      }
+    }
+
+    if (TASK_PARAMETER_QTYPES.has(normalized)) {
+      const attrs = obj.mdattr;
+      if (!Array.isArray(attrs) || attrs.length < 3 || attrs.some((value) => typeof value !== "string" || !value.trim())) {
+        throw new Error(
+          `JSONL 第 ${i + 1} 行题型 "${obj.qtype}" 的 mdattr 必须是至少 3 个非空字符串。` +
+          `图片PK 的每个值还必须是问卷星上传接口返回的图片地址。`,
+        );
+      }
+      if (!isPositiveInteger(obj.pertaskcount) || !isPositiveInteger(obj.tasklength)) {
+        throw new Error(
+          `JSONL 第 ${i + 1} 行题型 "${obj.qtype}" 必须提供正整数 pertaskcount 和 tasklength。` +
+          `示例："pertaskcount":2,"tasklength":3。`,
+        );
+      }
+    }
+
+    // NPS is a protocol-level question shape, not a generic 0-10 scale.
+    // Keep the canonical eleven string options enforced before any wire
+    // conversion so CLI, SDK and MCP callers share the same boundary.
+    if (normalized === "NPS量表") {
+      const select = obj.select;
+      const valid = Array.isArray(select)
+        && select.length === 11
+        && select.every((value, index) => typeof value === "string" && value === String(index));
+      if (!valid) {
+        throw new Error(
+          `JSONL 第 ${i + 1} 行 NPS量表的 select 必须严格是 ["0","1",...,"10"] 的 11 个字符串。` +
+          `不能省略、缩短、改成数字或用 minvalue/maxvalue 替代。` +
+          `修复：补齐 select 为从 "0" 到 "10" 的完整字符串序列。`,
+        );
+      }
+    }
+  }
+
+  // 检测 1：首行非"问卷基础信息"
+  if (firstNonEmptyObj && firstNonEmptyObj.qtype !== "问卷基础信息") {
+    throw new Error(
+      `JSONL 第 ${firstNonEmptyLineIndex + 1} 行（首个非空行）不是"问卷基础信息"。` +
+      `JSONL 必须以一行元数据开头：\`{"qtype":"问卷基础信息","title":"你的问卷标题"}\`，紧接着每行一道题。` +
+      `运行 \`wjx survey jsonl-template\` 获取完整骨架，或 \`wjx survey jsonl-template --type 3\` 获取投票模板。`,
+    );
+  }
+}
+
 /**
  * Parse JSONL text into a structured survey: extract metadata from "问卷基础信息" entry,
  * remaining entries become the questions array.
  */
 export function jsonToSurvey(jsonlText: string): JsonParsedSurvey {
+  preflightJsonl(jsonlText);
   const all = parseJsonl(jsonlText);
 
   let title = "";
@@ -773,228 +1047,4 @@ export function jsonToSurvey(jsonlText: string): JsonParsedSurvey {
   }
 
   return { title, description, endpageinformation, language, questions };
-}
-
-// ─── JSON questions → API wire format ───────────────────────────────
-
-/**
- * Convert an array of JsonSurveyQuestion to API wire format (question JSON for createSurvey).
- * Unknown qtype entries are collected as `skippedTypes` rather than throwing —
- * 调用方若需要严格校验，可在拿到结果后自行检查 `skippedTypes.length === 0`。
- */
-export function jsonQuestionsToWire(questions: JsonSurveyQuestion[]): JsonWireConversionResult {
-  const wire: WireQuestion[] = [];
-  const skippedTypes: Array<{ qtype: string; title: string }> = [];
-  let qIdx = 1;
-
-  for (const q of questions) {
-    const qtype = normalizeQtype(q.qtype);
-    const typeInfo = QTYPE_MAP[qtype];
-    if (!typeInfo) {
-      skippedTypes.push({ qtype: q.qtype, title: q.title ?? "" });
-      continue;
-    }
-
-    const wq: WireQuestion = {
-      q_index: qIdx,
-      q_type: typeInfo.q_type,
-      q_subtype: typeInfo.q_subtype,
-      q_title: q.title ?? "",
-      is_requir: q.requir !== false,
-    };
-    const schemaDrivenTable = isSchemaDrivenTableQuestion(q, qtype);
-    if (schemaDrivenTable) {
-      wq.col_items = buildTableSchemaColumns(q, qIdx);
-    }
-
-    // ── 选项 items 构建 ──
-    if (isMatrixLikeType(qtype)) {
-      // 矩阵类：rowtitle → items（行标题），select → col_items（列选项）
-      if (!schemaDrivenTable && q.rowtitle && q.rowtitle.length > 0) {
-        wq.items = q.rowtitle.map((row, i) => ({
-          q_index: qIdx,
-          item_index: i + 1,
-          item_title: row,
-        }));
-      }
-      if (!schemaDrivenTable && q.select && q.select.length > 0) {
-        wq.col_items = q.select.map((col, i) => ({
-          q_index: qIdx,
-          item_index: i + 1,
-          item_title: col,
-        }));
-      }
-    } else if (isLegacyRowColumnTableType(qtype)) {
-      // 兼容旧格式：rowtitle → items，select → col_items
-      if (q.rowtitle && q.rowtitle.length > 0) {
-        wq.items = q.rowtitle.map((row, i) => ({
-          q_index: qIdx,
-          item_index: i + 1,
-          item_title: row,
-        }));
-      }
-      if (q.select && q.select.length > 0) {
-        wq.col_items = q.select.map((col, i) => ({
-          q_index: qIdx,
-          item_index: i + 1,
-          item_title: col,
-        }));
-      }
-    } else if (isWeightType(qtype)) {
-      // 比重题：rowtitle → items
-      if (q.rowtitle && q.rowtitle.length > 0) {
-        wq.items = q.rowtitle.map((row, i) => ({
-          q_index: qIdx,
-          item_index: i + 1,
-          item_title: row,
-        }));
-      }
-    } else if (isMaxDiffType(qtype)) {
-      // BWS / MaxDiff / 图片PK：mdattr → items
-      const attrs = q.mdattr ?? q.select;
-      if (attrs && attrs.length > 0) {
-        wq.items = attrs.map((attr, i) => ({
-          q_index: qIdx,
-          item_index: i + 1,
-          item_title: attr,
-        }));
-      }
-    } else if (qtype === "品牌漏斗") {
-      // 品牌漏斗：brands → items
-      const brands = q.brands ?? q.select;
-      if (brands && brands.length > 0) {
-        wq.items = brands.map((b, i) => ({
-          q_index: qIdx,
-          item_index: i + 1,
-          item_title: b,
-        }));
-      }
-    } else if (qtype === "联合分析") {
-      // 联合分析：columntitle → col_items
-      if (q.columntitle && q.columntitle.length > 0) {
-        wq.col_items = q.columntitle.map((col, i) => ({
-          q_index: qIdx,
-          item_index: i + 1,
-          item_title: col,
-        }));
-      }
-    } else if (isSliderType(qtype)) {
-      // 滑动条 / 矩阵滑动条：minvalue/maxvalue → items
-      if (q.minvalue !== undefined && q.maxvalue !== undefined) {
-        const min = parseInt(q.minvalue, 10);
-        const max = parseInt(q.maxvalue, 10);
-        if (!isNaN(min) && !isNaN(max) && max - min + 1 <= 100) {
-          wq.items = [];
-          for (let v = min; v <= max; v++) {
-            wq.items.push({ q_index: qIdx, item_index: v - min + 1, item_title: String(v) });
-          }
-        } else {
-          wq.items = [
-            { q_index: qIdx, item_index: 1, item_title: q.minvalue },
-            { q_index: qIdx, item_index: 2, item_title: q.maxvalue },
-          ];
-        }
-      }
-    } else if (q.select && q.select.length > 0) {
-      // 普通选择题：select → items
-      wq.items = q.select.map((opt, i) => ({
-        q_index: qIdx,
-        item_index: i + 1,
-        item_title: opt,
-      }));
-    }
-
-    // ── 矩阵填空 / 基本信息 / 邮寄地址：rowtitle → items（无 col_items） ──
-    if (!schemaDrivenTable && isMatrixFillType(qtype) && q.rowtitle && q.rowtitle.length > 0 && !wq.items) {
-      wq.items = q.rowtitle.map((row, i) => ({
-        q_index: qIdx,
-        item_index: i + 1,
-        item_title: row,
-      }));
-    }
-
-    // ── 多项填空：自动补 {_} 占位符 ──
-    if (typeInfo.q_type === 6 && !wq.q_title.includes("{_}")) {
-      const count = (q.select && q.select.length > 0) ? q.select.length : 2;
-      const gapMatch = wq.q_title.match(/________/g) || wq.q_title.match(/_____/g);
-      if (!gapMatch) {
-        const placeholders = Array.from({ length: count }, () => "{_}").join("，");
-        const separator = /[：:，,、。.；;）)》>\s]$/.test(wq.q_title) ? "" : "：";
-        wq.q_title = `${wq.q_title}${separator}${placeholders}`;
-      }
-    }
-
-    // ── 自动 item_score（量表302, 评分单选303, 评分多选401） ──
-    if (SCORING_SUBTYPES.has(typeInfo.q_subtype) && wq.items) {
-      for (const item of wq.items) {
-        if (item.item_score === undefined) {
-          item.item_score = item.item_index;
-        }
-      }
-    }
-    if (SCORING_SUBTYPES.has(typeInfo.q_subtype) && wq.col_items) {
-      for (const item of wq.col_items) {
-        if (item.item_score === undefined) {
-          item.item_score = item.item_index;
-        }
-      }
-    }
-
-    if (typeInfo.q_type === 9) {
-      wq.total = q.total ? Number.parseInt(q.total, 10) || 100 : 100;
-      wq.row_width = 15;
-    }
-    if (typeInfo.q_type === 10) {
-      if (q.minvalue !== undefined) {
-        const min = Number.parseInt(q.minvalue, 10);
-        if (!Number.isNaN(min)) wq.min_value = min;
-      }
-      if (q.maxvalue !== undefined) {
-        const max = Number.parseInt(q.maxvalue, 10);
-        if (!Number.isNaN(max)) wq.max_value = max;
-      }
-    }
-
-    applyQuestionModes(wq, qtype, typeInfo.q_subtype);
-
-    wire.push(wq);
-    qIdx++;
-  }
-
-  return { questions: wire, skippedTypes };
-}
-
-// ─── Helper predicates ──────────────────────────────────────────────
-
-function isMatrixLikeType(qtype: string): boolean {
-  return [
-    "矩阵单选", "矩阵多选", "矩阵量表", "矩阵滑动条", "矩阵数值题",
-    "表格数值", "表格下拉框", "表格组合",
-    "Kano模型", "SUS模型", "BPTO模型", "价格断裂点",
-    "层次分析", "选项分类", "文字点睛", "循环评价",
-    "社会阶层", "PSM模型",
-  ].includes(qtype);
-}
-
-function isMatrixFillType(qtype: string): boolean {
-  return [
-    "矩阵填空", "基本信息", "邮寄地址", "企业信息",
-    "表格填空", "自增表格", "多项文件题", "多项简答题",
-  ].includes(qtype);
-}
-
-function isLegacyRowColumnTableType(qtype: string): boolean {
-  return ["表格数值", "表格填空"].includes(qtype);
-}
-
-function isWeightType(qtype: string): boolean {
-  return qtype === "比重题";
-}
-
-function isMaxDiffType(qtype: string): boolean {
-  return ["BWS", "MaxDiff", "Maxdiff", "图片PK"].includes(qtype);
-}
-
-function isSliderType(qtype: string): boolean {
-  return ["滑动条"].includes(qtype);
 }

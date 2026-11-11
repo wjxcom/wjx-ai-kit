@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.4.6] - 未发布
+
+- SDK、CLI、MCP Server 版本统一为 `0.4.6`。
+- 创建和修改统一使用 Survey JSON，按需附加 dsl.logic；DSL 转换为原生 XML 逻辑，冲突时优先。
+- 新增 updateSurveyByJson、survey update、update_survey_by_json；问卷逻辑随 Survey JSON 的可选 dsl.logic 提交并转换为 XML 原生逻辑。
+
 本项目使用 [Conventional Commits](https://www.conventionalcommits.org/) 规范。
 
 各包的详细变更记录请参阅：
@@ -7,6 +13,62 @@
 - [wjx-api-sdk CHANGELOG](wjx-api-sdk/CHANGELOG.md)
 - [wjx-mcp-server CHANGELOG](wjx-mcp-server/CHANGELOG.md)
 - [wjx-cli CHANGELOG](wjx-cli/CHANGELOG.md)
+
+---
+
+## [0.4.5] - 2026-09-14
+
+- 统一 `wjx-api-sdk`、`wjx-mcp-server` 和 `wjx-cli` 的版本与工作区依赖至 `0.4.5`。
+- 强化 XML DSL v1 的结构与题目语义校验，收紧 gapfill 占位符规范化，并在 SDK、CLI、MCP 创建链路中统一可创建问卷类型和更新字段。
+- 同步 DSL 文档、Skill 镜像、发布产物与回归测试，减少导出、校验和创建流程之间的语义偏差。
+
+## [0.4.4] - 2026-09-07
+
+### Changed
+
+- Made AI PPT output use fixed, paginated slides by default.
+- Added draft AI homepage source retrieval for in-place updates.
+- Prevented AI homepage creation from creating or linking surveys.
+- Rejected AI homepage type conversion without replacing or deleting the original page.
+
+## [0.4.3] - 2026-09-04
+
+### Changed
+
+- Unified the three workspace package versions at `0.4.3`.
+- Hardened AI homepage validation across SDK, CLI, and MCP.
+
+## [0.4.2] - 2026-09-02
+
+### Security
+
+- 升级 MCP 运行时依赖链中的 Hono、Express、`qs`、`fast-uri`、`ip-address` 等 12 个包，解决 Dependabot/npm audit 报告的漏洞路径。
+
+### Infrastructure
+
+- 三个工作区包统一使用 `0.4.2`，继续按 SDK → MCP Server → CLI 顺序发布。
+- CI 增加完整 `npm audit` 门禁，并启用每周 Dependabot 扫描。
+
+---
+
+## [0.4.1] - 2026-09-02
+
+### 已发布
+
+- 三个工作区包统一使用 `0.4.1`，已按 SDK → MCP Server → CLI 顺序发布到 npm，registry 的 `latest` 均指向 `0.4.1`。
+- 延续 `0.4.0` 的 JSONL-only 创建接口清理和统一输出协议。
+- 明确 SDK 基础层、CLI 主入口与 MCP 核心业务子集的边界；新增能力矩阵和文档/消费者一致性门禁。
+- CLI 增加 `survey preview-url`；MCP 核心业务子集包含 `count_responses`、`build_submit_template` 和 `decode_push_payload`。
+
+---
+
+## [0.4.0] - 2026-08-30
+
+### 统一发布
+
+- `wjx-api-sdk@0.4.0`、`wjx-mcp-server@0.4.0`、`wjx-cli@0.4.0` 曾按 SDK → MCP Server → CLI 顺序发布；该版本现已废弃。
+- 问卷创建统一使用 action `1000106` 的 JSONL 链路，题目逻辑通过可选 dsl.logic 提交。
+- CLI、SDK、MCP Server 的题型、协议和下游 Skill/Agent 文档已同步。
 
 ---
 

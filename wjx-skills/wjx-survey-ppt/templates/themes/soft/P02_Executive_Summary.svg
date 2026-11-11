@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720" width="1280" height="720">
+  <defs>
+    </defs>
+
+  <rect width="1280" height="720" fill="#FAF7F2"/>
+
+  <rect x="0" y="0" width="1280" height="80" fill="#5B6A75"/>
+  <rect x="80" y="34" width="48" height="3" fill="#D4B8A0"/>
+  <text x="80" y="62" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="18" font-weight="500" fill="#B6BDC4" letter-spacing="3">
+    EXECUTIVE SUMMARY
+  </text>
+  <text x="1200" y="62" text-anchor="end" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="14" fill="#B6BDC4">
+    02 / 10
+  </text>
+
+  <text x="80" y="170" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="44" font-weight="700" fill="#5B6A75">
+    {{TITLE}}
+  </text>
+  <text x="80" y="210" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="20" fill="#7A6F65">
+    本次调研的三项核心发现
+  </text>
+
+  <line x1="80" y1="250" x2="1200" y2="250" stroke="#5B6A75" stroke-opacity="0.12" stroke-width="1"/>
+
+  {{#FINDINGS}}
+  <g transform="translate(80, {{Y_OFFSET}})">
+    <rect width="1120" height="110" rx="6" fill="#FAF7F2" stroke="#DCD3C7" stroke-width="1"/>
+    <rect width="6" height="110" fill="#D4B8A0"/>
+    <text x="48" y="72" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="44" font-weight="800" fill="#D4B8A0" opacity="0.85">
+      0{{INDEX}}
+    </text>
+    <text x="140" y="44" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="13" font-weight="500" fill="#9C9388" letter-spacing="2">
+      KEY FINDING
+    </text>
+    <text x="140" y="78" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="20" font-weight="500" fill="#5B6A75">
+      {{TEXT}}
+    </text>
+  </g>
+  {{/FINDINGS}}
+
+  <text x="80" y="690" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="13" fill="#9C9388" letter-spacing="1">
+    问卷星 · AI 智能分析报告
+  </text>
+</svg>

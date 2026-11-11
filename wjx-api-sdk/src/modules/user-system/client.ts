@@ -22,7 +22,7 @@ export async function addParticipants<T = unknown>(
   };
   if (input.auto_create_udept !== undefined) params.auto_create_udept = input.auto_create_udept;
 
-  return callWjxUserSystemApi<T>(params, { credentials, fetchImpl, maxRetries: 0 });
+  return callWjxUserSystemApi<T>(params, { credentials, fetchImpl, maxRetries: 0, idempotency: "unsafe", httpRetryable: false });
 }
 
 export async function modifyParticipants<T = unknown>(
@@ -37,7 +37,7 @@ export async function modifyParticipants<T = unknown>(
   };
   if (input.auto_create_udept !== undefined) params.auto_create_udept = input.auto_create_udept;
 
-  return callWjxUserSystemApi<T>(params, { credentials, fetchImpl, maxRetries: 0 });
+  return callWjxUserSystemApi<T>(params, { credentials, fetchImpl, maxRetries: 0, idempotency: "unsafe", httpRetryable: false });
 }
 
 export async function deleteParticipants<T = unknown>(
@@ -51,7 +51,7 @@ export async function deleteParticipants<T = unknown>(
       uids: input.uids,
       sysid: input.sysid,
     },
-    { credentials, fetchImpl, maxRetries: 0 },
+    { credentials, fetchImpl, maxRetries: 0, idempotency: "unsafe", httpRetryable: false },
   );
 }
 
@@ -68,7 +68,7 @@ export async function bindActivity<T = unknown>(
   };
   assignDefined(params, input, ["answer_times", "can_chg_answer", "can_view_result", "can_hide_qlist"]);
 
-  return callWjxUserSystemApi<T>(params, { credentials, fetchImpl, maxRetries: 0 });
+  return callWjxUserSystemApi<T>(params, { credentials, fetchImpl, maxRetries: 0, idempotency: "unsafe", httpRetryable: false });
 }
 
 export async function querySurveyBinding<T = unknown>(
@@ -83,7 +83,13 @@ export async function querySurveyBinding<T = unknown>(
   };
   assignDefined(params, input, ["join_status", "day", "week", "month", "force_join_times"]);
 
-  return callWjxUserSystemApi<T>(params, { credentials, fetchImpl, timeoutMs: LONG_TIMEOUT_MS });
+  return callWjxUserSystemApi<T>(params, {
+    credentials,
+    fetchImpl,
+    timeoutMs: LONG_TIMEOUT_MS,
+    idempotency: "safe",
+    httpRetryable: true,
+  });
 }
 
 export async function queryUserSurveys<T = unknown>(
@@ -97,5 +103,5 @@ export async function queryUserSurveys<T = unknown>(
     sysid: input.sysid,
   };
 
-  return callWjxUserSystemApi<T>(params, { credentials, fetchImpl });
+  return callWjxUserSystemApi<T>(params, { credentials, fetchImpl, idempotency: "safe", httpRetryable: true });
 }

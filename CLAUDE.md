@@ -4,11 +4,13 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What This Is
 
-wjx-ai-kit is a monorepo (npm workspaces) wrapping the Wenjuanxing (问卷星) OpenAPI. Three packages provide the same API surface through different interfaces:
+wjx-ai-kit is a monorepo (npm workspaces) wrapping the Wenjuanxing (问卷星) OpenAPI. The SDK is the shared business foundation; CLI and MCP expose different interfaces with intentionally different scope:
 
-- **wjx-api-sdk** — Zero-dependency TypeScript SDK (48+ functions, foundation layer)
-- **wjx-mcp-server** — MCP Server (58 tools, 8 resources, 22 prompts) for AI clients
-- **wjx-cli** — Commander.js CLI (67 subcommands) designed for AI Agent consumption
+- **wjx-cli** — Commander.js CLI; command count follows `wjx --help`. **Main product / primary entry point**, recommended for nearly all use cases.
+- **wjx-api-sdk** — Zero-dependency TypeScript SDK (48+ functions, foundation layer). Used by wjx-cli and any Node.js project.
+- **wjx-mcp-server** — MCP Server (63 tools, 12 resources, 15 prompts) for AI clients. **Secondary / maintenance-mode**: only useful for clients with native MCP protocol support (Claude Code/Desktop, Cursor, Cline). It deliberately covers the CLI's core business subset; workstation capabilities remain CLI-only. The authoritative difference list is `capabilities/capability-matrix.json`; if in doubt, prefer wjx-cli.
+
+When in doubt about which package to feature in docs / examples / new functionality, **CLI first**. Only add MCP-specific behavior when the user explicitly requests MCP support.
 
 ## Build & Test Commands
 
@@ -18,19 +20,19 @@ Build order matters: **wjx-api-sdk must be built first** (both other packages de
 # Install all workspace dependencies
 npm install
 
-# Build (from monorepo root)
+# Build (from monorepo root) — CLI is the main product
 npm run build --workspace=wjx-api-sdk
-npm run build --workspace=wjx-mcp-server
 npm run build --workspace=wjx-cli
+npm run build --workspace=wjx-mcp-server   # secondary, build only when working on MCP
 
 # Test (from monorepo root)
-npm test --workspace=wjx-api-sdk        # ~623 tests
-npm test --workspace=wjx-mcp-server     # ~280 tests
-npm test --workspace=wjx-cli            # ~133 tests
+npm test --workspace=wjx-api-sdk
+npm test --workspace=wjx-cli
+npm test --workspace=wjx-mcp-server     # secondary
 
 # Run a single test file (must build first)
 cd wjx-api-sdk && npm run build && node --test __tests__/survey.test.mjs
-cd wjx-mcp-server && npm run build && node --test __tests__/sign.test.mjs
+cd wjx-mcp-server && npm run build && node --test __tests__/helpers.test.mjs
 
 # MCP server specific
 npm run test:unit --workspace=wjx-mcp-server        # unit tests only
@@ -58,13 +60,14 @@ wjx-cli / wjx-mcp-server  (consumers — both depend on SDK)
 
 ### SDK Function Signature Pattern
 
-Every SDK function follows this uniform 3-parameter signature:
+Network SDK functions use three base parameters and, where transport overrides are supported, an optional fourth `RequestOverrides` parameter:
 
 ```typescript
 async function doSomething(
   input: DoSomethingInput,
   credentials: WjxCredentials = getWjxCredentials(),
   fetchImpl: FetchLike = fetch,
+  requestOptions?: RequestOverrides,
 ): Promise<WjxApiResponse<T>>
 ```
 
@@ -116,10 +119,10 @@ MCP server has its own .env parser (`src/core/load-env.ts`, no dotenv dependency
 - **Node >= 20** required
 - **TypeScript strict mode**: ES2022 target, identical tsconfig across packages
 - **Conventional Commits**: `feat:`, `fix:`, `docs:`, `refactor:`, `chore:`
-- **dist/ is checked into the repo**
+- **dist/** 是发布构建产物，当前仓库跟踪它们；构建或发布前检查生成差异，避免把未预期的编译变化带入提交。
 - **No linter/formatter**: no ESLint or Prettier configured
 - **Style**: 2-space indent, double quotes, semicolons
-- **Git**: branch `develop`, remote on GitHub
+- **Git**: current working branch is `master`; do not assume a push target unless the task specifies one
 - **CLI output protocol**: JSON to stdout, structured errors to stderr, exit codes 0 (success), 1 (API/auth error), 2 (input error)
 - **沟通语言**: 使用中文与用户沟通，包括代码注释、提交信息和对话回复
 

@@ -5,6 +5,7 @@ import { dirname, resolve, join } from "node:path";
 import { homedir } from "node:os";
 import { fileURLToPath } from "node:url";
 import { getWjxBaseUrl } from "wjx-api-sdk";
+import { getRequestCredentials } from "./core/context.js";
 import { registerSurveyTools } from "./modules/survey/tools.js";
 import { registerResponseTools } from "./modules/response/tools.js";
 import { registerContactsTools } from "./modules/contacts/tools.js";
@@ -29,6 +30,14 @@ const serverInfo = {
     name: "wjx-mcp-server",
     version: getPackageVersion(),
 };
+/** Mask API keys without exposing short credentials in diagnostics. */
+export function maskApiKeyForDisplay(apiKey) {
+    if (!apiKey)
+        return "(未设置)";
+    if (apiKey.length <= 12)
+        return "****";
+    return `${apiKey.slice(0, 8)}****${apiKey.slice(-4)}`;
+}
 export function createServer() {
     const server = new McpServer(serverInfo, {
         capabilities: { tools: {}, resources: {}, prompts: {} },
@@ -57,21 +66,38 @@ export function createServer() {
             title: "查看当前配置",
         },
     }, async () => {
-        const apiKey = process.env.WJX_API_KEY || "";
-        const maskedKey = apiKey
-            ? apiKey.slice(0, 8) + "****" + apiKey.slice(-4)
-            : "(未设置)";
-        const baseUrl = getWjxBaseUrl();
-        const corpId = process.env.WJX_CORP_ID || "(未设置)";
+        // HTTP requests may carry a tenant-specific Bearer credential. Report
+        // that request-scoped identity instead of the process-wide fallback.
+        const requestCredentials = getRequestCredentials();
+        // Presence of a request scope is authoritative. Never fall back to a
+        // process-wide tenant key when an HTTP request supplied an empty or
+        // missing scoped credential.
+        const apiKey = requestCredentials !== undefined
+            ? requestCredentials.apiKey?.trim() || ""
+            : process.env.WJX_API_KEY?.trim() || "";
+        const maskedKey = maskApiKeyForDisplay(apiKey);
+        const baseUrl = requestCredentials !== undefined
+            ? getWjxBaseUrl(requestCredentials.baseUrl)
+            : getWjxBaseUrl();
+        const corpId = requestCredentials !== undefined
+            ? requestCredentials.corpId?.trim() || "(未设置)"
+            : process.env.WJX_CORP_ID?.trim() || "(未设置)";
         // Detect config source
-        const wjxrcPath = process.env.WJX_CONFIG_PATH || join(homedir(), ".wjxrc");
+        const wjxrcPath = process.env.WJX_CONFIG_PATH?.trim() || join(homedir(), ".wjxrc");
         const hasWjxrc = existsSync(wjxrcPath);
         let wjxrcInfo = "不存在";
         if (hasWjxrc) {
             try {
                 const parsed = JSON.parse(readFileSync(wjxrcPath, "utf-8"));
-                const fields = Object.keys(parsed).filter(k => parsed[k]);
-                wjxrcInfo = `存在 (${wjxrcPath})，包含: ${fields.join(", ")}`;
+                if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) {
+                    wjxrcInfo = `存在但格式无效 (${wjxrcPath})`;
+                }
+                else {
+                    const fields = Object.entries(parsed)
+                        .filter(([, value]) => typeof value === "string" && value.trim())
+                        .map(([key]) => key);
+                    wjxrcInfo = `存在 (${wjxrcPath})，包含: ${fields.join(", ") || "无有效配置项"}`;
+                }
             }
             catch {
                 wjxrcInfo = `存在但解析失败 (${wjxrcPath})`;
@@ -90,8 +116,13 @@ export function createServer() {
             corp_id: corpId,
             wjxrc: wjxrcInfo,
             cli_version: cliVersion,
-            env_WJX_BASE_URL: process.env.WJX_BASE_URL || "(未设置，使用默认值)",
-            transport: process.env.MCP_TRANSPORT || "stdio",
+            env_WJX_BASE_URL: process.env.WJX_BASE_URL?.trim() || "(未设置，使用默认值)",
+            transport: process.env.MCP_TRANSPORT?.trim() || "stdio",
+            credential_mode: process.env.MCP_TENANT_MODE === "1"
+                ? (process.env.MCP_LEGACY_BEARER_API_KEY === "1" ? "tenant-request-with-legacy-compat" : "tenant-request")
+                : (process.env.MCP_LEGACY_BEARER_API_KEY === "0" ? "single-tenant-configured" : "single-tenant-with-legacy-fallback"),
+            legacy_bearer_api_key: process.env.MCP_LEGACY_BEARER_API_KEY === "1"
+                || (process.env.MCP_TENANT_MODE !== "1" && process.env.MCP_LEGACY_BEARER_API_KEY !== "0"),
         };
         return toolResult(config, false);
     });

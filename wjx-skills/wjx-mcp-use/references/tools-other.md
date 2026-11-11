@@ -160,7 +160,7 @@
 
 ---
 
-## SSO 链接生成（5 tools）
+## SSO 链接生成（6 tools）
 
 ### sso_subaccount_url — 子账号 SSO 登录链接
 
@@ -210,17 +210,38 @@
 | `editmode` | number | 否 | 编辑模式 |
 | `runprotect` | number | 否 | 运行保护标志 |
 
-### build_preview_url — 问卷预览链接
+### build_preview_url — 问卷预览/填写链接
 
 | 参数 | 类型 | 必填 | 说明 |
 |------|------|------|------|
-| `vid` | number | 是 | 问卷编号 |
+| `sid` | string | 二选一，优先 | 问卷加密短编号（创建/列表接口返回） |
+| `vid` | number | 二选一 | 问卷编号；仅在确实没有 sid 时使用 |
+| `source` | string | 否 | 来源追踪标识 |
 
-返回问卷的预览 URL，可在浏览器中查看问卷效果。
+返回问卷的预览/填写 URL。面向答卷人展示时必须优先传 `sid`；只有没有 sid 时才传 `vid` 作为兼容后备，返回链接可能暴露内部编号。无论哪种情况都不要自行拼接 URL。
+
+### get_short_link — 获取问卷短链接
+
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| `url` | string (URL) | 是 | 问卷星问卷填写长链接，可包含查询参数 |
+
+调用 `openapi/shortlink.aspx` 将问卷长链接转换为短链接，返回接口的 `success`、`msg` 和 `data` 字段。输入必须是问卷星问卷地址；不要将后台编辑链接或其他站点地址提交给该工具。
 
 ---
 
-## 分析计算（5 tools，纯本地计算，无需 API Key）
+## 分析计算（6 tools，纯本地计算，无需 API Key）
+
+### decode_push_payload — 解密推送载荷
+
+解密问卷星 AES-128-CBC 推送数据，可选校验 `SHA1(raw_body + app_key)` 签名。
+
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| `encrypted_data` | string | 是 | Base64 加密载荷 |
+| `app_key` | string | 是 | 应用密钥 |
+| `signature` | string | 否 | 签名 |
+| `raw_body` | string | 否 | 原始请求体 |
 
 ### decode_responses — 解码 submitdata 格式
 
@@ -245,9 +266,9 @@
 
 | 参数 | 类型 | 必填 | 说明 |
 |------|------|------|------|
-| `responses` | object[] | 是 | 答卷记录数组，每项含 `id`, `answers`(答案数组), `duration_seconds`(答题时长), `ip` |
+| `responses` | object[] | 是 | 答卷记录数组；每项可含 `id`/`jid`、`answers` 或 `submitdata`、`duration_seconds` 或 `inputcosttime`、`ip` |
 
-检测规则：直线作答（所有答案相同）、速度异常（<中位数 30%）、IP+内容重复。
+检测规则：直线作答（所有答案相同）、速度异常（仅在至少 3 个正数耗时样本且中位数大于 0 时，<中位数 30%；样本不足返回 warning 并跳过速度标记）、IP+内容重复。
 
 ### compare_metrics — 对比指标数据
 
@@ -256,11 +277,13 @@
 | `set_a` | Record<string, number> | 是 | 指标集 A |
 | `set_b` | Record<string, number> | 是 | 指标集 B |
 
-输出差值、变化率和显著性标记（|变化率|>10% 为显著）。
+输出差值、变化率和启发式阈值标记（|变化率|>10% 为显著，不代表统计显著性检验）。
 
 ---
 
-## 用户体系（6 tools）
+## 用户体系（6 tools，兼容/已过时）
+
+> 这 6 个工具仍注册在 MCP Server 中，仅用于维护已有用户体系。源码已将它们标记为 Deprecated；`atype=8` 用户体系问卷不能通过 `create_survey_by_json` 新建。新项目不要采用此模块，只有在用户明确提供已有 `usid`/`sysid` 并要求维护历史系统时才调用。
 
 ### add_participants — 批量添加参与者
 

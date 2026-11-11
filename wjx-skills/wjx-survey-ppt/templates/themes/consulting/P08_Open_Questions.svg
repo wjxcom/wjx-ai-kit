@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720" width="1280" height="720">
+  <defs>
+    </defs>
+
+  <rect width="1280" height="720" fill="#FAFAFA"/>
+
+  <rect x="0" y="0" width="1280" height="80" fill="#0F172A"/>
+  <rect x="80" y="34" width="48" height="3" fill="#1E40AF"/>
+  <text x="80" y="62" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="18" font-weight="500" fill="#F59E0B" letter-spacing="3">
+    OPEN ANSWERS · WORD CLOUD
+  </text>
+  <text x="1200" y="62" text-anchor="end" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="14" fill="#F59E0B">
+    08 / 10
+  </text>
+
+  <text x="80" y="170" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="40" font-weight="700" fill="#0F172A">
+    {{TITLE}}
+  </text>
+  <text x="80" y="208" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="18" fill="#475569">
+    基于 {{SAMPLE_N}} 条开放回答，提取 Top {{WORD_N}} 高频词，字号反映词频排名
+  </text>
+
+  <line x1="80" y1="240" x2="1200" y2="240" stroke="#0F172A" stroke-opacity="0.12" stroke-width="1"/>
+
+  <!-- 词云本体（4 档分层） -->
+  {{#WORDS}}
+  <text x="{{X}}" y="{{Y}}" text-anchor="middle" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="{{SIZE}}" font-weight="600" fill="#0F172A" fill-opacity="{{OPACITY}}">{{TEXT}}</text>
+  {{/WORDS}}
+
+  <text x="80" y="690" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="13" fill="#475569" letter-spacing="1">
+    词云采用 jieba 分词（若已安装）或 N-gram 回退；停用词与单字已过滤
+  </text>
+</svg>

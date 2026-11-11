@@ -108,22 +108,39 @@ describe("prompts content correctness", () => {
       assert.ok(text.includes("recommend"));
     });
 
-    it("includes create_survey tool reference", async () => {
+    it("includes the JSONL creation tool reference", async () => {
       const result = await client.getPrompt({
         name: "create-nps-survey",
         arguments: { product_name: "TestProduct" },
       });
       const text = result.messages[0].content.text;
-      assert.ok(text.includes("create_survey"));
+      assert.ok(text.includes("create_survey_by_json"));
+      assert.match(text, /明确授权|明确确认|用户.*授权/i);
     });
 
-    it("includes q_type and q_subtype references", async () => {
+    it("includes the canonical qtype reference", async () => {
       const result = await client.getPrompt({
         name: "create-nps-survey",
         arguments: { product_name: "Test" },
       });
       const text = result.messages[0].content.text;
-      assert.ok(text.includes("q_type"));
+      assert.ok(text.includes('qtype="NPS量表"'));
+    });
+  });
+
+  // ── Legacy user-system workflow ──────────────────────────────────
+  describe("user-system-workflow", () => {
+    it("warns that the workflow is legacy and does not suggest creating atype=8", async () => {
+      const result = await client.getPrompt({
+        name: "user-system-workflow",
+        arguments: { scenario: "员工考核" },
+      });
+      const text = result.messages[0].content.text;
+      assert.ok(text.includes("已过时"));
+      assert.ok(text.includes("不能通过 API 新建 atype=8"));
+      assert.ok(text.includes("sso_user_system_url"));
+      assert.ok(!text.includes("创建用户体系问卷"));
+      assert.ok(!text.includes("build_sso_user_system_url"));
     });
   });
 
@@ -453,8 +470,13 @@ describe("prompts content correctness", () => {
         arguments: { vid: "1" },
       });
       const text = result.messages[0].content.text;
-      assert.ok(text.includes("push_url"));
+      assert.ok(text.includes("post_url"));
+      assert.ok(text.includes("quick_post"));
+      assert.ok(text.includes("retry"));
       assert.ok(text.includes("AES-128-CBC"));
+      assert.ok(!text.includes("push_url"));
+      assert.ok(!text.includes("- is_encrypt"));
+      assert.ok(!text.includes("- push_custom_params"));
     });
 
     it("references get_survey_settings and update_survey_settings", async () => {
@@ -498,19 +520,38 @@ describe("prompts listing", () => {
     ({ client } = await createTestClient());
   });
 
-  it("lists all 10 prompts", async () => {
+  it("lists all 15 prompts", async () => {
     const result = await client.listPrompts();
     const names = result.prompts.map((p) => p.name).sort();
-    assert.ok(names.includes("design-survey"));
-    assert.ok(names.includes("create-nps-survey"));
-    assert.ok(names.includes("analyze-results"));
-    assert.ok(names.includes("nps-analysis"));
-    assert.ok(names.includes("csat-analysis"));
-    assert.ok(names.includes("cross-tabulation"));
-    assert.ok(names.includes("sentiment-analysis"));
-    assert.ok(names.includes("survey-health-check"));
-    assert.ok(names.includes("comparative-analysis"));
-    assert.ok(names.includes("configure-webhook"));
-    assert.ok(result.prompts.length >= 10);
+    assert.deepEqual(names, [
+      "analyze-results",
+      "anomaly-detection",
+      "comparative-analysis",
+      "configure-webhook",
+      "create-nps-survey",
+      "cross-tabulation",
+      "csat-analysis",
+      "design-survey",
+      "generate-exam-json",
+      "generate-form-json",
+      "generate-survey-json",
+      "nps-analysis",
+      "sentiment-analysis",
+      "survey-health-check",
+      "user-system-workflow",
+    ]);
+  });
+  // ── 11. anomaly-detection ────────────────────────────────────────
+  describe("anomaly-detection", () => {
+    it("documents the median speed heuristic and sample threshold", async () => {
+      const result = await client.getPrompt({
+        name: "anomaly-detection",
+        arguments: { vid: "1" },
+      });
+      const text = result.messages[0].content.text;
+      assert.match(text, /中位数 30%/);
+      assert.match(text, /至少 3 个正时长样本/);
+      assert.doesNotMatch(text, /题目数\s*[×x*]\s*3/);
+    });
   });
 });

@@ -1,208 +1,94 @@
 # wjx-ai-kit
 
-> 问卷星 AI 工具套件 — SDK、MCP Server、CLI 三位一体，让 AI Agent 和开发者无缝操控[问卷星](https://www.wjx.cn) OpenAPI。
+问卷星官方开源 AI 工具包：SDK 提供共享业务基础层，CLI 是完整的主入口，MCP Server 提供面向原生 MCP 客户端的核心业务子集。
 
-[![license](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
-[![node](https://img.shields.io/badge/node-%3E%3D20-green)](https://nodejs.org/)
-[![npm wjx-api-sdk](https://img.shields.io/npm/v/wjx-api-sdk?label=wjx-api-sdk)](https://www.npmjs.com/package/wjx-api-sdk)
-[![npm wjx-mcp-server](https://img.shields.io/npm/v/wjx-mcp-server?label=wjx-mcp-server)](https://www.npmjs.com/package/wjx-mcp-server)
-[![npm wjx-cli](https://img.shields.io/npm/v/wjx-cli?label=wjx-cli)](https://www.npmjs.com/package/wjx-cli)
-[![npm downloads](https://img.shields.io/npm/dm/wjx-mcp-server?label=downloads)](https://www.npmjs.com/package/wjx-mcp-server)
+## 从这里开始
 
----
+| 需求 | 文档 |
+| --- | --- |
+| 终端、脚本、CI，或不确定客户端是否支持 MCP | [CLI 快速开始](wjx-docs/start/cli.md) |
+| Claude Desktop/Code、Cursor 等 MCP 客户端 | [MCP 快速开始](wjx-docs/start/mcp.md) |
+| Node.js/TypeScript 程序集成 | [SDK 快速开始](wjx-docs/start/sdk.md) |
+| 直接按目标完成工作 | [文档总览](wjx-docs/index.md) |
+| 需要一个浏览器可打开的单页 | [wjx-kit.html](wjx-docs/wjx-kit.html) |
 
-## 项目结构
+CLI 是默认入口：它不要求客户端支持 MCP，适合 AI Agent、自动化脚本和人工终端操作。MCP 处于 secondary / maintenance-mode 定位，只覆盖核心业务子集；初始化、诊断、profile、补全、参考/schema、更新和 Skill 安装保持 CLI-only。SDK 用于程序化集成；Agent/Skill 只是工作流层，不是独立 API 层。完整差异见 [能力矩阵](capabilities/capability-matrix.json)。
 
-本仓库采用 npm workspaces 管理三个包：
+## 安装
 
-```
-wjx-ai-kit/
-├── wjx-api-sdk/       # 零依赖 TypeScript SDK（50+ API 函数）
-├── wjx-mcp-server/    # MCP Server（58 Tools / 8 Resources / 22 Prompts）
-├── wjx-cli/           # 命令行工具（AI Agent 原生 CLI）
-├── wjx-agents/        # 2 个专家 Agent 定义
-├── wjx-skills/        # 2 套 Skill 参考文档（可打包分发 zip）
-├── wjx-docs/          # 使用文档 + AI 工具配置指南
-└── package.json       # workspace 根配置
-```
+当前源码版本为 `0.4.6`。发布到 npm 后，registry 的 `latest` 将指向 `0.4.6`。直接安装 CLI：
 
-| 包                                   | 版本     | 说明                                                                                |
-| ----------------------------------- | ------ | --------------------------------------------------------------------------------- |
-| [`wjx-api-sdk`](wjx-api-sdk/)       | 0.2.4 | 零依赖 TypeScript SDK。8 模块、48+ 函数，可在任意 Node.js 项目中使用                                 |
-| [`wjx-mcp-server`](wjx-mcp-server/) | 0.2.4 | [MCP](https://modelcontextprotocol.io/) Server。接入 Claude、Cursor、Windsurf 等 AI 客户端 |
-| [`wjx-cli`](wjx-cli/)               | 0.2.4 | 命令行工具。67 子命令，支持 stdin pipe、JSON/表格输出                                              |
-
----
-
-## AI 工具配置指南
-
-在你的 AI 工具中接入问卷星，用自然语言创建问卷、分析数据、管理通讯录。
-
-| AI 工具 | 配置指南 |
-|---------|---------|
-| **Claude Code** | [setup-claude-code.md](wjx-docs/setup-claude-code.md) |
-| **Claude Desktop** | [setup-claude-desktop.md](wjx-docs/setup-claude-desktop.md) |
-| **IDE 插件**（Cursor / Windsurf / Cline / Copilot / Trae / Gemini / Qoder） | [setup-ide.md](wjx-docs/setup-ide.md) |
-| **Claw 系列**（OpenClaw / KimiClaw / QClaw / LinClaw / MaxClaw 等） | [setup-claw.md](wjx-docs/setup-claw.md) |
-| **AI 工作台**（Manus / WorkBuddy / QoderWork） | [setup-workbench.md](wjx-docs/setup-workbench.md) |
-
----
-
-## 架构关系
-
-```
-┌─────────────────────────────────────────────┐
-│              AI 客户端 / 脚本                 │
-├──────────┬──────────────┬───────────────────┤
-│ wjx-cli  │ wjx-mcp-server │  你的 Node.js 项目  │
-│  (CLI)   │  (MCP Server)  │                   │
-├──────────┴──────────────┴───────────────────┤
-│              wjx-api-sdk                     │
-│         （统一 API 客户端层）                  │
-├─────────────────────────────────────────────┤
-│           问卷星 OpenAPI                      │
-└─────────────────────────────────────────────┘
-```
-
-`wjx-api-sdk` 是基础层，`wjx-mcp-server` 和 `wjx-cli` 都依赖它。
-
----
-
-## 快速开始
-
-### 前置条件
-
-- **Node.js >= 20**
-- **问卷星 OpenAPI API Key** — 微信扫码登录 [API Key 获取页](https://www.wjx.cn/weixinlogin.aspx?redirecturl=%2Fnewwjx%2Fmanage%2Fuserinfo.aspx%3FshowApiKey%3D1)，登录后页面直接显示 API Key
-
-### 安装
-
-**从 npm 安装（推荐）**
+> 通过 AI 安装并启用 wjx-cli：先执行 `npm install -g wjx-cli@latest`，成功后再执行 `wjx skill install --force`；安装后命令名是 `wjx`，请用 `wjx --version` 验证，不要运行 `wjx-cli --version`。
 
 ```bash
-# SDK — 在你的 Node.js 项目中使用
-npm install wjx-api-sdk
-
-# CLI — 全局安装命令行工具
-npm install -g wjx-cli
+npm install -g wjx-cli@latest
+wjx skill install --force
+wjx init --api-key "你的问卷星 API Key"
+wjx doctor
 ```
 
-**从源码安装（开发者）**
+### 让 AI 自动完成安装
+
+把下面整段话发给你的 AI 助手。它应按顺序执行，拿到 API Key 前暂停等待，不要跳过最后的连接验收：
+
+```text
+请帮我安装并配置问卷星 CLI（wjx-cli）：
+
+0. 预检当前操作系统和 shell。检查 `node --version`、`npm --version`，并在命令可用时先检查 `wjx --version`。Windows 还要用 `Get-Command node,npm,wjx -ErrorAction SilentlyContinue`、`where.exe node`、`where.exe npm`、`where.exe wjx`，并检查 `C:\Program Files\nodejs\node.exe` 和 `%LOCALAPPDATA%\Programs\nodejs\node.exe`。同时记录 `npm prefix -g`，确认 npm 全局 bin 在当前 PATH。一个 shell 报“找不到命令”不能证明软件未安装。
+
+1. 若绝对路径能找到 Node.js，直接用该路径验证版本；若只是当前 shell 的 PATH 未刷新，刷新 PATH 或启动新的 shell 后重新检查。只有确认 Node.js 不存在时才引导我从 https://nodejs.org 安装 LTS；版本低于 20 时停止并引导升级。不要在证据不足时运行 winget、安装器或后台安装进程。安装/升级后必须在新进程再次验证 `node --version` 和 `npm --version`。
+
+2. Node.js >= 20 且 npm 可用后，先检查 `wjx --version`。若 wjx 已存在且版本 >= 0.4.1，跳过重复安装；若 wjx 缺失、版本过低或执行失败，才执行 `npm install -g wjx-cli@latest`。npm 包名是 `wjx-cli`，安装后的命令名是 `wjx`；npm 退出码为 0 不等于安装完成，必须刷新 PATH（如有需要）并再次运行 `wjx --version`。每个命令都要读取自身的真实退出码，不要用 `head`/`tail` 管道的退出码代替。禁止运行 `wjx-cli --version`。确认 CLI 可执行后，再执行 `wjx skill install --force`，并确认技能文件已落盘。
+
+3. 引导我获取问卷星 API Key：
+   - 公网用户：让我访问 https://www.wjx.cn/weixinlogin.aspx?redirecturl=%2Fnewwjx%2Fmanage%2Fuserinfo.aspx%3FshowApiKey%3D1，微信扫码登录后复制 Key
+   - 私有化部署用户：把上面的 www.wjx.cn 换成我的域名（例如 xxx.sojump.cn），登录链接和后续 `--base-url` 必须使用同一个域名
+   等我把 Key 发给你（可能还会附带域名）。未收到 Key 前暂停，不要猜测、伪造或从其他文件读取凭据。
+
+4. 拿到 Key 后执行 `wjx init --api-key <我的Key>`；私有化部署用户加 `--base-url https://<我的域名>`。不要在回复、日志或文件中回显完整 API Key，只允许显示脱敏状态。
+
+5. 运行 `wjx doctor` 验证连接；逐项确认 API Key 已配置、Base URL 正确、网络/API 检查通过。任一步失败都不得口述“安装成功”，先报告实际失败阶段和下一步。
+
+6. 最后运行 `wjx survey list --format table` 做一次人工验收，看到真实列表才说明接好了；这一步只用于人类查看，不要用表格推断总数、分页或填写链接。
+```
+
+需要从源码开发时，再克隆仓库并构建工作区：
 
 ```bash
 git clone https://github.com/wjxcom/wjx-ai-kit.git
 cd wjx-ai-kit
 npm install
-```
-
-### 使用方式一：MCP Server（AI 客户端集成）
-
-适合 Claude Desktop、Cursor、Claude Code 等 AI 客户端。
-
-```bash
-# 配置环境变量
-echo "WJX_API_KEY=your_api_key" > wjx-mcp-server/.env
-
-# 构建并启动
 npm run build --workspace=wjx-api-sdk
-npm run build --workspace=wjx-mcp-server
-npm start --workspace=wjx-mcp-server
+npm run build --workspace=wjx-cli
 ```
 
-详见 [wjx-mcp-server/README.md](wjx-mcp-server/README.md) 了解集成配置，或查看上方 **AI 工具配置指南** 找到你使用的工具。
+API Key 请从问卷星后台获取，不要提交到仓库、日志或公共对话。私有化部署在初始化时追加 `--base-url`：`wjx init --api-key "你的问卷星 API Key" --base-url "https://你的域名"`。
 
-### 使用方式二：CLI（命令行）
-
-适合脚本、CI/CD、AI Agent 工具调用。
+## 创建和分析
 
 ```bash
-# 全局安装
-npm install -g wjx-cli
-
-# 使用
-export WJX_API_KEY=your_api_key
-wjx survey list
-wjx response query --vid 12345
+wjx survey jsonl-template --raw > survey.jsonl
+wjx survey create --file survey.jsonl
+wjx response report --vid 12345
+wjx response query --vid 12345 --page_size 50
 ```
 
-详见 [wjx-cli/README.md](wjx-cli/README.md)。
+问卷创建和修改统一使用 Survey JSON（JSONL）；涉及题目关联时附加 dsl.logic，由服务端转换为 XML 原生逻辑。
 
-### 使用方式三：SDK（编程集成）
-
-适合在你自己的 Node.js 项目中调用问卷星 API。
-
-```bash
-npm install wjx-api-sdk
-```
-
-```typescript
-import { listSurveys, createSurvey } from "wjx-api-sdk";
-
-const creds = { apiKey: "your_api_key" };
-
-// 列出问卷
-const surveys = await listSurveys({ page_index: 1, page_size: 10 }, creds);
-
-// 创建问卷
-const result = await createSurvey({
-  title: "客户满意度调查",
-  type: 0,
-  questions: "[]",
-}, creds);
-```
-
-详见 [wjx-api-sdk/README.md](wjx-api-sdk/README.md)。
-
----
-
-## 文档
-
-完整的使用文档和指南位于 [`wjx-docs/`](wjx-docs/) 目录：
-
-| 文档 | 说明 |
-|------|------|
-| [总纲](wjx-docs/00-overview.md) | 功能全景、选择引导、场景速览 |
-| [MCP 入门](wjx-docs/mcp-getting-started.md) | MCP Server 快速接入 |
-| [MCP 进阶](wjx-docs/mcp-advanced.md) | 58 工具深度用法、HTTP 部署、Docker |
-| [CLI 入门](wjx-docs/cli-getting-started.md) | 命令行快速上手 |
-| [CLI 进阶](wjx-docs/cli-advanced.md) | 70 命令完全攻略、Skill 系统 |
-| [SDK 入门](wjx-docs/sdk-getting-started.md) | TypeScript 开发快速上手 |
-| [SDK 进阶](wjx-docs/sdk-advanced.md) | DSL、分析引擎、Webhook 解密 |
-
----
 
 ## 开发
 
 ```bash
-# 安装所有 workspace 依赖
 npm install
-
-# 构建所有包（SDK 必须先构建）
 npm run build --workspace=wjx-api-sdk
 npm run build --workspace=wjx-mcp-server
 npm run build --workspace=wjx-cli
-
-# 运行所有测试
-npm test --workspace=wjx-api-sdk      # ~623 tests
-npm test --workspace=wjx-mcp-server   # ~280 tests
-npm test --workspace=wjx-cli          # ~133 tests
+npm test --workspace=wjx-api-sdk
+npm test --workspace=wjx-mcp-server
+npm test --workspace=wjx-cli
 ```
 
-### 环境变量
-
-| 变量 | 必填 | 说明 |
-|---|:---:|---|
-| `WJX_API_KEY` | 是 | 问卷星 OpenAPI API Key |
-| `WJX_CORP_ID` | 否 | 企业通讯录 ID（通讯录相关操作需要） |
-| `WJX_BASE_URL` | 否 | 自定义 API 基础域名（默认 `https://www.wjx.cn`） |
-| `MCP_TRANSPORT` | 否 | MCP 传输模式：`stdio`（默认）或 `http` |
-| `PORT` | 否 | HTTP 模式端口（默认 3000） |
-
----
-
-## 贡献
-
-欢迎贡献！请参阅 [CONTRIBUTING.md](CONTRIBUTING.md) 了解贡献指南。
+完整文档请从 [文档总览](wjx-docs/index.md) 开始；需要浏览器打开的单页版本见 [wjx-kit.html](wjx-docs/wjx-kit.html)。
 
 ## 许可证
 

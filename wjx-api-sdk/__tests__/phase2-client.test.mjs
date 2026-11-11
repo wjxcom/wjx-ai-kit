@@ -227,6 +227,14 @@ describe("getWinners", () => {
 // ─── modifyResponse ─────────────────────────────────────────────────
 
 describe("modifyResponse", () => {
+  it("serializes large response IDs as strings for the upstream API", async () => {
+    const fetch = mockFetch({ result: true, data: { modified: true } });
+    await modifyResponse({ vid: 100, jid: 127714654143, type: 1, answers: JSON.stringify({ "10000": "4" }) }, credentials, fetch);
+    const { init } = fetch.captured();
+    const body = JSON.parse(init.body);
+    assert.equal(body.jid, "127714654143");
+  });
+
   it("should POST with action 1001007 and Bearer auth", async () => {
     const fetch = mockFetch({ result: true, data: {} });
     await modifyResponse({ vid: 100, jid: 200, type: 1, answers: "1$1" }, credentials, fetch);
@@ -235,7 +243,7 @@ describe("modifyResponse", () => {
     const body = JSON.parse(init.body);
     assert.equal(body.action, "1001007");
     assert.equal(body.vid, 100);
-    assert.equal(body.jid, 200);
+    assert.equal(body.jid, "200");
     assert.equal(body.type, 1);
     assert.equal(body.answers, "1$1");
     assertBearerAuth(init, body);

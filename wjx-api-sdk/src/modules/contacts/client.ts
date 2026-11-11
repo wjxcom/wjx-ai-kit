@@ -18,10 +18,12 @@ import type {
   DeleteTagInput,
 } from "./types.js";
 
-function resolveCorpId(input: { corpid?: string }): string {
-  const corpid = input.corpid || getCorpId();
+function resolveCorpId(input: { corpid?: string }, credentials: WjxCredentials): string {
+  const nonBlank = (value: unknown): string | undefined =>
+    typeof value === "string" && value.trim() ? value.trim() : undefined;
+  const corpid = nonBlank(input.corpid) ?? nonBlank(credentials.corpId) ?? getCorpId();
   if (!corpid) {
-    throw new Error("corpid is required: set WJX_CORP_ID env var or pass corpid parameter");
+    throw new Error("corpid is required: set WJX_CORP_ID env var, pass corpid parameter, or provide credentials.corpId");
   }
   return corpid;
 }
@@ -33,11 +35,11 @@ export async function queryContacts<T = unknown>(
 ): Promise<WjxApiResponse<T>> {
   const params: Record<string, unknown> = {
     action: Action.QUERY_CONTACTS,
-    corpid: resolveCorpId(input),
+    corpid: resolveCorpId(input, credentials),
     uid: input.uid,
   };
 
-  return callWjxContactsApi<T>(params, { credentials, fetchImpl });
+  return callWjxContactsApi<T>(params, { credentials, fetchImpl, idempotency: "safe", httpRetryable: true });
 }
 
 export async function addContacts<T = unknown>(
@@ -47,13 +49,13 @@ export async function addContacts<T = unknown>(
 ): Promise<WjxApiResponse<T>> {
   const params: Record<string, unknown> = {
     action: Action.ADD_CONTACTS,
-    corpid: resolveCorpId(input),
+    corpid: resolveCorpId(input, credentials),
     users: input.users,
   };
   if (input.auto_create_udept !== undefined) params.auto_create_udept = input.auto_create_udept ? "1" : "0";
   if (input.auto_create_tag !== undefined) params.auto_create_tag = input.auto_create_tag ? "1" : "0";
 
-  return callWjxContactsApi<T>(params, { credentials, fetchImpl, maxRetries: 0 });
+  return callWjxContactsApi<T>(params, { credentials, fetchImpl, maxRetries: 0, idempotency: "unsafe", httpRetryable: false });
 }
 
 export async function deleteContacts<T = unknown>(
@@ -64,10 +66,10 @@ export async function deleteContacts<T = unknown>(
   return callWjxContactsApi<T>(
     {
       action: Action.MANAGE_CONTACTS,
-      corpid: resolveCorpId(input),
+      corpid: resolveCorpId(input, credentials),
       uids: input.uids,
     },
-    { credentials, fetchImpl, maxRetries: 0 },
+    { credentials, fetchImpl, maxRetries: 0, idempotency: "unsafe", httpRetryable: false },
   );
 }
 
@@ -81,10 +83,10 @@ export async function addAdmin<T = unknown>(
   return callWjxContactsApi<T>(
     {
       action: Action.ADD_ADMIN,
-      corpid: resolveCorpId(input),
+      corpid: resolveCorpId(input, credentials),
       users: input.users,
     },
-    { credentials, fetchImpl, maxRetries: 0 },
+    { credentials, fetchImpl, maxRetries: 0, idempotency: "unsafe", httpRetryable: false },
   );
 }
 
@@ -96,10 +98,10 @@ export async function deleteAdmin<T = unknown>(
   return callWjxContactsApi<T>(
     {
       action: Action.DELETE_ADMIN,
-      corpid: resolveCorpId(input),
+      corpid: resolveCorpId(input, credentials),
       uids: input.uids,
     },
-    { credentials, fetchImpl, maxRetries: 0 },
+    { credentials, fetchImpl, maxRetries: 0, idempotency: "unsafe", httpRetryable: false },
   );
 }
 
@@ -111,10 +113,10 @@ export async function restoreAdmin<T = unknown>(
   return callWjxContactsApi<T>(
     {
       action: Action.RESTORE_ADMIN,
-      corpid: resolveCorpId(input),
+      corpid: resolveCorpId(input, credentials),
       uids: input.uids,
     },
-    { credentials, fetchImpl, maxRetries: 0 },
+    { credentials, fetchImpl, maxRetries: 0, idempotency: "unsafe", httpRetryable: false },
   );
 }
 
@@ -127,9 +129,9 @@ export async function listDepartments<T = unknown>(
 ): Promise<WjxApiResponse<T>> {
   const params: Record<string, unknown> = {
     action: Action.LIST_DEPARTMENTS,
-    corpid: resolveCorpId(input),
+    corpid: resolveCorpId(input, credentials),
   };
-  return callWjxContactsApi<T>(params, { credentials, fetchImpl });
+  return callWjxContactsApi<T>(params, { credentials, fetchImpl, idempotency: "safe", httpRetryable: true });
 }
 
 export async function addDepartment<T = unknown>(
@@ -140,10 +142,10 @@ export async function addDepartment<T = unknown>(
   return callWjxContactsApi<T>(
     {
       action: Action.ADD_DEPARTMENT,
-      corpid: resolveCorpId(input),
+      corpid: resolveCorpId(input, credentials),
       depts: input.depts,
     },
-    { credentials, fetchImpl, maxRetries: 0 },
+    { credentials, fetchImpl, maxRetries: 0, idempotency: "unsafe", httpRetryable: false },
   );
 }
 
@@ -155,10 +157,10 @@ export async function modifyDepartment<T = unknown>(
   return callWjxContactsApi<T>(
     {
       action: Action.MODIFY_DEPARTMENT,
-      corpid: resolveCorpId(input),
+      corpid: resolveCorpId(input, credentials),
       depts: input.depts,
     },
-    { credentials, fetchImpl, maxRetries: 0 },
+    { credentials, fetchImpl, maxRetries: 0, idempotency: "unsafe", httpRetryable: false },
   );
 }
 
@@ -169,13 +171,13 @@ export async function deleteDepartment<T = unknown>(
 ): Promise<WjxApiResponse<T>> {
   const params: Record<string, unknown> = {
     action: Action.DELETE_DEPARTMENT,
-    corpid: resolveCorpId(input),
+    corpid: resolveCorpId(input, credentials),
     type: input.type,
     depts: input.depts,
   };
   if (input.del_child !== undefined) params.del_child = input.del_child ? "1" : "0";
 
-  return callWjxContactsApi<T>(params, { credentials, fetchImpl, maxRetries: 0 });
+  return callWjxContactsApi<T>(params, { credentials, fetchImpl, maxRetries: 0, idempotency: "unsafe", httpRetryable: false });
 }
 
 // ─── Tag ─────────────────────────────────────────────────────────────
@@ -188,9 +190,9 @@ export async function listTags<T = unknown>(
   return callWjxContactsApi<T>(
     {
       action: Action.LIST_TAGS,
-      corpid: resolveCorpId(input),
+      corpid: resolveCorpId(input, credentials),
     },
-    { credentials, fetchImpl },
+    { credentials, fetchImpl, idempotency: "safe", httpRetryable: true },
   );
 }
 
@@ -201,12 +203,12 @@ export async function addTag<T = unknown>(
 ): Promise<WjxApiResponse<T>> {
   const params: Record<string, unknown> = {
     action: Action.ADD_TAG,
-    corpid: resolveCorpId(input),
+    corpid: resolveCorpId(input, credentials),
     child_names: input.child_names,
   };
   if (input.is_radio !== undefined) params.is_radio = input.is_radio ? "1" : "0";
 
-  return callWjxContactsApi<T>(params, { credentials, fetchImpl, maxRetries: 0 });
+  return callWjxContactsApi<T>(params, { credentials, fetchImpl, maxRetries: 0, idempotency: "unsafe", httpRetryable: false });
 }
 
 export async function modifyTag<T = unknown>(
@@ -216,13 +218,13 @@ export async function modifyTag<T = unknown>(
 ): Promise<WjxApiResponse<T>> {
   const params: Record<string, unknown> = {
     action: Action.MODIFY_TAG,
-    corpid: resolveCorpId(input),
+    corpid: resolveCorpId(input, credentials),
     tp_id: input.tp_id,
   };
   if (input.tp_name !== undefined) params.tp_name = input.tp_name;
   if (input.child_names !== undefined) params.child_names = input.child_names;
 
-  return callWjxContactsApi<T>(params, { credentials, fetchImpl, maxRetries: 0 });
+  return callWjxContactsApi<T>(params, { credentials, fetchImpl, maxRetries: 0, idempotency: "unsafe", httpRetryable: false });
 }
 
 export async function deleteTag<T = unknown>(
@@ -233,10 +235,10 @@ export async function deleteTag<T = unknown>(
   return callWjxContactsApi<T>(
     {
       action: Action.DELETE_TAG,
-      corpid: resolveCorpId(input),
+      corpid: resolveCorpId(input, credentials),
       type: input.type,
       tags: input.tags,
     },
-    { credentials, fetchImpl, maxRetries: 0 },
+    { credentials, fetchImpl, maxRetries: 0, idempotency: "unsafe", httpRetryable: false },
   );
 }

@@ -67,9 +67,22 @@ export interface BuildSurveyUrlInput {
     runprotect?: number;
 }
 /** Input for generating a survey preview/fill URL. */
-export interface BuildPreviewUrlInput {
-    /** Survey vid (required). */
+export type BuildPreviewUrlInput = {
+    /** Survey vid. When both vid and sid exist, sid should be preferred. */
     vid: number;
+    /** Survey short id returned by create APIs, for example "Y3eWs". */
+    sid?: string;
     /** Optional source tracking parameter. */
     source?: string;
-}
+    /** Disable numeric vid fallback when a verified respondent link is required. */
+    allowVidFallback?: boolean;
+} | {
+    /** Survey vid. When both vid and sid exist, sid should be preferred. */
+    vid?: number;
+    /** Survey short id returned by create APIs, for example "Y3eWs". */
+    sid: string;
+    /** Optional source tracking parameter. */
+    source?: string;
+    /** Disable numeric vid fallback when a verified respondent link is required. */
+    allowVidFallback?: boolean;
+};

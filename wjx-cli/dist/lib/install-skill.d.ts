@@ -1,6 +1,9 @@
+import type { InstallRootSource } from "./install-root.js";
 export interface InstallSkillOptions {
     force?: boolean;
     silent?: boolean;
+    /** 由 resolveInstallRoot 计算出的来源标签，用于打印 "Install root: X (from: Y)" */
+    rootSource?: InstallRootSource;
 }
 export interface InstallSkillResult {
     status: "installed" | "updated" | "skipped" | "error";

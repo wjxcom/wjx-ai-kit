@@ -42,7 +42,9 @@ export function registerUserSystemTools(server) {
         },
         annotations: {
             destructiveHint: true,
-            idempotentHint: true,
+            // The SDK marks participant updates unsafe; hosts must not replay a
+            // mutable batch after an ambiguous transport result.
+            idempotentHint: false,
             openWorldHint: true,
             title: "[已过时] 批量修改参与者",
         },

@@ -28,4 +28,6 @@ export interface QuerySubAccountsInput {
     group?: number;
     status?: boolean;
     mobile?: string;
+    page_index?: number;
+    page_size?: number;
 }

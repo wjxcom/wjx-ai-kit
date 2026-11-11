@@ -1,40 +1,28 @@
-export interface CreateSurveyInput {
-  title: string;
-  type: number;
-  description: string;
-  publish?: boolean;
-  questions: string;
-  /** 允许显式设为非必答的题目标题列表；未列入时，is_requir=false 会被拒绝 */
-  optionalTitles?: string[];
-  creater?: string;
-  source_vid?: string;
-  compress_img?: boolean;
-  is_string?: boolean;
+export interface SurveyDslJson {
+  /** 只包含 logic { ... };，服务端转换成 XML 原生逻辑属性。 */
+  logic: string;
 }
 
-export interface CreateSurveyByTextInput {
-  /** DSL 格式的问卷文本内容，传给 API 的 survey_data 参数 */
-  text: string;
-  /** 问卷标题（可选，不传则从 DSL 文本第一行提取） */
-  title?: string;
-  /** 问卷类型：1=调查, 2=测评, 6=考试, 7=表单（投票类型已禁用） */
-  atype?: number;
-  /** 是否立即发布 */
+export interface UpdateSurveyByJsonInput extends Omit<CreateSurveyByJsonInput, "jsonl" | "publish" | "creater"> {
+  vid: string | number;
+  /** 完整题目内容；仅修改逻辑时省略。 */
+  jsonl?: string;
   publish?: boolean;
-  /** 创建者子账号用户名 */
-  creater?: string;
+  allowBreakingChanges?: boolean;
 }
 
 export interface CreateSurveyByJsonInput {
+  /** 可选题目逻辑模块，与 relation/referselect 冲突时优先。 */
+  dsl?: SurveyDslJson;
   /** JSONL 格式的问卷内容（每行一个 JSON 对象，首行为问卷基础信息） */
   jsonl: string;
   /** 问卷标题（可选，不传则从"问卷基础信息"条目提取） */
   title?: string;
-  /** 问卷类型：1=调查, 2=测评, 6=考试, 7=表单（投票类型已禁用） */
+  /** 可创建问卷类型：1=调查, 2=测评, 3=投票, 4=360度评估, 5=360评估无测评关系, 6=考试, 7=表单, 9=教学评估, 10=量表, 11=民主评议；8=用户体系不支持新建 */
   atype?: number;
   /** 允许显式设为非必答的题目标题列表；未列入时，requir=false 会被拒绝 */
   optionalTitles?: string[];
-  /** 是否立即发布 */
+  /** 是否立即发布；未指定时普通题型默认 true，纯框架题型默认 false */
   publish?: boolean;
   /** 创建者子账号用户名 */
   creater?: string;
@@ -75,7 +63,8 @@ export interface ListSurveysInput {
 
 export interface UpdateSurveyStatusInput {
   vid: number;
-  state: number; // 1=发布, 2=暂停, 3=删除
+  /** 1=发布, 2=暂停, 3=删除并进入回收站（可恢复）。彻底删除使用 DeleteSurveyInput.completely_delete 或 ClearRecycleBinInput。 */
+  state: number;
 }
 
 export interface GetSurveySettingsInput {
@@ -111,39 +100,6 @@ export interface ClearRecycleBinInput {
   vid?: number;
 }
 
-// ─── textToSurvey parsed types ───────────────────────────────────────
-
-/** A parsed question from DSL text. */
-export interface ParsedQuestion {
-  /** Question title (plain text, HTML stripped). */
-  title: string;
-  /**
-   * Question type identifier.
-   * Skeleton types: "single-choice" | "multi-choice" | "fill-in" | "scale" | "matrix" | "paragraph"
-   */
-  type: string;
-  /** Whether the question is required (default true). */
-  required: boolean;
-  /** Options/items for choice-type questions. */
-  options?: string[];
-  /** Scale range for scale-type questions [min, max]. */
-  scaleRange?: [string, string];
-  /** Matrix row labels. */
-  matrixRows?: string[];
-  /** Matrix column labels (e.g. rating headers like "很不满意 不满意 一般 满意 很满意"). */
-  matrixColumns?: string[];
-}
-
-/** Parsed survey structure from DSL text. */
-export interface ParsedSurvey {
-  /** Survey title. */
-  title: string;
-  /** Survey description (may be empty). */
-  description: string;
-  /** Parsed questions in order. */
-  questions: ParsedQuestion[];
-}
-
 // ─── get_survey response types (action=1000001) ─────────────────────
 
 /** A single option/item within a question. */
@@ -152,6 +108,18 @@ export interface SurveyQuestionItem {
   item_index: number;
   item_title: string;
   item_image?: string;
+  /** Service may expose hidden/required/validation flags on matrix rows and options. */
+  item_hide?: boolean;
+  is_hide?: boolean;
+  item_required?: boolean;
+  is_item_required?: boolean;
+  item_verify?: string | number;
+  item_relation?: string | number;
+  item_textbox?: boolean;
+  allow_filltext?: boolean;
+  item_placeholder?: string;
+  item_label?: string;
+  item_image_text?: boolean;
   item_score?: number;
   item_selected?: boolean;
 }
@@ -179,6 +147,35 @@ export interface SurveyQuestion {
   is_requir: boolean;
   has_jump: boolean;
   is_hide?: boolean;
+  /** Optional prompt/default and rich-text values returned by the service. */
+  prompt?: string;
+  default_value?: string;
+  item_placeholder?: string;
+  verify?: string | number;
+  has_value?: boolean;
+  is_reverse?: boolean;
+  is_half_score?: boolean;
+  vector_level?: number;
+  style?: number;
+  min_value_text?: string;
+  max_value_text?: string;
+  level_data?: string;
+  level_data_external_url?: string;
+  only_search?: boolean;
+  search?: boolean;
+  fuzzy_query?: boolean;
+  no_repeat?: boolean;
+  num_per_row?: number;
+  alone_answer?: boolean;
+  is_random_label?: boolean;
+  is_random_label_choice?: boolean;
+  item_huchi?: boolean;
+  position_info?: unknown;
+  relation?: string | number;
+  title_topic?: number;
+  refer_topic?: number;
+  item_rows?: SurveyQuestionItem[];
+  item_columns?: SurveyQuestionItem[];
 
   /** Items / options (for selection-type, ranking, weight questions). */
   items?: SurveyQuestionItem[];
@@ -212,10 +209,22 @@ export interface SurveyQuestion {
 
   // ── ranking (q_subtype=402) specific ──
   check_mode?: number;
+
+  /** Raw service-owned fields retained for advanced/exam question variants. */
+  is_ceshi?: boolean;
+  ce_shi_value?: number;
+  ce_shi_desc?: string;
+  ext?: string;
+  max_size?: number;
+  max_length?: number;
+  random_mode?: number;
+  part_set?: string;
 }
 
 /** The `data` payload returned by get_survey (action=1000001). */
 export interface SurveyDetail {
+  /** 查询传统问卷题目时从实际 XML 提取；没有规则时返回空 logic 模块。 */
+  dsl?: SurveyDslJson;
   vid: number;
   begin_time: string;
   update_time: string;
@@ -226,10 +235,16 @@ export interface SurveyDetail {
   version: number;
   answer_valid: number;
   answer_total: number;
+  /** 0=未发布, 1=已发布, 2=已暂停, 3=已删除（回收站，可恢复）, 4=彻底删除（不可恢复）, 5=被审核。 */
   status: number;
   verify_status: number;
   creater: string;
   total_score: number;
+
+  /** Complete source HTML for AI homepages (atype=12), including drafts. */
+  html_content?: string;
+  /** Fixed AI homepage type: 0=web, 1=poster, 2=PPT. Present when atype=12. */
+  page_type?: number;
 
   /**
    * Flat array of questions. Page breaks are represented as q_type=1 entries.

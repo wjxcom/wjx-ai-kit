@@ -13,7 +13,15 @@ import {
   validateSurveyTitle,
   validateSurveyHasQuestions,
   NON_QUESTION_QTYPE_SET,
+  FRAMEWORK_ONLY_JSONL_QTYPES,
+  JSONL_READ_ONLY_OR_WEB_EDITOR_QTYPES,
+  hasFrameworkOnlyJsonlQtype,
+  preflightJsonl,
   createSurveyByJson,
+  setCredentialProvider,
+  getJsonlQuestionTypeCode,
+  extractJsonlQuestionTypeExpectations,
+  compareJsonlQuestionTypes,
 } from "../dist/index.js";
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -119,11 +127,9 @@ describe("preprocessExamJsonl", () => {
     assert.equal(examLine.isquiz, "1");
   });
 
-  it("should preserve user-supplied isquiz value", () => {
+  it("should reject an explicit isquiz value that would downgrade an exam question", () => {
     const jsonl = '{"qtype":"考试单选","title":"Q1","isquiz":"0"}';
-    const { jsonl: out, hasExam } = preprocessExamJsonl(jsonl);
-    assert.equal(hasExam, true);
-    assert.equal(JSON.parse(out).isquiz, "0");
+    assert.throws(() => preprocessExamJsonl(jsonl), /isquiz.*1/);
   });
 
   it("should not touch non-exam questions", () => {
@@ -177,7 +183,7 @@ describe("createSurveyByJson exam handling", () => {
       {
         jsonl: [
           '{"qtype":"问卷基础信息","title":"Python 基础考试"}',
-          '{"qtype":"考试判断","title":"Q","select":["对","错"]}',
+          '{"qtype":"考试判断","title":"Q","select":["对","错"],"correctselect":["对"],"quizscore":"5"}',
         ].join("\n"),
       },
       { apiKey: "k" },
@@ -185,7 +191,26 @@ describe("createSurveyByJson exam handling", () => {
     );
     assert.equal(captured.body.atype, 6);
     const sentLines = captured.body.surveydatajson.split("\n");
-    assert.equal(JSON.parse(sentLines[1]).isquiz, "1");
+    const examLine = JSON.parse(sentLines[1]);
+    assert.equal(examLine.isquiz, "1");
+    assert.deepEqual(examLine.correctselect, ["对"]);
+    assert.equal(examLine.quizscore, "5");
+  });
+
+  it("canonicalizes supported qtype aliases before sending JSONL", async () => {
+    const { fakeFetch, captured } = makeFakeFetch();
+    await createSurveyByJson(
+      {
+        jsonl: [
+          '{"qtype":"问卷基础信息","title":"别名题型"}',
+          '{"qtype":"表格自增题","title":"清单","rowtitle":["日期"],"columntitle":["日期"],"selects":[[""]]}'
+        ].join("\n"),
+      },
+      { apiKey: "k" },
+      fakeFetch,
+    );
+    const sentLines = captured.body.surveydatajson.split("\n").map(JSON.parse);
+    assert.equal(sentLines[1].qtype, "自增表格");
   });
 
   it("preserves user-supplied atype even when exam qtypes present", async () => {
@@ -217,6 +242,147 @@ describe("createSurveyByJson exam handling", () => {
       fakeFetch,
     );
     assert.equal(captured.body.atype, 1);
+  });
+
+  it("rejects malformed JSONL before sending the create request", async () => {
+    const { fakeFetch, captured } = makeFakeFetch();
+    let calls = 0;
+    const countingFetch = async (...args) => {
+      calls += 1;
+      return fakeFetch(...args);
+    };
+
+    await assert.rejects(
+      createSurveyByJson(
+        {
+          jsonl: [
+            "not valid json",
+            '{"qtype":"问卷基础信息","title":"测试问卷"}',
+            '{"qtype":"单选","title":"Q","select":["A"]}',
+          ].join("\n"),
+        },
+        { apiKey: "test-key" },
+        countingFetch,
+      ),
+      /JSONL 第 1 行解析失败/,
+    );
+    assert.equal(calls, 0);
+    assert.equal(captured.body, null);
+  });
+});
+
+describe("JSONL qtype verification mapping", () => {
+  it("maps core JSONL names to the documented get_survey codes", () => {
+    assert.deepEqual(getJsonlQuestionTypeCode("单选"), { qtype: "单选", q_type: 3, q_subtype: 3 });
+    assert.deepEqual(getJsonlQuestionTypeCode("投票多选"), { qtype: "投票多选", q_type: 4, q_subtype: 4 });
+    assert.deepEqual(getJsonlQuestionTypeCode("NPS量表"), { qtype: "NPS量表", q_type: 3, q_subtype: 302 });
+    assert.deepEqual(getJsonlQuestionTypeCode("考试判断"), { qtype: "考试判断", q_type: 3, q_subtype: 305 });
+    assert.deepEqual(getJsonlQuestionTypeCode("考试多选"), { qtype: "考试多选", q_type: 4, q_subtype: 4 });
+    assert.deepEqual(getJsonlQuestionTypeCode("矩阵单选"), { qtype: "矩阵单选", q_type: 7, q_subtype: 702 });
+    assert.equal(getJsonlQuestionTypeCode("AI访谈"), undefined);
+  });
+
+  it("matches the API read-back code for an exam single-choice question", () => {
+    const expected = extractJsonlQuestionTypeExpectations([
+      '{"qtype":"问卷基础信息","title":"考试"}',
+      '{"qtype":"考试单选","title":"Q","select":["A","B"],"correctselect":["A"]}',
+    ].join("\n"));
+    const check = compareJsonlQuestionTypes(expected, [{ q_type: 3, q_subtype: 303 }]);
+    assert.equal(check.matches, true, check.warnings.join("；"));
+    assert.deepEqual(getJsonlQuestionTypeCode("考试单选"), {
+      qtype: "考试单选",
+      q_type: 3,
+      q_subtype: 303,
+    });
+  });
+
+  it("retains unknown rows and accepts API family normalization", () => {
+    const jsonl = [
+      '{"qtype":"问卷基础信息","title":"映射测试"}',
+      '{"qtype":"下拉框","title":"部门","select":["研发"]}',
+      '{"qtype":"AI访谈","title":"后续访谈"}',
+    ].join("\n");
+    const expected = extractJsonlQuestionTypeExpectations(jsonl);
+    assert.deepEqual(expected, [
+      { qtype: "下拉框", q_type: 3, q_subtype: 301 },
+      { qtype: "AI访谈" },
+    ]);
+    const check = compareJsonlQuestionTypes(expected, [
+      { q_type: 3, q_subtype: 3 },
+      { q_type: 99, q_subtype: 99 },
+    ]);
+    assert.equal(check.matches, true);
+    assert.deepEqual(check.unknownQtypes, ["AI访谈"]);
+    assert.match(check.warnings.join(" "), /跳过题型校验/);
+  });
+
+  it("accepts service-owned qtype normalizations and expanded unknown rows", () => {
+    const expected = extractJsonlQuestionTypeExpectations([
+      '{"qtype":"问卷基础信息","title":"归一化"}',
+      '{"qtype":"下拉框","title":"Q1"}',
+      '{"qtype":"考试判断","title":"Q2"}',
+      '{"qtype":"表格填空","title":"Q3"}',
+      '{"qtype":"品牌漏斗","title":"Q4"}',
+      '{"qtype":"单选","title":"锚点"}',
+    ].join("\n"));
+    const check = compareJsonlQuestionTypes(expected, [
+      { q_type: 301, q_subtype: 301 },
+      { q_type: 3, q_subtype: 303 },
+      { q_type: 7, q_subtype: 709 },
+      { q_type: 4, q_subtype: 4 },
+      { q_type: 4, q_subtype: 4 },
+      { q_type: 3, q_subtype: 3 },
+    ]);
+    assert.equal(check.matches, true, check.warnings.join("；"));
+    assert.equal(check.compared, 4);
+    assert.deepEqual(check.unknownQtypes, ["品牌漏斗"]);
+  });
+
+  it("excludes JSONL scaffolding rows from positional question expectations", () => {
+    const expected = extractJsonlQuestionTypeExpectations([
+      '{"qtype":"问卷基础信息","title":"分页测试"}',
+      '{"qtype":"分页栏"}',
+      '{"qtype":"段落说明","title":"说明"}',
+      '{"qtype":"单选","title":"真实题"}',
+      '{"qtype":"知情同意书","title":"同意"}',
+    ].join("\n"));
+    assert.deepEqual(expected.map((item) => item.qtype), ["单选"]);
+    const check = compareJsonlQuestionTypes(expected, [
+      { q_type: 1, q_subtype: 1 },
+      { q_type: 2, q_subtype: 2 },
+      { q_type: 3, q_subtype: 3 },
+    ]);
+    assert.equal(check.matches, true);
+  });
+
+  it("fails when a known q_type or q_subtype is read back incorrectly", () => {
+    const expected = extractJsonlQuestionTypeExpectations(
+      '{"qtype":"问卷基础信息","title":"校验"}\n{"qtype":"多选","title":"Q"}',
+    );
+    const check = compareJsonlQuestionTypes(expected, [{ q_type: 3, q_subtype: 3 }]);
+    assert.equal(check.matches, false);
+    assert.match(check.warnings.join(" "), /q_type/);
+  });
+
+  it("does not treat an exam judgment downgrade as subtype normalization", () => {
+    const expected = extractJsonlQuestionTypeExpectations(
+      '{"qtype":"问卷基础信息","title":"考试"}\n{"qtype":"考试判断","title":"Q"}',
+    );
+    const check = compareJsonlQuestionTypes(expected, [{ q_type: 3, q_subtype: 3 }]);
+    assert.equal(check.matches, false);
+  });
+
+  it("does not claim a numeric mapping for exam blanks and short answers", () => {
+    assert.equal(getJsonlQuestionTypeCode("考试单项填空"), undefined);
+    assert.equal(getJsonlQuestionTypeCode("考试简答"), undefined);
+    const expected = extractJsonlQuestionTypeExpectations([
+      '{"qtype":"问卷基础信息","title":"考试"}',
+      '{"qtype":"考试简答","title":"Q"}',
+    ].join("\n"));
+    const check = compareJsonlQuestionTypes(expected, [{ q_type: 5, q_subtype: 5 }]);
+    assert.equal(check.matches, true);
+    assert.deepEqual(check.unknownQtypes, ["考试简答"]);
+    assert.match(check.warnings.join(" "), /没有可靠.*映射/);
   });
 });
 
@@ -330,22 +496,71 @@ describe("createSurveyByJson 默认必答 & atype 推断 & 标题校验", () => 
     assert.equal(JSON.parse(sentLines[1]).requir, true);
   });
 
-  it("标题含「投票」时仍然抛错（投票类型已禁用）", async () => {
-    const { fakeFetch } = makeFakeFetch();
-    await assert.rejects(
-      () =>
-        createSurveyByJson(
-          {
-            jsonl: [
-              '{"qtype":"问卷基础信息","title":"2026华语音乐投票"}',
-              '{"qtype":"单选","title":"Q","select":["A"]}',
-            ].join("\n"),
-          },
-          { apiKey: "k" },
-          fakeFetch,
-        ),
-      /不支持创建投票类型问卷/,
+  it("普通题型默认发布，显式 false 才保持草稿", async () => {
+    const { fakeFetch, captured } = makeFakeFetch();
+    await createSurveyByJson(
+      {
+        jsonl: [
+          '{"qtype":"问卷基础信息","title":"普通发布测试"}',
+          '{"qtype":"单选","title":"Q1","select":["A","B"]}',
+        ].join("\n"),
+      },
+      { apiKey: "k" },
+      fakeFetch,
     );
+    assert.equal(captured.body.publish, true);
+
+    await createSurveyByJson(
+      {
+        jsonl: [
+          '{"qtype":"问卷基础信息","title":"普通草稿测试"}',
+          '{"qtype":"单选","title":"Q1","select":["A","B"]}',
+        ].join("\n"),
+        publish: false,
+      },
+      { apiKey: "k" },
+      fakeFetch,
+    );
+    assert.equal(captured.body.publish, false);
+  });
+
+  it("每个纯框架题型默认保持草稿，但显式 publish=true 仍可发布", async () => {
+    const { fakeFetch, captured } = makeFakeFetch();
+    for (const qtype of FRAMEWORK_ONLY_JSONL_QTYPES) {
+      const jsonl = [
+        JSON.stringify({ qtype: "问卷基础信息", title: `框架题测试-${qtype}` }),
+        JSON.stringify({ qtype, title: "待二次编辑", ...(qtype === "考试代码" ? { codetype: "python" } : {}) }),
+      ].join("\n");
+      assert.equal(hasFrameworkOnlyJsonlQtype(jsonl), true, `${qtype} must be detected`);
+      if (JSONL_READ_ONLY_OR_WEB_EDITOR_QTYPES.has(qtype)) {
+        await assert.rejects(
+          createSurveyByJson({ jsonl }, { apiKey: "k" }, fakeFetch),
+          /不支持.*创建接口|Web 编辑器/,
+          `${qtype} should route to the Web editor boundary`,
+        );
+        continue;
+      }
+      await createSurveyByJson({ jsonl }, { apiKey: "k" }, fakeFetch);
+      assert.equal(captured.body.publish, false, `${qtype} should default to draft`);
+
+      await createSurveyByJson({ jsonl, publish: true }, { apiKey: "k" }, fakeFetch);
+      assert.equal(captured.body.publish, true, `${qtype} explicit publish should win`);
+    }
+  });
+
+  it("标题含「投票」不再抛错（投票类型已支持，atype 自动推断为 3）", async () => {
+    const { fakeFetch, captured } = makeFakeFetch();
+    await createSurveyByJson(
+      {
+        jsonl: [
+          '{"qtype":"问卷基础信息","title":"2026华语音乐投票"}',
+          '{"qtype":"单选","title":"Q","select":["A"]}',
+        ].join("\n"),
+      },
+      { apiKey: "k" },
+      fakeFetch,
+    );
+    assert.equal(captured.body.atype, 3);
   });
 
   it("标题含「表单」时推断 atype=7", async () => {
@@ -376,7 +591,9 @@ describe("createSurveyByJson 默认必答 & atype 推断 & 标题校验", () => 
     assert.equal(captured.body.atype, 1);
   });
 
-  it("空标题时透传（不校验）", async () => {
+  it("缺少 问卷基础信息 首行时被 preflight 拦截", async () => {
+    // 旧测试名为 "空标题时透传（不校验）"——现在 preflight 先于 validateSurveyTitle 跑，
+    // JSONL 没有元数据首行会被 preflight 抛"首个非空行不是问卷基础信息"，更早更友好。
     const { fakeFetch, captured } = makeFakeFetch();
     await assert.rejects(
       () =>
@@ -385,7 +602,7 @@ describe("createSurveyByJson 默认必答 & atype 推断 & 标题校验", () => 
           { apiKey: "k" },
           fakeFetch,
         ),
-      /标题缺失/,
+      /问卷基础信息|首个非空行/,
     );
     // 未触发网络调用
     assert.equal(captured.body, null);
@@ -477,6 +694,29 @@ describe("validateSurveyHasQuestions", () => {
   it("空白行 / 无法解析行不影响计数", () => {
     const jsonl = ["", "not json", '{"qtype":"单选","title":"Q","select":["A"]}'].join("\n");
     assert.doesNotThrow(() => validateSurveyHasQuestions(jsonl));
+  });
+
+  it("对 JSON null 给出稳定的行级对象错误", () => {
+    assert.throws(
+      () => validateSurveyHasQuestions("null"),
+      /JSONL 第 1 行必须是 JSON 对象/,
+    );
+  });
+
+  it("先验证输入再解析凭证", async () => {
+    const previousApiKey = process.env.WJX_API_KEY;
+    delete process.env.WJX_API_KEY;
+    setCredentialProvider(() => undefined);
+    try {
+      await assert.rejects(
+        () => createSurveyByJson({ jsonl: "" }),
+        /jsonl must not be empty/,
+      );
+    } finally {
+      if (previousApiKey === undefined) delete process.env.WJX_API_KEY;
+      else process.env.WJX_API_KEY = previousApiKey;
+      setCredentialProvider(undefined);
+    }
   });
 });
 
@@ -607,23 +847,21 @@ describe("createSurveyByJson 注入 atype 到 JSONL（修复服务端忽略顶�
     return { fakeFetch, captured };
   }
 
-  it("--type 3 投票：显式请求被拒绝（投票类型已禁用）", async () => {
-    const { fakeFetch } = makeFakeFetch();
-    await assert.rejects(
-      () =>
-        createSurveyByJson(
-          {
-            jsonl: [
-              '{"qtype":"问卷基础信息","title":"2026 年度歌手投票"}',
-              '{"qtype":"单选","title":"Q","select":["A","B"]}',
-            ].join("\n"),
-            atype: 3,
-          },
-          { apiKey: "k" },
-          fakeFetch,
-        ),
-      /不支持创建投票类型问卷/,
+  it("--type 3 投票：显式请求成功透传到 wire", async () => {
+    const { fakeFetch, captured } = makeFakeFetch();
+    await createSurveyByJson(
+      {
+        jsonl: [
+          '{"qtype":"问卷基础信息","title":"2026 年度歌手投票"}',
+          '{"qtype":"单选","title":"Q","select":["A","B"]}',
+        ].join("\n"),
+        atype: 3,
+      },
+      { apiKey: "k" },
+      fakeFetch,
     );
+    assert.equal(captured.body.atype, 3);
+    assert.equal(JSON.parse(captured.body.surveydatajson.split("\n")[0]).atype, 3);
   });
 
   it("--type 7 表单：顶层和 JSONL 内 atype 双写", async () => {
@@ -657,20 +895,18 @@ describe("createSurveyByJson 注入 atype 到 JSONL（修复服务端忽略顶�
     assert.equal(JSON.parse(captured.body.surveydatajson.split("\n")[0]).atype, 1);
   });
 
-  it("input.atype=3 优先级最高且因禁用投票而抛错", async () => {
-    const { fakeFetch } = makeFakeFetch();
-    await assert.rejects(
-      () =>
-        createSurveyByJson(
-          {
-            jsonl: '{"qtype":"问卷基础信息","title":"客户满意度","atype":1}\n{"qtype":"单选","title":"Q","select":["A"]}',
-            atype: 3,
-          },
-          { apiKey: "k" },
-          fakeFetch,
-        ),
-      /不支持创建投票类型问卷/,
+  it("input.atype=3 优先级最高，覆盖 JSONL 内的 atype=1", async () => {
+    const { fakeFetch, captured } = makeFakeFetch();
+    await createSurveyByJson(
+      {
+        jsonl: '{"qtype":"问卷基础信息","title":"客户满意度","atype":1}\n{"qtype":"单选","title":"Q","select":["A"]}',
+        atype: 3,
+      },
+      { apiKey: "k" },
+      fakeFetch,
     );
+    assert.equal(captured.body.atype, 3);
+    assert.equal(JSON.parse(captured.body.surveydatajson.split("\n")[0]).atype, 3);
   });
 
   it("默认 atype=1（普通调查）也写入 JSONL", async () => {
@@ -684,5 +920,215 @@ describe("createSurveyByJson 注入 atype 到 JSONL（修复服务端忽略顶�
     );
     assert.equal(captured.body.atype, 1);
     assert.equal(JSON.parse(captured.body.surveydatajson.split("\n")[0]).atype, 1);
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// preflightJsonl
+// ═══════════════════════════════════════════════════════════════════════════════
+
+describe("preflightJsonl", () => {
+  it("拒绝当前创建接口明确不支持的矩阵数值题", () => {
+    const jsonl = [
+      '{"qtype":"问卷基础信息","title":"测试"}',
+      '{"qtype":"矩阵数值题","title":"数值评价","rowtitle":["项目"],"select":["1","2"]}',
+    ].join("\n");
+    assert.ok(JSONL_READ_ONLY_OR_WEB_EDITOR_QTYPES.has("矩阵数值题"));
+    assert.throws(() => preflightJsonl(jsonl), /不支持.*创建接口|Web 编辑器/);
+  });
+
+  it("拒绝当前服务端明确不识别的高级/系统题型", () => {
+    for (const qtype of ["VlookUp问卷关联", "多项文件题", "多项简答题", "当前语音"]) {
+      const jsonl = [
+        '{"qtype":"问卷基础信息","title":"测试"}',
+        JSON.stringify({ qtype, title: `边界-${qtype}` }),
+      ].join("\n");
+      assert.ok(JSONL_READ_ONLY_OR_WEB_EDITOR_QTYPES.has(qtype), qtype);
+      assert.throws(() => preflightJsonl(jsonl), /不支持.*创建接口|Web 编辑器/);
+    }
+  });
+
+  it("要求 BWS/MaxDiff/图片PK 声明任务参数", () => {
+    for (const qtype of ["BWS", "MaxDiff", "Maxdiff", "图片PK"]) {
+      const missing = [
+        '{"qtype":"问卷基础信息","title":"测试"}',
+        JSON.stringify({ qtype, title: `缺参数-${qtype}`, mdattr: ["A", "B", "C"] }),
+      ].join("\n");
+      assert.throws(() => preflightJsonl(missing), /pertaskcount|tasklength/);
+
+      const valid = [
+        '{"qtype":"问卷基础信息","title":"测试"}',
+        JSON.stringify({
+          qtype,
+          title: `带参数-${qtype}`,
+          mdattr: ["A", "B", "C", "D"],
+          pertaskcount: 2,
+          tasklength: 2,
+        }),
+      ].join("\\n");
+      assert.doesNotThrow(() => preflightJsonl(valid), qtype);
+    }
+  });
+  it("放行合法 JSONL", () => {
+    const jsonl = [
+      '{"qtype":"问卷基础信息","title":"客户满意度"}',
+      '{"qtype":"单选","title":"性别","select":["男","女"]}',
+    ].join("\n");
+    assert.doesNotThrow(() => preflightJsonl(jsonl));
+  });
+
+  it("requires a language and rejects standard answers for exam code questions", () => {
+    const missingLanguage = [
+      '{"qtype":"问卷基础信息","title":"代码考试"}',
+      '{"qtype":"考试代码","title":"实现函数"}',
+    ].join("\n");
+    assert.throws(() => preflightJsonl(missingLanguage), /codetype/);
+
+    const answerOnCode = [
+      '{"qtype":"问卷基础信息","title":"代码考试"}',
+      '{"qtype":"考试代码","title":"实现函数","codetype":"python","correctselect":["答案"]}',
+    ].join("\n");
+    assert.throws(() => preflightJsonl(answerOnCode), /不能设置 correctselect/);
+
+    const valid = [
+      '{"qtype":"问卷基础信息","title":"代码考试"}',
+      '{"qtype":"考试代码","title":"实现函数","codetype":"python"}',
+    ].join("\n");
+    assert.doesNotThrow(() => preflightJsonl(valid));
+    assert.throws(() => preflightJsonl(valid.replace('"codetype":"python"', '"codetype":"python","code":"pass"')), /不会被服务端保存/);
+    assert.throws(() => preflightJsonl(valid.replace('"codetype":"python"', '"codetype":"python","answer":["pass"]')), /不能设置.*标准答案/);
+  });
+
+  it("keeps subjective questions on the correct semantic path", () => {
+    const ordinary = [
+      '{"qtype":"问卷基础信息","title":"调查"}',
+      '{"qtype":"简答题","title":"您的意见"}',
+    ].join("\n");
+    assert.doesNotThrow(() => preflightJsonl(ordinary));
+
+    const accidentalExam = [
+      '{"qtype":"问卷基础信息","title":"调查"}',
+      '{"qtype":"简答题","title":"您的意见","isquiz":"1"}',
+    ].join("\n");
+    assert.throws(() => preflightJsonl(accidentalExam), /考试简答/);
+
+    const wrongFillContract = [
+      '{"qtype":"问卷基础信息","title":"考试"}',
+      '{"qtype":"考试简答","title":"开放题","correctselect":["答案"]}',
+    ].join("\n");
+    assert.throws(() => preflightJsonl(wrongFillContract), /不能设置 correctselect/);
+    const missingFillAnswer = [
+      '{"qtype":"问卷基础信息","title":"考试"}',
+      '{"qtype":"考试单项填空","title":"中国首都"}',
+    ].join("\n");
+    assert.throws(() => preflightJsonl(missingFillAnswer), /必须提供非空 correctselect/);
+    assert.doesNotThrow(() => preflightJsonl(missingFillAnswer.replace('"中国首都"', '"中国首都","correctselect":["北京"]')));
+  });
+
+  it("用 q_type 字段时给出明确改名提示", () => {
+    const jsonl = [
+      '{"qtype":"问卷基础信息","title":"测试"}',
+      '{"q_type":"单选","title":"性别","select":["男","女"]}',
+    ].join("\n");
+    assert.throws(
+      () => preflightJsonl(jsonl),
+      /q_type.*qtype|改名为 qtype/,
+    );
+  });
+
+  it("用 type 字段时给出明确改名提示", () => {
+    const jsonl = [
+      '{"qtype":"问卷基础信息","title":"测试"}',
+      '{"type":"单选","title":"性别"}',
+    ].join("\n");
+    assert.throws(
+      () => preflightJsonl(jsonl),
+      /type.*qtype|改名为 qtype/,
+    );
+  });
+
+  it("qtype 是数字时拦截并要求中文字符串", () => {
+    const jsonl = [
+      '{"qtype":"问卷基础信息","title":"测试"}',
+      '{"qtype":3,"title":"性别"}',
+    ].join("\n");
+    assert.throws(() => preflightJsonl(jsonl), /必须是中文字符串/);
+  });
+
+  it("英文 qtype radio 给出中文映射", () => {
+    const jsonl = [
+      '{"qtype":"问卷基础信息","title":"测试"}',
+      '{"qtype":"radio","title":"性别"}',
+    ].join("\n");
+    assert.throws(() => preflightJsonl(jsonl), /单选/);
+  });
+
+  it("英文 qtype rating 给出中文映射", () => {
+    const jsonl = [
+      '{"qtype":"问卷基础信息","title":"测试"}',
+      '{"qtype":"rating","title":"满意度"}',
+    ].join("\n");
+    assert.throws(() => preflightJsonl(jsonl), /量表题/);
+  });
+
+  it("英文 qtype matrix 给出中文映射", () => {
+    const jsonl = [
+      '{"qtype":"问卷基础信息","title":"测试"}',
+      '{"qtype":"matrix","title":"评价"}',
+    ].join("\n");
+    assert.throws(() => preflightJsonl(jsonl), /矩阵单选/);
+  });
+
+  it("英文 qtype multiple_choice 大小写/分隔符归一化", () => {
+    const jsonl = [
+      '{"qtype":"问卷基础信息","title":"测试"}',
+      '{"qtype":"Multiple-Choice","title":"爱好"}',
+    ].join("\n");
+    assert.throws(() => preflightJsonl(jsonl), /多选/);
+  });
+
+  it("拼错的中文 qtype 给出 Levenshtein 建议", () => {
+    const jsonl = [
+      '{"qtype":"问卷基础信息","title":"测试"}',
+      '{"qtype":"单选题","title":"性别","select":["男","女"]}',
+    ].join("\n");
+    assert.throws(() => preflightJsonl(jsonl), /你是不是想写/);
+  });
+
+  it("首行非问卷基础信息时拦截", () => {
+    const jsonl = '{"qtype":"单选","title":"性别","select":["男","女"]}';
+    assert.throws(
+      () => preflightJsonl(jsonl),
+      /问卷基础信息|首个非空行/,
+    );
+  });
+
+  it("首行错误的提示包含 jsonl-template 引导", () => {
+    const jsonl = '{"qtype":"单选","title":"X","select":["A"]}';
+    assert.throws(() => preflightJsonl(jsonl), /jsonl-template/);
+  });
+
+  it("空 JSONL 不抛错（交给后续 validateSurveyHasQuestions）", () => {
+    assert.doesNotThrow(() => preflightJsonl(""));
+    assert.doesNotThrow(() => preflightJsonl("\n\n"));
+  });
+
+  it("跳过无法解析的 JSON 行（交给 parseJsonl 报告）", () => {
+    const jsonl = [
+      "not valid json",
+      '{"qtype":"问卷基础信息","title":"测试"}',
+      '{"qtype":"单选","title":"X","select":["A"]}',
+    ].join("\n");
+    assert.doesNotThrow(() => preflightJsonl(jsonl));
+  });
+
+  it("非题目 qtype（分页栏/段落说明/知情同意书）放行", () => {
+    const jsonl = [
+      '{"qtype":"问卷基础信息","title":"测试"}',
+      '{"qtype":"分页栏"}',
+      '{"qtype":"段落说明","title":"说明"}',
+      '{"qtype":"知情同意书","title":"同意"}',
+    ].join("\n");
+    assert.doesNotThrow(() => preflightJsonl(jsonl));
   });
 });

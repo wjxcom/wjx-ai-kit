@@ -1,9 +1,16 @@
 import { readFileSync } from "node:fs";
 import { Command } from "commander";
 import {
-  createSurvey,
-  createSurveyByText,
   createSurveyByJson,
+  updateSurveyByJson,
+  prepareSurveyDslJson,
+  surveyLogicReadOptions,
+  verifySurveyJsonUpdate,
+  createAiPage,
+  updateAiPage,
+  AI_PAGE_MAX_HTML_LENGTH,
+  AI_PAGE_PAGE_TYPES,
+  CREATABLE_SURVEY_ATYPES,
   getSurvey,
   listSurveys,
   updateSurveyStatus,
@@ -15,15 +22,328 @@ import {
   clearRecycleBin,
   uploadFile,
   buildSurveyUrl,
-  surveyToText,
-  textToSurvey,
-  parsedQuestionsToWire,
+  buildPreviewUrl,
+  getShortLink,
+  getWjxShortLinkUrl,
   MAX_JSONL_SIZE,
+  preflightJsonl,
+  parseJsonl,
+  jsonToSurvey,
+  extractJsonlQuestionTypeExpectations,
+  getJsonlQuestionTypeCode,
+  Action,
 } from "wjx-api-sdk";
-import { formatOutput } from "../lib/output.js";
-import { CliError, handleError } from "../lib/errors.js";
-import { getCredentials } from "../lib/auth.js";
-import { executeCommand, strictInt, requireField, getMerged, createCapturingFetch, printDryRunPreview, ensureJsonString, ensureStringArray } from "../lib/command-helpers.js";
+import type { JsonlQuestionTypeExpectation } from "wjx-api-sdk";
+import { enrichSurveyListOutput, formatOutput } from "../lib/output.js";
+import { CliError, ensureApiSuccess, handleError } from "../lib/errors.js";
+import { applyProfileCredentials, getCredentials, getProfileBaseUrl } from "../lib/auth.js";
+import { resolveProfile } from "../lib/profiles.js";
+import { strictInt, requireField, requirePositiveInt, requireEnum, getMerged, createCapturingFetch, printDryRunPreview, ensureNonEmptyJsonArray, ensureJsonObject, ensureStringArray } from "../lib/command-helpers.js";
+import { executeRuntimeAction, executeRuntimeCommand } from "../lib/runtime/executor.js";
+import { verifySurveyPostWrite } from "../lib/runtime/post-verify.js";
+import { surveyIdentityMatches } from "../lib/runtime/identity.js";
+import { buildRequestPlan } from "../lib/runtime/request-plan.js";
+import { CLI_CLIENT_NAME, CLI_CLIENT_VERSION } from "../lib/client-info.js";
+
+function resolveSurveyDsl(value: unknown) {
+  const json = ensureJsonObject(value, "dsl");
+  try { return prepareSurveyDslJson(json === undefined ? undefined : JSON.parse(json)); }
+  catch (error) { throw new CliError("INPUT_ERROR", error instanceof Error ? error.message : String(error)); }
+}
+
+function resolveAiPageHtml(values: Record<string, unknown>): string {
+  if (typeof values.html_content === "string" && values.html_content.trim().length > 0) return values.html_content;
+  if (typeof values.html === "string" && values.html.trim().length > 0) return values.html;
+  if (typeof values.file === "string" && values.file.length > 0) {
+    try { return readFileSync(values.file, "utf8"); }
+    catch { throw new CliError("INPUT_ERROR", `无法读取 AI 主页 HTML 文件: ${values.file}`); }
+  }
+  throw new CliError("INPUT_ERROR", "必须提供 --html_content 或 --file 参数");
+}
+
+function aiPageHtml(data: Record<string, unknown> | undefined): string | undefined {
+  if (!data) return undefined;
+  for (const key of ["html_content", "html", "content"]) {
+    const value = data[key];
+    if (typeof value === "string" && value.trim()) return value;
+  }
+  return undefined;
+}
+
+function normalizeAiPageHtml(value: string): string {
+  return value.replace(/\r\n?/g, "\n").trim();
+}
+
+function aiPageType(data: Record<string, unknown> | undefined): number | undefined {
+  const raw = data?.page_type ?? data?.pageType;
+  return numericCode(raw);
+}
+
+const SETTING_KEYS = [
+  "api_setting",
+  "after_submit_setting",
+  "msg_setting",
+  "sojumpparm_setting",
+  "time_setting",
+] as const;
+type SettingKey = typeof SETTING_KEYS[number];
+
+interface SettingsSnapshot {
+  data: Record<string, unknown>;
+  missingFields: SettingKey[];
+}
+
+interface SurveyStateSnapshot {
+  data?: Record<string, unknown>;
+  status?: number;
+  notFound: boolean;
+  identityMatches: boolean;
+}
+
+/**
+ * The delete API still requires the creator username for its ownership check,
+ * but get_survey already returns that value for the requested survey. Keep the
+ * fallback local to the CLI so omitting --username never weakens the server's
+ * authorization check or invents an identity.
+ */
+function surveyCreator(data: Record<string, unknown> | undefined): string | undefined {
+  if (!data) return undefined;
+  for (const key of ["creater", "creator", "username", "user_name", "owner"]) {
+    const value = data[key];
+    if (typeof value === "string" && value.trim()) return value.trim();
+  }
+  return undefined;
+}
+
+interface RecycleBinSnapshot {
+  kind: "survey" | "bin";
+  data?: Record<string, unknown>;
+  status?: number;
+  count?: number;
+  countKnown: boolean;
+  listShapeKnown?: boolean;
+}
+
+function asRecord(value: unknown): Record<string, unknown> | undefined {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? value as Record<string, unknown>
+    : undefined;
+}
+
+function numericCode(value: unknown): number | undefined {
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  if (typeof value === "string" && /^-?\d+$/.test(value.trim())) return Number(value);
+  return undefined;
+}
+
+function surveyStatusCode(data: Record<string, unknown> | undefined): number | undefined {
+  const raw = data?.status ?? data?.state ?? data?.status_code ?? data?.statusCode;
+  const numeric = numericCode(raw);
+  if (numeric !== undefined) return numeric;
+  if (typeof raw === "string") {
+    const normalized = raw.trim().toLowerCase().replace(/[\s_]+/g, "-");
+    return ({
+      draft: 0,
+      published: 1,
+      paused: 2,
+      deleted: 3,
+      "hard-deleted": 4,
+      reviewed: 5,
+    } as Record<string, number>)[normalized];
+  }
+  return undefined;
+}
+
+function surveyStatusLabel(code: number | undefined): string | undefined {
+  return ({
+    0: "draft",
+    1: "published",
+    2: "paused",
+    3: "deleted",
+    4: "hard-deleted",
+    5: "reviewed",
+  } as Record<number, string>)[code ?? -1];
+}
+
+function responseText(response: unknown): string {
+  const record = asRecord(response);
+  return [record?.errormsg, record?.msg, record?.errorcode, record?.code]
+    .filter((value) => value !== undefined && value !== null)
+    .map(String)
+    .join(" ");
+}
+
+function isNotFoundResponse(response: unknown): boolean {
+  return /not[\s_-]*found|does not exist|not exist|不存在|未找到|无此问卷/i.test(responseText(response));
+}
+
+function parseSettingObject(value: unknown): Record<string, unknown> | undefined {
+  if (asRecord(value)) return { ...(value as Record<string, unknown>) };
+  if (typeof value !== "string" || !value.trim()) return undefined;
+  try {
+    return asRecord(JSON.parse(value));
+  } catch {
+    return undefined;
+  }
+}
+
+function settingsPayload(value: unknown): Record<string, unknown> | undefined {
+  const root = asRecord(value);
+  if (!root) return undefined;
+  if (SETTING_KEYS.some((key) => key in root)) return root;
+  for (const key of ["settings", "setting", "data"]) {
+    const nested = asRecord(root[key]);
+    if (nested) return nested;
+  }
+  // An empty object is still a valid, but incomplete, snapshot. Keeping it
+  // lets the write proceed while post-verification reports the missing fields.
+  return root;
+}
+
+function deepMergeSetting(
+  existing: Record<string, unknown>,
+  patch: Record<string, unknown>,
+): Record<string, unknown> {
+  const merged: Record<string, unknown> = { ...existing };
+  for (const [key, value] of Object.entries(patch)) {
+    const current = asRecord(merged[key]);
+    const next = asRecord(value);
+    // Arrays and scalar values intentionally replace the previous value;
+    // nested plain objects are merged so an omitted key is preserved.
+    merged[key] = current && next ? deepMergeSetting(current, next) : value;
+  }
+  return merged;
+}
+
+function deepEqual(left: unknown, right: unknown): boolean {
+  if (Object.is(left, right)) return true;
+  if (Array.isArray(left) || Array.isArray(right)) {
+    if (!Array.isArray(left) || !Array.isArray(right) || left.length !== right.length) return false;
+    return left.every((value, index) => deepEqual(value, right[index]));
+  }
+  const leftRecord = asRecord(left);
+  const rightRecord = asRecord(right);
+  if (!leftRecord || !rightRecord) return false;
+  const leftKeys = Object.keys(leftRecord).sort();
+  const rightKeys = Object.keys(rightRecord).sort();
+  return leftKeys.length === rightKeys.length && leftKeys.every((key, index) =>
+    key === rightKeys[index] && deepEqual(leftRecord[key], rightRecord[key]));
+}
+
+function requestedSettingKeys(input: Record<string, unknown>): SettingKey[] {
+  return SETTING_KEYS.filter((key) => input[key] !== undefined);
+}
+
+async function readSettingsSnapshot(
+  input: Record<string, unknown>,
+  credentials: Parameters<typeof getSurveySettings>[1],
+): Promise<SettingsSnapshot> {
+  const result = await getSurveySettings({ vid: input.vid as number }, credentials);
+  ensureApiSuccess(result);
+  const data = settingsPayload(result.data);
+  if (!data) throw new CliError("API_ERROR", "读取问卷设置失败：API 响应缺少设置对象");
+  return {
+    data,
+    missingFields: SETTING_KEYS.filter((key) => parseSettingObject(data[key]) === undefined),
+  };
+}
+
+async function readSurveyState(
+  input: Record<string, unknown>,
+  credentials: Parameters<typeof getSurvey>[1],
+  requestOptions?: Parameters<typeof getSurvey>[3],
+): Promise<SurveyStateSnapshot> {
+  const result = await getSurvey(
+    { vid: input.vid as number },
+    credentials,
+    undefined,
+    requestOptions,
+  );
+  const raw = result as unknown as Record<string, unknown>;
+  if (raw.result !== true) {
+    // Preserve the upstream diagnostic for generic pre-read failures. A
+    // not-found response is the one case where callers need a stable local
+    // decision so destructive commands can stop before their write.
+    if (isNotFoundResponse(raw)) return { notFound: true, identityMatches: true };
+    ensureApiSuccess(result);
+  }
+  const data = asRecord(raw.data);
+  return {
+    data,
+    status: surveyStatusCode(data),
+    notFound: false,
+    identityMatches: surveyIdentityMatches(data, input.vid as number),
+  };
+}
+
+// WJX can make a delete visible in stages (for example published -> deleted
+// -> hard-deleted). Keep the read-only poll bounded while allowing the service
+// a few seconds to settle. A not-found response is deliberately terminal for
+// the poll: it cannot prove the required status for either deletion mode.
+const DELETE_VERIFY_DELAYS_MS = [100, 200, 400, 800, 1_000, 1_000, 1_000, 2_000, 2_000] as const;
+// The recycle-bin endpoint can take substantially longer to expose the
+// terminal status than a normal delete. Keep polling read-only for a bounded
+// settling window instead of reporting status=3 as an unknown write.
+const RECYCLE_CLEAR_VERIFY_DELAYS_MS = [500, 1_000, 2_000, 3_000, 5_000, 5_000, 5_000, 5_000] as const;
+
+function deleteStatusMatches(status: number | undefined, completely: boolean): boolean {
+  return completely ? status === 4 : status === 3;
+}
+
+async function waitForSurveyDeletion(
+  input: Record<string, unknown>,
+  credentials: Parameters<typeof getSurvey>[1],
+  completely: boolean,
+  delays: readonly number[] = DELETE_VERIFY_DELAYS_MS,
+): Promise<SurveyStateSnapshot> {
+  let last: SurveyStateSnapshot = { notFound: false, identityMatches: false };
+  for (let attempt = 0; attempt <= delays.length; attempt++) {
+    try {
+      last = await readSurveyState(input, credentials);
+      // A response for another survey is not a transient lifecycle state. Stop
+      // immediately so the command cannot waste the full polling window while
+      // exposing unrelated data as evidence for the requested vid.
+      if (last.notFound || !last.identityMatches || deleteStatusMatches(last.status, completely)) return last;
+    } catch (error) {
+      if (attempt === delays.length) throw error;
+    }
+    if (attempt < delays.length) {
+      await new Promise((resolve) => setTimeout(resolve, delays[attempt]));
+    }
+  }
+  return last;
+}
+
+function listRecords(data: Record<string, unknown> | undefined): { records: Record<string, unknown>[]; known: boolean } {
+  if (!data) return { records: [], known: false };
+  for (const key of ["activitys", "activities", "surveys", "survey_list", "list", "items"]) {
+    const value = data[key];
+    if (Array.isArray(value)) {
+      return {
+        records: value.filter((item): item is Record<string, unknown> => Boolean(asRecord(item))),
+        known: true,
+      };
+    }
+    const map = asRecord(value);
+    if (map) {
+      return {
+        records: Object.values(map).filter((item): item is Record<string, unknown> => Boolean(asRecord(item))),
+        known: true,
+      };
+    }
+  }
+  return { records: [], known: false };
+}
+
+function listCount(data: Record<string, unknown> | undefined): { count?: number; known: boolean } {
+  if (!data) return { known: false };
+  for (const key of ["total_count", "totalCount", "count"]) {
+    const count = numericCode(data[key]);
+    if (count !== undefined && count >= 0) return { count, known: true };
+  }
+  const listed = listRecords(data);
+  return listed.known ? { count: listed.records.length, known: true } : { known: false };
+}
 
 export function registerSurveyCommands(program: Command): void {
   const survey = program.command("survey").description("问卷管理");
@@ -35,34 +355,58 @@ export function registerSurveyCommands(program: Command): void {
     .option("--page <n>", "页码", strictInt)
     .option("--page_size <n>", "每页数量", strictInt)
     .option("--status <n>", "状态筛选", strictInt)
-    .option("--atype <n>", "问卷类型筛选：1=调查, 2=测评, 3=投票, 4=360度评估, 5=360评估无测评关系, 6=考试, 7=表单, 8=用户体系, 9=教学评估, 10=量表, 11=民主评议", strictInt)
+    .option("--atype <n>", "问卷类型筛选：1=调查, 2=测评, 3=投票, 4=360度评估, 5=360评估无测评关系, 6=考试, 7=表单, 8=用户体系（历史兼容）, 9=教学评估, 10=量表, 11=民主评议", strictInt)
     .option("--name_like <s>", "名称搜索")
     .option("--sort <n>", "排序规则：0=ID升序, 1=ID降序, 2=开始时间升序, 3=开始时间降序, 4=创建时间升序, 5=创建时间降序", strictInt)
     .option("--creater <s>", "创建者（子账号用户名）")
     .option("--folder <s>", "文件夹名称筛选")
     .option("--is_xingbiao", "仅显示星标问卷")
     .option("--query_all", "查询所有问卷（含子账号）")
-    .option("--verify_status <n>", "审核状态筛选", strictInt)
-    .option("--time_type <n>", "时间类型：0=创建时间, 1=最后修改时间", strictInt)
+    .option("--verify_status <n>", "审核状态筛选：1=已通过, 2=审核中, 3=未通过, 4=待实名", strictInt)
+    .option("--time_type <n>", "时间类型：0=不按时间查询（默认）, 1=按问卷开始时间, 2=按问卷创建时间", strictInt)
     .option("--begin_time <n>", "起始时间（毫秒时间戳）", strictInt)
     .option("--end_time <n>", "结束时间（毫秒时间戳）", strictInt)
     .action(async (_opts, cmd) => {
-      await executeCommand(program, cmd, listSurveys, (m) => ({
-        page_index: m.page,
-        page_size: m.page_size,
-        status: m.status,
-        atype: m.atype,
-        name_like: m.name_like,
-        sort: m.sort,
-        creater: m.creater,
-        folder: m.folder,
-        is_xingbiao: m.is_xingbiao,
-        query_all: m.query_all,
-        verify_status: m.verify_status,
-        time_type: m.time_type,
-        begin_time: m.begin_time,
-        end_time: m.end_time,
-      }));
+      await executeRuntimeCommand(program, cmd, {
+        normalize: ({ values }) => {
+          if (values.page !== undefined) requirePositiveInt(values, "page");
+          if (values.page_size !== undefined) requirePositiveInt(values, "page_size");
+          if (values.status !== undefined) requireEnum(values, "status", [0, 1, 2, 3, 4, 5]);
+          if (values.atype !== undefined) requireEnum(values, "atype", [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]);
+          if (values.verify_status !== undefined) requireEnum(values, "verify_status", [1, 2, 3, 4]);
+          if (values.sort !== undefined) requireEnum(values, "sort", [0, 1, 2, 3, 4, 5]);
+          if (values.time_type !== undefined) requireEnum(values, "time_type", [0, 1, 2]);
+          return {
+            page_index: values.page,
+            page_size: values.page_size,
+            status: values.status,
+            atype: values.atype,
+            name_like: values.name_like,
+            sort: values.sort,
+            creater: values.creater,
+            folder: values.folder,
+            is_xingbiao: values.is_xingbiao,
+            query_all: values.query_all,
+            verify_status: values.verify_status,
+            time_type: values.time_type,
+            begin_time: values.begin_time,
+            end_time: values.end_time,
+          };
+        },
+        buildPlans: (input, context) => [buildRequestPlan({
+          service: "default",
+          action: Action.LIST_SURVEYS,
+          url: context?.apiUrl,
+          body: {
+            action: Action.LIST_SURVEYS,
+            page_index: input.page_index ?? 1,
+            page_size: input.page_size ?? 10,
+            ...Object.fromEntries(Object.entries(input).filter(([, value]) => value !== undefined)),
+          },
+        })],
+        execute: (input, credentials, requestOptions) => listSurveys(input, credentials, undefined, requestOptions),
+        transformResult: enrichSurveyListOutput,
+      });
     });
 
   // --- get ---
@@ -78,8 +422,8 @@ export function registerSurveyCommands(program: Command): void {
     .option("--get_tags", "返回标签信息")
     .option("--showtitle", "显示标题")
     .action(async (_opts, cmd) => {
-      await executeCommand(program, cmd, getSurvey, (m) => {
-        requireField(m, "vid");
+      await executeRuntimeAction(program, cmd, getSurvey, (m) => {
+        requirePositiveInt(m, "vid");
         return {
           vid: m.vid,
           get_questions: m.get_questions,
@@ -96,109 +440,17 @@ export function registerSurveyCommands(program: Command): void {
   // --- create ---
   survey
     .command("create")
-    .description("创建问卷")
-    .option("--title <s>", "问卷标题")
-    .option("--type <n>", "问卷类型", strictInt)
-    .option("--description <s>", "问卷描述")
-    .option("--questions <json>", "题目JSON数组")
-    .option("--optional_titles <json>", "允许设为选填的题目标题 JSON 数组")
-    .option("--source_vid <s>", "复制源问卷ID")
-    .option("--publish", "创建后发布")
-    .action(async (_opts, cmd) => {
-      await executeCommand(program, cmd, createSurvey, (m) => {
-        requireField(m, "title");
-        return {
-          title: m.title,
-          type: m.type ?? 0,
-          description: m.description ?? "",
-          questions: ensureJsonString(m.questions, "questions") ?? "[]",
-          optionalTitles: ensureStringArray(m.optional_titles, "optional_titles"),
-          source_vid: m.source_vid,
-          publish: m.publish,
-        };
-      });
-    });
-
-  // --- create-by-text ---
-  survey
-    .command("create-by-text")
-    .description("用 DSL 文本创建问卷（推荐 AI Agent 使用）")
-    .option("--text <s>", "DSL 格式问卷文本")
-    .option("--file <path>", "从文件读取 DSL 文本")
-    .option("--type <n>", "问卷类型：1=调查, 2=测评, 3=投票, 6=考试, 7=表单, 10=量表, 11=民主测评", strictInt)
-    .option("--publish", "创建后发布")
-    .option("--creater <s>", "创建者子账号")
-    .action(async (_opts, cmd) => {
-      try {
-        const merged = getMerged(cmd);
-
-        // Resolve DSL text: --text > --file > stdin.text
-        let dslText: string | undefined;
-        if (typeof merged.text === "string" && merged.text) {
-          dslText = merged.text;
-        } else if (typeof merged.file === "string" && merged.file) {
-          try {
-            dslText = readFileSync(merged.file as string, "utf8");
-          } catch {
-            throw new CliError("INPUT_ERROR", `无法读取文件: ${merged.file}`);
-          }
-        }
-
-        if (!dslText) {
-          throw new CliError("INPUT_ERROR", "必须提供 --text 或 --file 参数");
-        }
-
-        const globalOpts = program.opts();
-
-        if (globalOpts.dryRun) {
-          const parsed = textToSurvey(dslText);
-          const { questions: wireQuestions, skippedParagraphs } = parsedQuestionsToWire(parsed.questions);
-          process.stderr.write(JSON.stringify({
-            dry_run: true,
-            parsed_title: parsed.title,
-            parsed_description: parsed.description,
-            question_count: wireQuestions.length,
-            skipped_paragraphs: skippedParagraphs.length > 0
-              ? skippedParagraphs.map((q) => q.title)
-              : undefined,
-            wire_questions: wireQuestions,
-          }, null, 2) + "\n");
-          return;
-        }
-
-        const creds = getCredentials(globalOpts);
-        const result = await createSurveyByText({
-          text: dslText,
-          atype: merged.type as number | undefined,
-          publish: merged.publish as boolean | undefined,
-          creater: merged.creater as string | undefined,
-        }, creds);
-
-        if (result.result === false) {
-          throw new CliError("API_ERROR", result.errormsg || "API request failed");
-        }
-
-        formatOutput(result, globalOpts);
-      } catch (e) {
-        handleError(e);
-      }
-    });
-
-  // --- create-by-json ---
-  survey
-    .command("create-by-json")
+    .option("--dsl <json>", '题目逻辑模块 JSON：{"logic":"logic { ... };"}')
     .description("用 JSONL 格式创建问卷（支持 70+ 题型，推荐 AI Agent 使用）")
     .option("--jsonl <s>", "JSONL 格式问卷文本")
     .option("--file <path>", "从文件读取 JSONL 文本")
     .option("--title <s>", "覆盖 JSONL 中的问卷标题")
-    .option("--type <n>", "问卷类型：1=调查, 2=测评, 3=投票, 6=考试, 7=表单, 10=量表, 11=民主测评", strictInt)
+    .option("--type <n>", "问卷类型：1=调查, 2=测评, 3=投票, 4=360度评估, 5=360评估无测评关系, 6=考试, 7=表单, 9=教学评估, 10=量表, 11=民主评议", strictInt)
     .option("--optional_titles <json>", "允许设为选填的题目标题 JSON 数组")
-    .option("--publish", "创建后发布")
+    .option("--publish", "显式要求创建后发布；普通题型默认发布，纯框架题型默认保持草稿")
     .option("--creater <s>", "创建者子账号")
     .action(async (_opts, cmd) => {
-      try {
-        const merged = getMerged(cmd);
-
+      await executeRuntimeAction(program, cmd, createSurveyByJson, (merged) => {
         // Resolve JSONL text: --jsonl > --file > stdin.jsonl
         let jsonlText: string | undefined;
         if (typeof merged.jsonl === "string" && merged.jsonl) {
@@ -206,8 +458,9 @@ export function registerSurveyCommands(program: Command): void {
         } else if (typeof merged.file === "string" && merged.file) {
           try {
             const raw = readFileSync(merged.file as string, "utf8");
-            if (raw.length > MAX_JSONL_SIZE) {
-              throw new CliError("INPUT_ERROR", `文件大小 ${raw.length} 字节超过上限 ${MAX_JSONL_SIZE}`);
+            const byteLength = Buffer.byteLength(raw, "utf8");
+            if (byteLength > MAX_JSONL_SIZE) {
+              throw new CliError("INPUT_ERROR", `文件大小 ${byteLength} 字节超过上限 ${MAX_JSONL_SIZE}`);
             }
             jsonlText = raw;
           } catch (e) {
@@ -215,45 +468,271 @@ export function registerSurveyCommands(program: Command): void {
             throw new CliError("INPUT_ERROR", `无法读取文件: ${merged.file}`);
           }
         }
-
-        if (!jsonlText) {
-          throw new CliError("INPUT_ERROR", "必须提供 --jsonl 或 --file 参数");
+        if (!jsonlText || !jsonlText.trim()) throw new CliError("INPUT_ERROR", "必须提供 --jsonl 或 --file 参数");
+        const inputByteLength = Buffer.byteLength(jsonlText.trim(), "utf8");
+        if (inputByteLength > MAX_JSONL_SIZE) {
+          throw new CliError("INPUT_ERROR", `JSONL 大小 ${inputByteLength} 字节超过上限 ${MAX_JSONL_SIZE}`);
         }
-
-        const globalOpts = program.opts();
-        const creds = getCredentials(globalOpts);
-
-        if (globalOpts.dryRun) {
-          const { fetchImpl, getCapturedRequest } = createCapturingFetch();
-          await createSurveyByJson({
-            jsonl: jsonlText,
-            title: merged.title as string | undefined,
-            atype: merged.type as number | undefined,
-            optionalTitles: ensureStringArray(merged.optional_titles, "optional_titles"),
-            publish: merged.publish as boolean | undefined,
-            creater: merged.creater as string | undefined,
-          }, creds, fetchImpl);
-          printDryRunPreview(getCapturedRequest());
-          return;
-        }
-
-        const result = await createSurveyByJson({
+        // Validate the local JSONL shape before authentication or transport so
+        // malformed agent input is always reported as INPUT_ERROR.
+        parseJsonl(jsonlText);
+        preflightJsonl(jsonlText);
+        return {
           jsonl: jsonlText,
+          dsl: resolveSurveyDsl(merged.dsl),
           title: merged.title as string | undefined,
-          atype: merged.type as number | undefined,
+          atype: (() => {
+            if (merged.type !== undefined) {
+              requireEnum({ type: merged.type }, "type", [...CREATABLE_SURVEY_ATYPES]);
+            }
+            return merged.type as number | undefined;
+          })(),
           optionalTitles: ensureStringArray(merged.optional_titles, "optional_titles"),
           publish: merged.publish as boolean | undefined,
           creater: merged.creater as string | undefined,
-        }, creds);
+        };
+      }, {
+        requestOptions: {
+          clientName: CLI_CLIENT_NAME,
+          clientVersion: CLI_CLIENT_VERSION,
+        },
+        postVerify: async (result, input, credentials) => {
+          const data = result.data && typeof result.data === "object" ? result.data as Record<string, unknown> : {};
+          const rawVid = data.vid;
+          const vid = typeof rawVid === "number"
+            ? rawVid
+            : typeof rawVid === "string" && /^\d+$/.test(rawVid.trim())
+              ? Number(rawVid)
+              : undefined;
+          if (vid === undefined || !Number.isSafeInteger(vid) || vid <= 0) {
+            return { verification: { structure: false, status: false, link: false }, warnings: ["create response did not include a verifiable vid"] };
+          }
+          const sourceJsonl = typeof input.jsonl === "string" ? input.jsonl : "";
+          let expectedTitle: string | undefined;
+          let expectedQuestionCount: number | undefined;
+          let expectedQuestionTypes: ReturnType<typeof extractJsonlQuestionTypeExpectations> | undefined;
+          let allowAdditionalQuestionRows = false;
+          if (sourceJsonl) {
+            const parsed = jsonToSurvey(sourceJsonl);
+            expectedTitle = typeof input.title === "string" && input.title.trim()
+              ? input.title.trim()
+              : parsed.title;
+            expectedQuestionTypes = extractJsonlQuestionTypeExpectations(sourceJsonl);
+            // Some accepted JSONL names are represented by service-owned
+            // expansion rows or by a generic q_type when the supplied shape
+            // is only a skeleton (for example consent/framework/model rows).
+            // Keep strict counts for fully mapped input, but allow additional
+            // read-back rows whenever the source contains an unverifiable row.
+            allowAdditionalQuestionRows = parseJsonl(sourceJsonl).some((row) =>
+              typeof row.qtype === "string"
+              && row.qtype !== "问卷基础信息"
+              && getJsonlQuestionTypeCode(row.qtype) === undefined,
+            );
+            // Count the same real-question rows used by qtype verification;
+            // page/paragraph/consent scaffolding is not a question count.
+            expectedQuestionCount = expectedQuestionTypes.filter((item: JsonlQuestionTypeExpectation) => item.q_type !== undefined).length;
+          }
+          return verifySurveyPostWrite({
+            vid,
+            sid: typeof data.sid === "string" ? data.sid : undefined,
+            expectedTitle,
+            expectedLogic: (input.dsl as { logic?: string } | undefined)?.logic,
+            expectedQuestionCount,
+            expectedQuestionTypes,
+            allowAdditionalQuestionRows,
+            baseUrl: typeof credentials.baseUrl === "string" ? credentials.baseUrl : undefined,
+            credentials,
+            listSurveysFn: (listInput, listCredentials, listFetch) => listSurveys(listInput, listCredentials, listFetch),
+          });
+        },
+      });
+    });
 
-        if (result.result === false) {
-          throw new CliError("API_ERROR", result.errormsg || "API request failed");
+  // --- update ---
+  survey.command("update")
+    .description("使用 Survey JSON 和可选题目逻辑修改问卷；仅修改逻辑时省略 JSONL")
+    .option("--vid <n>", "传统问卷编号", strictInt)
+    .option("--jsonl <s>", "完整问卷 JSONL")
+    .option("--file <path>", "从文件读取完整 JSONL")
+    .option("--dsl <json>", '题目逻辑模块 JSON：{"logic":"logic { ... };"}')
+    .option("--title <s>", "覆盖问卷标题")
+    .option("--type <n>", "现有问卷类型", strictInt)
+    .option("--optional_titles <json>", "允许选填的题目标题 JSON 数组")
+    .option("--publish", "保存后发布")
+    .option("--no-publish", "保存后保持草稿或暂停")
+    .option("--allow-breaking-changes", "允许无答卷问卷的结构变更")
+    .action(async (_opts, command) => {
+      await executeRuntimeAction(program, command, updateSurveyByJson, (values) => {
+        requirePositiveInt(values, "vid");
+        let jsonl = values.jsonl;
+        if (jsonl === undefined && typeof values.file === "string") {
+          try { jsonl = readFileSync(values.file, "utf8"); }
+          catch { throw new CliError("INPUT_ERROR", "无法读取问卷 JSONL 文件"); }
         }
+        if (jsonl === undefined && values.dsl === undefined) throw new CliError("INPUT_ERROR", "jsonl 或 dsl.logic 至少提供一项");
+        if (jsonl !== undefined) {
+          if (typeof jsonl !== "string" || Buffer.byteLength(jsonl, "utf8") > MAX_JSONL_SIZE)
+            throw new CliError("INPUT_ERROR", "JSONL 类型错误或超过大小上限");
+          try { preflightJsonl(jsonl); parseJsonl(jsonl); }
+          catch (error) { throw new CliError("INPUT_ERROR", error instanceof Error ? error.message : String(error)); }
+        }
+        return { vid: values.vid, jsonl, title: values.title, atype: values.type,
+          optionalTitles: ensureStringArray(values.optional_titles, "optional_titles"),
+          dsl: resolveSurveyDsl(values.dsl),
+          publish: values.publish,
+          allowBreakingChanges: values.allowBreakingChanges ?? values.allow_breaking_changes };
+      }, {
+        preRead: async (input, credentials) => {
+          const current = await getSurvey<Record<string, unknown>>({ vid: Number(input.vid),
+            ...surveyLogicReadOptions((input.dsl as { logic?: string } | undefined)?.logic) }, credentials);
+          ensureApiSuccess(current);
+          if (current.result !== true || !surveyIdentityMatches(current.data, Number(input.vid)))
+            throw new CliError("API_ERROR", "问卷读取身份不匹配，已停止更新");
+          if (Number(current.data.atype) === 12) throw new CliError("INPUT_ERROR", "AI 主页请使用 survey update-ai-page");
+          return current.data;
+        },
+        requiredVerification: ["structure", "status"],
+        postVerify: (_result, input, credentials, before) => verifySurveyJsonUpdate(
+          input as unknown as Parameters<typeof updateSurveyByJson>[0], before as Record<string, unknown>, credentials),
+      });
+    });
 
-        formatOutput(result, globalOpts);
-      } catch (e) {
-        handleError(e);
-      }
+  // --- create-ai-page ---
+  survey
+    .command("create-ai-page")
+    .description("创建 AI 主页")
+    .option("--title <s>", "AI 主页标题")
+    .option("--html_content <s>", "AI 主页 HTML 内容")
+    .option("--file <path>", "从文件读取 AI 主页 HTML 内容")
+    .option("--page_type <n>", "页面类型：0=网页, 1=海报, 2=PPT", strictInt)
+    .option("--publish", "创建后立即发布")
+    .option("--creater <s>", "创建者子账号")
+    .action(async (_opts, cmd) => {
+      await executeRuntimeCommand(program, cmd, {
+        normalize: ({ values }) => {
+          const html = resolveAiPageHtml(values);
+          if (values.page_type !== undefined) requireEnum(values, "page_type", AI_PAGE_PAGE_TYPES);
+          return { html_content: html, title: values.title, page_type: values.page_type, publish: values.publish, creater: values.creater };
+        },
+        validate: (input) => {
+          if (typeof input.html_content !== "string" || input.html_content.trim().length === 0) throw new CliError("INPUT_ERROR", "必须提供 --html_content 或 --file 参数");
+          if (input.html_content.length > AI_PAGE_MAX_HTML_LENGTH) throw new CliError("INPUT_ERROR", `AI 主页 HTML 不能超过 ${AI_PAGE_MAX_HTML_LENGTH} 个字符`);
+        },
+        buildPlans: (input, context) => [buildRequestPlan({
+          service: "default", action: Action.CREATE_AI_PAGE, url: context?.apiUrl,
+          body: Object.fromEntries(Object.entries({ action: Action.CREATE_AI_PAGE, html_content: input.html_content, title: input.title, page_type: input.page_type, publish: input.publish, creater: input.creater }).filter(([, value]) => value !== undefined)),
+        })],
+        execute: (input, credentials, requestOptions) => createAiPage(input, credentials, undefined, requestOptions),
+      });
+    });
+
+  // --- update-ai-page ---
+  survey
+    .command("update-ai-page")
+    .description("更新 AI 主页（已发布主页需先显式暂停）")
+    .option("--vid <n>", "传统 AI 主页 vid", strictInt)
+    .option("--html_content <s>", "AI 主页 HTML 内容")
+    .option("--file <path>", "从文件读取 AI 主页 HTML 内容")
+    .option("--title <s>", "AI 主页标题")
+    .action(async (_opts, cmd) => {
+      await executeRuntimeCommand(program, cmd, {
+        normalize: ({ values }) => {
+          requirePositiveInt(values, "vid");
+          const html = resolveAiPageHtml(values);
+          return { vid: values.vid, html_content: html, title: values.title };
+        },
+        validate: (input) => {
+          if (!/^[0-9]+$/.test(String(input.vid)) || Number(input.vid) <= 0) throw new CliError("INPUT_ERROR", "--vid 必须是正整数传统问卷编号，不能使用 sid");
+          if (typeof input.html_content !== "string" || input.html_content.trim().length === 0) throw new CliError("INPUT_ERROR", "必须提供 --html_content 或 --file 参数");
+          if (input.html_content.length > AI_PAGE_MAX_HTML_LENGTH) throw new CliError("INPUT_ERROR", `AI 主页 HTML 不能超过 ${AI_PAGE_MAX_HTML_LENGTH} 个字符`);
+        },
+        buildPlans: (input, context) => [buildRequestPlan({
+          service: "default", action: Action.UPDATE_AI_PAGE, url: context?.apiUrl,
+          body: Object.fromEntries(Object.entries({ action: Action.UPDATE_AI_PAGE, vid: input.vid, html_content: input.html_content, title: input.title }).filter(([, value]) => value !== undefined)),
+        })],
+        preRead: async (input, credentials, requestOptions) => {
+          const current = await getSurvey(
+            { vid: input.vid as number, get_questions: false, get_items: false, showtitle: true },
+            credentials,
+            undefined,
+            requestOptions,
+          );
+          if (current.result !== true) {
+            const details = [current.errormsg, current.errorcode, current.traceid]
+              .filter((value) => value !== undefined && value !== null && String(value).trim())
+              .map(String)
+              .join(" ");
+            throw new CliError(
+              "API_ERROR",
+              current.errormsg || `无法读取 AI 主页 ${String(input.vid)} 的完整 HTML，已停止更新`,
+              {
+                action: Action.UPDATE_AI_PAGE,
+                vid: input.vid,
+                ...(current.errorcode === undefined ? {} : { errorcode: current.errorcode }),
+                ...(current.traceid === undefined ? {} : { traceid: current.traceid }),
+                upstream: details || undefined,
+              },
+            );
+          }
+          const data = asRecord(current.data);
+          if (!surveyIdentityMatches(data, input.vid as number)) {
+            throw new CliError("API_ERROR", `AI 主页 ${String(input.vid)} 的读回身份不匹配，已停止更新`);
+          }
+          const existingHtml = aiPageHtml(data);
+          if (!existingHtml) {
+            throw new CliError("API_ERROR", `AI 主页 ${String(input.vid)} 的读回结果缺少完整 html_content，已停止更新`);
+          }
+          const pageType = aiPageType(data);
+          if (pageType === undefined) {
+            throw new CliError("API_ERROR", `AI 主页 ${String(input.vid)} 的读回结果缺少 page_type，无法确认页面类型未改变`);
+          }
+          if (!AI_PAGE_PAGE_TYPES.includes(pageType as typeof AI_PAGE_PAGE_TYPES[number])) {
+            throw new CliError("API_ERROR", `AI 主页 ${String(input.vid)} 的 page_type 无效，已停止更新`);
+          }
+          return { data, existingHtml, pageType };
+        },
+        postVerify: async (_result, input, credentials, preReadResult) => {
+          const before = preReadResult as { data?: Record<string, unknown>; existingHtml?: string; pageType?: number } | undefined;
+          try {
+            const current = await getSurvey(
+              { vid: input.vid as number, get_questions: false, get_items: false, showtitle: true },
+              credentials,
+            );
+            const data = asRecord(current.data);
+            const actualHtml = aiPageHtml(data);
+            const actualPageType = aiPageType(data);
+            const identity = surveyIdentityMatches(data, input.vid as number);
+            const htmlMatches = typeof input.html_content === "string"
+              && typeof actualHtml === "string"
+              && normalizeAiPageHtml(actualHtml) === normalizeAiPageHtml(input.html_content);
+            const pageTypeMatches = before?.pageType !== undefined
+              && actualPageType === before.pageType;
+            return {
+              verification: {
+                structure: identity && Boolean(actualHtml) && htmlMatches,
+                status: pageTypeMatches,
+                link: true,
+              },
+              outcome: identity && Boolean(actualHtml) && htmlMatches && pageTypeMatches ? "verified" : "unknown",
+              warnings: [
+                ...(identity ? [] : ["AI 主页读回身份不匹配"]),
+                ...(actualHtml ? [] : ["AI 主页读回结果缺少完整 html_content"]),
+                ...(htmlMatches ? [] : ["AI 主页读回 HTML 与提交内容不一致"]),
+                ...(pageTypeMatches ? [] : ["AI 主页 page_type 在更新后发生变化"]),
+              ],
+              page_type: actualPageType,
+            };
+          } catch (error) {
+            return {
+              verification: { structure: false, status: false, link: true },
+              outcome: "unknown",
+              warnings: ["AI 主页更新后的完整 HTML 读回失败", error instanceof Error ? error.message : String(error)],
+            };
+          }
+        },
+        requiredVerification: ["structure", "status"],
+        execute: (input, credentials, requestOptions) => updateAiPage(input as unknown as Parameters<typeof updateAiPage>[0], credentials, undefined, requestOptions),
+      });
     });
 
   // --- delete ---
@@ -264,28 +743,136 @@ export function registerSurveyCommands(program: Command): void {
     .option("--username <s>", "用户名")
     .option("--completely", "彻底删除")
     .action(async (_opts, cmd) => {
-      await executeCommand(program, cmd, deleteSurvey, (m) => {
-        requireField(m, "vid");
-        requireField(m, "username");
+      await executeRuntimeAction(program, cmd, deleteSurvey, (m) => {
+        requirePositiveInt(m, "vid");
         return {
           vid: m.vid,
-          username: m.username,
+          ...(typeof m.username === "string" && m.username.trim() ? { username: m.username.trim() } : {}),
           completely_delete: m.completely,
         };
+      }, {
+        preRead: async (input, credentials, requestOptions) => {
+          const state = await readSurveyState(input, credentials, requestOptions);
+          if (!state.data) {
+            if (state.notFound) {
+              throw new CliError("API_ERROR", `问卷 ${String(input.vid)} 不存在，已停止删除`);
+            }
+            throw new CliError("API_ERROR", `无法读取问卷 ${String(input.vid)} 的当前状态，已停止删除`);
+          }
+          if (!state.identityMatches) {
+            throw new CliError("API_ERROR", `问卷 ${String(input.vid)} 的读回身份不匹配，已停止删除`);
+          }
+          return state;
+        },
+        transformInput: async (input, _credentials, _requestOptions, preReadResult) => {
+          if (typeof input.username === "string" && input.username.trim()) {
+            return { ...input, username: input.username.trim() };
+          }
+          const snapshot = preReadResult as SurveyStateSnapshot | undefined;
+          const username = surveyCreator(snapshot?.data);
+          if (!username) {
+            throw new CliError(
+              "API_ERROR",
+              `问卷 ${String(input.vid)} 的读回结果缺少 creater，无法安全删除；请显式传入 --username`,
+            );
+          }
+          return { ...input, username };
+        },
+        postVerify: async (_result, input, credentials, _preReadResult) => {
+          let state: SurveyStateSnapshot;
+          const completely = input.completely_delete === true;
+          try {
+            state = await waitForSurveyDeletion(input, credentials, completely);
+          } catch (error) {
+            return {
+              verification: { structure: false, status: false, link: true },
+              outcome: "unknown",
+              warnings: [
+                "删除后的问卷状态读取失败，结果未知",
+                error instanceof Error ? error.message : String(error),
+              ],
+            };
+          }
+
+          if (!state.data) {
+            if (state.notFound) {
+              return {
+                verification: { structure: false, status: false, link: true },
+                outcome: "unknown",
+                warnings: [
+                  input.completely_delete === true
+                    ? "问卷读回不存在，但未能证明已达到彻底删除状态（status=4），结果未知"
+                    : "问卷读回不存在，但未能证明已进入回收站状态（status=3），结果未知",
+                ],
+              };
+            }
+            return {
+              verification: { structure: false, status: false, link: true },
+              outcome: "unknown",
+              warnings: ["删除后的问卷状态无法确认，结果未知"],
+            };
+          }
+
+          const status = surveyStatusLabel(state.status);
+          const verified = state.identityMatches && deleteStatusMatches(state.status, completely);
+          const warnings = verified
+            ? []
+            : [
+              ...(state.identityMatches ? [] : ["删除状态读回的问卷编号与请求不一致或缺少可验证身份"]),
+              completely
+                ? "问卷仍可读或未达到彻底删除状态"
+                : "问卷仍可读，删除状态未得到确认",
+            ];
+          return {
+            ...(status ? { status } : {}),
+            verification: { structure: state.identityMatches, status: verified, link: true },
+            outcome: verified ? "verified" : "unknown",
+            warnings,
+          };
+        },
       });
     });
 
   // --- status ---
   survey
     .command("status")
-    .description("更新问卷状态（1=发布, 2=暂停, 3=删除）")
+    .description("更新问卷状态（1=发布, 2=暂停, 3=删除并进入回收站，可恢复）")
     .option("--vid <n>", "问卷ID", strictInt)
     .option("--state <n>", "目标状态", strictInt)
+    .option("--status <n>", "目标状态（--state 的别名，兼容直觉命名）", strictInt)
     .action(async (_opts, cmd) => {
-      await executeCommand(program, cmd, updateSurveyStatus, (m) => {
-        requireField(m, "vid");
-        requireField(m, "state");
-        return { vid: m.vid, state: m.state };
+      await executeRuntimeAction(program, cmd, updateSurveyStatus, (m) => {
+        requirePositiveInt(m, "vid");
+        // 接受 --state 或 --status，任一即可
+        const state = m.state ?? m.status;
+        if (state === undefined || state === null) {
+          throw new CliError("INPUT_ERROR", "Missing required option: --state（或 --status）");
+        }
+        requireEnum({ state }, "state", [1, 2, 3]);
+        return { vid: m.vid, state };
+      }, {
+        // Publishing is verified by the read-back structure and target status;
+        // a respondent link is unrelated to this state transition.
+        requiredVerification: ["structure", "status"],
+        preRead: async (input, credentials, requestOptions) => {
+          const state = await readSurveyState(input, credentials, requestOptions);
+          if (!state.data) {
+            if (state.notFound) {
+              throw new CliError("API_ERROR", `问卷 ${String(input.vid)} 不存在，已停止状态更新`);
+            }
+            throw new CliError("API_ERROR", `无法读取问卷 ${String(input.vid)} 的当前状态，已停止状态更新`);
+          }
+          if (!state.identityMatches) {
+            throw new CliError("API_ERROR", `问卷 ${String(input.vid)} 的读回身份不匹配，已停止状态更新`);
+          }
+          return state;
+        },
+        postVerify: async (_result, input, credentials) => verifySurveyPostWrite({
+          vid: input.vid as number,
+          expectedStatus: input.state === 1 ? "published" : input.state === 2 ? "paused" : input.state === 3 ? "deleted" : undefined,
+          baseUrl: typeof credentials.baseUrl === "string" ? credentials.baseUrl : undefined,
+          credentials,
+        }),
       });
     });
 
@@ -295,8 +882,8 @@ export function registerSurveyCommands(program: Command): void {
     .description("获取问卷设置")
     .option("--vid <n>", "问卷ID", strictInt)
     .action(async (_opts, cmd) => {
-      await executeCommand(program, cmd, getSurveySettings, (m) => {
-        requireField(m, "vid");
+      await executeRuntimeAction(program, cmd, getSurveySettings, (m) => {
+        requirePositiveInt(m, "vid");
         return { vid: m.vid };
       });
     });
@@ -312,16 +899,124 @@ export function registerSurveyCommands(program: Command): void {
     .option("--sojumpparm_setting <json>", "参数设置JSON")
     .option("--time_setting <json>", "时间设置JSON")
     .action(async (_opts, cmd) => {
-      await executeCommand(program, cmd, updateSurveySettings, (m) => {
-        requireField(m, "vid");
-        return {
+      await executeRuntimeAction(program, cmd, updateSurveySettings, (m) => {
+        requirePositiveInt(m, "vid");
+        const input = {
           vid: m.vid,
-          api_setting: ensureJsonString(m.api_setting, "api_setting"),
-          after_submit_setting: ensureJsonString(m.after_submit_setting, "after_submit_setting"),
-          msg_setting: ensureJsonString(m.msg_setting, "msg_setting"),
-          sojumpparm_setting: ensureJsonString(m.sojumpparm_setting, "sojumpparm_setting"),
-          time_setting: ensureJsonString(m.time_setting, "time_setting"),
+          api_setting: ensureJsonObject(m.api_setting, "api_setting"),
+          after_submit_setting: ensureJsonObject(m.after_submit_setting, "after_submit_setting"),
+          msg_setting: ensureJsonObject(m.msg_setting, "msg_setting"),
+          sojumpparm_setting: ensureJsonObject(m.sojumpparm_setting, "sojumpparm_setting"),
+          time_setting: ensureJsonObject(m.time_setting, "time_setting"),
         };
+        if (requestedSettingKeys(input).length === 0) {
+          throw new CliError("INPUT_ERROR", "至少提供一个设置字段（--api_setting、--after_submit_setting、--msg_setting、--sojumpparm_setting 或 --time_setting）");
+        }
+        return input;
+      }, {
+        preRead: async (input, credentials) => readSettingsSnapshot(input, credentials),
+        transformInput: async (input, _credentials, _requestOptions, preReadResult) => {
+          const snapshot = preReadResult as SettingsSnapshot | undefined;
+          if (!snapshot) throw new CliError("API_ERROR", "更新设置前未读取到当前设置，已停止写入");
+
+          const finalInput: Record<string, unknown> = { vid: input.vid };
+          for (const key of requestedSettingKeys(input)) {
+            const patch = parseSettingObject(input[key]);
+            if (!patch) throw new CliError("INPUT_ERROR", `${key} 必须是 JSON 对象`);
+            const existing = parseSettingObject(snapshot.data[key]);
+            const merged = existing ? deepMergeSetting(existing, patch) : patch;
+            finalInput[key] = JSON.stringify(merged);
+          }
+          return finalInput;
+        },
+        postVerify: async (_result, input, credentials, preReadResult) => {
+          const snapshot = preReadResult as SettingsSnapshot | undefined;
+          const requested = requestedSettingKeys(input);
+          const warnings: string[] = [];
+          if (!snapshot) {
+            return {
+              verification: { structure: false, status: false, link: true },
+              outcome: "unknown",
+              warnings: ["更新后的设置无法与写入前快照比对，结果未知"],
+            };
+          }
+
+          for (const key of requested) {
+            if (snapshot.missingFields.includes(key)) {
+              // The API replaces a complete JSON setting. A missing pre-read
+              // field means preservation cannot be claimed even if the patch
+              // itself appears in the read-back response.
+              warnings.push(`${key} 写入前读回缺少，无法确认未修改字段是否保留`);
+            }
+          }
+
+          let result;
+          try {
+            result = await getSurveySettings({ vid: input.vid as number }, credentials);
+          } catch (error) {
+            return {
+              verification: { structure: false, status: false, link: true },
+              outcome: "unknown",
+              warnings: [
+                ...warnings,
+                "更新后的设置读取失败，结果未知",
+                error instanceof Error ? error.message : String(error),
+              ],
+            };
+          }
+
+          if ((result as unknown as Record<string, unknown>).result !== true) {
+            return {
+              verification: { structure: false, status: false, link: true },
+              outcome: "unknown",
+              warnings: [...warnings, "更新后的设置 API 返回失败，结果未知"],
+            };
+          }
+          const after = settingsPayload(result.data);
+          if (!after) {
+            return {
+              verification: { structure: false, status: false, link: true },
+              outcome: "unknown",
+              warnings: [...warnings, "更新后的设置响应缺少设置对象，结果未知"],
+            };
+          }
+
+          const verifiedFields: string[] = [];
+          const mismatchedFields: string[] = [];
+          for (const key of requested) {
+            const expected = parseSettingObject(input[key]);
+            const actual = parseSettingObject(after[key]);
+            // The runtime passes the transformed input here, so it already
+            // contains the complete merged JSON sent to the API.
+            if (expected && actual && deepEqual(actual, expected)) verifiedFields.push(key);
+            else {
+              mismatchedFields.push(key);
+              // Keep verification diagnostics useful without exposing setting
+              // values such as webhook URLs in the CLI error envelope.
+              const shape = (value: Record<string, unknown> | undefined) => value
+                ? Object.fromEntries(Object.entries(value).map(([field, item]) => [
+                  field,
+                  Array.isArray(item) ? "array" : item === null ? "null" : typeof item,
+                ]))
+                : undefined;
+              warnings.push(`${key} 读回结构：expected=${JSON.stringify(shape(expected))} actual=${JSON.stringify(shape(actual))}`);
+            }
+          }
+          if (mismatchedFields.length > 0) {
+            warnings.push(`设置读回与请求不一致：${mismatchedFields.join(", ")}`);
+          }
+          const missingAfter = requested.filter((key) => parseSettingObject(after[key]) === undefined);
+          if (missingAfter.length > 0) warnings.push(`设置读回缺少字段：${missingAfter.join(", ")}`);
+          const structure = missingAfter.length === 0;
+          const status = structure && mismatchedFields.length === 0 &&
+            requested.every((key) => !snapshot.missingFields.includes(key));
+          return {
+            verification: { structure, status, link: true },
+            outcome: status ? "verified" : "unknown",
+            verifiedFields,
+            warnings,
+          };
+        },
       });
     });
 
@@ -331,7 +1026,7 @@ export function registerSurveyCommands(program: Command): void {
     .description("获取题目标签")
     .option("--username <s>", "用户名")
     .action(async (_opts, cmd) => {
-      await executeCommand(program, cmd, getQuestionTags, (m) => {
+      await executeRuntimeAction(program, cmd, getQuestionTags, (m) => {
         requireField(m, "username");
         return { username: m.username };
       });
@@ -343,7 +1038,7 @@ export function registerSurveyCommands(program: Command): void {
     .description("获取标签详情")
     .option("--tag_id <n>", "标签ID", strictInt)
     .action(async (_opts, cmd) => {
-      await executeCommand(program, cmd, getTagDetails, (m) => {
+      await executeRuntimeAction(program, cmd, getTagDetails, (m) => {
         requireField(m, "tag_id", "tag_id");
         return { tag_id: m.tag_id };
       });
@@ -352,13 +1047,145 @@ export function registerSurveyCommands(program: Command): void {
   // --- clear-bin ---
   survey
     .command("clear-bin")
-    .description("清空回收站")
+    .description("清空回收站；指定 --vid 时执行并验证彻底删除")
     .option("--username <s>", "用户名")
     .option("--vid <n>", "指定问卷ID", strictInt)
     .action(async (_opts, cmd) => {
-      await executeCommand(program, cmd, clearRecycleBin, (m) => {
+      // The upstream clear-recycle-bin action returns success for a `vid` but
+      // does not transition that item out of status=3 on the public API. Use
+      // the verified hard-delete action for a scoped item; keep 1000302 for
+      // the unscoped bulk operation.
+      const clearRecycleBinCommand = async (
+        input: { username: string; vid?: number },
+        credentials: Parameters<typeof clearRecycleBin>[1],
+        fetchImpl?: Parameters<typeof clearRecycleBin>[2],
+      ) => input.vid === undefined
+        ? clearRecycleBin(input, credentials, fetchImpl)
+        : deleteSurvey({ vid: input.vid, username: input.username, completely_delete: true }, credentials, fetchImpl);
+      await executeRuntimeAction(program, cmd, clearRecycleBinCommand, (m) => {
         requireField(m, "username");
         return { username: m.username, vid: m.vid };
+      }, {
+        preRead: async (input, credentials, requestOptions) => {
+          if (input.vid !== undefined) {
+            const state = await readSurveyState(input, credentials, requestOptions);
+            if (!state.data) {
+              if (state.notFound) throw new CliError("API_ERROR", `问卷 ${String(input.vid)} 不存在，已停止清理`);
+              throw new CliError("API_ERROR", `无法读取问卷 ${String(input.vid)} 的当前状态，已停止清理`);
+            }
+            if (!state.identityMatches) {
+              throw new CliError("API_ERROR", `问卷 ${String(input.vid)} 的读回身份不匹配，已停止清理`);
+            }
+            if (state.status !== 3) {
+              const status = state.status === undefined ? "未知" : String(state.status);
+              throw new CliError("API_ERROR", `问卷 ${String(input.vid)} 当前状态为 ${status}，不在回收站（status=3），已停止清理`);
+            }
+            return {
+              kind: "survey",
+              data: state.data,
+              status: state.status,
+              countKnown: true,
+            } satisfies RecycleBinSnapshot;
+          }
+
+          const result = await listSurveys(
+            { status: 3, page_index: 1, page_size: 50 },
+            credentials,
+            undefined,
+            requestOptions,
+          );
+          ensureApiSuccess(result);
+          const data = asRecord(result.data);
+          const count = listCount(data);
+          return {
+            kind: "bin",
+            data,
+            count: count.count,
+            countKnown: count.known,
+            listShapeKnown: listRecords(data).known,
+          } satisfies RecycleBinSnapshot;
+        },
+        postVerify: async (_result, input, credentials, preReadResult) => {
+          const preRead = preReadResult as RecycleBinSnapshot | undefined;
+          if (input.vid !== undefined) {
+            let state: SurveyStateSnapshot;
+            try {
+              // Clearing a recycle-bin item is asynchronous on the upstream
+              // service. Poll the read-only status until status=4 is visible;
+              // a missing record still cannot prove the terminal state.
+              state = await waitForSurveyDeletion(input, credentials, true, RECYCLE_CLEAR_VERIFY_DELAYS_MS);
+            } catch (error) {
+              return {
+                verification: { structure: false, status: false, link: true },
+                outcome: "unknown",
+                warnings: [
+                  "回收站清理后的问卷状态读取失败，结果未知",
+                  error instanceof Error ? error.message : String(error),
+                ],
+              };
+            }
+            if (!state.data && state.notFound) {
+              return {
+                verification: { structure: false, status: false, link: true },
+                outcome: "unknown",
+                warnings: ["问卷读回不存在，但无法证明已达到彻底删除状态（status=4），结果未知"],
+              };
+            }
+            const verified = state.identityMatches && state.status === 4;
+            return {
+              ...(state.status !== undefined ? { status: surveyStatusLabel(state.status) } : {}),
+              verification: { structure: state.identityMatches, status: verified, link: true },
+              outcome: verified ? "verified" : "unknown",
+              warnings: verified
+                ? []
+                : [
+                  ...(state.identityMatches ? [] : ["清理状态读回的问卷编号与请求不一致或缺少可验证身份"]),
+                  "问卷仍在回收站或状态无法确认，清理结果未知",
+                ],
+            };
+          }
+
+          let result;
+          try {
+            result = await listSurveys(
+              { status: 3, page_index: 1, page_size: 50 },
+              credentials,
+            );
+          } catch (error) {
+            return {
+              verification: { structure: false, status: false, link: true },
+              outcome: "unknown",
+              warnings: [
+                "回收站清理后的列表读取失败，结果未知",
+                error instanceof Error ? error.message : String(error),
+              ],
+            };
+          }
+          const raw = result as unknown as Record<string, unknown>;
+          if (raw.result !== true) {
+            return {
+              verification: { structure: false, status: false, link: true },
+              outcome: "unknown",
+              warnings: ["回收站清理后的列表 API 返回失败，结果未知"],
+            };
+          }
+          const data = asRecord(raw.data);
+          const count = listCount(data);
+          const known = count.known || listRecords(data).known;
+          const verified = known && count.count === 0;
+          return {
+            ...(count.count !== undefined ? { remaining: count.count } : {}),
+            verification: { structure: known, status: verified, link: true },
+            outcome: verified ? "verified" : "unknown",
+            warnings: verified
+              ? []
+              : [
+                preRead && !preRead.countKnown
+                  ? "回收站列表缺少可验证的计数或列表结构，无法确认已清空"
+                  : "回收站仍有问卷或清空结果无法确认",
+              ],
+          };
+        },
       });
     });
 
@@ -369,51 +1196,30 @@ export function registerSurveyCommands(program: Command): void {
     .option("--file_name <s>", "文件名")
     .option("--file <s>", "文件Base64内容")
     .action(async (_opts, cmd) => {
-      await executeCommand(program, cmd, uploadFile, (m) => {
+      await executeRuntimeAction(program, cmd, uploadFile, (m) => {
         requireField(m, "file_name");
         requireField(m, "file");
         return { file_name: m.file_name, file: m.file };
       });
     });
 
-  // --- export-text ---
+  // --- jsonl-template ---
   survey
-    .command("export-text")
-    .description("导出问卷为纯文本（题目+选项）")
-    .option("--vid <n>", "问卷ID", strictInt)
-    .option("--raw", "输出纯文本（不包裹 JSON）")
+    .command("jsonl-template")
+    .description("输出 create 可直接使用的 JSONL 骨架（按 --type 切换调查/投票/考试/表单等）")
+    .option("--type <n>", "问卷类型：1=调查（默认）, 2=测评, 3=投票, 4=360度评估, 5=360评估无测评关系, 6=考试, 7=表单, 9=教学评估, 10=量表, 11=民主评议", strictInt)
+    .option("--raw", "直接输出 JSONL 文本（不包裹 JSON），便于重定向到文件")
     .action(async (_opts, cmd) => {
       try {
         const merged = getMerged(cmd);
-
-        requireField(merged, "vid");
-
-        const creds = getCredentials(program.opts());
-
-        if (program.opts().dryRun) {
-          const { fetchImpl, getCapturedRequest } = createCapturingFetch();
-          await getSurvey({ vid: merged.vid as number }, creds, fetchImpl);
-          printDryRunPreview(getCapturedRequest());
-          return;
-        }
-
-        const result = await getSurvey({ vid: merged.vid as number }, creds);
-
-        if (result.result === false) {
-          throw new CliError("API_ERROR", result.errormsg || "API request failed");
-        }
-
-        const data = (result as unknown as Record<string, unknown>).data;
-        if (!data) {
-          throw new CliError("API_ERROR", "API 返回数据为空");
-        }
-        const text = surveyToText(data as Parameters<typeof surveyToText>[0]);
+        const atype = (merged.type as number | undefined) ?? 1;
+        const jsonl = buildJsonlTemplate(atype);
         const globalOpts = program.opts();
-
-        if (merged.raw || globalOpts.table) {
-          console.log(text);
+        if (merged.raw || globalOpts.format === "table") {
+          process.stdout.write(jsonl);
+          if (!jsonl.endsWith("\n")) process.stdout.write("\n");
         } else {
-          console.log(JSON.stringify({ vid: merged.vid, text }, null, 2));
+          formatOutput({ atype, template: jsonl }, globalOpts);
         }
       } catch (e) {
         handleError(e);
@@ -437,19 +1243,177 @@ export function registerSurveyCommands(program: Command): void {
           throw new CliError("INPUT_ERROR", `无效的 mode: "${mode}"，可选值: ${validModes.join(", ")}`);
         }
 
+        if (mode === "edit" &&
+          (typeof merged.activity !== "number" || !Number.isInteger(merged.activity) || merged.activity <= 0)) {
+          throw new CliError("INPUT_ERROR", "edit 模式的 --activity 必须是正整数");
+        }
+
+        const profile = resolveProfile({ profile: program.opts().profile });
         const url = buildSurveyUrl({
           mode: mode as "create" | "edit",
           name: merged.name as string | undefined,
           activity: merged.activity as number | undefined,
-        });
+        }, getProfileBaseUrl(profile));
         const globalOpts = program.opts();
-        if (globalOpts.table) {
-          console.log(url);
-        } else {
-          console.log(JSON.stringify({ url }, null, 2));
-        }
+        formatOutput({ url }, globalOpts);
       } catch (e) {
         handleError(e);
       }
     });
+
+  // --- preview-url ---
+  survey
+    .command("preview-url")
+    .description("生成问卷预览/填写链接")
+    .option("--sid <s>", "问卷短链 ID（优先使用创建接口返回的 sid）")
+    .option("--vid <n>", "问卷ID（没有 sid 时使用）", strictInt)
+    .option("--source <s>", "来源标识")
+    .action(async (_opts, cmd) => {
+      await executeRuntimeAction(program, cmd, ((input: { sid?: string; vid?: number; source?: string }) => {
+        const baseUrl = getProfileBaseUrl(resolveProfile({ profile: program.opts().profile }));
+        const url = input.sid
+          ? buildPreviewUrl({ sid: input.sid, vid: input.vid, source: input.source }, baseUrl)
+          : buildPreviewUrl({ vid: input.vid as number, source: input.source }, baseUrl);
+        return { url };
+      }) as never, (m) => {
+        const sid = typeof m.sid === "string" ? m.sid.trim() : "";
+        if (sid) return { sid, vid: m.vid as number | undefined, source: m.source as string | undefined };
+        if (m.vid === undefined || typeof m.vid !== "number" || !Number.isInteger(m.vid) || m.vid <= 0) {
+          throw new CliError("INPUT_ERROR", "必须提供 --sid，或提供正整数 --vid");
+        }
+        return { vid: m.vid, source: m.source as string | undefined };
+      }, { noAuth: true });
+    });
+
+  // --- shortlink ---
+  survey
+    .command("shortlink")
+    .description("将问卷填写长链接转换为短信短链接")
+    .option("--url <s>", "问卷星问卷填写长链接")
+    .action(async (_opts, cmd) => {
+      await executeRuntimeCommand(program, cmd, {
+        noAuth: true,
+        normalize: ({ values }) => {
+          requireField(values, "url");
+          const url = String(values.url).trim();
+          let parsed: URL;
+          try { parsed = new URL(url); } catch { throw new CliError("INPUT_ERROR", "--url 必须是有效的问卷星问卷 URL"); }
+          if ((parsed.protocol !== "http:" && parsed.protocol !== "https:") || !/^\/(?:m|vm|jq)\/[^/?#]+\.aspx$/i.test(parsed.pathname)) {
+            throw new CliError("INPUT_ERROR", "--url 必须是问卷星填写地址（/m/、/vm/ 或 /jq/ 路径）");
+          }
+          return { url };
+        },
+        buildPlans: (input, context) => {
+          // `context.apiUrl` is already the default OpenAPI endpoint. Passing
+          // it back as a base URL duplicates `/openapi` for deployments whose
+          // host has a path prefix (for example `/wjx`). Resolve the profile
+          // host directly, matching the URL used by the real SDK call.
+          const profileBaseUrl = getProfileBaseUrl(
+            resolveProfile({ profile: program.opts().profile }),
+          );
+          const endpoint = new URL(getWjxShortLinkUrl(profileBaseUrl));
+          endpoint.searchParams.set("url", String(input.url));
+          return [{
+            service: "default",
+            action: "shortlink",
+            method: "GET",
+            url: endpoint.toString(),
+            headers: { Accept: "application/json" },
+            body: "",
+          }];
+        },
+        execute: (input, credentials, requestOptions) => getShortLink(
+          { url: String(input.url) },
+          credentials,
+          fetch,
+          requestOptions,
+        ) as unknown as Promise<import("wjx-api-sdk").WjxApiResponse<unknown>>,
+        validateResult: (result) => {
+          if (!result || typeof result !== "object" || (result as { success?: unknown }).success !== true) {
+            const message = result && typeof result === "object" && typeof (result as { msg?: unknown }).msg === "string"
+              ? (result as { msg: string }).msg
+              : "短链接接口返回失败";
+            throw new CliError("API_ERROR", message);
+          }
+        },
+      });
+    });
+}
+
+const TEMPLATE_QUESTIONS_BY_ATYPE: Record<number, Array<Record<string, unknown>>> = {
+  1: [
+    { qtype: "单选", title: "您的性别", select: ["男", "女"] },
+    { qtype: "多选", title: "您平时喜欢的运动（多选）", select: ["跑步", "游泳", "球类", "瑜伽"] },
+    { qtype: "量表题", title: "您对当前服务的满意度（1=非常不满意, 5=非常满意）", select: ["1", "2", "3", "4", "5"] },
+    { qtype: "矩阵单选", title: "请评价以下方面", rowtitle: ["响应速度", "服务态度", "问题解决"], select: ["差", "一般", "好", "很好"] },
+    { qtype: "简答题", title: "您还有什么建议？" },
+  ],
+  2: [
+    { qtype: "单选", title: "请选择最贴近您的描述", select: ["A 选项", "B 选项", "C 选项"] },
+    { qtype: "量表题", title: "您对此观点的认同程度（1=完全不认同, 5=完全认同）", select: ["1", "2", "3", "4", "5"] },
+    { qtype: "矩阵单选", title: "请按以下维度评估", rowtitle: ["维度一", "维度二", "维度三"], select: ["低", "中", "高"] },
+  ],
+  3: [
+    { qtype: "投票单选", title: "请选出您最喜欢的候选项（单选）", select: ["候选 A", "候选 B", "候选 C"] },
+    { qtype: "投票多选", title: "请选出您支持的候选项（最多 2 项）", select: ["候选 A", "候选 B", "候选 C", "候选 D"] },
+  ],
+  6: [
+    { qtype: "考试单选", title: "下列说法正确的是？", select: ["A. 错误说法", "B. 正确说法", "C. 错误说法"], correctselect: ["B"], quizscore: "10", isquiz: "1" },
+    { qtype: "考试多选", title: "请选出所有正确选项", select: ["A. 正确", "B. 错误", "C. 正确", "D. 错误"], correctselect: ["A", "C"], quizscore: "10", isquiz: "1" },
+    { qtype: "考试判断", title: "1+1=2", select: ["对", "错"], correctselect: ["对"], quizscore: "5", isquiz: "1" },
+    { qtype: "考试简答", title: "请简述你的看法", quizscore: "20", isquiz: "1" },
+  ],
+  7: [
+    { qtype: "单项填空", title: "您的姓名" },
+    { qtype: "邮箱", title: "您的邮箱" },
+    { qtype: "手机", title: "您的手机号" },
+    { qtype: "单选", title: "请选择您的部门", select: ["研发", "产品", "运营", "其他"] },
+  ],
+  4: [
+    { qtype: "矩阵单选", title: "请对各项进行评估", rowtitle: ["项目一", "项目二", "项目三"], select: ["差", "一般", "好"] },
+  ],
+  5: [
+    { qtype: "矩阵单选", title: "请对各项进行评估", rowtitle: ["项目一", "项目二", "项目三"], select: ["差", "一般", "好"] },
+  ],
+  9: [
+    { qtype: "量表题", title: "请为本项评分（1-5）", select: ["1", "2", "3", "4", "5"] },
+  ],
+  10: [
+    { qtype: "矩阵量表", title: "请按以下维度打分（1-7 分）", rowtitle: ["条目 1", "条目 2", "条目 3"], select: ["1", "2", "3", "4", "5", "6", "7"] },
+    { qtype: "量表题", title: "总体感受（1-7 分）", select: ["1", "2", "3", "4", "5", "6", "7"] },
+  ],
+  11: [
+    { qtype: "矩阵单选", title: "请对以下维度进行民主测评", rowtitle: ["工作表现", "协作能力", "责任意识"], select: ["优秀", "良好", "一般", "待改进"] },
+    { qtype: "单选", title: "综合评价", select: ["优秀", "良好", "一般", "待改进"] },
+  ],
+};
+
+const TEMPLATE_TITLE_BY_ATYPE: Record<number, string> = {
+  1: "示例调查问卷（请改成你的标题）",
+  2: "示例测评（请改成你的标题）",
+  3: "示例投票（请改成你的标题）",
+  6: "示例考试（请改成你的标题）",
+  7: "示例表单（请改成你的标题）",
+  4: "示例360度评估（请改成你的标题）",
+  5: "示例360评估（请改成你的标题）",
+  10: "示例量表（请改成你的标题）",
+  9: "示例教学评估（请改成你的标题）",
+  11: "示例民主测评（请改成你的标题）",
+};
+
+function buildJsonlTemplate(atype: number): string {
+  const validAtypes = CREATABLE_SURVEY_ATYPES;
+  if (!validAtypes.has(atype)) {
+    throw new CliError(
+      "INPUT_ERROR",
+      `无效的 --type "${atype}"，可选值：1=调查, 2=测评, 3=投票, 4=360度评估, 5=360评估无测评关系, 6=考试, 7=表单, 9=教学评估, 10=量表, 11=民主评议`,
+    );
+  }
+  const meta: Record<string, unknown> = {
+    qtype: "问卷基础信息",
+    title: TEMPLATE_TITLE_BY_ATYPE[atype],
+    atype,
+  };
+  const questions = TEMPLATE_QUESTIONS_BY_ATYPE[atype] ?? [];
+  return [meta, ...questions].map((q) => JSON.stringify(q)).join("\n") + "\n";
 }

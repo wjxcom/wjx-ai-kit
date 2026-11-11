@@ -1,0 +1,687 @@
+#!/bin/bash
+#
+# 问卷星 AI Skill 环境检测与安装脚本
+# 检测 Node.js → 安装 wjx-cli → 引导获取 API Key → 配置 → 验证
+#
+
+set -e
+
+# 颜色定义
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+NC='\033[0m'
+
+# 脚本所在目录
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+MIN_WJX_CLI_VERSION="0.4.1"
+DEFAULT_WJX_BASE_URL="https://www.wjx.cn"
+NODE_BIN=""
+NPM_BIN=""
+WJX_BIN=""
+
+# 打印函数
+print_info()    { echo -e "${BLUE}[INFO]${NC} $1"; }
+print_success() { echo -e "${GREEN}[OK]${NC} $1"; }
+print_warning() { echo -e "${YELLOW}[WARNING]${NC} $1"; }
+print_error()   { echo -e "${RED}[ERROR]${NC} $1"; }
+
+has_nonblank() {
+    [ -n "${1//[[:space:]]/}" ]
+}
+
+trim_whitespace() {
+    local value="$1"
+    value="${value#"${value%%[![:space:]]*}"}"
+    value="${value%"${value##*[![:space:]]}"}"
+    printf '%s' "$value"
+}
+
+config_has_api_key() {
+    local path="$1"
+    [ -f "$path" ] || return 1
+    [ -n "$NODE_BIN" ] || return 1
+    "$NODE_BIN" -e 'const fs = require("node:fs"); try { const value = JSON.parse(fs.readFileSync(process.argv[1], "utf8")); process.exit(value && typeof value.apiKey === "string" && value.apiKey.trim() ? 0 : 1); } catch { process.exit(1); }' "$path"
+}
+
+# Compare semantic versions without relying on GNU sort (the script also runs on macOS).
+version_at_least() {
+    [ -n "$NODE_BIN" ] || return 1
+    "$NODE_BIN" -e 'const [actual, minimum] = process.argv.slice(1); const parse = value => value.replace(/^v/, "").split(".").map(part => Number.parseInt(part, 10) || 0); const a = parse(actual); const b = parse(minimum); process.exit(a[0] > b[0] || (a[0] === b[0] && (a[1] > b[1] || (a[1] === b[1] && a[2] >= b[2]))) ? 0 : 1);' "$1" "$2"
+}
+
+# A shell can keep an old PATH after Node/npm was installed. Resolve binaries
+# independently so a stale PATH never turns into a false "not installed" claim.
+to_shell_path() {
+    local value="$1"
+    if command -v cygpath >/dev/null 2>&1; then
+        cygpath -u "$value"
+    else
+        printf '%s' "$value"
+    fi
+}
+
+first_where_path() {
+    local command_name="$1"
+    local found=""
+    if command -v where.exe >/dev/null 2>&1; then
+        found="$(where.exe "$command_name" 2>/dev/null | tr -d '\r' | awk 'NF { print; exit }')"
+    fi
+    [ -n "$found" ] && to_shell_path "$found"
+}
+
+resolve_node_bin() {
+    local candidate=""
+    if command -v node >/dev/null 2>&1; then
+        command -v node
+        return 0
+    fi
+    candidate="$(first_where_path node || true)"
+    if [ -n "$candidate" ] && [ -f "$candidate" ]; then
+        printf '%s' "$candidate"
+        return 0
+    fi
+    for candidate in \
+        "/c/Program Files/nodejs/node.exe" \
+        "/c/Program Files (x86)/nodejs/node.exe" \
+        "${PROGRAMFILES:-}/nodejs/node.exe" \
+        "${LOCALAPPDATA:-}/Programs/nodejs/node.exe"; do
+        [ -n "$candidate" ] || continue
+        candidate="$(to_shell_path "$candidate")"
+        if [ -f "$candidate" ]; then
+            printf '%s' "$candidate"
+            return 0
+        fi
+    done
+    return 1
+}
+
+resolve_npm_bin() {
+    local candidate=""
+    if command -v npm >/dev/null 2>&1; then
+        candidate="$(command -v npm)"
+        if "$candidate" --version >/dev/null 2>&1; then
+            printf '%s' "$candidate"
+            return 0
+        fi
+    fi
+    [ -n "$NODE_BIN" ] || return 1
+    for candidate in "$(dirname "$NODE_BIN")/npm" "$(dirname "$NODE_BIN")/npm.cmd"; do
+        if [ -f "$candidate" ] && "$candidate" --version >/dev/null 2>&1; then
+            printf '%s' "$candidate"
+            return 0
+        fi
+    done
+    return 1
+}
+
+resolve_wjx_bin() {
+    local candidate=""
+    local prefix=""
+    if command -v wjx >/dev/null 2>&1; then
+        command -v wjx
+        return 0
+    fi
+    [ -n "$NPM_BIN" ] || return 1
+    prefix="$("$NPM_BIN" prefix -g 2>/dev/null || true)"
+    prefix="$(to_shell_path "$(trim_whitespace "$prefix")")"
+    for candidate in "$prefix/wjx" "$prefix/wjx.cmd" "$prefix/bin/wjx"; do
+        if [ -f "$candidate" ]; then
+            printf '%s' "$candidate"
+            return 0
+        fi
+    done
+    return 1
+}
+
+run_wjx() {
+    [ -n "$WJX_BIN" ] || return 127
+    local npm_root=""
+    if [ -n "$NPM_BIN" ]; then
+        npm_root="$("$NPM_BIN" root -g 2>/dev/null || true)"
+        npm_root="$(to_shell_path "$(trim_whitespace "$npm_root")")"
+    fi
+    local cli_entry="${npm_root:+$npm_root/wjx-cli/dist/index.js}"
+    if [ -z "$cli_entry" ] || [ ! -f "$cli_entry" ]; then
+        # Keep a prefix-relative fallback for npm layouts that do not expose
+        # `npm root -g` (and for test shims), but never assume bin/../node_modules.
+        cli_entry="$(dirname "$WJX_BIN")/../lib/node_modules/wjx-cli/dist/index.js"
+    fi
+    # npm's Windows shim may fall back to the literal `node` command. When
+    # PATH is stale, invoke the installed entry point with the Node binary we
+    # already verified instead of letting the shim report a false failure.
+    if [ -n "$NODE_BIN" ] && [ -f "$cli_entry" ]; then
+        "$NODE_BIN" "$cli_entry" "$@"
+        return $?
+    fi
+    "$WJX_BIN" "$@"
+}
+
+print_cli_source_guide() {
+    echo "wjx-cli ${MIN_WJX_CLI_VERSION} 已发布到 npm，请直接安装或升级："
+    echo "  npm install -g wjx-cli@latest && wjx skill install --force"
+    echo "如果需要从源码开发，再执行："
+    echo "  git clone https://github.com/wjxcom/wjx-ai-kit.git"
+    echo "  cd wjx-ai-kit && npm install"
+    echo "  npm run build --workspace=wjx-api-sdk"
+    echo "  npm run build --workspace=wjx-cli"
+    echo "  npm link ./wjx-cli"
+}
+
+check_cli_version() {
+    if ! WJX_VERSION="$(run_wjx --version 2>/dev/null)"; then
+        print_error "无法执行 wjx --version"
+        print_cli_source_guide
+        return 1
+    fi
+    WJX_VERSION="$(printf '%s' "$WJX_VERSION" | awk 'NR == 1 { print; exit }')"
+    if ! has_nonblank "$WJX_VERSION" || ! version_at_least "$WJX_VERSION" "$MIN_WJX_CLI_VERSION"; then
+        print_error "wjx-cli 版本过低: ${WJX_VERSION:-unknown}（需要 ${MIN_WJX_CLI_VERSION}+）"
+        print_cli_source_guide
+        return 1
+    fi
+    print_success "wjx-cli ${WJX_VERSION}"
+    return 0
+}
+
+install_core_skill() {
+    print_info "安装 wjx-cli-use 技能..."
+    local root
+    root="$(resolve_install_root)"
+    if run_wjx skill install --force --target-dir "$root"; then
+        print_success "wjx-cli-use 技能已安装"
+        return 0
+    fi
+    print_error "wjx-cli-use 技能安装失败"
+    return 1
+}
+
+# Keep the shell installer and the CLI's default discovery rules aligned.
+resolve_install_root() {
+    local value
+    value="$(trim_whitespace "${WJX_INSTALL_ROOT:-}")"
+    if has_nonblank "$value"; then
+        printf '%s' "$value"
+    elif value="$(trim_whitespace "${CLAUDE_PROJECT_DIR:-}")" && [ -d "$value" ]; then
+        printf '%s' "$value"
+    elif value="$(trim_whitespace "${WORKBUDDY_HOME:-}")" && [ -d "$value" ]; then
+        printf '%s' "$value"
+    elif value="$(trim_whitespace "${CLAW_HOME:-}")" && [ -d "$value" ]; then
+        printf '%s' "$value"
+    else
+        printf '%s' "$PWD"
+    fi
+}
+
+check_core_skill() {
+    local root
+    local missing=0
+    root="$(resolve_install_root)"
+    for path in \
+        "$root/skills/wjx-cli-use/SKILL.md" \
+        "$root/.claude/skills/wjx-cli-use/SKILL.md" \
+        "$root/.claude/agents/wjx-cli-expert.md"; do
+        if [ ! -s "$path" ]; then
+            print_warning "缺少核心 Skill 文件: $path"
+            missing=1
+        fi
+    done
+    if [ "$missing" -eq 0 ] && ! cmp -s \
+        "$root/skills/wjx-cli-use/SKILL.md" \
+        "$root/.claude/skills/wjx-cli-use/SKILL.md"; then
+        print_warning "核心 Skill 镜像内容不一致，请运行 wjx skill install --force"
+        missing=1
+    fi
+    if [ "$missing" -eq 0 ]; then
+        print_success "wjx-cli-use Skill 与 Claude 镜像已安装"
+        return 0
+    fi
+    return 1
+}
+
+upgrade_cli() {
+    print_info "正在升级 wjx-cli 到最新版本..."
+    if "$NPM_BIN" install -g wjx-cli@latest; then
+        return 0
+    fi
+    if command -v sudo &> /dev/null && sudo "$NPM_BIN" install -g wjx-cli@latest; then
+        return 0
+    fi
+    print_error "wjx-cli 升级失败"
+    return 1
+}
+
+# 检测操作系统
+detect_os() {
+    if [[ "$OSTYPE" == "linux-gnu"* ]]; then
+        if [ -f /etc/os-release ]; then
+            . /etc/os-release
+            OS=$NAME
+        else
+            OS="Linux"
+        fi
+    elif [[ "$OSTYPE" == "darwin"* ]]; then
+        OS="macOS"
+    elif [[ "$OSTYPE" == "cygwin" ]] || [[ "$OSTYPE" == "msys" ]] || [[ "$OSTYPE" == "win32" ]]; then
+        OS="Windows"
+    else
+        OS="Unknown"
+    fi
+    echo "$OS"
+}
+
+# Step 1: 检测 Node.js
+check_node() {
+    print_info "Step 1/5: 检测 Node.js 环境..."
+
+    NODE_BIN="$(resolve_node_bin || true)"
+    if [ -z "$NODE_BIN" ]; then
+        print_error "当前 shell 未找到 Node.js；常见安装路径和 where.exe 也未找到可执行文件"
+        print_warning "请先安装 Node.js 20+，不要仅凭当前 shell 的 command not found 判断安装状态"
+        return 1
+    fi
+
+    if ! NODE_VERSION="$("$NODE_BIN" --version 2>/dev/null)"; then
+        print_error "找到 Node.js 路径但无法执行: $NODE_BIN"
+        return 1
+    fi
+    NODE_VERSION="$(printf '%s' "$NODE_VERSION" | awk 'NR == 1 { print; exit }')"
+    NODE_MAJOR="$(printf '%s' "$NODE_VERSION" | sed -n 's/^v\([0-9][0-9]*\)\..*/\1/p')"
+    if ! printf '%s' "$NODE_MAJOR" | grep -Eq '^[0-9]+$'; then
+        print_error "无法解析 Node.js 版本: ${NODE_VERSION:-unknown}（需要 20+）"
+        return 1
+    fi
+    if [ "$NODE_MAJOR" -lt 20 ]; then
+        print_error "Node.js 版本过低: $NODE_VERSION（需要 20+）"
+        return 1
+    fi
+
+    NPM_BIN="$(resolve_npm_bin || true)"
+    if [ -z "$NPM_BIN" ] || ! "$NPM_BIN" --version >/dev/null 2>&1; then
+        print_error "Node.js 可执行，但 npm 不可用；请修复 npm/PATH 后重新运行"
+        return 1
+    fi
+    if ! command -v node >/dev/null 2>&1 || ! command -v npm >/dev/null 2>&1; then
+        print_warning "Node.js/npm 已安装但当前 shell PATH 未刷新，将使用已解析路径；建议重新打开终端"
+    fi
+    print_success "Node.js $NODE_VERSION"
+    print_success "npm $("$NPM_BIN" --version)"
+    return 0
+}
+
+# 打印 Node.js 安装指引
+print_node_install_guide() {
+    echo ""
+    echo "请安装 Node.js 20+ 后重新运行本脚本："
+    echo ""
+    echo "  macOS:    brew install node"
+    echo "  Ubuntu:   curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash - && sudo apt-get install -y nodejs"
+    echo "  CentOS:   curl -fsSL https://rpm.nodesource.com/setup_20.x | sudo bash - && sudo yum install -y nodejs"
+    echo "  Windows:  从 https://nodejs.org/ 下载并安装 Node.js LTS"
+    echo "  通用:     https://nodejs.org 下载安装"
+    echo ""
+}
+
+# Step 2: 安装 wjx-cli
+install_cli() {
+    print_info "Step 2/5: 安装 wjx-cli..."
+
+    WJX_BIN="$(resolve_wjx_bin || true)"
+    if [ -n "$WJX_BIN" ]; then
+        if ! check_cli_version; then
+            upgrade_cli || return 1
+            WJX_BIN="$(resolve_wjx_bin || true)"
+            check_cli_version || return 1
+        fi
+        install_core_skill
+        return $?
+    fi
+
+    print_info "正在全局安装 wjx-cli..."
+    NPM_ERR=$(mktemp)
+    if "$NPM_BIN" install -g wjx-cli@latest 2>"$NPM_ERR"; then
+        rm -f "$NPM_ERR"
+        WJX_BIN="$(resolve_wjx_bin || true)"
+        if check_cli_version; then
+            if ! install_core_skill; then return 1; fi
+            print_success "wjx-cli 与 wjx-cli-use 安装成功"
+            return 0
+        fi
+        return 1
+    else
+        print_warning "全局安装失败，错误信息："
+        cat "$NPM_ERR" 2>/dev/null
+        rm -f "$NPM_ERR"
+        print_info "尝试 sudo..."
+        if command -v sudo &> /dev/null; then
+            if sudo "$NPM_BIN" install -g wjx-cli@latest; then
+                WJX_BIN="$(resolve_wjx_bin || true)"
+                if check_cli_version; then
+                    if ! install_core_skill; then return 1; fi
+                    print_success "wjx-cli 与 wjx-cli-use 安装成功（sudo）"
+                    return 0
+                fi
+                return 1
+            fi
+        fi
+        echo ""
+        print_error "wjx-cli 安装失败"
+        echo ""
+        echo "请手动安装已发布的 wjx-cli ${MIN_WJX_CLI_VERSION}+："
+        echo "  sudo npm install -g wjx-cli@latest && wjx skill install --force"
+        echo ""
+        echo "或使用 npx 免安装运行："
+        echo "  npx wjx-cli@${MIN_WJX_CLI_VERSION} survey list"
+        echo ""
+        print_cli_source_guide
+        echo ""
+        return 1
+    fi
+}
+
+# Resolve the deployment origin used both for the API Key page and wjx init.
+# Accepting an origin here prevents private deployments from accidentally
+# opening the public wjx.cn login page.
+normalize_base_url() {
+    local value
+    value="$(trim_whitespace "${1:-$DEFAULT_WJX_BASE_URL}")"
+    value="${value:-$DEFAULT_WJX_BASE_URL}"
+    while [[ "$value" == */ ]]; do value="${value%/}"; done
+    if [[ "$value" != http://* && "$value" != https://* ]]; then
+        value="https://$value"
+    fi
+    if [[ "$value" == */openapi/* ]]; then
+        value="${value%%/openapi/*}"
+    fi
+    printf '%s' "$value"
+}
+
+configure_base_url() {
+    local value="$(trim_whitespace "${WJX_BASE_URL:-}")"
+    if ! has_nonblank "$value"; then
+        if [ "${AUTO_INSTALL:-0}" -eq 1 ] || [ ! -t 0 ]; then
+            value="$DEFAULT_WJX_BASE_URL"
+        else
+            read -r -p "  问卷星部署地址（公网直接回车，私有化填写域名） [$DEFAULT_WJX_BASE_URL]: " value
+            value="$(trim_whitespace "$value")"
+            value="${value:-$DEFAULT_WJX_BASE_URL}"
+        fi
+    fi
+    WJX_BASE_URL="$(normalize_base_url "$value")"
+    export WJX_BASE_URL
+}
+
+# Step 3: 引导获取 API Key
+guide_api_key() {
+    print_info "Step 3/5: 获取问卷星 API Key..."
+
+    configure_base_url
+    if has_nonblank "${WJX_API_KEY:-}"; then
+        print_success "检测到 WJX_API_KEY 环境变量，跳过浏览器取 Key"
+        return 0
+    fi
+    if [ "${AUTO_INSTALL:-0}" -eq 1 ] && [ ! -t 0 ]; then
+        print_error "非交互自动安装缺少 WJX_API_KEY；请先设置环境变量后重新运行"
+        return 1
+    fi
+    LOGIN_URL="${WJX_BASE_URL}/weixinlogin.aspx?redirecturl=%2Fnewwjx%2Fmanage%2Fuserinfo.aspx%3FshowApiKey%3D1"
+
+    echo ""
+    if [ "$WJX_BASE_URL" = "$DEFAULT_WJX_BASE_URL" ]; then
+        echo "  当前使用问卷星公网地址。"
+    else
+        echo "  当前使用私有化部署地址：$WJX_BASE_URL"
+    fi
+    echo "  即将打开浏览器，请用微信扫码登录问卷星。"
+    echo "  登录后会自动跳转到 API Key 管理页面，复制你的 API Key。"
+    echo ""
+
+    # 尝试打开浏览器
+    OPENED=0
+    if [[ "$OSTYPE" == "darwin"* ]]; then
+        open "$LOGIN_URL" 2>/dev/null && OPENED=1
+    elif [[ "$OSTYPE" == "cygwin" ]] || [[ "$OSTYPE" == "msys" ]] || [[ "$OSTYPE" == "win32" ]]; then
+        cmd.exe /c start "" "$LOGIN_URL" 2>/dev/null && OPENED=1
+    elif command -v xdg-open &> /dev/null; then
+        xdg-open "$LOGIN_URL" 2>/dev/null && OPENED=1
+    fi
+
+    if [ $OPENED -eq 0 ]; then
+        print_warning "无法自动打开浏览器，请手动复制以下链接到浏览器打开："
+        echo ""
+        echo "  $LOGIN_URL"
+        echo ""
+    else
+        print_success "已打开浏览器"
+    fi
+
+    echo "  请在浏览器页面复制 API Key，然后继续下一步。"
+    echo ""
+    if [ $AUTO_INSTALL -eq 0 ]; then
+        read -p "  按回车键继续..." -r
+    fi
+}
+
+# Step 4: 配置 wjx-cli
+configure_cli() {
+    print_info "Step 4/5: 配置 wjx-cli..."
+    if has_nonblank "${WJX_API_KEY:-}"; then
+        local args=(--api-key "$WJX_API_KEY" --base-url "$WJX_BASE_URL" --no-install-skill)
+        if has_nonblank "${WJX_CORP_ID:-}"; then
+            args+=(--corp-id "$WJX_CORP_ID")
+        fi
+        run_wjx init "${args[@]}"
+        return $?
+    fi
+    echo ""
+    echo "  请将刚才复制的 API Key 粘贴到下方："
+    echo ""
+    # install_cli already installs the core skill; avoid asking the user to
+    # install the same Skill a second time during this setup flow.
+    run_wjx init --no-install-skill
+}
+
+# Step 5: 验证
+verify_setup() {
+    print_info "Step 5/5: 验证连接..."
+    run_wjx doctor
+    echo ""
+    print_info "人工验收：列出问卷..."
+    run_wjx survey list --format table
+}
+
+# 仅检查环境
+check_only() {
+    echo ""
+    echo "============================================"
+    echo "  问卷星 AI Skill 环境检查"
+    echo "============================================"
+    echo ""
+
+    PASS=1
+
+    # Node.js
+    if check_node; then true; else PASS=0; fi
+
+    # check_node already validates npm; report it only when that precheck failed.
+    if [ -z "$NPM_BIN" ]; then
+        print_error "未检测到 npm"
+        PASS=0
+    fi
+
+    # wjx-cli
+    WJX_BIN="$(resolve_wjx_bin || true)"
+    if [ -n "$WJX_BIN" ]; then
+        check_cli_version || PASS=0
+        check_core_skill || PASS=0
+    else
+        print_warning "wjx-cli 未安装或版本低于 ${MIN_WJX_CLI_VERSION}（请执行 npm install -g wjx-cli@latest && wjx skill install --force）"
+        PASS=0
+    fi
+
+    # 配置文件（可由 WJX_CONFIG_PATH 覆盖）
+    CONFIG_PATH="$(trim_whitespace "${WJX_CONFIG_PATH:-$HOME/.wjxrc}")"
+    if has_nonblank "${WJX_API_KEY:-}"; then
+        print_success "WJX_API_KEY 环境变量已配置"
+    elif config_has_api_key "$CONFIG_PATH"; then
+        print_success "$CONFIG_PATH 配置文件含有效 API Key"
+    else
+        print_warning "$CONFIG_PATH 未配置（运行 wjx init）"
+        PASS=0
+    fi
+
+    echo ""
+    if [ $PASS -eq 1 ]; then
+        print_success "环境检查通过"
+        exit 0
+    else
+        print_error "环境检查未通过"
+        exit 1
+    fi
+}
+
+# 仅验证
+verify_only() {
+    echo ""
+    echo "============================================"
+    echo "  问卷星 AI Skill 安装验证"
+    echo "============================================"
+    echo ""
+
+    check_node || exit 1
+
+    WJX_BIN="$(resolve_wjx_bin || true)"
+    if [ -n "$WJX_BIN" ]; then
+        check_cli_version || exit 1
+    else
+        print_error "wjx-cli 未安装"
+        exit 1
+    fi
+
+    check_core_skill || exit 1
+
+    echo ""
+    run_wjx doctor
+    echo ""
+    run_wjx survey list --format table
+}
+
+# 显示帮助
+show_help() {
+    cat << EOF
+问卷星 AI Skill 环境检测与安装脚本
+
+用法: $0 [选项]
+
+选项:
+    -h, --help      显示帮助信息
+    -y, --yes       自动安装（无需确认，推荐）
+    -c, --check     仅检查环境，不安装
+    -v, --verify    验证安装是否完整
+
+示例:
+    $0              # 交互式安装
+    $0 -y           # 自动安装（推荐）
+    $0 -c           # 仅检查环境
+    $0 -v           # 验证安装
+
+安装流程:
+    1. 检测 Node.js 20+
+    2. 安装并验证 wjx-cli >= ${MIN_WJX_CLI_VERSION}（安装后使用命令 wjx）
+    3. 选择公网或私有化部署地址，打开对应页面获取 API Key（微信扫码登录）
+    4. 配置 wjx init（粘贴 API Key）
+    5. 验证连接 wjx doctor，并用 wjx survey list --format table 做人工验收
+
+EOF
+}
+
+# 主函数
+main() {
+    echo ""
+    echo "============================================"
+    echo "  问卷星 AI Skill 环境安装"
+    echo "============================================"
+    echo ""
+
+    # 解析参数
+    CHECK_ONLY=0
+    AUTO_INSTALL=0
+    VERIFY_ONLY=0
+
+    while [[ $# -gt 0 ]]; do
+        case $1 in
+            -h|--help)
+                show_help
+                exit 0
+                ;;
+            -c|--check)
+                CHECK_ONLY=1
+                shift
+                ;;
+            -y|--yes)
+                AUTO_INSTALL=1
+                shift
+                ;;
+            -v|--verify)
+                VERIFY_ONLY=1
+                shift
+                ;;
+            *)
+                print_error "未知选项: $1"
+                show_help
+                exit 1
+                ;;
+        esac
+    done
+
+    # 仅检查模式
+    if [ $CHECK_ONLY -eq 1 ]; then
+        check_only
+        exit $?
+    fi
+
+    # 仅验证模式
+    if [ $VERIFY_ONLY -eq 1 ]; then
+        verify_only
+        exit $?
+    fi
+
+    # Step 1: Node.js
+    if ! check_node; then
+        print_node_install_guide
+        exit 1
+    fi
+
+    # Step 2: wjx-cli
+    if ! install_cli; then
+        exit 1
+    fi
+
+    # Step 3: API Key
+    guide_api_key
+
+    # Step 4: 配置
+    configure_cli
+
+    # Step 5: 验证
+    echo ""
+    verify_setup
+
+    echo ""
+    echo "============================================"
+    print_success "安装完成！"
+    echo "============================================"
+    echo ""
+    echo "  试试对 AI 说："
+    echo "  「帮我创建一份客户满意度调查问卷」"
+    echo ""
+    echo "  或命令行直接用："
+    echo "  wjx survey list                    # 查看问卷列表"
+    echo "  wjx survey jsonl-template --raw    # 生成 JSONL 问卷模板"
+    echo "  wjx survey create --file survey.jsonl # 用 JSONL 创建问卷"
+    echo "  wjx response report --vid 12345    # 查看问卷报告"
+    echo ""
+}
+
+main "$@"

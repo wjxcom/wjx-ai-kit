@@ -4,4 +4,5 @@ export {
   buildSsoPartnerUrl,
   buildSurveyUrl,
   buildPreviewUrl,
+  getShortLink,
 } from "wjx-api-sdk";

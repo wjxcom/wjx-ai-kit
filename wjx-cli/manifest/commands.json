@@ -1,0 +1,2147 @@
+{
+  "schemaVersion": 1,
+  "commands": [
+    {
+      "id": "account.add",
+      "command": "account.add",
+      "service": "subuser",
+      "action": "1003001",
+      "input": {
+        "type": "object",
+        "properties": {}
+      },
+      "risk": "write",
+      "identities": [
+        "user",
+        "bot"
+      ],
+      "source": "api",
+      "metadata": {
+        "path": "account.add",
+        "risk": "write",
+        "identities": [
+          "user"
+        ],
+        "targetFields": [
+          "subuser"
+        ]
+      }
+    },
+    {
+      "id": "account.delete",
+      "command": "account.delete",
+      "service": "subuser",
+      "action": "1003003",
+      "input": {
+        "type": "object",
+        "properties": {}
+      },
+      "risk": "high-risk-write",
+      "identities": [
+        "user",
+        "bot"
+      ],
+      "source": "api",
+      "metadata": {
+        "path": "account.delete",
+        "risk": "high-risk-write",
+        "identities": [
+          "user"
+        ],
+        "targetFields": [
+          "subuser"
+        ]
+      }
+    },
+    {
+      "id": "account.list",
+      "command": "account.list",
+      "service": "subuser",
+      "action": "1003005",
+      "input": {
+        "type": "object",
+        "properties": {}
+      },
+      "risk": "read",
+      "identities": [
+        "user",
+        "bot"
+      ],
+      "source": "api",
+      "metadata": {
+        "path": "account.list",
+        "risk": "read",
+        "identities": [
+          "user",
+          "bot"
+        ],
+        "targetFields": [
+          "subuser"
+        ],
+        "httpRetryable": true,
+        "idempotent": true
+      }
+    },
+    {
+      "id": "account.modify",
+      "command": "account.modify",
+      "service": "subuser",
+      "action": "1003002",
+      "input": {
+        "type": "object",
+        "properties": {}
+      },
+      "risk": "write",
+      "identities": [
+        "user",
+        "bot"
+      ],
+      "source": "api",
+      "metadata": {
+        "path": "account.modify",
+        "risk": "write",
+        "identities": [
+          "user"
+        ],
+        "targetFields": [
+          "subuser"
+        ]
+      }
+    },
+    {
+      "id": "account.restore",
+      "command": "account.restore",
+      "service": "subuser",
+      "action": "1003004",
+      "input": {
+        "type": "object",
+        "properties": {}
+      },
+      "risk": "write",
+      "identities": [
+        "user",
+        "bot"
+      ],
+      "source": "api",
+      "metadata": {
+        "path": "account.restore",
+        "risk": "write",
+        "identities": [
+          "user"
+        ],
+        "targetFields": [
+          "subuser"
+        ]
+      }
+    },
+    {
+      "id": "admin.add",
+      "command": "admin.add",
+      "service": "contacts",
+      "action": "1005004",
+      "input": {
+        "type": "object",
+        "properties": {}
+      },
+      "risk": "write",
+      "identities": [
+        "user",
+        "bot"
+      ],
+      "source": "api",
+      "metadata": {
+        "path": "admin.add",
+        "risk": "write",
+        "identities": [
+          "user"
+        ],
+        "targetFields": [
+          "corpid"
+        ]
+      }
+    },
+    {
+      "id": "admin.delete",
+      "command": "admin.delete",
+      "service": "contacts",
+      "action": "1005005",
+      "input": {
+        "type": "object",
+        "properties": {}
+      },
+      "risk": "high-risk-write",
+      "identities": [
+        "user",
+        "bot"
+      ],
+      "source": "api",
+      "metadata": {
+        "path": "admin.delete",
+        "risk": "high-risk-write",
+        "identities": [
+          "user"
+        ],
+        "targetFields": [
+          "uids",
+          "corpid"
+        ]
+      }
+    },
+    {
+      "id": "admin.restore",
+      "command": "admin.restore",
+      "service": "contacts",
+      "action": "1005006",
+      "input": {
+        "type": "object",
+        "properties": {}
+      },
+      "risk": "write",
+      "identities": [
+        "user",
+        "bot"
+      ],
+      "source": "api",
+      "metadata": {
+        "path": "admin.restore",
+        "risk": "write",
+        "identities": [
+          "user"
+        ],
+        "targetFields": [
+          "uids",
+          "corpid"
+        ]
+      }
+    },
+    {
+      "id": "analytics.anomalies",
+      "command": "analytics.anomalies",
+      "service": "default",
+      "action": "builtin:analytics.anomalies",
+      "input": {
+        "type": "object",
+        "properties": {}
+      },
+      "risk": "read",
+      "identities": [
+        "user",
+        "bot"
+      ],
+      "source": "builtin",
+      "metadata": {
+        "path": "analytics.anomalies",
+        "risk": "read",
+        "identities": [
+          "user",
+          "bot"
+        ],
+        "targetFields": [],
+        "httpRetryable": false,
+        "idempotent": true
+      }
+    },
+    {
+      "id": "analytics.compare",
+      "command": "analytics.compare",
+      "service": "default",
+      "action": "builtin:analytics.compare",
+      "input": {
+        "type": "object",
+        "properties": {}
+      },
+      "risk": "read",
+      "identities": [
+        "user",
+        "bot"
+      ],
+      "source": "builtin",
+      "metadata": {
+        "path": "analytics.compare",
+        "risk": "read",
+        "identities": [
+          "user",
+          "bot"
+        ],
+        "targetFields": [],
+        "httpRetryable": false,
+        "idempotent": true
+      }
+    },
+    {
+      "id": "analytics.csat",
+      "command": "analytics.csat",
+      "service": "default",
+      "action": "builtin:analytics.csat",
+      "input": {
+        "type": "object",
+        "properties": {}
+      },
+      "risk": "read",
+      "identities": [
+        "user",
+        "bot"
+      ],
+      "source": "builtin",
+      "metadata": {
+        "path": "analytics.csat",
+        "risk": "read",
+        "identities": [
+          "user",
+          "bot"
+        ],
+        "targetFields": [],
+        "httpRetryable": false,
+        "idempotent": true
+      }
+    },
+    {
+      "id": "analytics.decode",
+      "command": "analytics.decode",
+      "service": "default",
+      "action": "builtin:analytics.decode",
+      "input": {
+        "type": "object",
+        "properties": {}
+      },
+      "risk": "read",
+      "identities": [
+        "user",
+        "bot"
+      ],
+      "source": "builtin",
+      "metadata": {
+        "path": "analytics.decode",
+        "risk": "read",
+        "identities": [
+          "user",
+          "bot"
+        ],
+        "targetFields": [],
+        "httpRetryable": false,
+        "idempotent": true
+      }
+    },
+    {
+      "id": "analytics.decode-push",
+      "command": "analytics.decode-push",
+      "service": "default",
+      "action": "builtin:analytics.decode-push",
+      "input": {
+        "type": "object",
+        "properties": {}
+      },
+      "risk": "read",
+      "identities": [
+        "user",
+        "bot"
+      ],
+      "source": "builtin",
+      "metadata": {
+        "path": "analytics.decode-push",
+        "risk": "read",
+        "identities": [
+          "user",
+          "bot"
+        ],
+        "targetFields": [],
+        "httpRetryable": false,
+        "idempotent": true
+      }
+    },
+    {
+      "id": "analytics.nps",
+      "command": "analytics.nps",
+      "service": "default",
+      "action": "builtin:analytics.nps",
+      "input": {
+        "type": "object",
+        "properties": {}
+      },
+      "risk": "read",
+      "identities": [
+        "user",
+        "bot"
+      ],
+      "source": "builtin",
+      "metadata": {
+        "path": "analytics.nps",
+        "risk": "read",
+        "identities": [
+          "user",
+          "bot"
+        ],
+        "targetFields": [],
+        "httpRetryable": false,
+        "idempotent": true
+      }
+    },
+    {
+      "id": "api",
+      "command": "api",
+      "service": "default",
+      "action": "builtin:api",
+      "input": {
+        "type": "object",
+        "properties": {}
+      },
+      "risk": "write",
+      "identities": [
+        "user",
+        "bot"
+      ],
+      "source": "builtin",
+      "metadata": {
+        "path": "api",
+        "risk": "write",
+        "identities": [
+          "user",
+          "bot"
+        ],
+        "targetFields": [
+          "service",
+          "action"
+        ]
+      }
+    },
+    {
+      "id": "completion.bash",
+      "command": "completion.bash",
+      "service": "default",
+      "action": "builtin:completion.bash",
+      "input": {
+        "type": "object",
+        "properties": {}
+      },
+      "risk": "read",
+      "identities": [
+        "user",
+        "bot"
+      ],
+      "source": "builtin",
+      "metadata": {
+        "path": "completion.bash",
+        "risk": "read",
+        "identities": [
+          "user",
+          "bot"
+        ],
+        "targetFields": []
+      }
+    },
+    {
+      "id": "completion.fish",
+      "command": "completion.fish",
+      "service": "default",
+      "action": "builtin:completion.fish",
+      "input": {
+        "type": "object",
+        "properties": {}
+      },
+      "risk": "read",
+      "identities": [
+        "user",
+        "bot"
+      ],
+      "source": "builtin",
+      "metadata": {
+        "path": "completion.fish",
+        "risk": "read",
+        "identities": [
+          "user",
+          "bot"
+        ],
+        "targetFields": []
+      }
+    },
+    {
+      "id": "completion.install",
+      "command": "completion.install",
+      "service": "default",
+      "action": "builtin:completion.install",
+      "input": {
+        "type": "object",
+        "properties": {}
+      },
+      "risk": "write",
+      "identities": [
+        "user",
+        "bot"
+      ],
+      "source": "builtin",
+      "metadata": {
+        "path": "completion.install",
+        "risk": "write",
+        "identities": [
+          "user"
+        ],
+        "targetFields": []
+      }
+    },
+    {
+      "id": "completion.zsh",
+      "command": "completion.zsh",
+      "service": "default",
+      "action": "builtin:completion.zsh",
+      "input": {
+        "type": "object",
+        "properties": {}
+      },
+      "risk": "read",
+      "identities": [
+        "user",
+        "bot"
+      ],
+      "source": "builtin",
+      "metadata": {
+        "path": "completion.zsh",
+        "risk": "read",
+        "identities": [
+          "user",
+          "bot"
+        ],
+        "targetFields": []
+      }
+    },
+    {
+      "id": "contacts.add",
+      "command": "contacts.add",
+      "service": "contacts",
+      "action": "1005002",
+      "input": {
+        "type": "object",
+        "properties": {}
+      },
+      "risk": "write",
+      "identities": [
+        "user",
+        "bot"
+      ],
+      "source": "api",
+      "metadata": {
+        "path": "contacts.add",
+        "risk": "write",
+        "identities": [
+          "user"
+        ],
+        "targetFields": [
+          "corpid"
+        ]
+      }
+    },
+    {
+      "id": "contacts.delete",
+      "command": "contacts.delete",
+      "service": "contacts",
+      "action": "1005003",
+      "input": {
+        "type": "object",
+        "properties": {}
+      },
+      "risk": "high-risk-write",
+      "identities": [
+        "user",
+        "bot"
+      ],
+      "source": "api",
+      "metadata": {
+        "path": "contacts.delete",
+        "risk": "high-risk-write",
+        "identities": [
+          "user"
+        ],
+        "targetFields": [
+          "uids",
+          "corpid"
+        ]
+      }
+    },
+    {
+      "id": "contacts.query",
+      "command": "contacts.query",
+      "service": "contacts",
+      "action": "1005001",
+      "input": {
+        "type": "object",
+        "properties": {}
+      },
+      "risk": "read",
+      "identities": [
+        "user",
+        "bot"
+      ],
+      "source": "api",
+      "metadata": {
+        "path": "contacts.query",
+        "risk": "read",
+        "identities": [
+          "user",
+          "bot"
+        ],
+        "targetFields": [
+          "uid",
+          "corpid"
+        ],
+        "httpRetryable": true,
+        "idempotent": true
+      }
+    },
+    {
+      "id": "department.add",
+      "command": "department.add",
+      "service": "contacts",
+      "action": "1005102",
+      "input": {
+        "type": "object",
+        "properties": {}
+      },
+      "risk": "write",
+      "identities": [
+        "user",
+        "bot"
+      ],
+      "source": "api",
+      "metadata": {
+        "path": "department.add",
+        "risk": "write",
+        "identities": [
+          "user"
+        ],
+        "targetFields": [
+          "corpid"
+        ]
+      }
+    },
+    {
+      "id": "department.delete",
+      "command": "department.delete",
+      "service": "contacts",
+      "action": "1005104",
+      "input": {
+        "type": "object",
+        "properties": {}
+      },
+      "risk": "high-risk-write",
+      "identities": [
+        "user",
+        "bot"
+      ],
+      "source": "api",
+      "metadata": {
+        "path": "department.delete",
+        "risk": "high-risk-write",
+        "identities": [
+          "user"
+        ],
+        "targetFields": [
+          "type",
+          "depts",
+          "corpid"
+        ]
+      }
+    },
+    {
+      "id": "department.list",
+      "command": "department.list",
+      "service": "contacts",
+      "action": "1005101",
+      "input": {
+        "type": "object",
+        "properties": {}
+      },
+      "risk": "read",
+      "identities": [
+        "user",
+        "bot"
+      ],
+      "source": "api",
+      "metadata": {
+        "path": "department.list",
+        "risk": "read",
+        "identities": [
+          "user",
+          "bot"
+        ],
+        "targetFields": [
+          "corpid"
+        ],
+        "httpRetryable": true,
+        "idempotent": true
+      }
+    },
+    {
+      "id": "department.modify",
+      "command": "department.modify",
+      "service": "contacts",
+      "action": "1005103",
+      "input": {
+        "type": "object",
+        "properties": {}
+      },
+      "risk": "write",
+      "identities": [
+        "user",
+        "bot"
+      ],
+      "source": "api",
+      "metadata": {
+        "path": "department.modify",
+        "risk": "write",
+        "identities": [
+          "user"
+        ],
+        "targetFields": [
+          "corpid"
+        ]
+      }
+    },
+    {
+      "id": "diagnostics.doctor",
+      "command": "diagnostics.doctor",
+      "service": "default",
+      "action": "builtin:diagnostics.doctor",
+      "input": {
+        "type": "object",
+        "properties": {}
+      },
+      "risk": "read",
+      "identities": [
+        "user",
+        "bot"
+      ],
+      "source": "builtin",
+      "metadata": {
+        "path": "diagnostics.doctor",
+        "risk": "read",
+        "identities": [
+          "user",
+          "bot"
+        ],
+        "targetFields": []
+      }
+    },
+    {
+      "id": "diagnostics.whoami",
+      "command": "diagnostics.whoami",
+      "service": "default",
+      "action": "builtin:diagnostics.whoami",
+      "input": {
+        "type": "object",
+        "properties": {}
+      },
+      "risk": "read",
+      "identities": [
+        "user",
+        "bot"
+      ],
+      "source": "builtin",
+      "metadata": {
+        "path": "diagnostics.whoami",
+        "risk": "read",
+        "identities": [
+          "user",
+          "bot"
+        ],
+        "targetFields": []
+      }
+    },
+    {
+      "id": "init",
+      "command": "init",
+      "service": "default",
+      "action": "builtin:init",
+      "input": {
+        "type": "object",
+        "properties": {}
+      },
+      "risk": "write",
+      "identities": [
+        "user",
+        "bot"
+      ],
+      "source": "builtin",
+      "metadata": {
+        "path": "init",
+        "risk": "write",
+        "identities": [
+          "user"
+        ],
+        "targetFields": []
+      }
+    },
+    {
+      "id": "reference",
+      "command": "reference",
+      "service": "default",
+      "action": "builtin:reference",
+      "input": {
+        "type": "object",
+        "properties": {}
+      },
+      "risk": "read",
+      "identities": [
+        "user",
+        "bot"
+      ],
+      "source": "builtin",
+      "metadata": {
+        "path": "reference",
+        "risk": "read",
+        "identities": [
+          "user",
+          "bot"
+        ],
+        "targetFields": []
+      }
+    },
+    {
+      "id": "response.360-report",
+      "command": "response.360-report",
+      "service": "default",
+      "action": "1001102",
+      "input": {
+        "type": "object",
+        "properties": {}
+      },
+      "risk": "read",
+      "identities": [
+        "user",
+        "bot"
+      ],
+      "source": "api",
+      "metadata": {
+        "path": "response.360-report",
+        "risk": "read",
+        "identities": [
+          "user",
+          "bot"
+        ],
+        "targetFields": [
+          "vid",
+          "taskid"
+        ],
+        "httpRetryable": false,
+        "idempotent": false
+      }
+    },
+    {
+      "id": "response.clear",
+      "command": "response.clear",
+      "service": "default",
+      "action": "1001201",
+      "input": {
+        "type": "object",
+        "properties": {}
+      },
+      "risk": "high-risk-write",
+      "identities": [
+        "user",
+        "bot"
+      ],
+      "source": "api",
+      "metadata": {
+        "path": "response.clear",
+        "risk": "high-risk-write",
+        "identities": [
+          "user"
+        ],
+        "targetFields": [
+          "username",
+          "vid"
+        ],
+        "preRead": true,
+        "postVerify": true
+      }
+    },
+    {
+      "id": "response.count",
+      "command": "response.count",
+      "service": "default",
+      "action": "1001002",
+      "input": {
+        "type": "object",
+        "properties": {}
+      },
+      "risk": "read",
+      "identities": [
+        "user",
+        "bot"
+      ],
+      "source": "api",
+      "metadata": {
+        "path": "response.count",
+        "risk": "read",
+        "identities": [
+          "user",
+          "bot"
+        ],
+        "targetFields": [
+          "vid"
+        ],
+        "httpRetryable": true,
+        "idempotent": true
+      }
+    },
+    {
+      "id": "response.download",
+      "command": "response.download",
+      "service": "default",
+      "action": "1001004",
+      "input": {
+        "type": "object",
+        "properties": {}
+      },
+      "risk": "read",
+      "identities": [
+        "user",
+        "bot"
+      ],
+      "source": "api",
+      "metadata": {
+        "path": "response.download",
+        "risk": "read",
+        "identities": [
+          "user",
+          "bot"
+        ],
+        "targetFields": [
+          "vid",
+          "taskid"
+        ],
+        "httpRetryable": false,
+        "idempotent": false
+      }
+    },
+    {
+      "id": "response.modify",
+      "command": "response.modify",
+      "service": "default",
+      "action": "1001007",
+      "input": {
+        "type": "object",
+        "properties": {}
+      },
+      "risk": "high-risk-write",
+      "identities": [
+        "user",
+        "bot"
+      ],
+      "source": "api",
+      "metadata": {
+        "path": "response.modify",
+        "risk": "high-risk-write",
+        "identities": [
+          "user"
+        ],
+        "targetFields": [
+          "vid",
+          "jid"
+        ],
+        "preRead": true,
+        "postVerify": true
+      }
+    },
+    {
+      "id": "response.query",
+      "command": "response.query",
+      "service": "default",
+      "action": "1001002",
+      "input": {
+        "type": "object",
+        "properties": {}
+      },
+      "risk": "read",
+      "identities": [
+        "user",
+        "bot"
+      ],
+      "source": "api",
+      "metadata": {
+        "path": "response.query",
+        "risk": "read",
+        "identities": [
+          "user",
+          "bot"
+        ],
+        "targetFields": [
+          "vid",
+          "jid"
+        ],
+        "httpRetryable": true,
+        "idempotent": true
+      }
+    },
+    {
+      "id": "response.realtime",
+      "command": "response.realtime",
+      "service": "default",
+      "action": "1001003",
+      "input": {
+        "type": "object",
+        "properties": {}
+      },
+      "risk": "read",
+      "identities": [
+        "user",
+        "bot"
+      ],
+      "source": "api",
+      "metadata": {
+        "path": "response.realtime",
+        "risk": "read",
+        "identities": [
+          "user",
+          "bot"
+        ],
+        "targetFields": [
+          "vid"
+        ],
+        "httpRetryable": false,
+        "idempotent": false
+      }
+    },
+    {
+      "id": "response.report",
+      "command": "response.report",
+      "service": "default",
+      "action": "1001101",
+      "input": {
+        "type": "object",
+        "properties": {}
+      },
+      "risk": "read",
+      "identities": [
+        "user",
+        "bot"
+      ],
+      "source": "api",
+      "metadata": {
+        "path": "response.report",
+        "risk": "read",
+        "identities": [
+          "user",
+          "bot"
+        ],
+        "targetFields": [
+          "vid",
+          "jid"
+        ],
+        "httpRetryable": false,
+        "idempotent": false
+      }
+    },
+    {
+      "id": "response.submit",
+      "command": "response.submit",
+      "service": "default",
+      "action": "1001001",
+      "input": {
+        "type": "object",
+        "properties": {}
+      },
+      "risk": "write",
+      "identities": [
+        "user",
+        "bot"
+      ],
+      "source": "api",
+      "metadata": {
+        "path": "response.submit",
+        "risk": "write",
+        "identities": [
+          "user",
+          "bot"
+        ],
+        "targetFields": [
+          "vid"
+        ],
+        "preRead": true
+      }
+    },
+    {
+      "id": "response.submit-template",
+      "command": "response.submit-template",
+      "service": "default",
+      "action": "shortcut:response.submit-template",
+      "input": {
+        "type": "object",
+        "properties": {}
+      },
+      "risk": "read",
+      "identities": [
+        "user",
+        "bot"
+      ],
+      "source": "shortcut",
+      "metadata": {
+        "path": "response.submit-template",
+        "risk": "read",
+        "identities": [
+          "user",
+          "bot"
+        ],
+        "targetFields": [
+          "vid"
+        ],
+        "httpRetryable": true,
+        "idempotent": true
+      }
+    },
+    {
+      "id": "response.winners",
+      "command": "response.winners",
+      "service": "default",
+      "action": "1001006",
+      "input": {
+        "type": "object",
+        "properties": {}
+      },
+      "risk": "read",
+      "identities": [
+        "user",
+        "bot"
+      ],
+      "source": "api",
+      "metadata": {
+        "path": "response.winners",
+        "risk": "read",
+        "identities": [
+          "user",
+          "bot"
+        ],
+        "targetFields": [
+          "vid"
+        ],
+        "httpRetryable": true,
+        "idempotent": true
+      }
+    },
+    {
+      "id": "schema",
+      "command": "schema",
+      "service": "default",
+      "action": "builtin:schema",
+      "input": {
+        "type": "object",
+        "properties": {}
+      },
+      "risk": "read",
+      "identities": [
+        "user",
+        "bot"
+      ],
+      "source": "builtin",
+      "metadata": {
+        "path": "schema",
+        "risk": "read",
+        "identities": [
+          "user",
+          "bot"
+        ],
+        "targetFields": []
+      }
+    },
+    {
+      "id": "skill.install",
+      "command": "skill.install",
+      "service": "default",
+      "action": "builtin:skill.install",
+      "input": {
+        "type": "object",
+        "properties": {}
+      },
+      "risk": "write",
+      "identities": [
+        "user",
+        "bot"
+      ],
+      "source": "builtin",
+      "metadata": {
+        "path": "skill.install",
+        "risk": "write",
+        "identities": [
+          "user"
+        ],
+        "targetFields": [
+          "targetDir"
+        ]
+      }
+    },
+    {
+      "id": "skill.install-ppt",
+      "command": "skill.install-ppt",
+      "service": "default",
+      "action": "builtin:skill.install-ppt",
+      "input": {
+        "type": "object",
+        "properties": {}
+      },
+      "risk": "write",
+      "identities": [
+        "user",
+        "bot"
+      ],
+      "source": "builtin",
+      "metadata": {
+        "path": "skill.install-ppt",
+        "risk": "write",
+        "identities": [
+          "user"
+        ],
+        "targetFields": [
+          "targetDir"
+        ]
+      }
+    },
+    {
+      "id": "skill.update",
+      "command": "skill.update",
+      "service": "default",
+      "action": "builtin:skill.update",
+      "input": {
+        "type": "object",
+        "properties": {}
+      },
+      "risk": "write",
+      "identities": [
+        "user",
+        "bot"
+      ],
+      "source": "builtin",
+      "metadata": {
+        "path": "skill.update",
+        "risk": "write",
+        "identities": [
+          "user"
+        ],
+        "targetFields": [
+          "targetDir"
+        ]
+      }
+    },
+    {
+      "id": "skill.update-ppt",
+      "command": "skill.update-ppt",
+      "service": "default",
+      "action": "builtin:skill.update-ppt",
+      "input": {
+        "type": "object",
+        "properties": {}
+      },
+      "risk": "write",
+      "identities": [
+        "user",
+        "bot"
+      ],
+      "source": "builtin",
+      "metadata": {
+        "path": "skill.update-ppt",
+        "risk": "write",
+        "identities": [
+          "user"
+        ],
+        "targetFields": [
+          "targetDir"
+        ]
+      }
+    },
+    {
+      "id": "sso.partner-url",
+      "command": "sso.partner-url",
+      "service": "default",
+      "action": "builtin:sso.partner-url",
+      "input": {
+        "type": "object",
+        "properties": {}
+      },
+      "risk": "read",
+      "identities": [
+        "user",
+        "bot"
+      ],
+      "source": "builtin",
+      "metadata": {
+        "path": "sso.partner-url",
+        "risk": "read",
+        "identities": [
+          "user",
+          "bot"
+        ],
+        "targetFields": [
+          "username"
+        ]
+      }
+    },
+    {
+      "id": "sso.subaccount-url",
+      "command": "sso.subaccount-url",
+      "service": "default",
+      "action": "builtin:sso.subaccount-url",
+      "input": {
+        "type": "object",
+        "properties": {}
+      },
+      "risk": "read",
+      "identities": [
+        "user",
+        "bot"
+      ],
+      "source": "builtin",
+      "metadata": {
+        "path": "sso.subaccount-url",
+        "risk": "read",
+        "identities": [
+          "user",
+          "bot"
+        ],
+        "targetFields": [
+          "subuser"
+        ]
+      }
+    },
+    {
+      "id": "sso.user-system-url",
+      "command": "sso.user-system-url",
+      "service": "default",
+      "action": "builtin:sso.user-system-url",
+      "input": {
+        "type": "object",
+        "properties": {}
+      },
+      "risk": "read",
+      "identities": [
+        "user",
+        "bot"
+      ],
+      "source": "builtin",
+      "metadata": {
+        "path": "sso.user-system-url",
+        "risk": "read",
+        "identities": [
+          "user",
+          "bot"
+        ],
+        "targetFields": [
+          "system_id",
+          "u"
+        ]
+      }
+    },
+    {
+      "id": "survey.clear-bin",
+      "command": "survey.clear-bin",
+      "service": "default",
+      "action": "1000302",
+      "input": {
+        "type": "object",
+        "properties": {}
+      },
+      "risk": "high-risk-write",
+      "identities": [
+        "user",
+        "bot"
+      ],
+      "source": "api",
+      "metadata": {
+        "path": "survey.clear-bin",
+        "risk": "high-risk-write",
+        "identities": [
+          "user"
+        ],
+        "targetFields": [
+          "username",
+          "vid"
+        ],
+        "preRead": true,
+        "postVerify": true
+      }
+    },
+    {
+      "id": "survey.create",
+      "command": "survey.create",
+      "service": "default",
+      "action": "1000106",
+      "input": {
+        "type": "object",
+        "properties": {}
+      },
+      "risk": "write",
+      "identities": [
+        "user",
+        "bot"
+      ],
+      "source": "api",
+      "metadata": {
+        "path": "survey.create",
+        "risk": "write",
+        "identities": [
+          "user",
+          "bot"
+        ],
+        "targetFields": [
+          "title"
+        ],
+        "postVerify": true
+      }
+    },
+    {
+      "id": "survey.create-ai-page",
+      "command": "survey.create-ai-page",
+      "service": "default",
+      "action": "1000107",
+      "input": {
+        "type": "object",
+        "properties": {}
+      },
+      "risk": "write",
+      "identities": [
+        "user",
+        "bot"
+      ],
+      "source": "api",
+      "metadata": {
+        "path": "survey.create-ai-page",
+        "risk": "write",
+        "identities": [
+          "user",
+          "bot"
+        ],
+        "targetFields": [
+          "title"
+        ],
+        "postVerify": true
+      }
+    },
+    {
+      "id": "survey.delete",
+      "command": "survey.delete",
+      "service": "default",
+      "action": "1000301",
+      "input": {
+        "type": "object",
+        "properties": {}
+      },
+      "risk": "high-risk-write",
+      "identities": [
+        "user",
+        "bot"
+      ],
+      "source": "api",
+      "metadata": {
+        "path": "survey.delete",
+        "risk": "high-risk-write",
+        "identities": [
+          "user"
+        ],
+        "targetFields": [
+          "vid",
+          "username"
+        ],
+        "preRead": true,
+        "postVerify": true
+      }
+    },
+    {
+      "id": "survey.get",
+      "command": "survey.get",
+      "service": "default",
+      "action": "1000001",
+      "input": {
+        "type": "object",
+        "properties": {}
+      },
+      "risk": "read",
+      "identities": [
+        "user",
+        "bot"
+      ],
+      "source": "api",
+      "metadata": {
+        "path": "survey.get",
+        "risk": "read",
+        "identities": [
+          "user",
+          "bot"
+        ],
+        "targetFields": [
+          "vid"
+        ],
+        "httpRetryable": true,
+        "idempotent": true
+      }
+    },
+    {
+      "id": "survey.jsonl-template",
+      "command": "survey.jsonl-template",
+      "service": "default",
+      "action": "builtin:survey.jsonl-template",
+      "input": {
+        "type": "object",
+        "properties": {}
+      },
+      "risk": "read",
+      "identities": [
+        "user",
+        "bot"
+      ],
+      "source": "builtin",
+      "metadata": {
+        "path": "survey.jsonl-template",
+        "risk": "read",
+        "identities": [
+          "user",
+          "bot"
+        ],
+        "targetFields": [
+          "type"
+        ]
+      }
+    },
+    {
+      "id": "survey.list",
+      "command": "survey.list",
+      "service": "default",
+      "action": "1000002",
+      "input": {
+        "type": "object",
+        "properties": {}
+      },
+      "risk": "read",
+      "identities": [
+        "user",
+        "bot"
+      ],
+      "source": "api",
+      "metadata": {
+        "path": "survey.list",
+        "risk": "read",
+        "identities": [
+          "user",
+          "bot"
+        ],
+        "targetFields": [],
+        "httpRetryable": true,
+        "idempotent": true
+      }
+    },
+    {
+      "id": "survey.preview-url",
+      "command": "survey.preview-url",
+      "service": "default",
+      "action": "shortcut:survey.preview-url",
+      "input": {
+        "type": "object",
+        "properties": {}
+      },
+      "risk": "read",
+      "identities": [
+        "user",
+        "bot"
+      ],
+      "source": "shortcut",
+      "metadata": {
+        "path": "survey.preview-url",
+        "risk": "read",
+        "identities": [
+          "user",
+          "bot"
+        ],
+        "targetFields": [
+          "sid",
+          "vid"
+        ],
+        "httpRetryable": false,
+        "idempotent": true
+      }
+    },
+    {
+      "id": "survey.settings",
+      "command": "survey.settings",
+      "service": "default",
+      "action": "1000003",
+      "input": {
+        "type": "object",
+        "properties": {}
+      },
+      "risk": "read",
+      "identities": [
+        "user",
+        "bot"
+      ],
+      "source": "api",
+      "metadata": {
+        "path": "survey.settings",
+        "risk": "read",
+        "identities": [
+          "user",
+          "bot"
+        ],
+        "targetFields": [
+          "vid"
+        ],
+        "httpRetryable": true,
+        "idempotent": true
+      }
+    },
+    {
+      "id": "survey.shortlink",
+      "command": "survey.shortlink",
+      "service": "default",
+      "action": "shortcut:survey.shortlink",
+      "input": {
+        "type": "object",
+        "properties": {}
+      },
+      "risk": "read",
+      "identities": [
+        "user",
+        "bot"
+      ],
+      "source": "shortcut",
+      "metadata": {
+        "path": "survey.shortlink",
+        "risk": "read",
+        "identities": [
+          "user",
+          "bot"
+        ],
+        "targetFields": [
+          "url"
+        ],
+        "httpRetryable": false,
+        "idempotent": true,
+        "ambiguousTimeout": "stop-and-report"
+      }
+    },
+    {
+      "id": "survey.status",
+      "command": "survey.status",
+      "service": "default",
+      "action": "1000102",
+      "input": {
+        "type": "object",
+        "properties": {}
+      },
+      "risk": "high-risk-write",
+      "identities": [
+        "user",
+        "bot"
+      ],
+      "source": "api",
+      "metadata": {
+        "path": "survey.status",
+        "risk": "high-risk-write",
+        "identities": [
+          "user"
+        ],
+        "targetFields": [
+          "vid",
+          "state"
+        ],
+        "preRead": true,
+        "postVerify": true
+      }
+    },
+    {
+      "id": "survey.tag-details",
+      "command": "survey.tag-details",
+      "service": "default",
+      "action": "1000005",
+      "input": {
+        "type": "object",
+        "properties": {}
+      },
+      "risk": "read",
+      "identities": [
+        "user",
+        "bot"
+      ],
+      "source": "api",
+      "metadata": {
+        "path": "survey.tag-details",
+        "risk": "read",
+        "identities": [
+          "user",
+          "bot"
+        ],
+        "targetFields": [
+          "tag_id"
+        ],
+        "httpRetryable": true,
+        "idempotent": true
+      }
+    },
+    {
+      "id": "survey.tags",
+      "command": "survey.tags",
+      "service": "default",
+      "action": "1000004",
+      "input": {
+        "type": "object",
+        "properties": {}
+      },
+      "risk": "read",
+      "identities": [
+        "user",
+        "bot"
+      ],
+      "source": "api",
+      "metadata": {
+        "path": "survey.tags",
+        "risk": "read",
+        "identities": [
+          "user",
+          "bot"
+        ],
+        "targetFields": [
+          "username"
+        ],
+        "httpRetryable": true,
+        "idempotent": true
+      }
+    },
+    {
+      "id": "survey.update",
+      "command": "survey.update",
+      "service": "default",
+      "action": "1000109",
+      "input": {
+        "type": "object",
+        "properties": {}
+      },
+      "risk": "high-risk-write",
+      "identities": [
+        "user",
+        "bot"
+      ],
+      "source": "api",
+      "metadata": {
+        "path": "survey.update",
+        "risk": "high-risk-write",
+        "identities": [
+          "user",
+          "bot"
+        ],
+        "targetFields": [
+          "vid"
+        ],
+        "preRead": true,
+        "postVerify": true
+      }
+    },
+    {
+      "id": "survey.update-ai-page",
+      "command": "survey.update-ai-page",
+      "service": "default",
+      "action": "1000108",
+      "input": {
+        "type": "object",
+        "properties": {}
+      },
+      "risk": "high-risk-write",
+      "identities": [
+        "user",
+        "bot"
+      ],
+      "source": "api",
+      "metadata": {
+        "path": "survey.update-ai-page",
+        "risk": "high-risk-write",
+        "identities": [
+          "user"
+        ],
+        "targetFields": [
+          "vid",
+          "title"
+        ],
+        "preRead": true,
+        "postVerify": true
+      }
+    },
+    {
+      "id": "survey.update-settings",
+      "command": "survey.update-settings",
+      "service": "default",
+      "action": "1000103",
+      "input": {
+        "type": "object",
+        "properties": {}
+      },
+      "risk": "high-risk-write",
+      "identities": [
+        "user",
+        "bot"
+      ],
+      "source": "api",
+      "metadata": {
+        "path": "survey.update-settings",
+        "risk": "high-risk-write",
+        "identities": [
+          "user"
+        ],
+        "targetFields": [
+          "vid"
+        ],
+        "preRead": true,
+        "postVerify": true
+      }
+    },
+    {
+      "id": "survey.upload",
+      "command": "survey.upload",
+      "service": "default",
+      "action": "1000104",
+      "input": {
+        "type": "object",
+        "properties": {}
+      },
+      "risk": "write",
+      "identities": [
+        "user",
+        "bot"
+      ],
+      "source": "api",
+      "metadata": {
+        "path": "survey.upload",
+        "risk": "write",
+        "identities": [
+          "user",
+          "bot"
+        ],
+        "targetFields": [
+          "file_name"
+        ]
+      }
+    },
+    {
+      "id": "survey.url",
+      "command": "survey.url",
+      "service": "default",
+      "action": "shortcut:survey.url",
+      "input": {
+        "type": "object",
+        "properties": {}
+      },
+      "risk": "read",
+      "identities": [
+        "user",
+        "bot"
+      ],
+      "source": "shortcut",
+      "metadata": {
+        "path": "survey.url",
+        "risk": "read",
+        "identities": [
+          "user",
+          "bot"
+        ],
+        "targetFields": [
+          "activity",
+          "mode"
+        ],
+        "httpRetryable": false,
+        "idempotent": true
+      }
+    },
+    {
+      "id": "tag.add",
+      "command": "tag.add",
+      "service": "contacts",
+      "action": "1005202",
+      "input": {
+        "type": "object",
+        "properties": {}
+      },
+      "risk": "write",
+      "identities": [
+        "user",
+        "bot"
+      ],
+      "source": "api",
+      "metadata": {
+        "path": "tag.add",
+        "risk": "write",
+        "identities": [
+          "user"
+        ],
+        "targetFields": [
+          "corpid"
+        ]
+      }
+    },
+    {
+      "id": "tag.delete",
+      "command": "tag.delete",
+      "service": "contacts",
+      "action": "1005204",
+      "input": {
+        "type": "object",
+        "properties": {}
+      },
+      "risk": "high-risk-write",
+      "identities": [
+        "user",
+        "bot"
+      ],
+      "source": "api",
+      "metadata": {
+        "path": "tag.delete",
+        "risk": "high-risk-write",
+        "identities": [
+          "user"
+        ],
+        "targetFields": [
+          "type",
+          "tags",
+          "corpid"
+        ]
+      }
+    },
+    {
+      "id": "tag.list",
+      "command": "tag.list",
+      "service": "contacts",
+      "action": "1005201",
+      "input": {
+        "type": "object",
+        "properties": {}
+      },
+      "risk": "read",
+      "identities": [
+        "user",
+        "bot"
+      ],
+      "source": "api",
+      "metadata": {
+        "path": "tag.list",
+        "risk": "read",
+        "identities": [
+          "user",
+          "bot"
+        ],
+        "targetFields": [
+          "corpid"
+        ],
+        "httpRetryable": true,
+        "idempotent": true
+      }
+    },
+    {
+      "id": "tag.modify",
+      "command": "tag.modify",
+      "service": "contacts",
+      "action": "1005203",
+      "input": {
+        "type": "object",
+        "properties": {}
+      },
+      "risk": "write",
+      "identities": [
+        "user",
+        "bot"
+      ],
+      "source": "api",
+      "metadata": {
+        "path": "tag.modify",
+        "risk": "write",
+        "identities": [
+          "user"
+        ],
+        "targetFields": [
+          "tp_id",
+          "corpid"
+        ]
+      }
+    },
+    {
+      "id": "update",
+      "command": "update",
+      "service": "default",
+      "action": "builtin:update",
+      "input": {
+        "type": "object",
+        "properties": {}
+      },
+      "risk": "write",
+      "identities": [
+        "user",
+        "bot"
+      ],
+      "source": "builtin",
+      "metadata": {
+        "path": "update",
+        "risk": "write",
+        "identities": [
+          "user"
+        ],
+        "targetFields": []
+      }
+    },
+    {
+      "id": "user-system.add-participants",
+      "command": "user-system.add-participants",
+      "service": "user-system",
+      "action": "1002001",
+      "input": {
+        "type": "object",
+        "properties": {}
+      },
+      "risk": "write",
+      "identities": [
+        "user",
+        "bot"
+      ],
+      "source": "api",
+      "metadata": {
+        "path": "user-system.add-participants",
+        "risk": "write",
+        "identities": [
+          "user"
+        ],
+        "targetFields": [
+          "sysid"
+        ]
+      }
+    },
+    {
+      "id": "user-system.bind",
+      "command": "user-system.bind",
+      "service": "user-system",
+      "action": "1002004",
+      "input": {
+        "type": "object",
+        "properties": {}
+      },
+      "risk": "write",
+      "identities": [
+        "user",
+        "bot"
+      ],
+      "source": "api",
+      "metadata": {
+        "path": "user-system.bind",
+        "risk": "write",
+        "identities": [
+          "user"
+        ],
+        "targetFields": [
+          "vid",
+          "sysid"
+        ]
+      }
+    },
+    {
+      "id": "user-system.delete-participants",
+      "command": "user-system.delete-participants",
+      "service": "user-system",
+      "action": "1002003",
+      "input": {
+        "type": "object",
+        "properties": {}
+      },
+      "risk": "high-risk-write",
+      "identities": [
+        "user",
+        "bot"
+      ],
+      "source": "api",
+      "metadata": {
+        "path": "user-system.delete-participants",
+        "risk": "high-risk-write",
+        "identities": [
+          "user"
+        ],
+        "targetFields": [
+          "uids",
+          "sysid"
+        ]
+      }
+    },
+    {
+      "id": "user-system.modify-participants",
+      "command": "user-system.modify-participants",
+      "service": "user-system",
+      "action": "1002002",
+      "input": {
+        "type": "object",
+        "properties": {}
+      },
+      "risk": "write",
+      "identities": [
+        "user",
+        "bot"
+      ],
+      "source": "api",
+      "metadata": {
+        "path": "user-system.modify-participants",
+        "risk": "write",
+        "identities": [
+          "user"
+        ],
+        "targetFields": [
+          "sysid"
+        ]
+      }
+    },
+    {
+      "id": "user-system.query-binding",
+      "command": "user-system.query-binding",
+      "service": "user-system",
+      "action": "1002005",
+      "input": {
+        "type": "object",
+        "properties": {}
+      },
+      "risk": "read",
+      "identities": [
+        "user",
+        "bot"
+      ],
+      "source": "api",
+      "metadata": {
+        "path": "user-system.query-binding",
+        "risk": "read",
+        "identities": [
+          "user",
+          "bot"
+        ],
+        "targetFields": [
+          "vid",
+          "sysid"
+        ],
+        "httpRetryable": true,
+        "idempotent": true
+      }
+    },
+    {
+      "id": "user-system.query-surveys",
+      "command": "user-system.query-surveys",
+      "service": "user-system",
+      "action": "1002006",
+      "input": {
+        "type": "object",
+        "properties": {}
+      },
+      "risk": "read",
+      "identities": [
+        "user",
+        "bot"
+      ],
+      "source": "api",
+      "metadata": {
+        "path": "user-system.query-surveys",
+        "risk": "read",
+        "identities": [
+          "user",
+          "bot"
+        ],
+        "targetFields": [
+          "uid",
+          "sysid"
+        ],
+        "httpRetryable": true,
+        "idempotent": true
+      }
+    }
+  ]
+}

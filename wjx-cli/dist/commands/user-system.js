@@ -1,20 +1,21 @@
+import { executeRuntimeAction } from "../lib/runtime/executor.js";
 import { addParticipants, modifyParticipants, deleteParticipants, bindActivity, querySurveyBinding, queryUserSurveys, } from "wjx-api-sdk";
-import { executeCommand, strictInt, requireField, ensureJsonString } from "../lib/command-helpers.js";
+import { strictInt, requireField, requirePositiveInt, ensureNonEmptyJsonArray } from "../lib/command-helpers.js";
 export function registerUserSystemCommands(program) {
-    const userSystem = program.command("user-system").description("用户系统管理");
+    const userSystem = program.command("user-system").description("用户系统管理（已过时，仅维护已有系统）");
     // --- add-participants ---
     userSystem
         .command("add-participants")
-        .description("添加参与者")
+        .description("[已过时] 添加参与者到已有用户系统")
         .option("--users <json>", "参与者JSON")
         .option("--sysid <n>", "系统ID", strictInt)
         .option("--auto_create_udept", "部门不存在时自动创建")
         .action(async (_opts, cmd) => {
-        await executeCommand(program, cmd, addParticipants, (m) => {
+        await executeRuntimeAction(program, cmd, addParticipants, (m) => {
             requireField(m, "users");
-            requireField(m, "sysid");
+            requirePositiveInt(m, "sysid");
             return {
-                users: ensureJsonString(m.users, "users"),
+                users: ensureNonEmptyJsonArray(m.users, "users"),
                 sysid: m.sysid,
                 auto_create_udept: m.auto_create_udept,
             };
@@ -23,16 +24,16 @@ export function registerUserSystemCommands(program) {
     // --- modify-participants ---
     userSystem
         .command("modify-participants")
-        .description("修改参与者")
+        .description("[已过时] 修改已有用户系统的参与者")
         .option("--users <json>", "参与者JSON")
         .option("--sysid <n>", "系统ID", strictInt)
         .option("--auto_create_udept", "部门不存在时自动创建")
         .action(async (_opts, cmd) => {
-        await executeCommand(program, cmd, modifyParticipants, (m) => {
+        await executeRuntimeAction(program, cmd, modifyParticipants, (m) => {
             requireField(m, "users");
-            requireField(m, "sysid");
+            requirePositiveInt(m, "sysid");
             return {
-                users: ensureJsonString(m.users, "users"),
+                users: ensureNonEmptyJsonArray(m.users, "users"),
                 sysid: m.sysid,
                 auto_create_udept: m.auto_create_udept,
             };
@@ -41,15 +42,15 @@ export function registerUserSystemCommands(program) {
     // --- delete-participants ---
     userSystem
         .command("delete-participants")
-        .description("删除参与者")
+        .description("[已过时] 删除已有用户系统的参与者")
         .option("--uids <json>", "用户ID JSON数组")
         .option("--sysid <n>", "系统ID", strictInt)
         .action(async (_opts, cmd) => {
-        await executeCommand(program, cmd, deleteParticipants, (m) => {
+        await executeRuntimeAction(program, cmd, deleteParticipants, (m) => {
             requireField(m, "uids");
-            requireField(m, "sysid");
+            requirePositiveInt(m, "sysid");
             return {
-                uids: ensureJsonString(m.uids, "uids"),
+                uids: ensureNonEmptyJsonArray(m.uids, "uids"),
                 sysid: m.sysid,
             };
         });
@@ -57,7 +58,7 @@ export function registerUserSystemCommands(program) {
     // --- bind ---
     userSystem
         .command("bind")
-        .description("绑定问卷到用户系统")
+        .description("[已过时] 绑定问卷到已有用户系统")
         .option("--vid <n>", "问卷ID", strictInt)
         .option("--sysid <n>", "系统ID", strictInt)
         .option("--uids <json>", "参与者ID JSON数组")
@@ -66,14 +67,14 @@ export function registerUserSystemCommands(program) {
         .option("--can_view_result", "允许查看结果")
         .option("--can_hide_qlist <n>", "隐藏问卷列表", strictInt)
         .action(async (_opts, cmd) => {
-        await executeCommand(program, cmd, bindActivity, (m) => {
-            requireField(m, "vid");
-            requireField(m, "sysid");
+        await executeRuntimeAction(program, cmd, bindActivity, (m) => {
+            requirePositiveInt(m, "vid");
+            requirePositiveInt(m, "sysid");
             requireField(m, "uids");
             return {
                 vid: m.vid,
                 sysid: m.sysid,
-                uids: ensureJsonString(m.uids, "uids"),
+                uids: ensureNonEmptyJsonArray(m.uids, "uids"),
                 answer_times: m.answer_times,
                 can_chg_answer: m.can_chg_answer,
                 can_view_result: m.can_view_result,
@@ -84,7 +85,7 @@ export function registerUserSystemCommands(program) {
     // --- query-binding ---
     userSystem
         .command("query-binding")
-        .description("查询问卷绑定关系")
+        .description("[已过时] 查询已有用户系统的问卷绑定关系")
         .option("--vid <n>", "问卷ID", strictInt)
         .option("--sysid <n>", "系统ID", strictInt)
         .option("--join_status <n>", "参与状态: 0=全部, 1=待参与, 2=已参与", strictInt)
@@ -93,9 +94,9 @@ export function registerUserSystemCommands(program) {
         .option("--month <s>", "按月筛选")
         .option("--force_join_times", "强制参与次数")
         .action(async (_opts, cmd) => {
-        await executeCommand(program, cmd, querySurveyBinding, (m) => {
-            requireField(m, "vid");
-            requireField(m, "sysid");
+        await executeRuntimeAction(program, cmd, querySurveyBinding, (m) => {
+            requirePositiveInt(m, "vid");
+            requirePositiveInt(m, "sysid");
             return {
                 vid: m.vid,
                 sysid: m.sysid,
@@ -110,13 +111,13 @@ export function registerUserSystemCommands(program) {
     // --- query-surveys ---
     userSystem
         .command("query-surveys")
-        .description("查询用户关联问卷")
+        .description("[已过时] 查询已有用户系统的用户关联问卷")
         .option("--uid <s>", "参与者ID")
         .option("--sysid <n>", "系统ID", strictInt)
         .action(async (_opts, cmd) => {
-        await executeCommand(program, cmd, queryUserSurveys, (m) => {
+        await executeRuntimeAction(program, cmd, queryUserSurveys, (m) => {
             requireField(m, "uid");
-            requireField(m, "sysid");
+            requirePositiveInt(m, "sysid");
             return {
                 uid: m.uid,
                 sysid: m.sysid,

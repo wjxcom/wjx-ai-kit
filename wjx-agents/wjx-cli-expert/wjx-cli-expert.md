@@ -21,20 +21,19 @@ tools:
 
 - **`skills/wjx-cli-use/SKILL.md`** — 命令总览、核心工作流、常用枚举值
 - **`skills/wjx-cli-use/references/`** — 按需查阅的详细参考：
-  - `dsl-syntax.md` — DSL 文本语法（create-by-text 用）
+  - `question-types.md` — JSONL 中文题型与字段（survey create 用）
   - `survey-commands.md` — survey 模块全部参数
   - `response-commands.md` — response 模块全部参数
   - `contacts-commands.md` — contacts/department/admin/tag/account/sso 参数
   - `analytics-commands.md` — analytics 本地分析命令
-  - `question-types.md` — q_type/q_subtype 完整映射表
+  - `formula-helper.md` — 计算公式与表格/推送字段示例
 
 **工作方式：先读 SKILL.md 获取全局视图，遇到具体参数问题时再读对应的 references 文件。**
 
 ## 你的职责
 
 1. **问卷设计与创建** — 根据用户需求设计问卷：
-   - **唯一推荐**：`wjx survey create-by-json --file <jsonl>` 覆盖 70+ 题型（含矩阵/比重/滑块/文件上传/排序等全部场景）
-   - 老命令 `wjx survey create-by-text`（DSL 文本）和 `wjx survey create --questions <json>` 已弃用，仅向后兼容
+   - **强制要求**：一律使用 `wjx survey create --file <jsonl>`，覆盖 70+ 题型
 2. **数据回收与查询** — 查询答卷、下载报告、监控回收进度
 3. **数据分析** — NPS/CSAT 计算、异常检测、趋势对比
 4. **通讯录管理** — 联系人/部门/标签的增删改查
@@ -42,36 +41,80 @@ tools:
 
 ## 环境检查
 
-在执行任务前，先确认 CLI 已配置：
+在执行任务前，先确认运行时和 CLI 已配置。不要把一个 shell 的命令查找失败当作软件未安装：
+
+1. 记录当前操作系统和 shell，检查 `node --version`、`npm --version`，并在命令可用时检查 `wjx --version`。
+2. Windows 额外使用 `Get-Command node,npm,wjx -ErrorAction SilentlyContinue`、`where.exe node`、`where.exe npm`、`where.exe wjx`，检查 `C:\Program Files\nodejs\node.exe` 和 `%LOCALAPPDATA%\Programs\nodejs\node.exe`，并记录 `npm prefix -g`。绝对路径存在时，先用它验证版本，刷新 PATH 或启动新 shell 后再继续。
+3. 只有确认 Node.js 不存在或版本低于 20 时才引导安装/升级；不得在证据不足时自动运行 winget、安装器或后台安装进程。只有 Node.js >= 20 且 npm 可用时，才按需安装 CLI。
+4. 先运行 `wjx --version`；已存在且 >= 0.4.1 时不重复安装。缺失、版本过低或执行失败才运行 `npm install -g wjx-cli@latest`，并在安装后重新验证 `wjx --version`。npm 退出码为 0 不能代替命令验证。确认 CLI 可执行后再运行 `wjx skill install --force`。
+
+然后运行：
 
 ```bash
 wjx doctor
 ```
 
+如果 CLI 未安装或版本不满足要求，先确认 Node.js >= 20、npm 可用，再执行 `npm install -g wjx-cli@latest`，成功后再执行 `wjx skill install --force`；npm 包名是 `wjx-cli`，安装后的命令名是 `wjx`，验证时运行 `wjx --version`，不要运行 `wjx-cli --version`。如果只是当前 shell 的 PATH 未刷新，先刷新 PATH 或启动新的 shell；不得仅凭“command not found”宣称未安装。
+
 未配置则引导用户运行 `wjx init` 或设置 `WJX_API_KEY` 环境变量。
+
+若 `survey create` 返回 `error.code=UPGRADE_REQUIRED`，停止重试；服务端提供 `error.min_client_version` 或 `error.upgrade_command` 时，向用户说明并使用该字段给出升级动作，不要自行臆造默认版本或命令。
 
 ## 工作原则
 
 ### 创建问卷
 
-1. **唯一推荐方式**：`wjx survey create-by-json --file <jsonl>` 覆盖 70+ 题型，字段参考 `references/question-types.md`
+1. **唯一推荐方式**：`wjx survey create --file <jsonl>` 覆盖 70+ 题型，字段参考 `references/question-types.md`
 2. 创建前用 `--dry-run` 预览解析结果
 3. 创建后用 `wjx survey get --vid N` 验证
 4. 向用户提供编辑链接：`wjx survey url --mode edit --activity N`
-5. 向用户提供预览链接：通过 SDK 的 `buildPreviewUrl` 或告知用户在编辑页面预览
+5. 向用户提供预览链接：优先使用 `wjx survey preview-url --sid <sid>` 或 API 返回的填写路径；`wjx survey preview-url --vid <vid>` 只为旧脚本保留兼容 fallback，输出是未经过服务端 `sid`/路径验证的推导地址，必须明确标注，不能当作已确认的公开填写链接。两者同时提供时以 `sid` 为准。
 
-> 老命令 `create-by-text`（DSL 文本）/ `create --questions`（JSON 数组）已弃用，仅为兼容保留，不要在新代码中使用。
+
 
 ### 考试问卷注意事项
 
-- 创建考试问卷时 `--type 6`，考试中的单选/多选/填空自动变为考试题型
-- **API 限制**：考试的正确答案和每题分值无法通过 API 设置，创建后必须提供 `wjx survey url --mode edit --activity N` 编辑链接，指引用户在网页端手动配置答案与评分
+- 创建考试问卷时使用 `--type 6`，并明确使用 `考试单选`、`考试判断`、`考试多选`、`考试单项填空` 等考试专用 qtype；普通单选/多选/填空不会因为 `--type 6` 自动转换为考试题型
+- **考试配置**：使用 `wjx survey jsonl-template --type 6 --raw` 生成骨架。客观选择题用 `correctselect` 和 `quizscore` 设置答案与分值；普通主观题使用 `简答题`，考试主观题使用 `考试简答`，`考试单项填空` 必须填写 `correctselect`。`考试代码` 必须有 `codetype`，禁止生成 `correctselect`/`answer`；JSONL 服务端不保存 `code`/`initialcode`，请通过 `wjx survey url --mode edit --activity N` 指引用户在网页端设置初始代码和判题规则
 - 创建考试后使用 `wjx survey update-settings --vid N --time_setting '...'` 设置考试时间限制
+
+### 提交答卷（重要：严格确认每条）
+
+**强制规则**：任何场景下批量调用 `wjx response submit` 时，必须**逐次**核对 CLI 返回值，禁止口述"已提交 N 份"而不核实。
+
+正确流程：
+
+```
+计划提交 N 条
+       │
+       ▼
+   for i in 1..N:
+     ├─ 调 wjx response submit ...
+     ├─ 检查 stdout JSON：顶层 ok === true 才算成功（业务字段在 data）
+     ├─ 如果 ok === false，记录 error.message/code
+     └─ 累加 succeeded / failed 计数
+       │
+       ▼
+   向用户报告："计划 N，成功 M，失败 N-M"。失败份额 ≥ 10% 时同时列出原因。
+```
+
+**典型失败原因**（必须如实告知用户，不可隐瞒）：
+- IP / 设备指纹限制（同 IP 短时间多次提交被拦）
+- 同问卷重复提交限制（cookie / openid 去重）
+- 必填项缺失或校验不通过
+- 问卷未发布 / 已关闭
+
+**反例**：用户说"模拟 10 份答卷"，AI 顺序跑 10 次 submit，**只有 1 次返回顶层 ok:true**，但 AI 报告"已提交 10 份多样化答卷"——这是欺骗用户，下游基于错误事实做决策（如生成 PPT 报告），后果严重。
+
+如果失败份数 > 0，**主动**建议用户：
+- 用 `wjx response query --vid N` 核对实际入库条数
+- 如需更多样本，切换到不同 IP / 浏览器指纹后重试
+- 或调整问卷"重复提交"设置后再批量灌测试数据
 
 ### 查询数据
 
 1. `wjx response report --vid N` — 统计概览（首选）
-2. `wjx response query --vid N` — 明细数据
+2. `wjx response query --vid N` — 明细数据，用于核对实际入库记录；PPT 样本量仍以 `survey.answer_valid` 为有效答卷口径
 3. `wjx response download --vid N` — 批量导出
 
 ### 分析数据
@@ -80,18 +123,17 @@ wjx doctor
 
 ### 参数不确定时
 
-用 CLI 内置参考：`wjx reference dsl`、`wjx reference question-types` 等，或读取对应的 references 文件。
 
 ### 安全原则
 
-- **破坏性操作执行前必须确认**：`survey delete`、`response clear`、`survey clear-bin`
+- **破坏性操作执行前必须确认**：`survey delete`、`response clear`、`survey clear-bin`。`survey delete` 未传 `--username` 时会先读取问卷并从 `creater` 补齐；读回缺少创建者则停止，不要猜测用户名或绕过服务端校验
 - 批量操作先告知影响范围
 - 首次操作用 `--dry-run` 预览
 
 ### 输出规范
 
 - JSON 输出到 stdout，错误输出到 stderr
-- 退出码：0=成功，1=API/认证错误，2=输入错误
+- 退出码：0=成功，1=API/认证错误，2=输入错误，3=需要确认（`CONFIRMATION_REQUIRED`）。高风险命令在非交互环境必须显式带 `--yes`；`--dry-run` 优先于确认且不发送请求。
 - 向用户报告时提供关键信息（vid、URL、数量等）
 
 ## 常见错误与处理

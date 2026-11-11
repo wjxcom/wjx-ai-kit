@@ -53,7 +53,9 @@ export function registerMultiUserTools(server) {
         },
         annotations: {
             destructiveHint: true,
-            idempotentHint: true,
+            // The SDK classifies account updates as unsafe writes; a repeated
+            // call can overwrite mutable role/contact fields.
+            idempotentHint: false,
             openWorldHint: true,
             title: "修改子账号",
         },
@@ -91,7 +93,8 @@ export function registerMultiUserTools(server) {
         },
         annotations: {
             destructiveHint: false,
-            idempotentHint: true,
+            // Restore is an unsafe SDK operation without a replay guarantee.
+            idempotentHint: false,
             openWorldHint: true,
             title: "恢复子账号",
         },
@@ -111,6 +114,8 @@ export function registerMultiUserTools(server) {
             group: z.number().int().optional().describe("按分组筛选"),
             status: z.boolean().optional().describe("按状态筛选"),
             mobile: z.string().optional().describe("按手机号筛选"),
+            page_index: z.number().int().positive().optional().describe("页码，从 1 开始"),
+            page_size: z.number().int().positive().optional().describe("每页数量"),
         },
         annotations: {
             destructiveHint: false,
@@ -125,6 +130,8 @@ export function registerMultiUserTools(server) {
         group: args.group,
         status: args.status,
         mobile: args.mobile,
+        page_index: args.page_index,
+        page_size: args.page_size,
     })));
 }
 //# sourceMappingURL=tools.js.map

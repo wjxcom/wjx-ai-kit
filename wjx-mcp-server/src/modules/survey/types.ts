@@ -1,5 +1,4 @@
 export type {
-  CreateSurveyInput,
   GetSurveyInput,
   ListSurveysInput,
   UpdateSurveyStatusInput,

@@ -1,4 +1,51 @@
 /**
+ * Static shell snippets used by the completion command.
+ *
+ * Keep this module free of runtime dependencies so `wjx completion <shell>`
+ * can answer without loading the full Commander command graph or API SDK.
+ */
+export const COMPLETION_SCRIPTS = Object.freeze({
+    bash: `
+_wjx_completions() {
+  local cur_word="\${COMP_WORDS[COMP_CWORD]}"
+  local line="\${COMP_LINE}"
+  local point="\${COMP_POINT}"
+
+  local candidates
+  candidates=$(wjx --get-completions "$point" "$line" 2>/dev/null)
+
+  COMPREPLY=($(compgen -W "$candidates" -- "$cur_word"))
+}
+
+complete -F _wjx_completions wjx
+`.trim(),
+    zsh: `
+_wjx_completions() {
+  local line="\${words[*]}"
+  local point="\${CURSOR}"
+
+  local candidates
+  candidates=("\${(@f)$(wjx --get-completions "$point" "$line" 2>/dev/null)}")
+
+  local -a completions
+  for c in "\${candidates[@]}"; do
+    [[ -n "$c" ]] && completions+=("$c")
+  done
+  _describe 'wjx' completions
+}
+
+compdef _wjx_completions wjx
+`.trim(),
+    fish: `
+complete -c wjx -f -a '(wjx --get-completions (commandline -C) (commandline) 2>/dev/null)'
+`.trim(),
+});
+export function getCompletionScript(shell) {
+    if (!Object.prototype.hasOwnProperty.call(COMPLETION_SCRIPTS, shell))
+        return undefined;
+    return COMPLETION_SCRIPTS[shell];
+}
+/**
  * Walk the Commander command tree and return completion candidates
  * for the given input line and cursor position.
  */

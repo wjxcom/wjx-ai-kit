@@ -3,6 +3,7 @@ import { describe, it, before } from "node:test";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 import { createServer } from "../dist/server.js";
+import { JSONL_QTYPES_RESOURCE } from "../dist/resources/jsonl-qtypes.js";
 
 process.env.WJX_APP_ID = process.env.WJX_APP_ID || "test-app-id";
 process.env.WJX_APP_KEY = process.env.WJX_APP_KEY || "test-app-key";
@@ -64,6 +65,20 @@ describe("survey-generation-json prompts", () => {
       assert.ok(text.includes("create_survey_by_json"));
     });
 
+    it("gates creation behind an explicit authorization and distinguishes 360 types", async () => {
+      const result = await client.getPrompt({
+        name: "generate-survey-json",
+        arguments: { topic: "360度评估" },
+      });
+      const text = result.messages[0].content.text;
+      assert.match(text, /先.*预览|预览.*先/i);
+      assert.match(text, /明确授权|明确确认|用户.*授权/i);
+      assert.match(text, /360.*atype=4/);
+      assert.match(text, /无测评关系.*atype=5/);
+      assert.match(text, /民主测评.*atype=11/);
+      assert.doesNotMatch(text, /生成完成后，请直接调用 create_survey_by_json/);
+    });
+
     it("respects question_count and requirements parameters", async () => {
       const result = await client.getPrompt({
         name: "generate-survey-json",
@@ -77,23 +92,38 @@ describe("survey-generation-json prompts", () => {
       assert.ok(text.includes("20"));
       assert.ok(text.includes("包含联合分析"));
     });
+
+    it("uses the generated JSONL profile instead of a stale hand-maintained qtype list", async () => {
+      const result = await client.getPrompt({
+        name: "generate-survey-json",
+        arguments: { topic: "完整题型覆盖" },
+      });
+      const text = result.messages[0].content.text;
+      for (const qtype of JSONL_QTYPES_RESOURCE.creatableQtypes) {
+        assert.ok(text.includes(qtype), `prompt omitted generated qtype: ${qtype}`);
+      }
+      const constraint = text.match(/qtype 的值只能从当前可创建列表中选择：[^\n]*/)?.[0] ?? "";
+      assert.ok(constraint, "prompt omitted the generated creatable qtype constraint");
+      for (const qtype of JSONL_QTYPES_RESOURCE.readOnlyOrWebEditorQtypes) {
+        assert.doesNotMatch(constraint, new RegExp(qtype));
+      }
+      assert.match(text, /wjx:\/\/reference\/jsonl-qtypes/);
+    });
   });
 
   describe("generate-form-json", () => {
-    it("uses official '7' whitelist qtypes and atype=7 hint", async () => {
+    it("uses parser-supported form qtypes and atype=7 hint", async () => {
       const result = await client.getPrompt({
         name: "generate-form-json",
         arguments: { topic: "活动报名" },
       });
       const text = result.messages[0].content.text;
       assert.ok(text.includes("活动报名"));
-      // 表单专用题型
-      assert.ok(text.includes("签名题"));
-      assert.ok(text.includes("地图"));
+      // 转换器支持的表单常用题型
+      assert.ok(text.includes("手机"));
+      assert.ok(text.includes("日期"));
       assert.ok(text.includes("表格数值"));
       assert.ok(text.includes("商品题"));
-      assert.ok(text.includes("预约题"));
-      assert.ok(text.includes("手机验证"));
       // atype 提示
       assert.ok(text.includes("atype=7"));
       assert.ok(text.includes("create_survey_by_json"));

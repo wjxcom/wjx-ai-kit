@@ -35,11 +35,13 @@ export function decodePushPayload(encryptedData, appKey, signature, rawBody) {
     }
     // Optional signature verification (timing-safe)
     let signatureValid;
-    if (signature && rawBody) {
+    if (signature !== undefined && rawBody !== undefined) {
         const expected = createHash("sha1").update(rawBody + appKey, "utf-8").digest("hex");
+        const expectedBytes = Buffer.from(expected, "utf-8");
+        const signatureBytes = Buffer.from(signature, "utf-8");
         signatureValid =
-            expected.length === signature.length &&
-                timingSafeEqual(Buffer.from(expected), Buffer.from(signature));
+            expectedBytes.length === signatureBytes.length &&
+                timingSafeEqual(expectedBytes, signatureBytes);
     }
     return { decrypted: parsed, signatureValid };
 }

@@ -1,3 +1,4 @@
+import { executeRuntimeAction } from "../lib/runtime/executor.js";
 import { Command } from "commander";
 import {
   querySubAccounts,
@@ -6,7 +7,7 @@ import {
   deleteSubAccount,
   restoreSubAccount,
 } from "wjx-api-sdk";
-import { executeCommand, strictInt, requireField } from "../lib/command-helpers.js";
+import { strictInt, requireField, requireEnum, requirePositiveInt } from "../lib/command-helpers.js";
 
 export function registerAccountCommands(program: Command): void {
   const account = program.command("account").description("子账号管理");
@@ -23,15 +24,21 @@ export function registerAccountCommands(program: Command): void {
     .option("--page_size <n>", "每页数量", strictInt)
     .option("--mobile <s>", "手机号")
     .action(async (_opts, cmd) => {
-      await executeCommand(program, cmd, querySubAccounts, (m) => ({
-        subuser: m.subuser,
-        name_like: m.name_like,
-        role: m.role,
-        group: m.group,
-        page_index: m.page_index,
-        page_size: m.page_size,
-        mobile: m.mobile,
-      }));
+      await executeRuntimeAction(program, cmd, querySubAccounts, (m) => {
+        if (m.page_index !== undefined) requirePositiveInt(m, "page_index");
+        if (m.page_size !== undefined) requirePositiveInt(m, "page_size");
+        if (m.role !== undefined) requireEnum(m, "role", [1, 2, 3, 4]);
+        if (m.group !== undefined) requirePositiveInt(m, "group");
+        return {
+          subuser: m.subuser,
+          name_like: m.name_like,
+          role: m.role,
+          group: m.group,
+          page_index: m.page_index,
+          page_size: m.page_size,
+          mobile: m.mobile,
+        };
+      });
     });
 
   // --- add ---
@@ -45,8 +52,10 @@ export function registerAccountCommands(program: Command): void {
     .option("--role <n>", "角色", strictInt)
     .option("--group <n>", "分组", strictInt)
     .action(async (_opts, cmd) => {
-      await executeCommand(program, cmd, addSubAccount, (m) => {
+      await executeRuntimeAction(program, cmd, addSubAccount, (m) => {
         requireField(m, "subuser");
+        if (m.role !== undefined) requireEnum(m, "role", [1, 2, 3, 4]);
+        if (m.group !== undefined) requirePositiveInt(m, "group");
         return {
           subuser: m.subuser,
           password: m.password,
@@ -68,8 +77,10 @@ export function registerAccountCommands(program: Command): void {
     .option("--role <n>", "角色", strictInt)
     .option("--group <n>", "分组", strictInt)
     .action(async (_opts, cmd) => {
-      await executeCommand(program, cmd, modifySubAccount, (m) => {
+      await executeRuntimeAction(program, cmd, modifySubAccount, (m) => {
         requireField(m, "subuser");
+        if (m.role !== undefined) requireEnum(m, "role", [1, 2, 3, 4]);
+        if (m.group !== undefined) requirePositiveInt(m, "group");
         return {
           subuser: m.subuser,
           mobile: m.mobile,
@@ -86,7 +97,7 @@ export function registerAccountCommands(program: Command): void {
     .description("删除子账号")
     .option("--subuser <s>", "子账号用户名")
     .action(async (_opts, cmd) => {
-      await executeCommand(program, cmd, deleteSubAccount, (m) => {
+      await executeRuntimeAction(program, cmd, deleteSubAccount, (m) => {
         requireField(m, "subuser");
         return { subuser: m.subuser };
       });
@@ -100,7 +111,7 @@ export function registerAccountCommands(program: Command): void {
     .option("--mobile <s>", "手机号")
     .option("--email <s>", "邮箱")
     .action(async (_opts, cmd) => {
-      await executeCommand(program, cmd, restoreSubAccount, (m) => {
+      await executeRuntimeAction(program, cmd, restoreSubAccount, (m) => {
         requireField(m, "subuser");
         return {
           subuser: m.subuser,

@@ -1,41 +1,9 @@
 import { homedir } from "node:os";
 import { writeFileSync, readFileSync, existsSync } from "node:fs";
 import { join } from "node:path";
-import { CliError, handleError } from "../lib/errors.js";
-const BASH_SCRIPT = `
-_wjx_completions() {
-  local cur_word="\${COMP_WORDS[COMP_CWORD]}"
-  local line="\${COMP_LINE}"
-  local point="\${COMP_POINT}"
-
-  local candidates
-  candidates=$(wjx --get-completions "$point" "$line" 2>/dev/null)
-
-  COMPREPLY=($(compgen -W "$candidates" -- "$cur_word"))
-}
-
-complete -F _wjx_completions wjx
-`.trim();
-const ZSH_SCRIPT = `
-_wjx_completions() {
-  local line="\${words[*]}"
-  local point="\${CURSOR}"
-
-  local candidates
-  candidates=("\${(@f)$(wjx --get-completions "$point" "$line" 2>/dev/null)}")
-
-  local -a completions
-  for c in "\${candidates[@]}"; do
-    [[ -n "$c" ]] && completions+=("$c")
-  done
-  _describe 'wjx' completions
-}
-
-compdef _wjx_completions wjx
-`.trim();
-const FISH_SCRIPT = `
-complete -c wjx -f -a '(wjx --get-completions (commandline -C) (commandline) 2>/dev/null)'
-`.trim();
+import { CliError } from "../lib/errors.js";
+import { executeRuntimeLocal } from "../lib/runtime/executor.js";
+import { COMPLETION_SCRIPTS } from "../lib/completions.js";
 const PROFILE_FILES = {
     bash: ".bashrc",
     zsh: ".zshrc",
@@ -63,26 +31,26 @@ export function registerCompletionCommands(program) {
     completion
         .command("bash")
         .description("输出 Bash 补全脚本")
-        .action(() => {
-        console.log(BASH_SCRIPT);
+        .action(async (_opts, cmd) => {
+        await executeRuntimeLocal(program, cmd, () => COMPLETION_SCRIPTS.bash, { rawOutput: true });
     });
     completion
         .command("zsh")
         .description("输出 Zsh 补全脚本")
-        .action(() => {
-        console.log(ZSH_SCRIPT);
+        .action(async (_opts, cmd) => {
+        await executeRuntimeLocal(program, cmd, () => COMPLETION_SCRIPTS.zsh, { rawOutput: true });
     });
     completion
         .command("fish")
         .description("输出 Fish 补全脚本")
-        .action(() => {
-        console.log(FISH_SCRIPT);
+        .action(async (_opts, cmd) => {
+        await executeRuntimeLocal(program, cmd, () => COMPLETION_SCRIPTS.fish, { rawOutput: true });
     });
     completion
         .command("install")
         .description("自动安装补全脚本到 Shell 配置文件")
-        .action(() => {
-        try {
+        .action(async (_opts, cmd) => {
+        await executeRuntimeLocal(program, cmd, () => {
             const shell = detectShell();
             if (!shell) {
                 throw new CliError("INPUT_ERROR", "无法检测 Shell 类型。请手动运行:\n" +
@@ -98,8 +66,12 @@ export function registerCompletionCommands(program) {
                 if (existsSync(profilePath)) {
                     const content = readFileSync(profilePath, "utf8");
                     if (content.includes(evalLine) || content.includes("wjx completion")) {
-                        process.stderr.write(`补全脚本已安装在 ${profilePath}\n`);
-                        return;
+                        return {
+                            status: "skipped",
+                            reason: "already-installed",
+                            profilePath,
+                            message: `补全脚本已安装在 ${profilePath}`,
+                        };
                     }
                 }
             }
@@ -109,15 +81,13 @@ export function registerCompletionCommands(program) {
             const isNew = !existsSync(profilePath);
             const snippet = `\n${marker}\n${evalLine}\n`;
             writeFileSync(profilePath, snippet, { flag: "a" });
-            if (isNew) {
-                process.stderr.write(`已创建新文件 ${profilePath}\n`);
-            }
-            process.stderr.write(`已添加到 ${profilePath}\n`);
-            process.stderr.write(`运行以下命令立即生效:\n  source ${profilePath}\n`);
-        }
-        catch (e) {
-            handleError(e);
-        }
+            return {
+                status: "installed",
+                profilePath,
+                shell,
+                message: `${isNew ? `已创建新文件 ${profilePath}；` : ""}已添加补全脚本。运行以下命令立即生效: source ${profilePath}`,
+            };
+        }, { dryRun: () => ({ command: "completion.install" }) });
     });
 }
 //# sourceMappingURL=completion.js.map

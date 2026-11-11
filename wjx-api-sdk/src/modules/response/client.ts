@@ -1,4 +1,4 @@
-import type { WjxApiResponse, WjxCredentials, FetchLike } from "../../core/types.js";
+import type { WjxApiResponse, WjxCredentials, FetchLike, RequestOverrides } from "../../core/types.js";
 import { Action, LONG_TIMEOUT_MS } from "../../core/constants.js";
 import { callWjxApi, getWjxCredentials, assignDefined } from "../../core/api-client.js";
 import type {
@@ -29,7 +29,12 @@ export async function queryResponses<T = unknown>(
     "query_note", "distinct_user", "distinct_sojumpparm", "conds",
   ]);
 
-  return callWjxApi<T>(params, { credentials, fetchImpl });
+  return callWjxApi<T>(params, {
+    credentials,
+    fetchImpl,
+    idempotency: "safe",
+    httpRetryable: true,
+  });
 }
 
 export async function queryResponsesRealtime<T = unknown>(
@@ -43,7 +48,13 @@ export async function queryResponsesRealtime<T = unknown>(
   };
   if (input.count !== undefined) params.count = input.count;
 
-  return callWjxApi<T>(params, { credentials, fetchImpl, maxRetries: 0 });
+  return callWjxApi<T>(params, {
+    credentials,
+    fetchImpl,
+    maxRetries: 0,
+    idempotency: "unknown",
+    httpRetryable: false,
+  });
 }
 
 export async function downloadResponses<T = unknown>(
@@ -60,7 +71,15 @@ export async function downloadResponses<T = unknown>(
     "min_index", "qid", "sort", "query_type", "suffix", "query_record",
   ]);
 
-  return callWjxApi<T>(params, { credentials, fetchImpl, timeoutMs: LONG_TIMEOUT_MS });
+  return callWjxApi<T>(params, {
+    credentials,
+    fetchImpl,
+    timeoutMs: LONG_TIMEOUT_MS,
+    // A request without taskid starts an asynchronous export job; replaying
+    // it after an ambiguous transport failure can create duplicate jobs.
+    idempotency: input.taskid ? "safe" : "unknown",
+    httpRetryable: Boolean(input.taskid),
+  });
 }
 
 export async function getReport<T = unknown>(
@@ -77,13 +96,22 @@ export async function getReport<T = unknown>(
     "distinct_user", "distinct_sojumpparm", "conds",
   ]);
 
-  return callWjxApi<T>(params, { credentials, fetchImpl, timeoutMs: LONG_TIMEOUT_MS });
+  return callWjxApi<T>(params, {
+    credentials,
+    fetchImpl,
+    timeoutMs: LONG_TIMEOUT_MS,
+    // Report generation may perform server-side aggregation; fail closed on
+    // ambiguous transport outcomes and do not replay 429/5xx responses.
+    idempotency: "unknown",
+    httpRetryable: false,
+  });
 }
 
 export async function submitResponse<T = unknown>(
   input: SubmitResponseInput,
   credentials: WjxCredentials = getWjxCredentials(),
   fetchImpl: FetchLike = fetch,
+  requestOptions?: RequestOverrides,
 ): Promise<WjxApiResponse<T>> {
   const params: Record<string, unknown> = {
     action: Action.SUBMIT_RESPONSE,
@@ -91,9 +119,17 @@ export async function submitResponse<T = unknown>(
     inputcosttime: input.inputcosttime,
     submitdata: input.submitdata,
   };
-  assignDefined(params, input, ["udsid", "sojumpparm", "submittime"]);
+  assignDefined(params, input, ["submit_channel", "udsid", "sojumpparm", "submittime", "jpmversion"]);
 
-  return callWjxApi<T>(params, { credentials, fetchImpl, maxRetries: 0 });
+  return callWjxApi<T>(params, {
+    ...requestOptions,
+    credentials,
+    fetchImpl,
+    retryBudget: 0,
+    maxRetries: 0,
+    idempotency: "unsafe",
+    httpRetryable: false,
+  });
 }
 
 export async function getFileLinks<T = unknown>(
@@ -108,7 +144,12 @@ export async function getFileLinks<T = unknown>(
   };
   assignDefined(params, input, ["file_view_expires"]);
 
-  return callWjxApi<T>(params, { credentials, fetchImpl });
+  return callWjxApi<T>(params, {
+    credentials,
+    fetchImpl,
+    idempotency: "safe",
+    httpRetryable: true,
+  });
 }
 
 export async function getWinners<T = unknown>(
@@ -122,7 +163,12 @@ export async function getWinners<T = unknown>(
   };
   assignDefined(params, input, ["atype", "awardstatus", "page_index", "page_size"]);
 
-  return callWjxApi<T>(params, { credentials, fetchImpl });
+  return callWjxApi<T>(params, {
+    credentials,
+    fetchImpl,
+    idempotency: "safe",
+    httpRetryable: true,
+  });
 }
 
 export async function modifyResponse<T = unknown>(
@@ -134,11 +180,13 @@ export async function modifyResponse<T = unknown>(
     {
       action: Action.MODIFY_RESPONSE,
       vid: input.vid,
-      jid: input.jid,
+      // WJX response IDs can exceed the server's numeric parsing path. The
+      // API accepts the identifier as a decimal string and preserves it.
+      jid: String(input.jid),
       type: input.type,
       answers: input.answers,
     },
-    { credentials, fetchImpl, maxRetries: 0 },
+    { credentials, fetchImpl, maxRetries: 0, idempotency: "unsafe", httpRetryable: false },
   );
 }
 
@@ -153,7 +201,15 @@ export async function get360Report<T = unknown>(
   };
   assignDefined(params, input, ["taskid"]);
 
-  return callWjxApi<T>(params, { credentials, fetchImpl, maxRetries: 0, timeoutMs: LONG_TIMEOUT_MS });
+  return callWjxApi<T>(params, {
+    credentials,
+    fetchImpl,
+    timeoutMs: LONG_TIMEOUT_MS,
+    // A taskid is an existing asynchronous report job and can be polled
+    // safely; without one the request may create a new job.
+    idempotency: input.taskid ? "safe" : "unknown",
+    httpRetryable: Boolean(input.taskid),
+  });
 }
 
 export async function clearResponses<T = unknown>(
@@ -168,6 +224,6 @@ export async function clearResponses<T = unknown>(
       vid: input.vid,
       reset_to_zero: input.reset_to_zero,
     },
-    { credentials, fetchImpl, maxRetries: 0 },
+    { credentials, fetchImpl, maxRetries: 0, idempotency: "unsafe", httpRetryable: false },
   );
 }

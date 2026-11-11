@@ -1,8 +1,88 @@
 # 更新日志
 
+## [0.4.6] - 未发布
+
+- SDK、CLI、MCP Server 版本统一为 `0.4.6`。
+- 创建和修改统一使用 Survey JSON，按需附加 dsl.logic；DSL 转换为原生 XML 逻辑，冲突时优先。
+- 新增 survey update；问卷逻辑通过 Survey JSON 的可选 dsl.logic 提交并转换为 XML 原生逻辑。
+
+> 说明：以下 0.x 条目保留为历史记录。条目中出现的旧创建能力仅用于历史追溯，不属于当前 CLI，也不得据此恢复入口。当前问卷创建唯一使用 `survey create`。
+
+## [0.4.5] - 2026-09-14
+
+- DSL `survey create` 在发起请求前拒绝当前接口不支持的新建问卷类型，并与 SDK 共享可创建类型集合。
+- DSL `survey update` 使用 API 标准字段 `allow_breaking_changes`，保留现有 camelCase 参数兼容性；CLI Skill、文档和发布产物同步更新。
+- 补充 DSL 结构/题目语义校验和回归测试，统一工作区版本至 `0.4.5`。
+
+## [0.4.4] - 2026-09-07
+
+- 增加 `survey shortlink`，支持将问卷填写长链接转换为短信短链接。
+- `response submit` 默认携带 `submit_channel=wjx-cli`，用于标记答卷提交来源。
+- 补充问卷、题型、状态、审核状态和设置参数的 CLI 参考枚举。
+- 完善高风险写操作确认、请求计划脱敏、身份检查和读回验证。
+- 强化 Skill/Agent 镜像同步、发布产物检查和结构化错误协议。
+- Added standalone AI homepage create/update commands to the complete CLI surface.
+- Removed page type conversion from AI homepage updates.
+- Updated the bundled Skill to require paginated PPTs and prohibit implicit survey creation.
+
+## [0.4.3] - 2026-09-04
+
+- Reused SDK AI homepage constraints in CLI validation and rejected blank HTML early.
+
+## [0.4.2] - 2026-09-02
+
+- 与 `wjx-api-sdk@0.4.2`、`wjx-mcp-server@0.4.2` 对齐发布版本。
+- 发布前增加依赖审计和 Dependabot 门禁，确保 CLI 发布依赖树持续无已知漏洞。
+
+## [0.4.1] - 2026-09-02
+
+- `wjx-cli@0.4.1` 已发布到 npm；`0.4.0` 已废弃。
+- 新增 `survey preview-url`，按 `sid` 优先、正整数 `vid` 后备生成答卷人填写/预览链接。
+
+### Breaking
+
+- 问卷创建入口统一使用 `survey create` 和 `createSurveyByJson`。
+- `create-by-json` 已改名为 `survey create`，不保留兼容别名；使用旧命令的客户端必须升级到 `0.4.1` 或更高版本。
+- 升级错误只根据结构化服务端信号识别；未提供最低版本或升级命令时，CLI 不再生成默认值。
+
+## [0.4.0] - 2026-08-30
+
+### Breaking
+
+- CLI 结构化输出统一为 `{ ok, data, meta }` / `{ ok: false, error }`，旧的顶层 `result` 不再输出。
+- `--format json|pretty|table|ndjson|csv` 统一控制投影；旧的 `--json` 和 `--table` 别名已移除。
+- 高风险写操作在非交互环境必须显式使用 `--yes`。
+- `--dry-run` 保证零网络请求，无法本地解析的字段会列入 `unresolved`。
+
+### Added
+
+- `survey create` 请求携带 `X-WJX-Client` 与 `X-WJX-Client-Version`，并将服务端 `CLIENT_VERSION_TOO_OLD` 等响应转换为结构化升级提示。
+
 本文件记录项目的所有重要变更。
 
 格式基于 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
+
+## [0.3.5] - 2026-08-19
+
+### Added
+
+- `survey list` 为问卷结果补充安全的 `fill_url`：优先使用与 `vid` 不同的服务端短编号 `sid`，其次使用不暴露数字 `vid` 的服务端移动路径。
+- 随包分发的 `wjx-cli-use` Skill 新增计算公式参考，并同步最新的问卷、答卷、分析与题型指南。
+
+### Changed
+
+- `wjx-cli-use` 强化问卷列表和答卷查询的分页、总数核对及安全填写链接规则。
+
+### Fixed
+
+- 丢弃 API 输入中未经验证的 `fill_url`，仅输出由安全 `sid` 或 `mobile_path` 推导出的填写链接，防止数字 `vid` 路径泄露。
+- 重新生成 CLI 的 `dist` 与 `bundled` 发布产物，并在 npm 发布钩子中强制先同步 bundled Skill，防止真源与发布包漂移。
+
+## [0.2.6] - 2026-04-24
+
+### Added
+
+- `survey create` 支持表格类题型，命令层传参补齐必答题设置（联动 SDK 0.2.6）。
 
 ## [0.2.4] - 2026-04-22
 
@@ -40,7 +120,6 @@
 
 ### Fixed
 
-- `create-by-text` 使用 SDK 重写的 `createSurveyByText()`（客户端解析 DSL，不再发送原始文本到 API）
 - `survey url` 新增 mode 验证，仅接受 `create` 或 `edit`
 - `reference` 命令改为从 SDK 的 `LABEL_TO_TYPE` 动态生成 DSL 标签参考（单一数据源）
 - `response count` 重写，仅返回 `{ vid, total_count, join_times }`
@@ -54,22 +133,13 @@
 
 ### Fixed
 
-- 修复 `create-by-text` DSL 解析：矩阵题 body 跨空行、Format 1 scaleRange 解析、段落说明过滤
 
 ## [0.1.8] - 2026-04-02
 
 ### Added
 
-- **`wjx survey create-by-text` 命令**: 用 DSL 文本创建问卷，无需手写 JSON
-  - `--text <s>` 直接传入 DSL 文本
-  - `--file <path>` 从文件读取 DSL 文本
-  - `--type <n>` 问卷类型（1=调查, 6=考试）
-  - `--publish` 创建后发布
-  - `--dry-run` 预览解析结果（不调用 API）
-  - 调用 SDK 的 `createSurveyByText()` 函数
 - **`wjx reference` 命令**: 输出命令参考文档
   - `wjx reference` 列出可用主题
-  - `wjx reference dsl` DSL 文本语法参考
   - `wjx reference question-types` 题型/问卷类型映射表
   - `wjx reference survey` survey 模块命令参考
   - `wjx reference response` response 模块命令参考
@@ -78,7 +148,6 @@
 
 ### Changed
 
-- SDK 新增 `createSurveyByText()`、`parsedQuestionsToWire()` 导出
 - MCP Server 去除重复的 `parsedQuestionsToWire`，改为从 SDK 导入
 - 测试数从 96 增加到 108
 

@@ -1,11 +1,10 @@
-import type { WireQuestion } from "./text-to-survey.js";
 /** JSONL 首行 "问卷基础信息" 解析结果（轻量，只含元数据） */
 export interface JsonSurveyMetadata {
     title: string;
     description: string;
     endpageinformation: string;
     language: string;
-    /** 用户在 JSONL 内部声明的 atype（1=调查 / 2=测评 / 3=投票 / 6=考试 / 7=表单）。未声明时为 undefined。 */
+    /** 用户在 JSONL 内部声明的 atype（可创建：1/2/3/4/5/6/7/9/10/11；8=用户体系不支持新建）。未声明时为 undefined。 */
     atype?: number;
 }
 /** A raw JSON question object parsed from JSONL input. */
@@ -41,13 +40,13 @@ export interface JsonSurveyQuestion {
     uploadlimit?: string;
     uploadcutimgsize?: string;
     /** 考试字段 */
-    correctselect?: string[];
+    correctselect?: string | string[];
     quizscore?: string;
     answeranalysis?: string;
     isquiz?: string;
     include?: boolean;
     answerlists?: Array<{
-        correctselect?: string[];
+        correctselect?: string | string[];
         quizscore?: string;
         include?: boolean;
     }>;
@@ -64,22 +63,50 @@ export interface JsonSurveyQuestion {
     aigoal?: string;
     /** MaxDiff / BWS / 图片PK */
     mdattr?: string[];
-    /** 联合分析 */
+    /** BWS / MaxDiff / 图片PK / 联合分析 每个任务抽取的对象数。 */
+    pertaskcount?: number | string;
+    /** BWS / MaxDiff / 图片PK / 联合分析 任务数。 */
+    tasklength?: number | string;
+    /** 联合分析；表格/自增表格也可用作列标题 */
     columntitle?: string[];
+    /** 表格题字段类型（与 rowtitle 一一对应） */
+    columntype?: string[];
+    /** 表格题字段补充数据（与 rowtitle / columntype 一一对应） */
+    columndata?: string[];
+    /**
+     * 表格题列输入类型（表格组合专用，与 rowtitle 等长）。
+     * 支持值：单选 / 多选 / 下拉 / 数字 / 小数 / 日期 / 手机 / Email / 文本。
+     */
+    types?: string[];
+    /**
+     * 表格题选项数据：
+     * - 表格下拉框 / 表格组合：长度 = rowtitle，selects[i] 是第 i 列的选项数组（如 ["新手","初级","中级"]）；
+     *   表格组合中文本/数字等无选项类型可传 [] 占位。
+     * - 自增表格：单层数组 [rowTmpl]；rowTmpl[i] 是第 i 列的输入模板：
+     *     ""（空字符串）→ 文本；"a|b|c"（| 分隔）→ 下拉，选项 a/b/c。
+     */
+    selects?: string[][];
     /** 品牌漏斗 */
     brands?: string[];
     /** 企业信息模糊查询 */
     fuzzyquery?: string;
     /** 多级下拉 */
-    leveldata?: string;
+    leveldata?: string | string[];
     /** 分页栏 */
     mintime?: number;
     maxtime?: number;
+    /** 自增表格的最小/最大可添加行数；不要用 minvalue/maxvalue 表示行数 */
+    min_rows?: number;
+    max_rows?: number;
     /** 答卷摄像 */
     cameratype?: string;
     /** PSM 模型 */
     steps?: string;
     /** 矩阵滑动条 — 用 minvalue/maxvalue + rowtitle */
+    stores?: string[];
+    heatbg?: string;
+    hidetxt?: string | boolean;
+    answer?: string;
     [key: string]: unknown;
 }
 /** Parsed survey structure from JSONL input. */
@@ -89,14 +116,6 @@ export interface JsonParsedSurvey {
     endpageinformation: string;
     language: string;
     questions: JsonSurveyQuestion[];
-}
-export interface JsonWireConversionResult {
-    questions: WireQuestion[];
-    /** 无法映射的题型（跳过但不报错） */
-    skippedTypes: Array<{
-        qtype: string;
-        title: string;
-    }>;
 }
 /** createSurveyByJson 的 JSONL 大小上限（1 MB） */
 export declare const MAX_JSONL_SIZE = 1000000;
@@ -122,7 +141,7 @@ export declare const EXAM_QTYPES: Set<string>;
 /**
  * 扫描 JSONL 文本，若发现考试题型：
  * - `hasExam=true`
- * - 为每道考试题自动注入 `isquiz="1"`（用户已显式设置则保留原值）
+ * - 为每道考试题自动注入 `isquiz="1"`（显式设置为其他值会被拒绝，避免考试题降级）
  *
  * 非考试题、_meta 行、空行、无法解析的行保持原样。
  */
@@ -130,12 +149,18 @@ export declare function preprocessExamJsonl(jsonl: string): {
     jsonl: string;
     hasExam: boolean;
 };
+export declare function hasVoteJsonlQtype(jsonl: string): boolean;
 /**
  * 扫描 JSONL 文本，为所有题目行注入 `requir: true`（用户未显式指定时）。
  * - 与页面创建行为保持一致：默认必答
  * - 非题目行（问卷基础信息、分页栏、段落说明、知情同意书）和空行/无法解析行保持原样
  */
 export declare function injectDefaultRequir(jsonl: string): string;
+/**
+ * 校验 JSONL 中显式写出的 `requir:false` 是否真的被调用方明确允许。
+ * 默认所有题目必答；只有标题列入 optionalTitles 的题目，才允许非必答。
+ */
+export declare function validateExplicitOptionalQuestionsInJsonl(jsonl: string, optionalTitles?: string[]): void;
 /**
  * 将 `atype` 写入 JSONL 首行的「问卷基础信息」对象（覆盖已有值）。
  * - 存在「问卷基础信息」行：就地注入/覆盖 atype 字段
@@ -185,24 +210,50 @@ export declare const NON_QUESTION_QTYPE_SET: ReadonlySet<string>;
  * 零题目通常源于上层 LLM 生成失败（只吐出 _meta 行），应在客户端拦截，避免服务端创建空问卷。
  */
 export declare function validateSurveyHasQuestions(jsonl: string): void;
-/** qtype 中文名 → API wire format { q_type, q_subtype } 映射表 */
-export declare const QTYPE_MAP: Record<string, {
-    q_type: number;
-    q_subtype: number;
-}>;
+/**
+ * qtypes that remain readable in existing surveys but are rejected by the
+ * current JSONL create endpoint. Keep these explicit so Agents can route to
+ * the web editor instead of retrying a deterministic server rejection.
+ */
+export declare const JSONL_READ_ONLY_OR_WEB_EDITOR_QTYPES: ReadonlySet<string>;
+/**
+ * Normalize accepted JSONL qtype aliases before they reach the create API.
+ * The service accepts the canonical names only for table variants, while
+ * keeping aliases in the input contract is useful for novice callers.
+ * Malformed lines are left untouched so parseJsonl can retain its line error.
+ */
+export declare function canonicalizeJsonlQtypes(jsonlText: string): string;
+export declare const JSONL_SUPPORTED_QTYPES: ReadonlySet<string>;
+/**
+ * qtypes whose minimal JSONL representation is only a shell. They need
+ * assets, AI/relationship configuration, or page timing to become a usable
+ * survey in the editor, so an omitted `publish` must leave the survey as a
+ * draft. Explicit `publish: true` remains an intentional user override.
+ */
+export declare const FRAMEWORK_ONLY_JSONL_QTYPES: ReadonlySet<string>;
+/** Return whether a JSONL document contains a known shell-only qtype. */
+export declare function hasFrameworkOnlyJsonlQtype(jsonlText: string): boolean;
+/** Resolve the wire publish flag while preserving an explicit caller choice. */
+export declare function resolveJsonlPublish(jsonlText: string, requested?: boolean): boolean;
 /**
  * Parse JSONL text (one JSON object per line) into an array of question objects.
  * 抛出带行号的错误信息以便定位。
  */
 export declare function parseJsonl(jsonlText: string): JsonSurveyQuestion[];
 /**
+ * JSONL 预检：在交给后续解析前，扫一遍每行结构，发现典型 AI 写错的形态时
+ * 抛出**带定位 + 修复建议**的错误，避免后续抛出晦涩的 "qtype 不识别"/"标题缺失"。
+ *
+ * 检测项（按优先级）：
+ * 1. 第一行非"问卷基础信息" → 提示加首行元数据
+ * 2. 行用了 `q_type`/`type` 字段但缺 `qtype` → 提示用中文 qtype（字符串）
+ * 3. `qtype` 是数字（误把 q_type 数字塞过来）→ 列出常见中文映射
+ * 4a. `qtype` 是英文（radio/checkbox/rating 等）→ 给出精确的中文替换
+ * 4b. `qtype` 字符串但不在 JSONL_SUPPORTED_QTYPES → 给出"你是不是想写 X"
+ */
+export declare function preflightJsonl(jsonlText: string): void;
+/**
  * Parse JSONL text into a structured survey: extract metadata from "问卷基础信息" entry,
  * remaining entries become the questions array.
  */
 export declare function jsonToSurvey(jsonlText: string): JsonParsedSurvey;
-/**
- * Convert an array of JsonSurveyQuestion to API wire format (question JSON for createSurvey).
- * Unknown qtype entries are collected as `skippedTypes` rather than throwing —
- * 调用方若需要严格校验，可在拿到结果后自行检查 `skippedTypes.length === 0`。
- */
-export declare function jsonQuestionsToWire(questions: JsonSurveyQuestion[]): JsonWireConversionResult;

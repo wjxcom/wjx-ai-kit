@@ -3,4 +3,6 @@ export type {
   SsoUserSystemInput,
   SsoPartnerInput,
   BuildSurveyUrlInput,
+  GetShortLinkInput,
+  ShortLinkResponse,
 } from "wjx-api-sdk";

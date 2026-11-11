@@ -1,0 +1,63 @@
+{
+  "survey": {
+    "title": "客户净推荐值（NPS）调查 2026 Q1",
+    "vid": "240501-demo",
+    "type": 1,
+    "url": "https://www.wjx.cn/vm/example.aspx"
+  },
+  "response": {
+    "total": 1234,
+    "completed": 1100,
+    "avg_time": 95
+  },
+  "questions": [
+    {
+      "qid": "Q1",
+      "type": "scale",
+      "title": "您向朋友推荐我们产品的可能性有多大？（0-10 分）",
+      "scale_type": "nps_0_10",
+      "distribution": null
+    },
+    {
+      "qid": "Q2",
+      "type": "single",
+      "title": "您最看重产品的哪个方面？",
+      "options": ["性能", "价格", "售后", "界面", "稳定性"],
+      "distribution": [
+        {"label": "性能", "count": 420},
+        {"label": "价格", "count": 280},
+        {"label": "售后", "count": 200},
+        {"label": "界面", "count": 100},
+        {"label": "稳定性", "count": 100}
+      ]
+    },
+    {
+      "qid": "Q3",
+      "type": "text",
+      "title": "您对我们还有哪些建议？",
+      "open_answers": [
+        "希望增加移动端推送功能",
+        "客服响应速度可以再快一些",
+        "整体体验很好，继续保持"
+      ]
+    }
+  ],
+  "analytics": {
+    "nps": {
+      "value": 32,
+      "promoters": 0.45,
+      "passives": 0.42,
+      "detractors": 0.13
+    }
+  },
+  "ai_findings": [
+    "NPS 净推荐值 32 处于行业良好水平。",
+    "性能是最受重视的产品属性（34%）。",
+    "售后响应是开放反馈中的高频改进点。"
+  ],
+  "ai_insights": [
+    "建议优化客服响应时长，预期可将 NPS 提升至 40 区间。",
+    "性能优势需在营销传播中放大，强化推荐者印象。",
+    "下季度可设置移动推送的可用性测试。"
+  ]
+}
