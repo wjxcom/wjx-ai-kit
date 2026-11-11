@@ -4,7 +4,7 @@ import { execFile } from "node:child_process";
 import { createRequire } from "node:module";
 import { createCipheriv, createHash } from "node:crypto";
 import { access, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
-import { dirname, resolve } from "node:path";
+import { delimiter, dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { Action } from "wjx-api-sdk";
 import { COMMAND_METADATA } from "../dist/lib/command-metadata.js";
@@ -44,6 +44,13 @@ function runCli(args, { env = {}, input, cwd, timeout = 15_000 } = {}) {
 
 function json(value) {
   return JSON.stringify(value);
+}
+
+async function writeNpmStub(bin, source) {
+  const script = resolve(bin, "npm-stub.cjs");
+  await writeFile(script, source, "utf8");
+  await writeFile(resolve(bin, "npm"), '#!/usr/bin/env node\nimport("./npm-stub.cjs");\n', { encoding: "utf8", mode: 0o755 });
+  await writeFile(resolve(bin, "npm.cmd"), `@"${process.execPath}" "${script}" %*\r\n`, "utf8");
 }
 
 function encryptPush(payload, appKey) {
@@ -793,13 +800,13 @@ describe("complete CLI command contract matrix", () => {
       assert.equal(verboseSkill.stdout.trim(), "");
       assert.equal(parseProblem(verboseSkill).error.code, "INPUT_ERROR");
 
-      await writeFile(resolve(bin, "npm.cmd"), "@echo off\r\nexit /b 1\r\n", "utf8");
-      const update = await runCli(["update", "--silent"], { env: { PATH: `${bin};${process.env.PATH ?? ""}` } });
+      await writeNpmStub(bin, "process.exitCode = 1;\n");
+      const update = await runCli(["update", "--silent"], { env: { PATH: `${bin}${delimiter}${process.env.PATH ?? ""}` } });
       assert.equal(update.exitCode, 1, update.stdout);
       assert.equal(update.stdout.trim(), "");
       assert.equal(parseProblem(update).error.code, "API_ERROR");
 
-      const verboseUpdate = await runCli(["update"], { env: { PATH: `${bin};${process.env.PATH ?? ""}` } });
+      const verboseUpdate = await runCli(["update"], { env: { PATH: `${bin}${delimiter}${process.env.PATH ?? ""}` } });
       assert.equal(verboseUpdate.exitCode, 1, verboseUpdate.stdout);
       assert.equal(verboseUpdate.stdout.trim(), "");
       assert.equal(parseProblem(verboseUpdate).error.code, "API_ERROR");
@@ -816,8 +823,9 @@ describe("complete CLI command contract matrix", () => {
     const bin = await mkdtemp(resolve(process.env.TEMP ?? ".", "wjx-update-guard-bin-"));
     const marker = resolve(bin, "install-called");
     try {
-      await writeFile(resolve(bin, "npm.cmd"), `@echo off\r\nif "%~1"=="view" (echo "0.3.5" & exit /b 0)\r\necho install > "${marker}"\r\nexit /b 0\r\n`, "utf8");
-      const result = await runCli(["update", "--silent"], { env: { PATH: `${bin};${process.env.PATH ?? ""}` } });
+      await writeNpmStub(bin, `if (process.argv[2] === "view") console.log(JSON.stringify("0.3.5"));
+else require("node:fs").writeFileSync(${json(marker)}, "install");\n`);
+      const result = await runCli(["update", "--silent"], { env: { PATH: `${bin}${delimiter}${process.env.PATH ?? ""}` } });
       assert.equal(result.exitCode, 0, result.stderr);
       const envelope = JSON.parse(result.stdout);
       assert.equal(envelope.ok, true);
@@ -839,8 +847,13 @@ describe("complete CLI command contract matrix", () => {
       // Keep the fixture sensitive to both the registry query and the exact
       // version passed to install. A mutable @latest install can race with a
       // dist-tag change and must fail this test.
-      await writeFile(resolve(bin, "npm.cmd"), `@echo off\r\n>>"${calls}" echo %*\r\nif "%~1"=="view" (echo "${latestVersion}" & exit /b 0)\r\nif "%~1"=="install" (if "%~2"=="wjx-cli@${latestVersion}" exit /b 0\r\n  exit /b 1\r\n)\r\nif "%~1"=="list" (echo {"dependencies":{"wjx-cli":{"version":"${latestVersion}"}}} & exit /b 0)\r\nexit /b 1\r\n`, "utf8");
-      const result = await runCli(["update", "--silent"], { env: { PATH: `${bin};${process.env.PATH ?? ""}` } });
+      await writeNpmStub(bin, `const args = process.argv.slice(2);
+require("node:fs").appendFileSync(${json(calls)}, args.join(" ") + "\\n");
+if (args[0] === "view") console.log(JSON.stringify(${json(latestVersion)}));
+else if (args[0] === "install") process.exitCode = args[1] === ${json(`wjx-cli@${latestVersion}`)} ? 0 : 1;
+else if (args[0] === "list") console.log(JSON.stringify({ dependencies: { "wjx-cli": { version: ${json(latestVersion)} } } }));
+else process.exitCode = 1;\n`);
+      const result = await runCli(["update", "--silent"], { env: { PATH: `${bin}${delimiter}${process.env.PATH ?? ""}` } });
       assert.equal(result.exitCode, 0, result.stderr);
       const envelope = JSON.parse(result.stdout);
       assert.equal(envelope.ok, true);
@@ -863,8 +876,15 @@ describe("complete CLI command contract matrix", () => {
     const currentParts = CLI_VERSION.split(".").map(Number);
     const latestVersion = `${currentParts[0]}.${currentParts[1]}.${currentParts[2] + 1}`;
     try {
-      await writeFile(resolve(bin, "npm.cmd"), `@echo off\r\n>>"${calls}" echo %*\r\nif "%~1"=="view" (echo "${latestVersion}" & exit /b 0)\r\nif "%~1"=="install" (\r\n  if exist "${firstInstall}" exit /b 0\r\n  echo first > "${firstInstall}"\r\n  exit /b 1\r\n)\r\nif "%~1"=="list" (echo {"version":"${latestVersion}"} & exit /b 0)\r\nexit /b 1\r\n`, "utf8");
-      const result = await runCli(["update", "--silent"], { env: { PATH: `${bin};${process.env.PATH ?? ""}` } });
+      await writeNpmStub(bin, `const fs = require("node:fs");
+const args = process.argv.slice(2);
+fs.appendFileSync(${json(calls)}, args.join(" ") + "\\n");
+if (args[0] === "view") console.log(JSON.stringify(${json(latestVersion)}));
+else if (args[0] === "install") {
+  if (!fs.existsSync(${json(firstInstall)})) { fs.writeFileSync(${json(firstInstall)}, "first"); process.exitCode = 1; }
+} else if (args[0] === "list") console.log(JSON.stringify({ version: ${json(latestVersion)} }));
+else process.exitCode = 1;\n`);
+      const result = await runCli(["update", "--silent"], { env: { PATH: `${bin}${delimiter}${process.env.PATH ?? ""}` } });
       assert.equal(result.exitCode, 1, result.stdout);
       assert.equal(result.stdout.trim(), "");
       const error = parseProblem(result);
@@ -891,8 +911,11 @@ describe("complete CLI command contract matrix", () => {
     const currentParts = CLI_VERSION.split(".").map(Number);
     const newerVersion = `${currentParts[0]}.${currentParts[1]}.${currentParts[2] + 1}`;
     try {
-      await writeFile(resolve(bin, "npm.cmd"), `@echo off\r\nif "%~1"=="view" (echo "${newerVersion}" & exit /b 0)\r\nif "%~1"=="install" (exit /b 0)\r\nif "%~1"=="list" (echo {"name":"wjx-cli","version":"0.4.1"} & exit /b 0)\r\nexit /b 1\r\n`, "utf8");
-      const result = await runCli(["update", "--silent"], { env: { PATH: `${bin};${process.env.PATH ?? ""}` } });
+      await writeNpmStub(bin, `const action = process.argv[2];
+if (action === "view") console.log(JSON.stringify(${json(newerVersion)}));
+else if (action === "list") console.log(JSON.stringify({ name: "wjx-cli", version: "0.4.1" }));
+else if (action !== "install") process.exitCode = 1;\n`);
+      const result = await runCli(["update", "--silent"], { env: { PATH: `${bin}${delimiter}${process.env.PATH ?? ""}` } });
       assert.equal(result.exitCode, 1, result.stdout);
       assert.equal(result.stdout.trim(), "");
       const error = parseProblem(result);
@@ -1362,15 +1385,17 @@ describe("complete CLI command contract matrix", () => {
 
   test("update dry-run does not invoke npm", async () => {
     const root = await mkdtemp(resolve(process.env.TEMP ?? ".", "wjx-update-matrix-"));
+    const marker = resolve(root, "npm-called");
     try {
-      await writeFile(resolve(root, "npm.cmd"), "@echo off\r\nexit /b 0\r\n", "utf8");
+      await writeNpmStub(root, `require("node:fs").writeFileSync(${json(marker)}, "called"); process.exitCode = 1;\n`);
       const result = await runCli(["--dry-run", "update", "--silent"], {
-        env: { PATH: `${root};${process.env.PATH ?? ""}` },
+        env: { PATH: `${root}${delimiter}${process.env.PATH ?? ""}` },
       });
       assert.equal(result.exitCode, 0, result.stderr);
       const envelope = parseSuccess(result);
       assert.equal(envelope.data.kind, "dry-run");
       assert.deepEqual(envelope.data.plans, []);
+      await assert.rejects(access(marker));
     } finally {
       await rm(root, { recursive: true, force: true });
     }
