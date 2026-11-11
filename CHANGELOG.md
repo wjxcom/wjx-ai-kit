@@ -9,7 +9,7 @@
 - 升级 MCP SDK、Zod 及其 HTTP 传递依赖，修复发布前依赖审计发现的已知漏洞。
 - 修复 Node 20/22 CI 的 YAML 配置，并将 Agent contract、JSONL 能力元数据的源码一致性检查纳入发布门禁。
 - 统一文档生成和校验的跨平台换行处理，避免 Windows 与 Linux 的 HTML 产物不一致，并增加生成确定性、只读校验和过期内容检测的回归测试。
-- 修复自更新测试中的 npm 替身和 PATH 分隔符，使 Windows、Linux 均使用隔离夹具，并验证 dry-run 不调用 npm。
+- 修复自更新和 PPT 协议测试的跨平台夹具，使 Windows、Linux 均使用隔离替身，并验证 dry-run 不调用 npm。
 
 本项目使用 [Conventional Commits](https://www.conventionalcommits.org/) 规范。
 

@@ -102,7 +102,7 @@ class CliProtocolTests(unittest.TestCase):
                 shim.write_text(f'@echo off\n"{sys.executable}" "{script}" %*\n', encoding="utf-8")
             else:
                 shim = directory / "wjx"
-                shim.write_text(f"#!{sys.executable}\nexec({str(script)!r})\n", encoding="utf-8")
+                shim.write_text(f"#!{sys.executable}\nexec(compile(open({str(script)!r}, encoding='utf-8').read(), {str(script)!r}, 'exec'))\n", encoding="utf-8")
                 shim.chmod(shim.stat().st_mode | stat.S_IXUSR)
             with patch.object(fetch_survey, "_resolve_wjx", return_value=str(shim)):
                 with self.assertRaisesRegex(RuntimeError, "无权限"):
