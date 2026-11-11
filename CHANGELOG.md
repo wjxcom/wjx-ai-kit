@@ -8,6 +8,7 @@
 - 修复 DSL 分页随机、矩阵更新读回核验和答案引用，补齐相关回归覆盖。
 - 升级 MCP SDK、Zod 及其 HTTP 传递依赖，修复发布前依赖审计发现的已知漏洞。
 - 修复 Node 20/22 CI 的 YAML 配置，并将 Agent contract、JSONL 能力元数据的源码一致性检查纳入发布门禁。
+- 统一文档生成和校验的跨平台换行处理，避免 Windows 与 Linux 的 HTML 产物不一致，并增加生成确定性、只读校验和过期内容检测的回归测试。
 
 本项目使用 [Conventional Commits](https://www.conventionalcommits.org/) 规范。
 

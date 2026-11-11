@@ -63,7 +63,8 @@ const docs = {};
 for (const entry of entries) {
   const file = path.join(DOCS_DIR, `${entry.key}.md`);
   if (!fs.existsSync(file)) throw new Error(`Manifest page missing: ${entry.key}`);
-  docs[entry.key] = normalizeLinks(injectVars(fs.readFileSync(file, "utf8")), entry.key);
+  const markdown = fs.readFileSync(file, "utf8").replace(/\r\n/g, "\n");
+  docs[entry.key] = normalizeLinks(injectVars(markdown), entry.key);
 }
 
 const menu = MANIFEST.map((group) => ({

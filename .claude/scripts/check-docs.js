@@ -91,9 +91,10 @@ for (const file of ["wjx-kit.html", "wjx-kit.fragment.html"]) {
   }
 }
 
-// Rebuild into an isolated directory and compare bytes with the tracked
+// Rebuild into an isolated directory and compare text with the tracked
 // artifacts. This keeps `docs:check` read-only from the repository's point of
-// view and prevents `docs:build` from masking generated-file drift.
+// view and prevents `docs:build` from masking generated-file drift. Normalize
+// checkout newlines so Windows CRLF does not look like a content change.
 const generatedDir = fs.mkdtempSync(path.join(os.tmpdir(), "wjx-docs-check-"));
 try {
   const buildScript = path.join(__dirname, "build-docs-html.js");
@@ -110,7 +111,8 @@ try {
       const generated = path.join(generatedDir, file);
       if (!fs.existsSync(generated)) {
         failures.push(`generated docs build did not produce: ${file}`);
-      } else if (!fs.existsSync(tracked) || !fs.readFileSync(tracked).equals(fs.readFileSync(generated))) {
+      } else if (!fs.existsSync(tracked)
+        || fs.readFileSync(tracked, "utf8").replace(/\r\n/g, "\n") !== fs.readFileSync(generated, "utf8").replace(/\r\n/g, "\n")) {
         failures.push(`${file}: generated artifact is stale; run npm run docs:build`);
       }
     }
